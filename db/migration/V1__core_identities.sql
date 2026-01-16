@@ -1,0 +1,42 @@
+-- Core identities first (User/Admin) so other modules can FK safely
+
+CREATE TABLE user_account (
+  user_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(255) UNIQUE,
+  password_hash VARCHAR(255),
+  name VARCHAR(64) NULL,
+  phone VARCHAR(32) NULL,
+  email_verified TINYINT(1) NOT NULL DEFAULT 0,
+  status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+  last_login_at DATETIME NULL,
+  deleted_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE admin_account (
+  admin_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255),
+  status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE role (
+  role_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(64) UNIQUE NOT NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE role_permission (
+  role_id BIGINT UNSIGNED NOT NULL,
+  perm VARCHAR(64) NOT NULL,
+  PRIMARY KEY(role_id, perm),
+  CONSTRAINT fk_rp_role FOREIGN KEY(role_id) REFERENCES role(role_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE admin_role (
+  admin_id BIGINT UNSIGNED NOT NULL,
+  role_id BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY(admin_id, role_id),
+  CONSTRAINT fk_ar_admin FOREIGN KEY(admin_id) REFERENCES admin_account(admin_id),
+  CONSTRAINT fk_ar_role FOREIGN KEY(role_id) REFERENCES role(role_id)
+) ENGINE=InnoDB;

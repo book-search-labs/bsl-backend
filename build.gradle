@@ -1,51 +1,64 @@
 plugins {
-    id 'java'
-    id 'org.springframework.boot' version '3.5.9'
-    id 'io.spring.dependency-management' version '1.1.7'
+    id 'base'
+    id 'org.springframework.boot' version '3.5.9' apply false
+    id 'io.spring.dependency-management' version '1.1.7' apply false
 }
 
 group = 'com.devoceanblue'
 version = '0.0.1-SNAPSHOT'
 description = 'bsl-backend'
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
-}
-
-configurations {
-    compileOnly {
-        extendsFrom annotationProcessor
-    }
-}
-
-repositories {
-    mavenCentral()
-}
-
 ext {
     set('springModulithVersion', "1.4.6")
 }
 
-dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.modulith:spring-modulith-starter-core'
-    compileOnly 'org.projectlombok:lombok'
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
-    developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
-    annotationProcessor 'org.projectlombok:lombok'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.springframework.modulith:spring-modulith-starter-test'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-}
+allprojects {
+    group = rootProject.group
+    version = rootProject.version
 
-dependencyManagement {
-    imports {
-        mavenBom "org.springframework.modulith:spring-modulith-bom:${springModulithVersion}"
+    repositories {
+        mavenCentral()
     }
 }
 
-tasks.named('test') {
-    useJUnitPlatform()
+def javaServices = [
+    project(':services:search-service'),
+    project(':services:autocomplete-service'),
+    project(':services:ranking-service'),
+]
+
+def pythonServices = [
+    project(':services:query-service'),
+    project(':services:model-inference-service'),
+]
+
+configure(javaServices) {
+    apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(17)
+        }
+    }
+
+    configurations {
+        compileOnly {
+            extendsFrom annotationProcessor
+        }
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.modulith:spring-modulith-bom:${springModulithVersion}"
+        }
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+    }
+}
+
+configure(pythonServices) {
+    apply plugin: 'base'
 }

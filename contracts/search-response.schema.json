@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "search-response.schema.json",
+  "title": "SearchResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "trace_id", "request_id", "took_ms", "timed_out", "total", "hits"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+
+    "took_ms": { "type": "integer", "minimum": 0 },
+    "timed_out": { "type": "boolean" },
+    "total": { "type": "integer", "minimum": 0 },
+
+    "hits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["doc_id", "score", "title", "authors"],
+        "properties": {
+          "doc_id": { "type": "string", "minLength": 1 },
+          "score": { "type": "number" },
+          "title": { "type": "string" },
+          "authors": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "publisher": { "type": "string" },
+          "publication_year": { "type": "integer" }
+        }
+      }
+    },
+
+    "facets": {
+      "type": "object",
+      "additionalProperties": true
+    },
+
+    "debug": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "query_dsl": { "type": "object", "additionalProperties": true }
+      }
+    }
+  }
+}

@@ -4,6 +4,18 @@ build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
+**/.venv/
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.coverage
+**/.mypy_cache/
+**/.ruff_cache/
+**/.tox/
+.DS_Store
+.env
+.env.*
+!.env.example
 
 ### STS ###
 .apt_generated

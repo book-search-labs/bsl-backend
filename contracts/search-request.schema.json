@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "search-request.schema.json",
+  "title": "SearchRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "trace_id", "request_id", "query_context", "pagination", "sort", "options", "ranking"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+
+    "query_context": { "$ref": "query-context.schema.json" },
+
+    "pagination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "size"],
+      "properties": {
+        "from": { "type": "integer", "minimum": 0 },
+        "size": { "type": "integer", "minimum": 1, "maximum": 100 }
+      }
+    },
+
+    "sort": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["relevance", "recency"] }
+      }
+    },
+
+    "facets": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["explain", "timeout_ms", "debug"],
+      "properties": {
+        "explain": { "type": "boolean" },
+        "timeout_ms": { "type": "integer", "minimum": 1 },
+        "debug": { "type": "boolean" }
+      }
+    },
+
+    "ranking": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["use_rerank", "rerank_top_k"],
+      "properties": {
+        "use_rerank": { "type": "boolean" },
+        "rerank_top_k": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

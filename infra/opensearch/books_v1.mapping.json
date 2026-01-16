@@ -1,0 +1,52 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "1s"
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "doc_id": { "type": "keyword" },
+
+      "title": {
+        "type": "text",
+        "fields": {
+          "keyword": { "type": "keyword", "ignore_above": 256 }
+        }
+      },
+
+      "authors": {
+        "type": "keyword"
+      },
+
+      "publisher": {
+        "type": "keyword"
+      },
+
+      "publication_year": {
+        "type": "integer"
+      },
+
+      "isbn": {
+        "type": "keyword"
+      },
+
+      "subjects": {
+        "type": "keyword"
+      },
+
+      "description": {
+        "type": "text"
+      },
+
+      "created_at": {
+        "type": "date"
+      },
+
+      "updated_at": {
+        "type": "date"
+      }
+    }
+  }
+}

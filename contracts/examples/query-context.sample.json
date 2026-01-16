@@ -1,0 +1,38 @@
+{
+  "version": "v1",
+  "trace_id": "trace_9f4a2c0b5e1a",
+  "request_id": "req_1b2c3d4e5f6a",
+  "client": { "app": "web", "locale": "ko-KR" },
+  "user": { "user_id": "u_123" },
+  "query": {
+    "raw": "해리포터 1권",
+    "normalized": "해리포터 1권",
+    "canonical": "해리포터 1권",
+    "language": { "detected": "ko", "confidence": 0.95 },
+    "tokens": ["해리포터", "1권"]
+  },
+  "spell": {
+    "applied": false,
+    "original": "해리포터 1권",
+    "corrected": "해리포터 1권",
+    "method": "none",
+    "confidence": 1.0
+  },
+  "rewrite": {
+    "applied": false,
+    "rewritten": "해리포터 1권",
+    "method": "none",
+    "notes": "MVP"
+  },
+  "understanding": {
+    "intent": "book_search",
+    "entities": [],
+    "filters": {}
+  },
+  "retrieval_hints": {
+    "strategy": "bm25",
+    "top_k": 200,
+    "time_budget_ms": 350,
+    "boost": { "title": 2.0, "author": 1.2 }
+  }
+}
