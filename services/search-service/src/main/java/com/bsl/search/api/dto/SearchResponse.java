@@ -13,6 +13,9 @@ public class SearchResponse {
     @JsonProperty("took_ms")
     private long tookMs;
 
+    @JsonProperty("ranking_applied")
+    private boolean rankingApplied;
+
     private String strategy;
     private List<BookHit> hits;
 
@@ -38,6 +41,14 @@ public class SearchResponse {
 
     public void setTookMs(long tookMs) {
         this.tookMs = tookMs;
+    }
+
+    public boolean isRankingApplied() {
+        return rankingApplied;
+    }
+
+    public void setRankingApplied(boolean rankingApplied) {
+        this.rankingApplied = rankingApplied;
     }
 
     public String getStrategy() {

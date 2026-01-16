@@ -124,6 +124,12 @@ public class BookHit {
         @JsonProperty("vec_rank")
         private Integer vecRank;
 
+        @JsonProperty("rrf_score")
+        private Double rrfScore;
+
+        @JsonProperty("ranking_score")
+        private Double rankingScore;
+
         public Integer getLexRank() {
             return lexRank;
         }
@@ -138,6 +144,22 @@ public class BookHit {
 
         public void setVecRank(Integer vecRank) {
             this.vecRank = vecRank;
+        }
+
+        public Double getRrfScore() {
+            return rrfScore;
+        }
+
+        public void setRrfScore(Double rrfScore) {
+            this.rrfScore = rrfScore;
+        }
+
+        public Double getRankingScore() {
+            return rankingScore;
+        }
+
+        public void setRankingScore(Double rankingScore) {
+            this.rankingScore = rankingScore;
         }
     }
 }

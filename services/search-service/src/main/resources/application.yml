@@ -8,3 +8,7 @@ opensearch:
   vec-index: books_vec_read
   connect-timeout-ms: 200
   read-timeout-ms: 200
+
+ranking:
+  base-url: http://localhost:8082
+  timeout-ms: 200

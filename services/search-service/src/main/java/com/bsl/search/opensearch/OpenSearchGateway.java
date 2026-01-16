@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -23,7 +24,11 @@ public class OpenSearchGateway {
     private final ObjectMapper objectMapper;
     private final OpenSearchProperties properties;
 
-    public OpenSearchGateway(RestTemplate restTemplate, ObjectMapper objectMapper, OpenSearchProperties properties) {
+    public OpenSearchGateway(
+        @Qualifier("openSearchRestTemplate") RestTemplate restTemplate,
+        ObjectMapper objectMapper,
+        OpenSearchProperties properties
+    ) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.properties = properties;
