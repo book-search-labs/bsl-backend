@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Mono:wght@400;500&family=Manrope:wght@400;600;800&display=swap');
+
+:root {
+  font-family: 'Manrope', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #102a43;
+  background-color: #fff9ee;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --text-strong: #102a43;
+  --muted: #52606d;
+  --accent: #c2410c;
+  --border: rgba(194, 65, 12, 0.2);
+  --card: rgba(255, 255, 255, 0.85);
+  --mono: 'Fira Mono', 'SFMono-Regular', ui-monospace, 'Cascadia Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(circle at 20% 0%, rgba(251, 191, 36, 0.18), transparent 45%),
+    radial-gradient(circle at 80% 20%, rgba(14, 116, 144, 0.12), transparent 40%),
+    linear-gradient(155deg, #fff5e6, #eefaf7);
+  color: var(--text-strong);
+}
+
+a {
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: #ea580c;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 4vw, 3.6rem);
+  line-height: 1.02;
+}
+
+p {
+  margin: 0;
+}
