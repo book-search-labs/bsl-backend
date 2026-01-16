@@ -1,0 +1,120 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "1s",
+    "analysis": {
+      "normalizer": {
+        "keyword_lower": {
+          "type": "custom",
+          "filter": ["lowercase"]
+        }
+      },
+      "filter": {
+        "english_stop": {
+          "type": "stop",
+          "stopwords": "_english_"
+        },
+        "english_stemmer": {
+          "type": "stemmer",
+          "language": "english"
+        },
+        "edge_ngram_filter": {
+          "type": "edge_ngram",
+          "min_gram": 1,
+          "max_gram": 20
+        }
+      },
+      "analyzer": {
+        "ko_index": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase"]
+        },
+        "ko_search": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase"]
+        },
+        "ko_edge": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "edge_ngram_filter"]
+        },
+        "en_index": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "english_stop", "english_stemmer"]
+        },
+        "en_search": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "english_stop", "english_stemmer"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "doc_id": { "type": "keyword" },
+      "title_ko": {
+        "type": "text",
+        "analyzer": "ko_index",
+        "search_analyzer": "ko_search",
+        "fields": {
+          "raw": { "type": "keyword", "normalizer": "keyword_lower" },
+          "edge": {
+            "type": "text",
+            "analyzer": "ko_edge",
+            "search_analyzer": "ko_search"
+          }
+        }
+      },
+      "title_en": {
+        "type": "text",
+        "analyzer": "en_index",
+        "search_analyzer": "en_search",
+        "fields": {
+          "raw": { "type": "keyword", "normalizer": "keyword_lower" }
+        }
+      },
+      "authors": {
+        "type": "nested",
+        "properties": {
+          "agent_id": { "type": "keyword" },
+          "name_ko": {
+            "type": "text",
+            "analyzer": "ko_index",
+            "search_analyzer": "ko_search",
+            "fields": {
+              "raw": { "type": "keyword", "normalizer": "keyword_lower" }
+            }
+          },
+          "name_en": {
+            "type": "text",
+            "analyzer": "en_index",
+            "search_analyzer": "en_search"
+          },
+          "role": { "type": "keyword" },
+          "ord": { "type": "short" }
+        }
+      },
+      "publisher_name": { "type": "keyword", "normalizer": "keyword_lower" },
+      "identifiers": {
+        "properties": {
+          "isbn13": { "type": "keyword" }
+        }
+      },
+      "language_code": { "type": "keyword" },
+      "issued_year": { "type": "short" },
+      "volume": { "type": "short" },
+      "edition_labels": { "type": "keyword" },
+      "category_paths": { "type": "keyword" },
+      "concept_ids": { "type": "keyword" },
+      "is_hidden": { "type": "boolean" },
+      "redirect_to": { "type": "keyword" },
+      "updated_at": { "type": "date" }
+    }
+  }
+}
