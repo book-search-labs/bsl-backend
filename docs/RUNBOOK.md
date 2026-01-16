@@ -12,3 +12,7 @@ Stop: `./scripts/local_down.sh`
 Start OpenSearch: `./scripts/local_up.sh`
 Run service: `cd services/search-service && ./gradlew bootRun`
 Test search: `curl -s -XPOST http://localhost:8080/search -H 'Content-Type: application/json' -d '{"query":{"raw":"해리"}}'`
+
+## Ranking Service (Local)
+Run service: `cd services/ranking-service && ./gradlew bootRun`
+Test rerank: `curl -s -XPOST http://localhost:8082/rerank -H 'Content-Type: application/json' -d '{"query":{"text":"해리"},"candidates":[{"doc_id":"b1","features":{"rrf_score":0.167,"lex_rank":1,"vec_rank":2,"issued_year":1999,"volume":1,"edition_labels":["recover"]}}],"options":{"size":10}}'`
