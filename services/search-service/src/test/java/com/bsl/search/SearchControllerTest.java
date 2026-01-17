@@ -13,6 +13,7 @@ import com.bsl.search.api.dto.BookHit;
 import com.bsl.search.api.dto.SearchRequest;
 import com.bsl.search.api.dto.SearchResponse;
 import com.bsl.search.service.HybridSearchService;
+import com.bsl.search.service.InvalidSearchRequestException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -77,6 +78,9 @@ class SearchControllerTest {
 
     @Test
     void searchRejectsMissingQuery() throws Exception {
+        when(hybridSearchService.search(any(), anyString(), anyString()))
+            .thenThrow(new InvalidSearchRequestException("query text is required"));
+
         mockMvc.perform(post("/search")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))

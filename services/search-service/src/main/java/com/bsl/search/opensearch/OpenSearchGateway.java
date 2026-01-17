@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
@@ -35,33 +36,70 @@ public class OpenSearchGateway {
     }
 
     public List<String> searchLexical(String query, int topK) {
-        List<String> fields = List.of(
-            "title_ko",
-            "title_en",
-            "authors.name_ko",
-            "publisher_name"
-        );
+        return searchLexical(query, topK, null, null);
+    }
+
+    public List<String> searchLexical(String query, int topK, Map<String, Double> boost, Integer timeBudgetMs) {
+        return searchLexical(query, topK, boost, timeBudgetMs, null, null, null, null);
+    }
+
+    public List<String> searchLexical(
+        String query,
+        int topK,
+        Map<String, Double> boost,
+        Integer timeBudgetMs,
+        String operator,
+        String minimumShouldMatch,
+        List<Map<String, Object>> filters,
+        List<String> fieldsOverride
+    ) {
+        List<String> fields = buildFields(boost, fieldsOverride);
 
         Map<String, Object> multiMatch = new LinkedHashMap<>();
         multiMatch.put("query", query);
         multiMatch.put("fields", fields);
+        if (operator != null && !operator.isBlank()) {
+            multiMatch.put("operator", operator);
+        }
+        if (minimumShouldMatch != null && !minimumShouldMatch.isBlank()) {
+            multiMatch.put("minimum_should_match", minimumShouldMatch);
+        }
 
         Map<String, Object> boolQuery = new LinkedHashMap<>();
         boolQuery.put("must", List.of(Map.of("multi_match", multiMatch)));
         boolQuery.put("must_not", List.of(Map.of("term", Map.of("is_hidden", true))));
+        if (filters != null && !filters.isEmpty()) {
+            boolQuery.put("filter", filters);
+        }
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("size", topK);
         body.put("query", Map.of("bool", boolQuery));
 
-        JsonNode response = postJson("/" + properties.getDocIndex() + "/_search", body);
+        JsonNode response = postJson("/" + properties.getDocIndex() + "/_search", body, timeBudgetMs);
         return extractDocIds(response);
     }
 
     public List<String> searchVector(List<Double> vector, int topK) {
+        return searchVector(vector, topK, null, null);
+    }
+
+    public List<String> searchVector(List<Double> vector, int topK, Integer timeBudgetMs) {
+        return searchVector(vector, topK, timeBudgetMs, null);
+    }
+
+    public List<String> searchVector(
+        List<Double> vector,
+        int topK,
+        Integer timeBudgetMs,
+        List<Map<String, Object>> filters
+    ) {
         Map<String, Object> embedding = new LinkedHashMap<>();
         embedding.put("vector", vector);
         embedding.put("k", topK);
+        if (filters != null && !filters.isEmpty()) {
+            embedding.put("filter", Map.of("bool", Map.of("filter", filters)));
+        }
 
         Map<String, Object> knn = new LinkedHashMap<>();
         knn.put("embedding", embedding);
@@ -70,15 +108,19 @@ public class OpenSearchGateway {
         body.put("size", topK);
         body.put("query", Map.of("knn", knn));
 
-        JsonNode response = postJson("/" + properties.getVecIndex() + "/_search", body);
+        JsonNode response = postJson("/" + properties.getVecIndex() + "/_search", body, timeBudgetMs);
         return extractDocIds(response);
     }
 
     public Map<String, JsonNode> mgetSources(List<String> docIds) {
+        return mgetSources(docIds, null);
+    }
+
+    public Map<String, JsonNode> mgetSources(List<String> docIds, Integer timeBudgetMs) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("ids", docIds);
 
-        JsonNode response = postJson("/" + properties.getDocIndex() + "/_mget", body);
+        JsonNode response = postJson("/" + properties.getDocIndex() + "/_mget", body, timeBudgetMs);
         Map<String, JsonNode> sources = new LinkedHashMap<>();
         for (JsonNode docNode : response.path("docs")) {
             if (!docNode.path("found").asBoolean(false)) {
@@ -96,14 +138,15 @@ public class OpenSearchGateway {
         return sources;
     }
 
-    private JsonNode postJson(String path, Object body) {
+    private JsonNode postJson(String path, Object body, Integer timeBudgetMs) {
         String url = buildUrl(path);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         try {
             String payload = objectMapper.writeValueAsString(body);
             HttpEntity<String> entity = new HttpEntity<>(payload, headers);
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+            RestTemplate client = restTemplateFor(timeBudgetMs);
+            ResponseEntity<String> response = client.exchange(url, HttpMethod.POST, entity, String.class);
             return objectMapper.readTree(response.getBody());
         } catch (ResourceAccessException e) {
             throw new OpenSearchUnavailableException("OpenSearch unreachable: " + url, e);
@@ -138,5 +181,42 @@ public class OpenSearchGateway {
             }
         }
         return docIds;
+    }
+
+    private List<String> buildFields(Map<String, Double> boost, List<String> fieldsOverride) {
+        List<String> baseFields = fieldsOverride == null || fieldsOverride.isEmpty()
+            ? List.of(
+                "title_ko",
+                "title_en",
+                "authors.name_ko",
+                "series_name",
+                "publisher_name"
+            )
+            : fieldsOverride;
+
+        if (boost == null || boost.isEmpty()) {
+            return baseFields;
+        }
+
+        List<String> fields = new ArrayList<>(baseFields.size());
+        for (String field : baseFields) {
+            Double weight = boost.get(field);
+            if (weight != null && weight > 0) {
+                fields.add(field + "^" + weight);
+            } else {
+                fields.add(field);
+            }
+        }
+        return fields;
+    }
+
+    private RestTemplate restTemplateFor(Integer timeBudgetMs) {
+        if (timeBudgetMs == null) {
+            return restTemplate;
+        }
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(timeBudgetMs);
+        factory.setReadTimeout(timeBudgetMs);
+        return new RestTemplate(factory);
     }
 }

@@ -3,6 +3,7 @@ package com.bsl.search.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -50,9 +51,9 @@ class HybridSearchServiceRankingTest {
     @Test
     void searchUsesRankingOrderWhenAvailable() {
         SearchRequest request = buildRequest("harry");
-        when(openSearchGateway.searchLexical(eq("harry"), anyInt()))
+        when(openSearchGateway.searchLexical(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any()))
             .thenReturn(List.of("b1", "b2"));
-        when(openSearchGateway.mgetSources(anyList())).thenReturn(buildSources());
+        when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
 
         RerankResponse rerankResponse = new RerankResponse();
         RerankResponse.Hit hit1 = new RerankResponse.Hit();
@@ -80,9 +81,9 @@ class HybridSearchServiceRankingTest {
     @Test
     void searchFallsBackToRrfWhenRankingUnavailable() {
         SearchRequest request = buildRequest("harry");
-        when(openSearchGateway.searchLexical(eq("harry"), anyInt()))
+        when(openSearchGateway.searchLexical(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any()))
             .thenReturn(List.of("b1", "b2"));
-        when(openSearchGateway.mgetSources(anyList())).thenReturn(buildSources());
+        when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
         when(rankingGateway.rerank(eq("harry"), anyList(), anyInt(), anyString(), anyString()))
             .thenThrow(new RankingUnavailableException("down", new RuntimeException("timeout")));
 

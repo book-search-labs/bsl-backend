@@ -1,14 +1,20 @@
 package com.bsl.search.api;
 
 import com.bsl.search.api.dto.ErrorResponse;
+import com.bsl.search.api.dto.QueryContext;
+import com.bsl.search.api.dto.QueryContextV1_1;
 import com.bsl.search.api.dto.SearchRequest;
 import com.bsl.search.api.dto.SearchResponse;
 import com.bsl.search.opensearch.OpenSearchUnavailableException;
 import com.bsl.search.service.HybridSearchService;
+import com.bsl.search.service.InvalidSearchRequestException;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,18 +40,23 @@ public class SearchController {
         @RequestHeader(value = "x-trace-id", required = false) String traceIdHeader,
         @RequestHeader(value = "x-request-id", required = false) String requestIdHeader
     ) {
-        String traceId = normalizeOrGenerate(traceIdHeader);
-        String requestId = normalizeOrGenerate(requestIdHeader);
+        RequestKind kind = resolveKind(request);
+        String traceId = resolveTraceId(kind, request, traceIdHeader);
+        String requestId = resolveRequestId(kind, request, requestIdHeader);
 
-        if (request == null || request.getQuery() == null || isBlank(request.getQuery().getRaw())) {
+        if (request == null) {
             return ResponseEntity.badRequest().body(
-                new ErrorResponse("bad_request", "query.raw is required", traceId, requestId)
+                new ErrorResponse("bad_request", "request body is required", traceId, requestId)
             );
         }
 
         try {
             SearchResponse response = searchService.search(request, traceId, requestId);
             return ResponseEntity.ok(response);
+        } catch (InvalidSearchRequestException e) {
+            return ResponseEntity.badRequest().body(
+                new ErrorResponse("bad_request", e.getMessage(), traceId, requestId)
+            );
         } catch (OpenSearchUnavailableException e) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(
                 new ErrorResponse("opensearch_unavailable", "OpenSearch is unavailable", traceId, requestId)
@@ -57,8 +68,58 @@ public class SearchController {
         }
     }
 
-    private boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidJson(HttpMessageNotReadableException e, HttpServletRequest request) {
+        String traceId = normalizeOrGenerate(request.getHeader("x-trace-id"));
+        String requestId = normalizeOrGenerate(request.getHeader("x-request-id"));
+        return ResponseEntity.badRequest().body(
+            new ErrorResponse("bad_request", "invalid JSON", traceId, requestId)
+        );
+    }
+
+    private RequestKind resolveKind(SearchRequest request) {
+        if (request == null) {
+            return RequestKind.LEGACY;
+        }
+        if (request.getQueryContextV1_1() != null) {
+            return RequestKind.QC_V1_1;
+        }
+        if (request.getQueryContext() != null) {
+            return RequestKind.QC_V1;
+        }
+        return RequestKind.LEGACY;
+    }
+
+    private String resolveTraceId(RequestKind kind, SearchRequest request, String headerValue) {
+        if (kind == RequestKind.QC_V1_1) {
+            QueryContextV1_1 context = request.getQueryContextV1_1();
+            String fromContext = context != null && context.getMeta() != null
+                ? context.getMeta().getTraceId()
+                : null;
+            return normalizeOrGenerate(fromContext);
+        }
+        if (kind == RequestKind.QC_V1) {
+            QueryContext context = request.getQueryContext();
+            String fromContext = context == null ? null : context.getTraceId();
+            return normalizeOrGenerate(fromContext);
+        }
+        return normalizeOrGenerate(headerValue);
+    }
+
+    private String resolveRequestId(RequestKind kind, SearchRequest request, String headerValue) {
+        if (kind == RequestKind.QC_V1_1) {
+            QueryContextV1_1 context = request.getQueryContextV1_1();
+            String fromContext = context != null && context.getMeta() != null
+                ? context.getMeta().getRequestId()
+                : null;
+            return normalizeOrGenerate(fromContext);
+        }
+        if (kind == RequestKind.QC_V1) {
+            QueryContext context = request.getQueryContext();
+            String fromContext = context == null ? null : context.getRequestId();
+            return normalizeOrGenerate(fromContext);
+        }
+        return normalizeOrGenerate(headerValue);
     }
 
     private String normalizeOrGenerate(String value) {
@@ -66,5 +127,11 @@ public class SearchController {
             return value;
         }
         return UUID.randomUUID().toString();
+    }
+
+    private enum RequestKind {
+        QC_V1_1,
+        QC_V1,
+        LEGACY
     }
 }

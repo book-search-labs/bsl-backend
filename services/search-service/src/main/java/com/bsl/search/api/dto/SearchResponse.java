@@ -18,6 +18,7 @@ public class SearchResponse {
 
     private String strategy;
     private List<BookHit> hits;
+    private Debug debug;
 
     public String getTraceId() {
         return traceId;
@@ -65,5 +66,77 @@ public class SearchResponse {
 
     public void setHits(List<BookHit> hits) {
         this.hits = hits;
+    }
+
+    public Debug getDebug() {
+        return debug;
+    }
+
+    public void setDebug(Debug debug) {
+        this.debug = debug;
+    }
+
+    public static class Debug {
+        @JsonProperty("applied_fallback_id")
+        private String appliedFallbackId;
+
+        @JsonProperty("query_text_source_used")
+        private String queryTextSourceUsed;
+
+        private Stages stages;
+
+        public String getAppliedFallbackId() {
+            return appliedFallbackId;
+        }
+
+        public void setAppliedFallbackId(String appliedFallbackId) {
+            this.appliedFallbackId = appliedFallbackId;
+        }
+
+        public String getQueryTextSourceUsed() {
+            return queryTextSourceUsed;
+        }
+
+        public void setQueryTextSourceUsed(String queryTextSourceUsed) {
+            this.queryTextSourceUsed = queryTextSourceUsed;
+        }
+
+        public Stages getStages() {
+            return stages;
+        }
+
+        public void setStages(Stages stages) {
+            this.stages = stages;
+        }
+    }
+
+    public static class Stages {
+        private boolean lexical;
+        private boolean vector;
+        private boolean rerank;
+
+        public boolean isLexical() {
+            return lexical;
+        }
+
+        public void setLexical(boolean lexical) {
+            this.lexical = lexical;
+        }
+
+        public boolean isVector() {
+            return vector;
+        }
+
+        public void setVector(boolean vector) {
+            this.vector = vector;
+        }
+
+        public boolean isRerank() {
+            return rerank;
+        }
+
+        public void setRerank(boolean rerank) {
+            this.rerank = rerank;
+        }
     }
 }
