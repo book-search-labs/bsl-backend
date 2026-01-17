@@ -1,5 +1,14 @@
 # Runbook (Local)
 
+## Local OpenSearch v1.1 (Full Set)
+Start: `./scripts/local_up.sh`
+Check: `curl http://localhost:9200`
+Check aliases: `curl -s http://localhost:9200/_cat/aliases?v`
+Autocomplete smoke: `curl -s -XPOST http://localhost:9200/ac_suggest_read/_search -H 'Content-Type: application/json' -d '{"query":{"match":{"text":"해"}},"size":5}'`
+Author smoke: `curl -s -XPOST http://localhost:9200/authors_doc_read/_search -H 'Content-Type: application/json' -d '{"query":{"match":{"name_ko":"롤링"}},"size":5}'`
+Series smoke: `curl -s -XPOST http://localhost:9200/series_doc_read/_search -H 'Content-Type: application/json' -d '{"query":{"match":{"name":"해리"}},"size":5}'`
+Stop: `./scripts/local_down.sh`
+
 ## Local OpenSearch v1.1
 Start: `./scripts/local_up.sh`
 Check: `curl http://localhost:9200`

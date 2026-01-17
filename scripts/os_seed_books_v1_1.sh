@@ -4,6 +4,9 @@ set -euo pipefail
 OS_URL="${OS_URL:-http://localhost:9200}"
 DOC_ALIAS="${DOC_ALIAS:-books_doc_write}"
 VEC_ALIAS="${VEC_ALIAS:-books_vec_write}"
+AC_ALIAS="${AC_ALIAS:-ac_suggest_write}"
+AUTHORS_ALIAS="${AUTHORS_ALIAS:-authors_doc_write}"
+SERIES_ALIAS="${SERIES_ALIAS:-series_doc_write}"
 
 if command -v python3 >/dev/null 2>&1; then
   PYTHON="python3"
@@ -114,9 +117,87 @@ echo "$VEC_RES" | grep -q '"errors":false' || {
   exit 1
 }
 
+AC_BULK="$(cat <<'AC_EOF'
+{ "index": { "_index": "__AC_ALIAS__", "_id": "ac_q1" } }
+{ "suggest_id": "ac_q1", "type": "QUERY", "lang": "ko", "text": "해리포터", "text_kw": "해리포터", "weight": 100, "popularity_7d": 0.80, "ctr_7d": 0.12, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+{ "index": { "_index": "__AC_ALIAS__", "_id": "ac_q2" } }
+{ "suggest_id": "ac_q2", "type": "QUERY", "lang": "ko", "text": "클린 코드", "text_kw": "클린 코드", "weight": 90, "popularity_7d": 0.60, "ctr_7d": 0.08, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+{ "index": { "_index": "__AC_ALIAS__", "_id": "ac_t1" } }
+{ "suggest_id": "ac_t1", "type": "TITLE", "lang": "ko", "text": "해리 포터와 마법사의 돌", "text_kw": "해리 포터와 마법사의 돌", "target_doc_id": "b1", "weight": 95, "popularity_7d": 0.70, "ctr_7d": 0.10, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+{ "index": { "_index": "__AC_ALIAS__", "_id": "ac_t2" } }
+{ "suggest_id": "ac_t2", "type": "TITLE", "lang": "ko", "text": "클린 코드", "text_kw": "클린 코드", "target_doc_id": "b3", "weight": 85, "popularity_7d": 0.55, "ctr_7d": 0.06, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+{ "index": { "_index": "__AC_ALIAS__", "_id": "ac_a1" } }
+{ "suggest_id": "ac_a1", "type": "AUTHOR", "lang": "ko", "text": "J.K. 롤링", "text_kw": "J.K. 롤링", "target_id": "a1", "weight": 88, "popularity_7d": 0.65, "ctr_7d": 0.09, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+{ "index": { "_index": "__AC_ALIAS__", "_id": "ac_s1" } }
+{ "suggest_id": "ac_s1", "type": "SERIES", "lang": "ko", "text": "해리 포터", "text_kw": "해리 포터", "target_id": "s1", "weight": 92, "popularity_7d": 0.68, "ctr_7d": 0.11, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+AC_EOF
+)"
+
+AC_BULK="${AC_BULK//__AC_ALIAS__/$AC_ALIAS}"
+AC_BULK="${AC_BULK//__UPDATED_AT__/$UPDATED_AT}"
+AC_BULK="${AC_BULK}"$'\n'
+
+echo "Bulk indexing autocomplete index..."
+AC_RES="$(curl -sS -XPOST "$OS_URL/_bulk" \
+  -H "Content-Type: application/x-ndjson" \
+  --data-binary "$AC_BULK")"
+
+echo "$AC_RES" | grep -q '"errors":false' || {
+  echo "Autocomplete bulk indexing failed (errors=true). Response:" >&2
+  echo "$AC_RES" >&2
+  exit 1
+}
+
+AUTHORS_BULK="$(cat <<'AUTH_EOF'
+{ "index": { "_index": "__AUTHORS_ALIAS__", "_id": "a1" } }
+{ "author_id": "a1", "name_ko": "J.K. 롤링", "name_en": "J.K. Rowling", "bio": "Harry Potter author", "work_count": 2, "top_doc_ids": ["b1", "b2"], "rank": { "popularity_30d": 10 }, "updated_at": "__UPDATED_AT__" }
+{ "index": { "_index": "__AUTHORS_ALIAS__", "_id": "a2" } }
+{ "author_id": "a2", "name_ko": "로버트 C. 마틴", "name_en": "Robert C. Martin", "bio": "Clean Code author", "work_count": 1, "top_doc_ids": ["b3"], "rank": { "popularity_30d": 8 }, "updated_at": "__UPDATED_AT__" }
+AUTH_EOF
+)"
+
+AUTHORS_BULK="${AUTHORS_BULK//__AUTHORS_ALIAS__/$AUTHORS_ALIAS}"
+AUTHORS_BULK="${AUTHORS_BULK//__UPDATED_AT__/$UPDATED_AT}"
+AUTHORS_BULK="${AUTHORS_BULK}"$'\n'
+
+echo "Bulk indexing authors index..."
+AUTHORS_RES="$(curl -sS -XPOST "$OS_URL/_bulk" \
+  -H "Content-Type: application/x-ndjson" \
+  --data-binary "$AUTHORS_BULK")"
+
+echo "$AUTHORS_RES" | grep -q '"errors":false' || {
+  echo "Authors bulk indexing failed (errors=true). Response:" >&2
+  echo "$AUTHORS_RES" >&2
+  exit 1
+}
+
+SERIES_BULK="$(cat <<'SERIES_EOF'
+{ "index": { "_index": "__SERIES_ALIAS__", "_id": "s1" } }
+{ "series_id": "s1", "name": "해리 포터", "work_count": 2, "top_doc_ids": ["b1", "b2"], "updated_at": "__UPDATED_AT__" }
+SERIES_EOF
+)"
+
+SERIES_BULK="${SERIES_BULK//__SERIES_ALIAS__/$SERIES_ALIAS}"
+SERIES_BULK="${SERIES_BULK//__UPDATED_AT__/$UPDATED_AT}"
+SERIES_BULK="${SERIES_BULK}"$'\n'
+
+echo "Bulk indexing series index..."
+SERIES_RES="$(curl -sS -XPOST "$OS_URL/_bulk" \
+  -H "Content-Type: application/x-ndjson" \
+  --data-binary "$SERIES_BULK")"
+
+echo "$SERIES_RES" | grep -q '"errors":false' || {
+  echo "Series bulk indexing failed (errors=true). Response:" >&2
+  echo "$SERIES_RES" >&2
+  exit 1
+}
+
 echo "Refreshing indices..."
 curl -fsS -XPOST "$OS_URL/$DOC_ALIAS/_refresh" >/dev/null
 curl -fsS -XPOST "$OS_URL/$VEC_ALIAS/_refresh" >/dev/null
+curl -fsS -XPOST "$OS_URL/$AC_ALIAS/_refresh" >/dev/null
+curl -fsS -XPOST "$OS_URL/$AUTHORS_ALIAS/_refresh" >/dev/null
+curl -fsS -XPOST "$OS_URL/$SERIES_ALIAS/_refresh" >/dev/null
 
 extract_hits() {
   "$PYTHON" -c 'import json, sys; data=json.load(sys.stdin); value=data.get("hits", {}).get("total", 0); print(value.get("value", 0) if isinstance(value, dict) else value)'
@@ -151,3 +232,45 @@ if [ -z "$KNN_HITS" ] || [ "$KNN_HITS" -lt 1 ]; then
 fi
 
 echo "OK: knn hits=$KNN_HITS"
+
+echo "Running autocomplete smoke check (text match: 해)..."
+AC_RES_QUERY="$(curl -sS -XPOST "$OS_URL/ac_suggest_read/_search" \
+  -H "Content-Type: application/json" \
+  -d '{"query":{"match":{"text":"해"}},"size":5}')"
+
+AC_HITS="$(printf '%s' "$AC_RES_QUERY" | extract_hits)"
+if [ -z "$AC_HITS" ] || [ "$AC_HITS" -lt 1 ]; then
+  echo "Autocomplete smoke failed: hits=$AC_HITS" >&2
+  echo "$AC_RES_QUERY" >&2
+  exit 1
+fi
+
+echo "OK: autocomplete hits=$AC_HITS"
+
+echo "Running author smoke check (name_ko match: 롤링)..."
+AUTH_RES_QUERY="$(curl -sS -XPOST "$OS_URL/authors_doc_read/_search" \
+  -H "Content-Type: application/json" \
+  -d '{"query":{"match":{"name_ko":"롤링"}},"size":5}')"
+
+AUTH_HITS="$(printf '%s' "$AUTH_RES_QUERY" | extract_hits)"
+if [ -z "$AUTH_HITS" ] || [ "$AUTH_HITS" -lt 1 ]; then
+  echo "Author smoke failed: hits=$AUTH_HITS" >&2
+  echo "$AUTH_RES_QUERY" >&2
+  exit 1
+fi
+
+echo "OK: author hits=$AUTH_HITS"
+
+echo "Running series smoke check (name match: 해리)..."
+SERIES_RES_QUERY="$(curl -sS -XPOST "$OS_URL/series_doc_read/_search" \
+  -H "Content-Type: application/json" \
+  -d '{"query":{"match":{"name":"해리"}},"size":5}')"
+
+SERIES_HITS="$(printf '%s' "$SERIES_RES_QUERY" | extract_hits)"
+if [ -z "$SERIES_HITS" ] || [ "$SERIES_HITS" -lt 1 ]; then
+  echo "Series smoke failed: hits=$SERIES_HITS" >&2
+  echo "$SERIES_RES_QUERY" >&2
+  exit 1
+fi
+
+echo "OK: series hits=$SERIES_HITS"

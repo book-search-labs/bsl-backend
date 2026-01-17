@@ -1,0 +1,56 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "1s",
+    "analysis": {
+      "filter": {
+        "ac_edge_ngram": {
+          "type": "edge_ngram",
+          "min_gram": 1,
+          "max_gram": 20
+        }
+      },
+      "analyzer": {
+        "ac_index": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "asciifolding", "ac_edge_ngram"]
+        },
+        "ac_search": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "asciifolding"]
+        }
+      },
+      "normalizer": {
+        "kw_norm": {
+          "type": "custom",
+          "filter": ["lowercase", "asciifolding"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "suggest_id": { "type": "keyword" },
+      "type": { "type": "keyword" },
+      "lang": { "type": "keyword" },
+      "text": {
+        "type": "text",
+        "analyzer": "ac_index",
+        "search_analyzer": "ac_search"
+      },
+      "text_kw": { "type": "keyword", "normalizer": "kw_norm" },
+      "target_id": { "type": "keyword" },
+      "target_doc_id": { "type": "keyword" },
+      "payload": { "type": "object", "enabled": false },
+      "weight": { "type": "integer" },
+      "popularity_7d": { "type": "float" },
+      "ctr_7d": { "type": "float" },
+      "last_seen_at": { "type": "date" },
+      "updated_at": { "type": "date" }
+    }
+  }
+}
