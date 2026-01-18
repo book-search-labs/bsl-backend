@@ -160,6 +160,63 @@ public class OpenSearchGateway {
         return source;
     }
 
+    public List<AutocompleteHit> searchAutocomplete(String query, int size, Integer timeBudgetMs) {
+        List<String> fields = List.of(
+            "title_ko",
+            "title_en",
+            "authors.name_ko",
+            "authors.name_en",
+            "series_name",
+            "publisher_name"
+        );
+
+        Map<String, Object> multiMatch = new LinkedHashMap<>();
+        multiMatch.put("query", query);
+        multiMatch.put("fields", fields);
+        multiMatch.put("type", "phrase_prefix");
+        multiMatch.put("operator", "and");
+        multiMatch.put("max_expansions", 50);
+
+        Map<String, Object> boolQuery = new LinkedHashMap<>();
+        boolQuery.put("must", List.of(Map.of("multi_match", multiMatch)));
+        boolQuery.put("must_not", List.of(Map.of("term", Map.of("is_hidden", true))));
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("size", size);
+        body.put("query", Map.of("bool", boolQuery));
+        body.put("_source", List.of("title_ko", "authors", "publisher_name", "series_name"));
+
+        JsonNode response = postJson("/" + properties.getDocIndex() + "/_search", body, timeBudgetMs);
+        List<AutocompleteHit> hits = new ArrayList<>();
+        for (JsonNode hit : response.path("hits").path("hits")) {
+            JsonNode source = hit.path("_source");
+            if (source.isMissingNode() || source.isNull()) {
+                continue;
+            }
+            double score = hit.path("_score").asDouble(0.0);
+            hits.add(new AutocompleteHit(source, score));
+        }
+        return hits;
+    }
+
+    public static class AutocompleteHit {
+        private final JsonNode source;
+        private final double score;
+
+        public AutocompleteHit(JsonNode source, double score) {
+            this.source = source;
+            this.score = score;
+        }
+
+        public JsonNode getSource() {
+            return source;
+        }
+
+        public double getScore() {
+            return score;
+        }
+    }
+
     private JsonNode postJson(String path, Object body, Integer timeBudgetMs) {
         String url = buildUrl(path);
         HttpHeaders headers = new HttpHeaders();

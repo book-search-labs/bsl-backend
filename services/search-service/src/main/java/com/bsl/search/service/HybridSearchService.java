@@ -2,6 +2,7 @@ package com.bsl.search.service;
 
 import com.bsl.search.api.dto.BookHit;
 import com.bsl.search.api.dto.BookDetailResponse;
+import com.bsl.search.api.dto.AutocompleteResponse;
 import com.bsl.search.api.dto.Options;
 import com.bsl.search.api.dto.QueryContext;
 import com.bsl.search.api.dto.QueryContextV1_1;
@@ -20,6 +21,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -50,6 +52,10 @@ public class HybridSearchService {
     private static final int QC_RERANK_TOP_K_MAX = 200;
     private static final int QC_TIMEOUT_MIN_MS = 50;
     private static final int QC_TIMEOUT_MAX_MS = 500;
+    private static final int AUTOCOMPLETE_TIMEOUT_MS = 200;
+    private static final int AUTOCOMPLETE_FETCH_MULTIPLIER = 4;
+    private static final int AUTOCOMPLETE_FETCH_MAX = 50;
+    private static final String AUTOCOMPLETE_SOURCE = "opensearch";
 
     private final OpenSearchGateway openSearchGateway;
     private final ToyEmbedder toyEmbedder;
@@ -89,6 +95,26 @@ public class HybridSearchService {
         response.setTraceId(traceId);
         response.setRequestId(requestId);
         response.setTookMs((System.nanoTime() - started) / 1_000_000L);
+        return response;
+    }
+
+    public AutocompleteResponse autocomplete(String query, int size, String traceId, String requestId) {
+        long started = System.nanoTime();
+        int fetchSize = Math.min(Math.max(size, 1) * AUTOCOMPLETE_FETCH_MULTIPLIER, AUTOCOMPLETE_FETCH_MAX);
+
+        List<OpenSearchGateway.AutocompleteHit> hits = openSearchGateway.searchAutocomplete(
+            query,
+            fetchSize,
+            AUTOCOMPLETE_TIMEOUT_MS
+        );
+
+        List<AutocompleteResponse.Suggestion> suggestions = buildAutocompleteSuggestions(query, hits, size);
+
+        AutocompleteResponse response = new AutocompleteResponse();
+        response.setTraceId(traceId);
+        response.setRequestId(requestId);
+        response.setTookMs((System.nanoTime() - started) / 1_000_000L);
+        response.setSuggestions(suggestions);
         return response;
     }
 
@@ -985,6 +1011,84 @@ public class HybridSearchService {
         VECTOR_ERROR,
         RERANK_ERROR,
         ZERO_RESULTS
+    }
+
+    private List<AutocompleteResponse.Suggestion> buildAutocompleteSuggestions(
+        String query,
+        List<OpenSearchGateway.AutocompleteHit> hits,
+        int limit
+    ) {
+        if (query == null || query.isBlank() || limit <= 0) {
+            return Collections.emptyList();
+        }
+
+        String normalizedQuery = query.trim().toLowerCase(Locale.ROOT);
+        Map<String, AutocompleteResponse.Suggestion> suggestions = new LinkedHashMap<>();
+
+        for (OpenSearchGateway.AutocompleteHit hit : hits) {
+            List<String> candidates = extractAutocompleteCandidates(hit.getSource());
+            for (String candidate : candidates) {
+                if (candidate == null) {
+                    continue;
+                }
+                String trimmed = candidate.trim();
+                if (trimmed.isEmpty()) {
+                    continue;
+                }
+                String normalizedCandidate = trimmed.toLowerCase(Locale.ROOT);
+                if (!normalizedCandidate.startsWith(normalizedQuery)) {
+                    continue;
+                }
+
+                AutocompleteResponse.Suggestion existing = suggestions.get(normalizedCandidate);
+                if (existing == null) {
+                    AutocompleteResponse.Suggestion suggestion = new AutocompleteResponse.Suggestion();
+                    suggestion.setText(trimmed);
+                    suggestion.setScore(hit.getScore());
+                    suggestion.setSource(AUTOCOMPLETE_SOURCE);
+                    suggestions.put(normalizedCandidate, suggestion);
+
+                    if (suggestions.size() >= limit) {
+                        return new ArrayList<>(suggestions.values());
+                    }
+                } else if (hit.getScore() > existing.getScore()) {
+                    existing.setScore(hit.getScore());
+                }
+            }
+        }
+
+        return new ArrayList<>(suggestions.values());
+    }
+
+    private List<String> extractAutocompleteCandidates(JsonNode source) {
+        if (source == null || source.isMissingNode() || source.isNull()) {
+            return Collections.emptyList();
+        }
+
+        List<String> candidates = new ArrayList<>();
+        addIfPresent(candidates, source.path("title_ko").asText(null));
+        addIfPresent(candidates, source.path("series_name").asText(null));
+        addIfPresent(candidates, source.path("publisher_name").asText(null));
+
+        JsonNode authorsNode = source.path("authors");
+        if (authorsNode.isArray()) {
+            for (JsonNode authorNode : authorsNode) {
+                if (authorNode.isTextual()) {
+                    addIfPresent(candidates, authorNode.asText());
+                } else if (authorNode.isObject()) {
+                    addIfPresent(candidates, authorNode.path("name_ko").asText(null));
+                    addIfPresent(candidates, authorNode.path("name_en").asText(null));
+                }
+            }
+        }
+
+        return candidates;
+    }
+
+    private void addIfPresent(List<String> values, String candidate) {
+        if (candidate != null && !candidate.isBlank()) {
+            values.add(candidate);
+        }
     }
 
     private BookHit.Source mapSource(JsonNode source) {
