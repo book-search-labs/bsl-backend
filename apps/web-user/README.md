@@ -10,7 +10,7 @@ npm run dev -- --port 5174
 
 ## Example URLs
 - http://localhost:5174/
-- http://localhost:5174/search?q=%ED%95%B4%EB%A6%AC
+- http://localhost:5174/search?q=%ED%95%B4%EB%A6%AC&size=5&vector=true
 
 ## Search Service curl (qc.v1.1)
 ```bash

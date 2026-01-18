@@ -1,3 +1,11 @@
+export type HitDebug = {
+  lex_rank?: number
+  vec_rank?: number
+  rrf_score?: number
+  ranking_score?: number
+  [key: string]: unknown
+}
+
 export type BookSource = {
   title_ko?: string
   authors?: string[]
@@ -13,6 +21,18 @@ export type BookHit = {
   rank?: number
   score?: number
   source?: BookSource
+  debug?: HitDebug
+  lex_rank?: number
+  vec_rank?: number
+  rrf_score?: number
+  ranking_score?: number
+  [key: string]: unknown
+}
+
+export type SearchDebug = {
+  stages?: { lexical?: boolean; vector?: boolean; rerank?: boolean }
+  applied_fallback_id?: string
+  query_text_source_used?: string
   [key: string]: unknown
 }
 
@@ -23,6 +43,6 @@ export type SearchResponse = {
   ranking_applied?: boolean
   strategy?: string
   hits?: BookHit[]
-  debug?: Record<string, unknown>
+  debug?: SearchDebug
   [key: string]: unknown
 }

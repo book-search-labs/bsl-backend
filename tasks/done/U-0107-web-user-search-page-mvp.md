@@ -178,11 +178,11 @@ Just ensure `/search` page is now “real”.
 cd apps/web_user
 npm install
 cp .env.example .env
-npm run dev -- --port 5175
+npm run dev -- --port 5174
 ```
 
 ### Verify
-1) Open `http://localhost:5175/`
+1) Open `http://localhost:5174/`
 2) Use global header search input, type `해리`, submit
 3) App navigates to `/search?q=해리`
 4) SearchPage:
