@@ -22,7 +22,6 @@ Start OpenSearch: `./scripts/local_up.sh`
 Run service: `cd services/search-service && ./gradlew bootRun`
 Test search: `curl -s -XPOST http://localhost:8080/search -H 'Content-Type: application/json' -d '{"query":{"raw":"해리"}}'`
 Test book detail: `curl -s http://localhost:8080/books/b1`
-Test autocomplete: `curl -s "http://localhost:8080/autocomplete?q=har&size=10"`
 
 ## Ranking Service (Local)
 Run service: `cd services/ranking-service && ./gradlew bootRun`

@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -105,38 +104,6 @@ public class SearchController {
         }
     }
 
-    @GetMapping("/autocomplete")
-    public ResponseEntity<?> autocomplete(
-        @RequestParam(value = "q", required = false) String query,
-        @RequestParam(value = "size", required = false) Integer size,
-        @RequestHeader(value = "x-trace-id", required = false) String traceIdHeader,
-        @RequestHeader(value = "x-request-id", required = false) String requestIdHeader
-    ) {
-        String traceId = normalizeOrGenerate(traceIdHeader);
-        String requestId = normalizeOrGenerate(requestIdHeader);
-
-        String trimmed = query == null ? "" : query.trim();
-        if (trimmed.isEmpty()) {
-            return ResponseEntity.badRequest().body(
-                new ErrorResponse("bad_request", "q is required", traceId, requestId)
-            );
-        }
-
-        int resolvedSize = clampAutocompleteSize(size);
-
-        try {
-            return ResponseEntity.ok(searchService.autocomplete(trimmed, resolvedSize, traceId, requestId));
-        } catch (OpenSearchUnavailableException e) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(
-                new ErrorResponse("opensearch_unavailable", "OpenSearch is unavailable", traceId, requestId)
-            );
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                new ErrorResponse("internal_error", "Unexpected error", traceId, requestId)
-            );
-        }
-    }
-
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleInvalidJson(HttpMessageNotReadableException e, HttpServletRequest request) {
         String traceId = normalizeOrGenerate(request.getHeader("x-trace-id"));
@@ -196,17 +163,6 @@ public class SearchController {
             return value;
         }
         return UUID.randomUUID().toString();
-    }
-
-    private int clampAutocompleteSize(Integer size) {
-        int resolved = size == null ? 10 : size;
-        if (resolved < 1) {
-            return 1;
-        }
-        if (resolved > 20) {
-            return 20;
-        }
-        return resolved;
     }
 
     private enum RequestKind {

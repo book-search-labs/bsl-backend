@@ -1,7 +1,6 @@
 package com.bsl.search;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -14,10 +13,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.bsl.search.api.SearchController;
 import com.bsl.search.api.dto.BookDetailResponse;
 import com.bsl.search.api.dto.BookHit;
-import com.bsl.search.api.dto.AutocompleteResponse;
 import com.bsl.search.api.dto.SearchRequest;
 import com.bsl.search.api.dto.SearchResponse;
-import com.bsl.search.opensearch.OpenSearchUnavailableException;
 import com.bsl.search.service.HybridSearchService;
 import com.bsl.search.service.InvalidSearchRequestException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -128,56 +125,6 @@ class SearchControllerTest {
         mockMvc.perform(get("/books/missing"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.error.code").value("not_found"))
-            .andExpect(jsonPath("$.trace_id").exists())
-            .andExpect(jsonPath("$.request_id").exists());
-    }
-
-    @Test
-    void autocompleteRejectsMissingQuery() throws Exception {
-        mockMvc.perform(get("/autocomplete"))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.error.code").value("bad_request"))
-            .andExpect(jsonPath("$.trace_id").exists())
-            .andExpect(jsonPath("$.request_id").exists());
-    }
-
-    @Test
-    void autocompleteReturnsSuggestions() throws Exception {
-        AutocompleteResponse response = new AutocompleteResponse();
-        response.setTraceId("trace-1");
-        response.setRequestId("req-1");
-        response.setTookMs(7L);
-
-        AutocompleteResponse.Suggestion suggestion = new AutocompleteResponse.Suggestion();
-        suggestion.setText("harry potter");
-        suggestion.setScore(1.0);
-        suggestion.setSource("opensearch");
-        response.setSuggestions(List.of(suggestion));
-
-        when(hybridSearchService.autocomplete(eq("har"), eq(5), eq("trace-1"), eq("req-1")))
-            .thenReturn(response);
-
-        mockMvc.perform(get("/autocomplete")
-                .param("q", "har")
-                .param("size", "5")
-                .header("x-trace-id", "trace-1")
-                .header("x-request-id", "req-1"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.trace_id").value("trace-1"))
-            .andExpect(jsonPath("$.request_id").value("req-1"))
-            .andExpect(jsonPath("$.suggestions[0].text").value("harry potter"))
-            .andExpect(jsonPath("$.suggestions[0].score").value(1.0))
-            .andExpect(jsonPath("$.suggestions[0].source").value("opensearch"));
-    }
-
-    @Test
-    void autocompleteReturnsServiceUnavailable() throws Exception {
-        when(hybridSearchService.autocomplete(anyString(), anyInt(), anyString(), anyString()))
-            .thenThrow(new OpenSearchUnavailableException("down", null));
-
-        mockMvc.perform(get("/autocomplete").param("q", "har"))
-            .andExpect(status().isServiceUnavailable())
-            .andExpect(jsonPath("$.error.code").value("opensearch_unavailable"))
             .andExpect(jsonPath("$.trace_id").exists())
             .andExpect(jsonPath("$.request_id").exists());
     }
