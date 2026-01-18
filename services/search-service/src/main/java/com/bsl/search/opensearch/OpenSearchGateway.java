@@ -138,6 +138,28 @@ public class OpenSearchGateway {
         return sources;
     }
 
+    public JsonNode getSourceById(String docId) {
+        return getSourceById(docId, null);
+    }
+
+    public JsonNode getSourceById(String docId, Integer timeBudgetMs) {
+        if (docId == null || docId.isBlank()) {
+            return null;
+        }
+        JsonNode response = getJson("/" + properties.getDocIndex() + "/_doc/" + docId, timeBudgetMs);
+        if (response == null) {
+            return null;
+        }
+        if (response.has("found") && !response.path("found").asBoolean(false)) {
+            return null;
+        }
+        JsonNode source = response.path("_source");
+        if (source.isMissingNode() || source.isNull()) {
+            return null;
+        }
+        return source;
+    }
+
     private JsonNode postJson(String path, Object body, Integer timeBudgetMs) {
         String url = buildUrl(path);
         HttpHeaders headers = new HttpHeaders();
@@ -152,6 +174,28 @@ public class OpenSearchGateway {
             throw new OpenSearchUnavailableException("OpenSearch unreachable: " + url, e);
         } catch (HttpStatusCodeException e) {
             int status = e.getStatusCode().value();
+            if (status == 502 || status == 503 || status == 504) {
+                throw new OpenSearchUnavailableException("OpenSearch unavailable: " + status, e);
+            }
+            throw new OpenSearchRequestException("OpenSearch error: " + status, e);
+        } catch (JsonProcessingException e) {
+            throw new OpenSearchRequestException("Failed to parse OpenSearch response", e);
+        }
+    }
+
+    private JsonNode getJson(String path, Integer timeBudgetMs) {
+        String url = buildUrl(path);
+        try {
+            RestTemplate client = restTemplateFor(timeBudgetMs);
+            ResponseEntity<String> response = client.exchange(url, HttpMethod.GET, HttpEntity.EMPTY, String.class);
+            return objectMapper.readTree(response.getBody());
+        } catch (ResourceAccessException e) {
+            throw new OpenSearchUnavailableException("OpenSearch unreachable: " + url, e);
+        } catch (HttpStatusCodeException e) {
+            int status = e.getStatusCode().value();
+            if (status == 404) {
+                return null;
+            }
             if (status == 502 || status == 503 || status == 504) {
                 throw new OpenSearchUnavailableException("OpenSearch unavailable: " + status, e);
             }

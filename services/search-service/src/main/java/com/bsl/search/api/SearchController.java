@@ -1,6 +1,7 @@
 package com.bsl.search.api;
 
 import com.bsl.search.api.dto.ErrorResponse;
+import com.bsl.search.api.dto.BookDetailResponse;
 import com.bsl.search.api.dto.QueryContext;
 import com.bsl.search.api.dto.QueryContextV1_1;
 import com.bsl.search.api.dto.SearchRequest;
@@ -16,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -57,6 +59,40 @@ public class SearchController {
             return ResponseEntity.badRequest().body(
                 new ErrorResponse("bad_request", e.getMessage(), traceId, requestId)
             );
+        } catch (OpenSearchUnavailableException e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(
+                new ErrorResponse("opensearch_unavailable", "OpenSearch is unavailable", traceId, requestId)
+            );
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                new ErrorResponse("internal_error", "Unexpected error", traceId, requestId)
+            );
+        }
+    }
+
+    @GetMapping("/books/{docId}")
+    public ResponseEntity<?> getBookById(
+        @PathVariable("docId") String docId,
+        @RequestHeader(value = "x-trace-id", required = false) String traceIdHeader,
+        @RequestHeader(value = "x-request-id", required = false) String requestIdHeader
+    ) {
+        String traceId = normalizeOrGenerate(traceIdHeader);
+        String requestId = normalizeOrGenerate(requestIdHeader);
+
+        if (docId == null || docId.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(
+                new ErrorResponse("bad_request", "docId is required", traceId, requestId)
+            );
+        }
+
+        try {
+            BookDetailResponse response = searchService.getBookById(docId, traceId, requestId);
+            if (response == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    new ErrorResponse("not_found", "Book not found", traceId, requestId)
+                );
+            }
+            return ResponseEntity.ok(response);
         } catch (OpenSearchUnavailableException e) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(
                 new ErrorResponse("opensearch_unavailable", "OpenSearch is unavailable", traceId, requestId)

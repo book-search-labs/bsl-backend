@@ -1,6 +1,7 @@
 package com.bsl.search.service;
 
 import com.bsl.search.api.dto.BookHit;
+import com.bsl.search.api.dto.BookDetailResponse;
 import com.bsl.search.api.dto.Options;
 import com.bsl.search.api.dto.QueryContext;
 import com.bsl.search.api.dto.QueryContextV1_1;
@@ -68,6 +69,27 @@ public class HybridSearchService {
             return searchWithQcV11(request, traceId, requestId);
         }
         return searchLegacy(request, traceId, requestId);
+    }
+
+    public BookDetailResponse getBookById(String docId, String traceId, String requestId) {
+        long started = System.nanoTime();
+        JsonNode source = openSearchGateway.getSourceById(docId);
+        if (source == null || source.isMissingNode()) {
+            return null;
+        }
+
+        String resolvedDocId = source.path("doc_id").asText(null);
+        if (resolvedDocId == null || resolvedDocId.isBlank()) {
+            resolvedDocId = docId;
+        }
+
+        BookDetailResponse response = new BookDetailResponse();
+        response.setDocId(resolvedDocId);
+        response.setSource(mapSource(source));
+        response.setTraceId(traceId);
+        response.setRequestId(requestId);
+        response.setTookMs((System.nanoTime() - started) / 1_000_000L);
+        return response;
     }
 
     private SearchResponse searchLegacy(SearchRequest request, String traceId, String requestId) {

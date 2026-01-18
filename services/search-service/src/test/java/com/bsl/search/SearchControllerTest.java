@@ -2,6 +2,8 @@ package com.bsl.search;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.bsl.search.api.SearchController;
+import com.bsl.search.api.dto.BookDetailResponse;
 import com.bsl.search.api.dto.BookHit;
 import com.bsl.search.api.dto.SearchRequest;
 import com.bsl.search.api.dto.SearchResponse;
@@ -86,5 +89,43 @@ class SearchControllerTest {
                 .content("{}"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.error.code").value("bad_request"));
+    }
+
+    @Test
+    void getBookByIdReturnsDoc() throws Exception {
+        BookDetailResponse response = new BookDetailResponse();
+        response.setDocId("b1");
+        response.setTraceId("trace-1");
+        response.setRequestId("req-1");
+        response.setTookMs(5L);
+
+        BookHit.Source source = new BookHit.Source();
+        source.setTitleKo("Sample");
+        response.setSource(source);
+
+        when(hybridSearchService.getBookById(eq("b1"), eq("trace-1"), eq("req-1"))).thenReturn(response);
+
+        mockMvc.perform(get("/books/b1")
+                .header("x-trace-id", "trace-1")
+                .header("x-request-id", "req-1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.doc_id").value("b1"))
+            .andExpect(jsonPath("$.source.title_ko").value("Sample"))
+            .andExpect(jsonPath("$.trace_id").value("trace-1"))
+            .andExpect(jsonPath("$.request_id").value("req-1"));
+
+        verify(hybridSearchService).getBookById(eq("b1"), eq("trace-1"), eq("req-1"));
+    }
+
+    @Test
+    void getBookByIdReturnsNotFound() throws Exception {
+        when(hybridSearchService.getBookById(anyString(), anyString(), anyString()))
+            .thenReturn(null);
+
+        mockMvc.perform(get("/books/missing"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.error.code").value("not_found"))
+            .andExpect(jsonPath("$.trace_id").exists())
+            .andExpect(jsonPath("$.request_id").exists());
     }
 }
