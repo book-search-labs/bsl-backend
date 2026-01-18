@@ -1,6 +1,7 @@
 package com.bsl.autocomplete.service;
 
 import com.bsl.autocomplete.api.dto.AutocompleteResponse;
+import com.bsl.autocomplete.opensearch.OpenSearchGateway;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -10,9 +11,15 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class AutocompleteService {
-    private static final String SOURCE = "mvp";
-    private static final double SCORE_STEP = 0.1;
-    private static final double SCORE_FLOOR = 0.1;
+    private static final String SOURCE = "opensearch";
+    private static final int FETCH_MULTIPLIER = 3;
+    private static final int FETCH_MAX = 50;
+
+    private final OpenSearchGateway openSearchGateway;
+
+    public AutocompleteService(OpenSearchGateway openSearchGateway) {
+        this.openSearchGateway = openSearchGateway;
+    }
 
     public AutocompleteResponse autocomplete(String query, int size, String traceId, String requestId) {
         long started = System.nanoTime();
@@ -32,19 +39,13 @@ public class AutocompleteService {
             return List.of();
         }
 
-        List<String> candidates = List.of(
-            query,
-            query + " vol 1",
-            query + " vol 2",
-            query + " deluxe",
-            query + " collector",
-            query + " series",
-            query + " author",
-            query + " guide"
-        );
+        int fetchSize = Math.min(size * FETCH_MULTIPLIER, FETCH_MAX);
+        List<OpenSearchGateway.SuggestionHit> hits = openSearchGateway.searchSuggestions(query, fetchSize);
 
         Map<String, String> deduped = new LinkedHashMap<>();
-        for (String candidate : candidates) {
+        Map<String, Double> scores = new LinkedHashMap<>();
+        for (OpenSearchGateway.SuggestionHit hit : hits) {
+            String candidate = hit.getText();
             if (candidate == null) {
                 continue;
             }
@@ -55,6 +56,12 @@ public class AutocompleteService {
             String key = trimmed.toLowerCase(Locale.ROOT);
             if (!deduped.containsKey(key)) {
                 deduped.put(key, trimmed);
+                scores.put(key, hit.getScore());
+            } else {
+                Double existingScore = scores.get(key);
+                if (existingScore == null || hit.getScore() > existingScore) {
+                    scores.put(key, hit.getScore());
+                }
             }
             if (deduped.size() >= size) {
                 break;
@@ -62,14 +69,12 @@ public class AutocompleteService {
         }
 
         List<AutocompleteResponse.Suggestion> suggestions = new ArrayList<>();
-        int index = 0;
-        for (String text : deduped.values()) {
+        for (Map.Entry<String, String> entry : deduped.entrySet()) {
             AutocompleteResponse.Suggestion suggestion = new AutocompleteResponse.Suggestion();
-            suggestion.setText(text);
-            suggestion.setScore(Math.max(SCORE_FLOOR, 1.0 - (SCORE_STEP * index)));
+            suggestion.setText(entry.getValue());
+            suggestion.setScore(scores.getOrDefault(entry.getKey(), 0.0));
             suggestion.setSource(SOURCE);
             suggestions.add(suggestion);
-            index += 1;
         }
         return suggestions;
     }

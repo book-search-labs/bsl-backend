@@ -9,6 +9,10 @@ Author smoke: `curl -s -XPOST http://localhost:9200/authors_doc_read/_search -H 
 Series smoke: `curl -s -XPOST http://localhost:9200/series_doc_read/_search -H 'Content-Type: application/json' -d '{"query":{"match":{"name":"해리"}},"size":5}'`
 Stop: `./scripts/local_down.sh`
 
+Optional entity indices (authors/series):
+- Skip entity indices: `ENABLE_ENTITY_INDICES=0 ./scripts/local_up.sh`
+- Authors local fallback mapping: `infra/opensearch/authors_doc_v1.local.mapping.json`
+
 ## Local OpenSearch v1.1
 Start: `./scripts/local_up.sh`
 Check: `curl http://localhost:9200`

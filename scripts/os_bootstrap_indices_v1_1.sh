@@ -8,6 +8,7 @@ AC_INDEX="${AC_INDEX:-ac_suggest_v1_20260116_001}"
 AUTHORS_INDEX="${AUTHORS_INDEX:-authors_doc_v1_20260116_001}"
 SERIES_INDEX="${SERIES_INDEX:-series_doc_v1_20260116_001}"
 KEEP_INDEX="${KEEP_INDEX:-0}"
+ENABLE_ENTITY_INDICES="${ENABLE_ENTITY_INDICES:-1}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -15,6 +16,7 @@ DOC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/books_doc_v1.mapping.json"
 VEC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/books_vec_v1.mapping.json"
 AC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/ac_suggest_v1.mapping.json"
 AUTHORS_MAPPING_FILE="$ROOT_DIR/infra/opensearch/authors_doc_v1.mapping.json"
+AUTHORS_MAPPING_FALLBACK_FILE="$ROOT_DIR/infra/opensearch/authors_doc_v1.local.mapping.json"
 SERIES_MAPPING_FILE="$ROOT_DIR/infra/opensearch/series_doc_v1.mapping.json"
 
 if [ ! -f "$DOC_MAPPING_FILE" ]; then
@@ -72,10 +74,21 @@ alias_exists() {
 create_index() {
   local index_name="$1"
   local mapping_file="$2"
+  local response_file
+  local status
   echo "Creating index: $index_name"
-  curl -fsS -XPUT "$OS_URL/$index_name" \
+  response_file="$(mktemp)"
+  status="$(curl -sS -o "$response_file" -w "%{http_code}" -XPUT "$OS_URL/$index_name" \
     -H "Content-Type: application/json" \
-    --data-binary "@$mapping_file" >/dev/null
+    --data-binary "@$mapping_file")"
+  if [ "$status" -ge 200 ] && [ "$status" -lt 300 ]; then
+    rm -f "$response_file"
+    return 0
+  fi
+  echo "Failed to create index $index_name (HTTP $status). Response:"
+  cat "$response_file"
+  rm -f "$response_file"
+  return 1
 }
 
 delete_index() {
@@ -117,112 +130,99 @@ if index_exists "$AC_INDEX"; then
 fi
 
 if ! index_exists "$AC_INDEX"; then
-  create_index "$AC_INDEX" "$AC_MAPPING_FILE"
+  create_index "$AC_INDEX" "$AC_MAPPING_FILE" || exit 1
 fi
 
-if index_exists "$AUTHORS_INDEX"; then
-  if [ "$KEEP_INDEX" = "1" ]; then
-    echo "Index $AUTHORS_INDEX exists and KEEP_INDEX=1. Skipping delete/recreate."
-  else
-    delete_index "$AUTHORS_INDEX"
+if [ "$ENABLE_ENTITY_INDICES" = "1" ]; then
+  if index_exists "$AUTHORS_INDEX"; then
+    if [ "$KEEP_INDEX" = "1" ]; then
+      echo "Index $AUTHORS_INDEX exists and KEEP_INDEX=1. Skipping delete/recreate."
+    else
+      delete_index "$AUTHORS_INDEX"
+    fi
   fi
-fi
 
-if ! index_exists "$AUTHORS_INDEX"; then
-  create_index "$AUTHORS_INDEX" "$AUTHORS_MAPPING_FILE"
-fi
-
-if index_exists "$SERIES_INDEX"; then
-  if [ "$KEEP_INDEX" = "1" ]; then
-    echo "Index $SERIES_INDEX exists and KEEP_INDEX=1. Skipping delete/recreate."
-  else
-    delete_index "$SERIES_INDEX"
+  if ! index_exists "$AUTHORS_INDEX"; then
+    if ! create_index "$AUTHORS_INDEX" "$AUTHORS_MAPPING_FILE"; then
+      if [ -f "$AUTHORS_MAPPING_FALLBACK_FILE" ]; then
+        echo "Retrying authors index with fallback mapping."
+        create_index "$AUTHORS_INDEX" "$AUTHORS_MAPPING_FALLBACK_FILE" || {
+          echo "Skipping authors index (optional)."
+        }
+      else
+        echo "Skipping authors index (optional)."
+      fi
+    fi
   fi
-fi
 
-if ! index_exists "$SERIES_INDEX"; then
-  create_index "$SERIES_INDEX" "$SERIES_MAPPING_FILE"
+  if index_exists "$SERIES_INDEX"; then
+    if [ "$KEEP_INDEX" = "1" ]; then
+      echo "Index $SERIES_INDEX exists and KEEP_INDEX=1. Skipping delete/recreate."
+    else
+      delete_index "$SERIES_INDEX"
+    fi
+  fi
+
+  if ! index_exists "$SERIES_INDEX"; then
+    if ! create_index "$SERIES_INDEX" "$SERIES_MAPPING_FILE"; then
+      echo "Skipping series index (optional)."
+    fi
+  fi
+else
+  echo "ENABLE_ENTITY_INDICES=0; skipping authors/series indices."
 fi
 
 echo "Updating aliases (doc/vec/ac/authors/series read/write)"
 
-if alias_exists "books_doc_read"; then
-  curl -fsS -XPOST "$OS_URL/_aliases" \
-    -H "Content-Type: application/json" \
-    -d "{\"actions\":[{\"remove\":{\"index\":\"books_doc_v1_*\",\"alias\":\"books_doc_read\"}}]}" >/dev/null
-fi
-
-if alias_exists "books_doc_write"; then
-  curl -fsS -XPOST "$OS_URL/_aliases" \
-    -H "Content-Type: application/json" \
-    -d "{\"actions\":[{\"remove\":{\"index\":\"books_doc_v1_*\",\"alias\":\"books_doc_write\"}}]}" >/dev/null
-fi
-
-if alias_exists "books_vec_read"; then
-  curl -fsS -XPOST "$OS_URL/_aliases" \
-    -H "Content-Type: application/json" \
-    -d "{\"actions\":[{\"remove\":{\"index\":\"books_vec_v1_*\",\"alias\":\"books_vec_read\"}}]}" >/dev/null
-fi
-
-if alias_exists "books_vec_write"; then
-  curl -fsS -XPOST "$OS_URL/_aliases" \
-    -H "Content-Type: application/json" \
-    -d "{\"actions\":[{\"remove\":{\"index\":\"books_vec_v1_*\",\"alias\":\"books_vec_write\"}}]}" >/dev/null
-fi
-
-if alias_exists "ac_suggest_read"; then
-  curl -fsS -XPOST "$OS_URL/_aliases" \
-    -H "Content-Type: application/json" \
-    -d "{\"actions\":[{\"remove\":{\"index\":\"ac_suggest_v1_*\",\"alias\":\"ac_suggest_read\"}}]}" >/dev/null
-fi
-
-if alias_exists "ac_suggest_write"; then
-  curl -fsS -XPOST "$OS_URL/_aliases" \
-    -H "Content-Type: application/json" \
-    -d "{\"actions\":[{\"remove\":{\"index\":\"ac_suggest_v1_*\",\"alias\":\"ac_suggest_write\"}}]}" >/dev/null
-fi
-
-if alias_exists "authors_doc_read"; then
-  curl -fsS -XPOST "$OS_URL/_aliases" \
-    -H "Content-Type: application/json" \
-    -d "{\"actions\":[{\"remove\":{\"index\":\"authors_doc_v1_*\",\"alias\":\"authors_doc_read\"}}]}" >/dev/null
-fi
-
-if alias_exists "authors_doc_write"; then
-  curl -fsS -XPOST "$OS_URL/_aliases" \
-    -H "Content-Type: application/json" \
-    -d "{\"actions\":[{\"remove\":{\"index\":\"authors_doc_v1_*\",\"alias\":\"authors_doc_write\"}}]}" >/dev/null
-fi
-
-if alias_exists "series_doc_read"; then
-  curl -fsS -XPOST "$OS_URL/_aliases" \
-    -H "Content-Type: application/json" \
-    -d "{\"actions\":[{\"remove\":{\"index\":\"series_doc_v1_*\",\"alias\":\"series_doc_read\"}}]}" >/dev/null
-fi
-
-if alias_exists "series_doc_write"; then
-  curl -fsS -XPOST "$OS_URL/_aliases" \
-    -H "Content-Type: application/json" \
-    -d "{\"actions\":[{\"remove\":{\"index\":\"series_doc_v1_*\",\"alias\":\"series_doc_write\"}}]}" >/dev/null
-fi
-
-curl -fsS -XPOST "$OS_URL/_aliases" \
-  -H "Content-Type: application/json" \
-  -d @- >/dev/null <<EOF
-{
-  "actions": [
-    { "add": { "index": "$DOC_INDEX", "alias": "books_doc_read" } },
-    { "add": { "index": "$DOC_INDEX", "alias": "books_doc_write", "is_write_index": true } },
-    { "add": { "index": "$VEC_INDEX", "alias": "books_vec_read" } },
-    { "add": { "index": "$VEC_INDEX", "alias": "books_vec_write", "is_write_index": true } },
-    { "add": { "index": "$AC_INDEX", "alias": "ac_suggest_read" } },
-    { "add": { "index": "$AC_INDEX", "alias": "ac_suggest_write", "is_write_index": true } },
-    { "add": { "index": "$AUTHORS_INDEX", "alias": "authors_doc_read" } },
-    { "add": { "index": "$AUTHORS_INDEX", "alias": "authors_doc_write", "is_write_index": true } },
-    { "add": { "index": "$SERIES_INDEX", "alias": "series_doc_read" } },
-    { "add": { "index": "$SERIES_INDEX", "alias": "series_doc_write", "is_write_index": true } }
-  ]
+remove_alias() {
+  local alias_name="$1"
+  local index_pattern="$2"
+  if alias_exists "$alias_name"; then
+    curl -fsS -XPOST "$OS_URL/_aliases" \
+      -H "Content-Type: application/json" \
+      -d "{\"actions\":[{\"remove\":{\"index\":\"$index_pattern\",\"alias\":\"$alias_name\"}}]}" >/dev/null
+  fi
 }
-EOF
+
+add_alias() {
+  local index_name="$1"
+  local alias_name="$2"
+  local is_write="${3:-0}"
+  if ! index_exists "$index_name"; then
+    echo "Skipping alias $alias_name (missing index $index_name)."
+    return 0
+  fi
+  if [ "$is_write" = "1" ]; then
+    curl -fsS -XPOST "$OS_URL/_aliases" \
+      -H "Content-Type: application/json" \
+      -d "{\"actions\":[{\"add\":{\"index\":\"$index_name\",\"alias\":\"$alias_name\",\"is_write_index\":true}}]}" >/dev/null
+  else
+    curl -fsS -XPOST "$OS_URL/_aliases" \
+      -H "Content-Type: application/json" \
+      -d "{\"actions\":[{\"add\":{\"index\":\"$index_name\",\"alias\":\"$alias_name\"}}]}" >/dev/null
+  fi
+}
+
+remove_alias "books_doc_read" "books_doc_v1_*"
+remove_alias "books_doc_write" "books_doc_v1_*"
+remove_alias "books_vec_read" "books_vec_v1_*"
+remove_alias "books_vec_write" "books_vec_v1_*"
+remove_alias "ac_suggest_read" "ac_suggest_v1_*"
+remove_alias "ac_suggest_write" "ac_suggest_v1_*"
+remove_alias "authors_doc_read" "authors_doc_v1_*"
+remove_alias "authors_doc_write" "authors_doc_v1_*"
+remove_alias "series_doc_read" "series_doc_v1_*"
+remove_alias "series_doc_write" "series_doc_v1_*"
+
+add_alias "$DOC_INDEX" "books_doc_read"
+add_alias "$DOC_INDEX" "books_doc_write" "1"
+add_alias "$VEC_INDEX" "books_vec_read"
+add_alias "$VEC_INDEX" "books_vec_write" "1"
+add_alias "$AC_INDEX" "ac_suggest_read"
+add_alias "$AC_INDEX" "ac_suggest_write" "1"
+add_alias "$AUTHORS_INDEX" "authors_doc_read"
+add_alias "$AUTHORS_INDEX" "authors_doc_write" "1"
+add_alias "$SERIES_INDEX" "series_doc_read"
+add_alias "$SERIES_INDEX" "series_doc_write" "1"
 
 echo "Bootstrap complete."
