@@ -4,3 +4,17 @@ spring:
 
 server:
   port: 8082
+
+
+app:
+  cors:
+    allowed-origins: "http://localhost:5173,http://localhost:5174"
+    allowed-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+    allowed-headers: "*"
+    exposed-headers: "x-trace-id,x-request-id"
+    allow-credentials: true
+
+logging:
+  level:
+    root:
+      DEBUG
