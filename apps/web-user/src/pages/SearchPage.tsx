@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { fetchJson, HttpError } from '../api/http'
+import { HttpError } from '../api/http'
+import { search } from '../api/searchApi'
 import type { BookHit, SearchResponse } from '../types/search'
 
 const DEFAULT_SIZE = 10
@@ -16,10 +17,6 @@ type ErrorMessage = {
   statusLine: string
   detail?: string
   code?: string
-}
-
-function joinUrl(base: string, path: string) {
-  return `${base.replace(/\/$/, '')}${path}`
 }
 
 function clampSize(value: number) {
@@ -39,64 +36,6 @@ function parseVectorParam(value: string | null) {
   if (normalized === 'false' || normalized === '0' || normalized === 'no') return false
   if (normalized === 'true' || normalized === '1' || normalized === 'yes') return true
   return true
-}
-
-function createId(prefix: string) {
-  const suffix =
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : Math.random().toString(16).slice(2)
-  return `${prefix}_${suffix}`
-}
-
-function buildSearchPayload(
-  query: string,
-  size: number,
-  vectorEnabled: boolean,
-  debugEnabled: boolean,
-) {
-  const trimmed = query.trim()
-
-  return {
-    query_context_v1_1: {
-      meta: {
-        schemaVersion: 'qc.v1.1',
-        traceId: createId('trace_web_user'),
-        requestId: createId('req_web_user'),
-        tenantId: 'books',
-        timestampMs: Date.now(),
-        locale: 'ko-KR',
-        timezone: 'Asia/Seoul',
-      },
-      query: {
-        raw: query,
-        norm: trimmed,
-        final: trimmed,
-      },
-      retrievalHints: {
-        queryTextSource: 'query.final',
-        lexical: {
-          enabled: true,
-          topKHint: 50,
-          operator: 'and',
-          preferredLogicalFields: ['title_ko', 'author_ko'],
-        },
-        vector: {
-          enabled: vectorEnabled,
-          topKHint: 50,
-          fusionHint: { method: 'rrf', k: 60 },
-        },
-        rerank: { enabled: false, topKHint: 10 },
-        filters: [],
-        fallbackPolicy: [],
-      },
-    },
-    options: {
-      size,
-      from: 0,
-      debug: debugEnabled,
-    },
-  }
 }
 
 function formatError(error: HttpError): ErrorMessage {
@@ -175,8 +114,6 @@ export default function SearchPage() {
   const [hasSearched, setHasSearched] = useState(false)
   const requestCounter = useRef(0)
 
-  const searchBaseUrl = import.meta.env.VITE_SEARCH_BASE_URL ?? 'http://localhost:8080'
-
   const hits = useMemo<BookHit[]>(() => {
     return Array.isArray(response?.hits) ? response?.hits : []
   }, [response])
@@ -223,7 +160,6 @@ export default function SearchPage() {
       return
     }
 
-    const payload = buildSearchPayload(trimmedQuery, sizeValue, vectorEnabled, debugEnabled)
     const requestId = requestCounter.current + 1
     requestCounter.current = requestId
 
@@ -233,13 +169,14 @@ export default function SearchPage() {
     setResponse(null)
 
     try {
-      const result = await fetchJson<SearchResponse>(joinUrl(searchBaseUrl, '/search'), {
-        method: 'POST',
-        body: JSON.stringify(payload),
+      const result = await search(trimmedQuery, {
+        size: sizeValue,
+        vector: vectorEnabled,
+        debug: debugEnabled,
       })
 
       if (requestId !== requestCounter.current) return
-      setResponse(result.data)
+      setResponse(result)
     } catch (err) {
       if (requestId !== requestCounter.current) return
       const safeError =
@@ -252,7 +189,7 @@ export default function SearchPage() {
         setLoading(false)
       }
     }
-  }, [debugEnabled, searchBaseUrl, sizeValue, trimmedQuery, vectorEnabled])
+  }, [debugEnabled, sizeValue, trimmedQuery, vectorEnabled])
 
   useEffect(() => {
     executeSearch()
@@ -561,7 +498,7 @@ export default function SearchPage() {
                     : '-'
                   const score = typeof hit.score === 'number' ? hit.score : null
                   const docId = hit.doc_id
-                  const docLink = docId ? `/book/${encodeURIComponent(docId)}` : null
+                  const docLink = docId ? `/book/${encodeURIComponent(docId)}?from=search` : null
                   const debug = getHitDebug(hit)
                   const debugEntries = Object.entries(debug).filter(([, value]) => value !== undefined)
 

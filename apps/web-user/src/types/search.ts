@@ -46,3 +46,13 @@ export type SearchResponse = {
   debug?: SearchDebug
   [key: string]: unknown
 }
+
+export type Book = {
+  docId: string
+  titleKo: string | null
+  authors: string[]
+  publisherName: string | null
+  issuedYear: number | null
+  volume: number | null
+  editionLabels: string[]
+}

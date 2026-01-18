@@ -1,4 +1,8 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+
+import { clearRecentViews, getRecentViews } from '../utils/recentViews'
+import type { RecentView } from '../utils/recentViews'
 
 const categories = [
   'Fantasy & Myth',
@@ -12,6 +16,16 @@ const categories = [
 export default function HomePage() {
   const sampleQuery = '해리포터 1권'
   const sampleLink = `/search?q=${encodeURIComponent(sampleQuery)}`
+  const [recentViews, setRecentViews] = useState<RecentView[]>([])
+
+  useEffect(() => {
+    setRecentViews(getRecentViews().slice(0, 5))
+  }, [])
+
+  const handleClear = () => {
+    clearRecentViews()
+    setRecentViews([])
+  }
 
   return (
     <section className="home-page">
@@ -61,6 +75,41 @@ export default function HomePage() {
                 <Link className="btn btn-outline-dark" to="/about">
                   See env setup
                 </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="row mt-5">
+          <div className="col-lg-8">
+            <div className="card shadow-sm">
+              <div className="card-body">
+                <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2">
+                  <h2 className="feature-title mb-0">Recently viewed</h2>
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary btn-sm"
+                    onClick={handleClear}
+                    disabled={recentViews.length === 0}
+                  >
+                    Clear
+                  </button>
+                </div>
+                {recentViews.length > 0 ? (
+                  <ul className="list-group list-group-flush mt-3">
+                    {recentViews.map((item) => (
+                      <li key={item.docId} className="list-group-item px-0">
+                        <Link to={`/book/${encodeURIComponent(item.docId)}?from=recent`}>
+                          {item.titleKo ?? 'Untitled'}
+                        </Link>
+                        <div className="text-muted small">
+                          {item.authors.length > 0 ? item.authors.join(', ') : '-'}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-muted mt-3 mb-0">No recently viewed books yet.</p>
+                )}
               </div>
             </div>
           </div>
