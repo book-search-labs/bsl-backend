@@ -3,7 +3,8 @@ import type { ChangeEvent, FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { HttpError } from '../api/http'
-import { search } from '../api/searchApi'
+import { postQueryContext } from '../api/queryService'
+import { postSearchWithQc } from '../api/searchService'
 import type { BookHit, SearchResponse } from '../types/search'
 
 const DEFAULT_SIZE = 10
@@ -14,6 +15,7 @@ const EXAMPLE_QUERIES = ['harry potter', 'sci-fi classics', 'korean fiction', 'h
 type ViewMode = 'card' | 'compact'
 
 type ErrorMessage = {
+  stage?: string
   statusLine: string
   detail?: string
   code?: string
@@ -38,11 +40,12 @@ function parseVectorParam(value: string | null) {
   return true
 }
 
-function formatError(error: HttpError): ErrorMessage {
+function formatError(error: HttpError, stage?: string): ErrorMessage {
   if (error.body && typeof error.body === 'object') {
     const body = error.body as { error?: { code?: string; message?: string } }
     if (body.error?.message) {
       return {
+        stage,
         statusLine: error.status
           ? `HTTP ${error.status} ${error.statusText}`
           : `Network error ${error.statusText}`,
@@ -66,6 +69,7 @@ function formatError(error: HttpError): ErrorMessage {
   }
 
   return {
+    stage,
     statusLine: error.status
       ? `HTTP ${error.status} ${error.statusText}`
       : `Network error ${error.statusText}`,
@@ -109,8 +113,9 @@ export default function SearchPage() {
   const [debugEnabled, setDebugEnabled] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('card')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<HttpError | null>(null)
+  const [error, setError] = useState<ErrorMessage | null>(null)
   const [response, setResponse] = useState<SearchResponse | null>(null)
+  const [queryContext, setQueryContext] = useState<unknown | null>(null)
   const [hasSearched, setHasSearched] = useState(false)
   const requestCounter = useRef(0)
 
@@ -156,6 +161,7 @@ export default function SearchPage() {
       setLoading(false)
       setError(null)
       setResponse(null)
+      setQueryContext(null)
       setHasSearched(false)
       return
     }
@@ -167,11 +173,45 @@ export default function SearchPage() {
     setHasSearched(true)
     setError(null)
     setResponse(null)
+    setQueryContext(null)
+
+    let qc: unknown
+    try {
+      qc = await postQueryContext(trimmedQuery)
+    } catch (err) {
+      if (requestId !== requestCounter.current) return
+      const safeError =
+        err instanceof HttpError
+          ? err
+          : new HttpError('unexpected_error', { status: 0, statusText: 'unknown', body: err })
+      setError(formatError(safeError, 'query'))
+      setLoading(false)
+      return
+    }
+
+    if (requestId !== requestCounter.current) return
+
+    const qcForSearch =
+      !vectorEnabled && qc && typeof qc === 'object'
+        ? {
+            ...qc,
+            retrievalHints: {
+              ...(qc as Record<string, unknown>).retrievalHints,
+              vector: {
+                ...((qc as { retrievalHints?: { vector?: Record<string, unknown> } }).retrievalHints
+                  ?.vector ?? {}),
+                enabled: false,
+              },
+            },
+          }
+        : qc
+
+    setQueryContext(qcForSearch)
 
     try {
-      const result = await search(trimmedQuery, {
+      const result = await postSearchWithQc(qcForSearch, {
         size: sizeValue,
-        vector: vectorEnabled,
+        from: 0,
         debug: debugEnabled,
       })
 
@@ -183,7 +223,7 @@ export default function SearchPage() {
         err instanceof HttpError
           ? err
           : new HttpError('unexpected_error', { status: 0, statusText: 'unknown', body: err })
-      setError(safeError)
+      setError(formatError(safeError, 'search'))
     } finally {
       if (requestId === requestCounter.current) {
         setLoading(false)
@@ -278,6 +318,10 @@ export default function SearchPage() {
         query_text_source_used?: string
       }
     | undefined
+
+  const qcMeta = queryContext as { meta?: { traceId?: string; requestId?: string } } | null
+  const traceId = response?.trace_id ?? qcMeta?.meta?.traceId ?? '-'
+  const requestId = response?.request_id ?? qcMeta?.meta?.requestId ?? '-'
 
   const viewLabel = viewMode === 'card' ? 'Card view' : 'Compact view'
 
@@ -411,6 +455,14 @@ export default function SearchPage() {
                     <div className="debug-value">{response.took_ms ?? '-'}</div>
                   </div>
                   <div>
+                    <div className="debug-label">trace_id</div>
+                    <div className="debug-value">{traceId}</div>
+                  </div>
+                  <div>
+                    <div className="debug-label">request_id</div>
+                    <div className="debug-value">{requestId}</div>
+                  </div>
+                  <div>
                     <div className="debug-label">ranking_applied</div>
                     <div className="debug-value">{String(response.ranking_applied ?? '-')}</div>
                   </div>
@@ -438,19 +490,25 @@ export default function SearchPage() {
 
             {error ? (
               <div className="alert alert-danger error-banner" role="alert">
-                {(() => {
-                  const message = formatError(error)
-                  return (
-                    <>
-                      <div className="fw-semibold">Search request failed</div>
-                      <div className="small">
-                        {message.statusLine}
-                        {message.code ? ` | ${message.code}` : ''}
-                      </div>
-                      {message.detail ? <pre className="error-body">{message.detail}</pre> : null}
-                    </>
-                  )
-                })()}
+                <div className="d-flex flex-column gap-2">
+                  <div>
+                    <div className="fw-semibold">Search request failed</div>
+                    <div className="small">
+                      {error.stage ? `${error.stage} | ` : ''}
+                      {error.statusLine}
+                      {error.code ? ` | ${error.code}` : ''}
+                    </div>
+                    {error.detail ? <pre className="error-body">{error.detail}</pre> : null}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-outline-light btn-sm align-self-start"
+                    onClick={executeSearch}
+                    disabled={loading}
+                  >
+                    Retry
+                  </button>
+                </div>
               </div>
             ) : null}
 

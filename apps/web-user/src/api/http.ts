@@ -1,7 +1,3 @@
-export type FetchSuccess<T> = { ok: true; status: number; data: T }
-
-type FetchJsonOptions = RequestInit & { timeoutMs?: number }
-
 type HttpErrorDetails = {
   status: number
   statusText: string
@@ -22,36 +18,57 @@ export class HttpError extends Error {
   }
 }
 
-export async function fetchJson<T>(url: string, options: FetchJsonOptions = {}): Promise<FetchSuccess<T>> {
-  const { timeoutMs = 5000, ...init } = options
+type JsonInit = RequestInit & { timeoutMs?: number }
+
+function isJsonBody(body: BodyInit | null | undefined) {
+  if (!body) return false
+  if (typeof body === 'string') return false
+  if (body instanceof FormData) return false
+  if (body instanceof Blob) return false
+  if (body instanceof ArrayBuffer) return false
+  if (body instanceof URLSearchParams) return false
+  if (typeof ReadableStream !== 'undefined' && body instanceof ReadableStream) return false
+  return true
+}
+
+export async function fetchJson<T>(url: string, init: JsonInit = {}): Promise<T> {
+  const { timeoutMs = 5000, ...requestInit } = init
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
-  if (init.signal) {
-    if (init.signal.aborted) {
+  if (requestInit.signal) {
+    if (requestInit.signal.aborted) {
       controller.abort()
     } else {
-      init.signal.addEventListener('abort', () => controller.abort(), { once: true })
+      requestInit.signal.addEventListener('abort', () => controller.abort(), { once: true })
     }
   }
 
+  const headers = new Headers(requestInit.headers ?? {})
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+  if (!headers.has('Accept')) {
+    headers.set('Accept', 'application/json')
+  }
+
+  const body = isJsonBody(requestInit.body) ? JSON.stringify(requestInit.body) : requestInit.body
+
   try {
     const response = await fetch(url, {
-      ...init,
+      ...requestInit,
       signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(init.headers ?? {}),
-      },
+      headers,
+      body,
     })
 
     const text = await response.text()
-    let body: unknown = null
+    let parsed: unknown = null
     if (text) {
       try {
-        body = JSON.parse(text)
+        parsed = JSON.parse(text)
       } catch {
-        body = text
+        parsed = text
       }
     }
 
@@ -59,11 +76,11 @@ export async function fetchJson<T>(url: string, options: FetchJsonOptions = {}):
       throw new HttpError(response.statusText || 'http_error', {
         status: response.status,
         statusText: response.statusText || 'http_error',
-        body,
+        body: parsed,
       })
     }
 
-    return { ok: true, status: response.status, data: body as T }
+    return parsed as T
   } catch (error) {
     if (error instanceof HttpError) {
       throw error

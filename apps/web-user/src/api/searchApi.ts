@@ -1,23 +1,14 @@
 import { fetchJson, HttpError } from './http'
+import { postQueryContext } from './queryService'
+import { postSearchWithQc, type SearchOptions } from './searchService'
 import type { Book, BookHit, SearchResponse } from '../types/search'
 
-type SearchOptions = {
-  size?: number
-  from?: number
+type SearchRequestOptions = SearchOptions & {
   vector?: boolean
-  debug?: boolean
 }
 
 function joinUrl(base: string, path: string) {
   return `${base.replace(/\/$/, '')}${path}`
-}
-
-function createId(prefix: string) {
-  const suffix =
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : Math.random().toString(16).slice(2)
-  return `${prefix}_${suffix}`
 }
 
 function normalizeBook(hit: BookHit, fallbackDocId?: string): Book | null {
@@ -37,61 +28,29 @@ function normalizeBook(hit: BookHit, fallbackDocId?: string): Book | null {
   }
 }
 
-export async function search(query: string, options: SearchOptions = {}): Promise<SearchResponse> {
-  const trimmed = query.trim()
+export async function search(query: string, options: SearchRequestOptions = {}): Promise<SearchResponse> {
   const size = options.size ?? 10
   const from = options.from ?? 0
   const vectorEnabled = options.vector ?? true
   const debugEnabled = options.debug ?? false
 
-  const payload = {
-    query_context_v1_1: {
-      meta: {
-        schemaVersion: 'qc.v1.1',
-        traceId: createId('trace_web_user'),
-        requestId: createId('req_web_user'),
-        tenantId: 'books',
-        timestampMs: Date.now(),
-        locale: 'ko-KR',
-        timezone: 'Asia/Seoul',
-      },
-      query: {
-        raw: query,
-        norm: trimmed,
-        final: trimmed,
-      },
-      retrievalHints: {
-        queryTextSource: 'query.final',
-        lexical: {
-          enabled: true,
-          topKHint: 50,
-          operator: 'and',
-          preferredLogicalFields: ['title_ko', 'author_ko'],
-        },
-        vector: {
-          enabled: vectorEnabled,
-          topKHint: 50,
-          fusionHint: { method: 'rrf', k: 60 },
-        },
-        rerank: { enabled: false, topKHint: 10 },
-        filters: [],
-        fallbackPolicy: [],
-      },
-    },
-    options: {
-      size,
-      from,
-      debug: debugEnabled,
-    },
-  }
+  const qc = await postQueryContext(query)
+  const qcForSearch =
+    !vectorEnabled && qc && typeof qc === 'object'
+      ? {
+          ...qc,
+          retrievalHints: {
+            ...(qc as Record<string, unknown>).retrievalHints,
+            vector: {
+              ...((qc as { retrievalHints?: { vector?: Record<string, unknown> } }).retrievalHints
+                ?.vector ?? {}),
+              enabled: false,
+            },
+          },
+        }
+      : qc
 
-  const searchBaseUrl = import.meta.env.VITE_SEARCH_BASE_URL ?? 'http://localhost:8080'
-  const result = await fetchJson<SearchResponse>(joinUrl(searchBaseUrl, '/search'), {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-
-  return result.data
+  return postSearchWithQc(qcForSearch, { size, from, debug: debugEnabled })
 }
 
 export async function searchByDocId(docId: string): Promise<Book | null> {
@@ -107,10 +66,10 @@ export async function searchByDocId(docId: string): Promise<Book | null> {
   try {
     const result = await fetchJson<SearchResponse>(joinUrl(searchBaseUrl, '/search'), {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: payload,
     })
 
-    const hits = Array.isArray(result.data?.hits) ? result.data.hits : []
+    const hits = Array.isArray(result?.hits) ? result.hits : []
     if (hits.length === 0) return null
 
     const exact = hits.find((hit) => hit.doc_id === docId)
