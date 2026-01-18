@@ -1,20 +1,30 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Code+Pro:wght@400;600&family=Source+Sans+3:wght@400;600;700&display=swap');
 
 :root {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Source Sans 3', sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #0f172a;
-  background-color: #f8f5f0;
+  color: #1f1a16;
+  background-color: #f7f1e7;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --text-strong: #0f172a;
-  --muted: #64748b;
-  --accent: #0f766e;
-  --border: rgba(15, 118, 110, 0.25);
-  --card: rgba(255, 255, 255, 0.82);
-  --mono: 'JetBrains Mono', 'SFMono-Regular', ui-monospace, 'Cascadia Mono', monospace;
+  --font-serif: 'Cormorant Garamond', serif;
+  --font-sans: 'Source Sans 3', sans-serif;
+  --font-mono: 'Source Code Pro', ui-monospace, 'SFMono-Regular', 'Cascadia Mono', monospace;
+  --ink: #1f1a16;
+  --ink-muted: #62564c;
+  --paper: #f7f1e7;
+  --paper-deep: #efe3d2;
+  --accent: #b44d2a;
+  --accent-strong: #8f3c1f;
+  --sage: #2f6f6d;
+  --border: rgba(31, 26, 22, 0.15);
+  --shadow: 0 28px 70px rgba(31, 26, 22, 0.18);
+  --bs-primary: var(--accent);
+  --bs-primary-rgb: 180, 77, 42;
+  --bs-body-font-family: var(--font-sans);
+  --bs-body-color: var(--ink);
 }
 
 * {
@@ -25,29 +35,38 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  color: var(--ink);
+  background-color: var(--paper);
   background-image:
-    radial-gradient(circle at 10% 10%, rgba(14, 116, 144, 0.12), transparent 45%),
-    radial-gradient(circle at 90% 20%, rgba(14, 116, 144, 0.08), transparent 35%),
-    linear-gradient(140deg, #fdf9f1, #eef7f5);
-  color: var(--text-strong);
+    radial-gradient(circle at 15% 12%, rgba(180, 77, 42, 0.16), transparent 45%),
+    radial-gradient(circle at 85% 18%, rgba(47, 111, 109, 0.14), transparent 42%),
+    linear-gradient(140deg, rgba(255, 255, 255, 0.7), rgba(243, 234, 219, 0.85));
+  background-attachment: fixed;
 }
 
 a {
-  font-weight: 600;
   color: var(--accent);
   text-decoration: none;
 }
 
 a:hover {
-  color: #0d9488;
+  color: var(--accent-strong);
 }
 
-h1 {
-  margin: 0;
-  font-size: clamp(2.4rem, 4vw, 3.4rem);
-  line-height: 1.05;
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-serif);
+  color: var(--ink);
+  letter-spacing: 0.01em;
 }
 
 p {
   margin: 0;
+}
+
+code,
+pre {
+  font-family: var(--font-mono);
 }

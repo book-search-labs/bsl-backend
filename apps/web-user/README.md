@@ -5,5 +5,5 @@
 cd apps/web-user
 npm install
 cp .env.example .env
-npm run dev -- --port 5173
+npm run dev -- --port 5174
 ```
