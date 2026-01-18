@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 
 import { HttpError } from '../api/http'
-import { searchByDocId } from '../api/searchApi'
+import { getBookByDocId } from '../api/searchService'
 import type { Book } from '../types/search'
 import { addRecentView } from '../utils/recentViews'
 
@@ -42,20 +42,79 @@ function joinAuthors(authors: string[]) {
   return authors.length > 0 ? authors.join(', ') : '-'
 }
 
+function mapCachedToBook(docId: string, cached: CachedHit): Book {
+  const source = cached.source ?? {}
+  return {
+    docId,
+    titleKo: source.title_ko ?? null,
+    authors: Array.isArray(source.authors) ? source.authors : [],
+    publisherName: source.publisher_name ?? null,
+    issuedYear: source.issued_year ?? null,
+    volume: source.volume ?? null,
+    editionLabels: Array.isArray(source.edition_labels) ? source.edition_labels : [],
+  }
+}
+
+function parseBooleanParam(value: string | null) {
+  if (value == null) return undefined
+  const v = value.trim().toLowerCase()
+  if (v === 'true' || v === '1' || v === 'yes' || v === 'y') return true
+  if (v === 'false' || v === '0' || v === 'no' || v === 'n') return false
+  return undefined
+}
+
+function parseNumberParam(value: string | null) {
+  if (value == null) return undefined
+  const n = Number(value)
+  return Number.isFinite(n) && n > 0 ? n : undefined
+}
+
+function writeCachedHit(docId: string, source?: CachedHit['source'], fromQuery?: CachedHit['fromQuery']) {
+  const payload: CachedHit = {
+    doc_id: docId,
+    source: source ?? null,
+    fromQuery: fromQuery ?? undefined,
+    ts: Date.now(),
+  }
+
+  try {
+    sessionStorage.setItem(`${STORAGE_PREFIX}${docId}`, JSON.stringify(payload))
+  } catch {
+    // Ignore storage failures
+  }
+}
+
 export default function BookDetailPage() {
   const { docId } = useParams()
   const [pageParams] = useSearchParams()
+
   const fromParam = pageParams.get('from')
+
+  // (optional) if you append these when navigating from search results:
+  // /book/:docId?from=search&q=...&size=...&vector=true
+  const qParam = pageParams.get('q') ?? undefined
+  const sizeParam = parseNumberParam(pageParams.get('size'))
+  const vectorParam = parseBooleanParam(pageParams.get('vector'))
+
+  const fromQueryFromUrl = useMemo<CachedHit['fromQuery'] | undefined>(() => {
+    if (fromParam !== 'search') return undefined
+    if (!qParam && sizeParam === undefined && vectorParam === undefined) return undefined
+    return {
+      q: qParam,
+      size: sizeParam,
+      vector: vectorParam,
+    }
+  }, [fromParam, qParam, sizeParam, vectorParam])
 
   const [cachedHit, setCachedHit] = useState<CachedHit | null>(null)
   const [book, setBook] = useState<Book | null>(null)
+
   const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+
   const [error, setError] = useState<string | null>(null)
   const [notFound, setNotFound] = useState(false)
-
-  useEffect(() => {
-    setCachedHit(readCachedHit(docId))
-  }, [docId])
+  const [retryToken, setRetryToken] = useState(0)
 
   useEffect(() => {
     let isActive = true
@@ -68,44 +127,119 @@ export default function BookDetailPage() {
       }
     }
 
-    setLoading(true)
-    setError(null)
-    setNotFound(false)
+    // 1) Read cache first for instant render
+    const cached = readCachedHit(docId)
+    setCachedHit(cached)
 
-    searchByDocId(docId)
-      .then((result) => {
-        if (!isActive) return
-        if (!result) {
+    const hasCached = Boolean(cached && cached.source)
+
+    if (hasCached) {
+      const cachedBook = mapCachedToBook(docId, cached as CachedHit)
+      setBook(cachedBook)
+      setLoading(false)
+      setError(null)
+      setNotFound(false)
+
+      addRecentView({
+        docId: cachedBook.docId,
+        titleKo: cachedBook.titleKo,
+        authors: cachedBook.authors,
+        viewedAt: Date.now(),
+      })
+    } else {
+      setBook(null)
+      setLoading(true)
+      setError(null)
+      setNotFound(false)
+    }
+
+    // 2) stale-while-revalidate: even if cached exists, fetch in background to refresh
+    //    (don’t show blocking spinner if we already have cached data)
+    if (hasCached) {
+      setRefreshing(true)
+    }
+
+    getBookByDocId(docId)
+    .then((result) => {
+      if (!isActive) return
+
+      if (!result || !result.source) {
+        // If no cached book, this is truly not found / empty
+        if (!hasCached) {
           setBook(null)
           setNotFound(true)
-          return
         }
-        setBook(result)
-        addRecentView({
-          docId: result.docId,
-          titleKo: result.titleKo,
-          authors: result.authors,
-          viewedAt: Date.now(),
-        })
+        return
+      }
+
+      const resolvedDocId = result.doc_id ?? docId
+
+      const nextBook: Book = {
+        docId: resolvedDocId,
+        titleKo: result.source.title_ko ?? null,
+        authors: Array.isArray(result.source.authors) ? result.source.authors : [],
+        publisherName: result.source.publisher_name ?? null,
+        issuedYear: result.source.issued_year ?? null,
+        volume: result.source.volume ?? null,
+        editionLabels: Array.isArray(result.source.edition_labels) ? result.source.edition_labels : [],
+      }
+
+      setBook(nextBook)
+      setError(null)
+      setNotFound(false)
+
+      // If user came from search, persist the “return to results” context.
+      // Prefer URL params (if present), otherwise keep existing cached fromQuery.
+      const mergedFromQuery = fromQueryFromUrl ?? cached?.fromQuery
+
+      writeCachedHit(resolvedDocId, result.source ?? null, mergedFromQuery)
+      setCachedHit({
+        doc_id: resolvedDocId,
+        source: result.source ?? null,
+        fromQuery: mergedFromQuery,
+        ts: Date.now(),
       })
-      .catch((err) => {
-        if (!isActive) return
-        const message =
-          err instanceof HttpError
-            ? err.message || err.statusText
-            : err instanceof Error
-              ? err.message
-              : String(err)
-        setError(message)
+
+      addRecentView({
+        docId: nextBook.docId,
+        titleKo: nextBook.titleKo,
+        authors: nextBook.authors,
+        viewedAt: Date.now(),
       })
-      .finally(() => {
-        if (isActive) setLoading(false)
-      })
+    })
+    .catch((err) => {
+      if (!isActive) return
+
+      if (err instanceof HttpError && err.status === 404) {
+        // If no cached content, show not found.
+        // If cached exists, keep cached view (don’t nuke the page).
+        if (!hasCached) {
+          setNotFound(true)
+        }
+        return
+      }
+
+      const message =
+        err instanceof HttpError
+          ? err.message || err.statusText
+          : err instanceof Error
+            ? err.message
+            : String(err)
+
+      // If cached exists, show non-blocking error (keep page content)
+      // If not cached, show blocking error state
+      setError(message)
+    })
+    .finally(() => {
+      if (!isActive) return
+      setLoading(false)
+      setRefreshing(false)
+    })
 
     return () => {
       isActive = false
     }
-  }, [docId])
+  }, [docId, retryToken, fromQueryFromUrl])
 
   const backLink = useMemo(() => {
     if (fromParam === 'search') {
@@ -113,6 +247,7 @@ export default function BookDetailPage() {
       if (q) {
         const params = new URLSearchParams()
         params.set('q', q)
+
         if (cachedHit?.fromQuery?.size) {
           params.set('size', String(cachedHit.fromQuery.size))
         }
@@ -135,6 +270,9 @@ export default function BookDetailPage() {
   const volume = book?.volume ?? cachedHit?.source?.volume ?? '-'
   const editionLabels = book?.editionLabels ?? (cachedHit?.source?.edition_labels ?? [])
 
+  const showNotFound = !loading && !error && notFound && !book && !(cachedHit && cachedHit.source)
+  const showDetail = !loading && !showNotFound && (book || (cachedHit && cachedHit.source))
+
   return (
     <section className="page-section">
       <div className="container py-5">
@@ -143,6 +281,9 @@ export default function BookDetailPage() {
             <div>
               <h1 className="page-title">Book Detail</h1>
               <p className="page-lead">Book metadata pulled from the Search Service.</p>
+              {refreshing ? (
+                <div className="small text-muted">Refreshing…</div>
+              ) : null}
             </div>
             <div className="d-flex flex-wrap gap-2">
               <Link className="btn btn-outline-secondary btn-sm" to={backLink}>
@@ -158,10 +299,18 @@ export default function BookDetailPage() {
             <div className="alert alert-danger" role="alert">
               <div className="fw-semibold">Unable to load book</div>
               <div className="small">{error}</div>
+              <button
+                type="button"
+                className="btn btn-outline-light btn-sm mt-2"
+                onClick={() => setRetryToken((value) => value + 1)}
+                disabled={loading}
+              >
+                Retry
+              </button>
             </div>
           ) : null}
 
-          {loading ? (
+          {loading && !book && !(cachedHit && cachedHit.source) ? (
             <div className="placeholder-card loading-state">
               <div className="spinner-border text-primary" role="status" aria-label="Loading">
                 <span className="visually-hidden">Loading</span>
@@ -170,7 +319,7 @@ export default function BookDetailPage() {
             </div>
           ) : null}
 
-          {!loading && !error && notFound ? (
+          {showNotFound ? (
             <div className="placeholder-card empty-state">
               <div className="empty-title">Book not found</div>
               <div className="empty-copy">
@@ -182,7 +331,7 @@ export default function BookDetailPage() {
             </div>
           ) : null}
 
-          {!loading && !error && !notFound ? (
+          {showDetail ? (
             <div className="card shadow-sm detail-card">
               <div className="card-body">
                 <div className="detail-title">{title}</div>
@@ -190,6 +339,7 @@ export default function BookDetailPage() {
                 <div className="detail-meta">
                   {publisher} | Year {issuedYear} | Volume {volume}
                 </div>
+
                 <div className="mt-3 d-flex flex-wrap gap-2">
                   {editionLabels.length > 0 ? (
                     editionLabels.map((label) => (
@@ -201,10 +351,18 @@ export default function BookDetailPage() {
                     <span className="text-muted small">No edition labels</span>
                   )}
                 </div>
+
                 <div className="mt-4">
                   <div className="text-muted small">Doc ID</div>
                   <div className="fw-semibold">{docId ?? '-'}</div>
                 </div>
+
+                {/* (optional) if you want to debug the return context */}
+                {/* {cachedHit?.fromQuery ? (
+                  <pre className="mt-3 small bg-light border rounded p-2">
+                    {JSON.stringify(cachedHit.fromQuery, null, 2)}
+                  </pre>
+                ) : null} */}
               </div>
             </div>
           ) : null}

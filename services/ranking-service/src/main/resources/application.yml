@@ -8,7 +8,7 @@ server:
 
 app:
   cors:
-    allowed-origins: "http://localhost:5173,http://localhost:5174"
+    allowed-origins: "http://localhost:4173,http://localhost:5173,http://localhost:5174"
     allowed-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
     allowed-headers: "*"
     exposed-headers: "x-trace-id,x-request-id"

@@ -18,13 +18,14 @@ export class HttpError extends Error {
   }
 }
 
-type JsonInit = RequestInit & { timeoutMs?: number }
+type JsonInit = Omit<RequestInit, 'body'> & { body?: unknown; timeoutMs?: number }
 
-function isJsonBody(body: BodyInit | null | undefined) {
-  if (!body) return false
+function isJsonBody(body: unknown) {
+  if (body === null || body === undefined) return false
   if (typeof body === 'string') return false
-  if (body instanceof FormData) return false
-  if (body instanceof Blob) return false
+  if (typeof body !== 'object') return false
+  if (typeof FormData !== 'undefined' && body instanceof FormData) return false
+  if (typeof Blob !== 'undefined' && body instanceof Blob) return false
   if (body instanceof ArrayBuffer) return false
   if (body instanceof URLSearchParams) return false
   if (typeof ReadableStream !== 'undefined' && body instanceof ReadableStream) return false
@@ -52,7 +53,9 @@ export async function fetchJson<T>(url: string, init: JsonInit = {}): Promise<T>
     headers.set('Accept', 'application/json')
   }
 
-  const body = isJsonBody(requestInit.body) ? JSON.stringify(requestInit.body) : requestInit.body
+  const body = isJsonBody(requestInit.body)
+    ? JSON.stringify(requestInit.body)
+    : (requestInit.body as BodyInit | null | undefined)
 
   try {
     const response = await fetch(url, {

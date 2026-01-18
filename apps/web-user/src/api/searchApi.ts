@@ -3,12 +3,16 @@ import { postQueryContext } from './queryService'
 import { postSearchWithQc, type SearchOptions } from './searchService'
 import type { Book, BookHit, SearchResponse } from '../types/search'
 
-type SearchRequestOptions = SearchOptions & {
+type SearchRequestOptions = Partial<SearchOptions> & {
   vector?: boolean
 }
 
 function joinUrl(base: string, path: string) {
   return `${base.replace(/\/$/, '')}${path}`
+}
+
+function ensureRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
 }
 
 function normalizeBook(hit: BookHit, fallbackDocId?: string): Book | null {
@@ -35,20 +39,24 @@ export async function search(query: string, options: SearchRequestOptions = {}):
   const debugEnabled = options.debug ?? false
 
   const qc = await postQueryContext(query)
-  const qcForSearch =
-    !vectorEnabled && qc && typeof qc === 'object'
-      ? {
-          ...qc,
-          retrievalHints: {
-            ...(qc as Record<string, unknown>).retrievalHints,
-            vector: {
-              ...((qc as { retrievalHints?: { vector?: Record<string, unknown> } }).retrievalHints
-                ?.vector ?? {}),
-              enabled: false,
-            },
-          },
-        }
-      : qc
+  let qcForSearch: unknown = qc
+
+  if (!vectorEnabled && qc && typeof qc === 'object') {
+    const qcRecord = ensureRecord(qc)
+    const retrievalHints = ensureRecord(qcRecord.retrievalHints)
+    const vector = ensureRecord(retrievalHints.vector)
+
+    qcForSearch = {
+      ...qcRecord,
+      retrievalHints: {
+        ...retrievalHints,
+        vector: {
+          ...vector,
+          enabled: false,
+        },
+      },
+    }
+  }
 
   return postSearchWithQc(qcForSearch, { size, from, debug: debugEnabled })
 }

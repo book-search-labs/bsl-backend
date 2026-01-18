@@ -101,6 +101,10 @@ function getHitDebug(hit: BookHit) {
   }
 }
 
+function ensureRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+}
+
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const query = searchParams.get('q') ?? ''
@@ -191,20 +195,24 @@ export default function SearchPage() {
 
     if (requestId !== requestCounter.current) return
 
-    const qcForSearch =
-      !vectorEnabled && qc && typeof qc === 'object'
-        ? {
-            ...qc,
-            retrievalHints: {
-              ...(qc as Record<string, unknown>).retrievalHints,
-              vector: {
-                ...((qc as { retrievalHints?: { vector?: Record<string, unknown> } }).retrievalHints
-                  ?.vector ?? {}),
-                enabled: false,
-              },
-            },
-          }
-        : qc
+    let qcForSearch: unknown = qc
+
+    if (!vectorEnabled && qc && typeof qc === 'object') {
+      const qcRecord = ensureRecord(qc)
+      const retrievalHints = ensureRecord(qcRecord.retrievalHints)
+      const vector = ensureRecord(retrievalHints.vector)
+
+      qcForSearch = {
+        ...qcRecord,
+        retrievalHints: {
+          ...retrievalHints,
+          vector: {
+            ...vector,
+            enabled: false,
+          },
+        },
+      }
+    }
 
     setQueryContext(qcForSearch)
 
