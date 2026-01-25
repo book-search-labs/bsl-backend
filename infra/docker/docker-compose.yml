@@ -1,6 +1,9 @@
 services:
   opensearch:
-    image: opensearchproject/opensearch:2.11.1
+    build:
+      context: .
+      dockerfile: opensearch/Dockerfile
+    image: bsl-opensearch:2.11.1-nori
     container_name: opensearch
     environment:
       - discovery.type=single-node
@@ -16,6 +19,26 @@ services:
       retries: 12
     volumes:
       - opensearch-data:/usr/share/opensearch/data
+  mysql:
+    image: mysql:8.0.36
+    container_name: mysql
+    command: ["--max_allowed_packet=256M", "--local-infile=1"]
+    environment:
+      - MYSQL_ROOT_PASSWORD=localroot
+      - MYSQL_DATABASE=bsl
+      - MYSQL_USER=bsl
+      - MYSQL_PASSWORD=bsl
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/conf.d:/etc/mysql/conf.d:ro
 
 volumes:
   opensearch-data:
+  mysql-data:

@@ -16,6 +16,10 @@ build/
 .env
 .env.*
 !.env.example
+data/nlk/
+data/nlk/**
+var/ingest/
+var/ingest/**
 
 ### STS ###
 .apt_generated

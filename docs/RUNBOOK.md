@@ -21,6 +21,35 @@ Lexical smoke: `curl -s -XPOST http://localhost:9200/books_doc_read/_search -H '
 Vector smoke: `curl -s -XPOST http://localhost:9200/books_vec_read/_search -H 'Content-Type: application/json' -d "{\"size\":3,\"query\":{\"knn\":{\"embedding\":{\"vector\":$(python3 -c 'import hashlib,random,json; seed=int(hashlib.sha256(b"b1").hexdigest()[:8],16); r=random.Random(seed); print(json.dumps([round(r.random(),6) for _ in range(1024)]))'),\"k\":3}}}}"`
 Stop: `./scripts/local_down.sh`
 
+## NLK Ingestion (Local)
+Data root: `./data/nlk` (override with `NLK_DATA_DIR=/path/to/nlk`)
+Raw files: `./data/nlk/raw`
+
+Start stack: `./scripts/local_up.sh`
+Install deps: `python3 -m pip install -r scripts/ingest/requirements.txt`
+Run ingestion: `./scripts/ingest/run_ingest.sh`
+MySQL only: `./scripts/ingest/run_ingest_mysql.sh`
+OpenSearch only: `./scripts/ingest/run_ingest_opensearch.sh`
+Reset + reingest: `RESET=1 ./scripts/ingest/run_ingest.sh`
+Targets only: `INGEST_TARGETS=mysql` or `INGEST_TARGETS=opensearch`
+Fast mode (bigger batches, skip entity indices): `FAST_MODE=1 ./scripts/ingest/run_ingest.sh`
+Fast mode also uses `RAW_HASH_MODE=record_id` and `STORE_BIBLIO_RAW=0` unless overridden.
+`run_ingest_mysql.sh` defaults to `FAST_MODE=1` (override with `FAST_MODE=0`).
+Fast mode enables bulk MySQL loads (`MYSQL_BULK_MODE=1`) unless overridden.
+Bulk load (LOAD DATA LOCAL INFILE): `MYSQL_BULK_MODE=1 MYSQL_LOAD_BATCH=100000 ./scripts/ingest/run_ingest_mysql.sh`
+MySQL must allow `local_infile=1` (enabled in docker-compose; restart MySQL after changes).
+If you see error 1229 about `local_infile`, it's a GLOBAL-only server variable; ensure the server config has `local_infile=1`.
+Tune MySQL batch: `MYSQL_CHUNK_SIZE=100` (reduce if MySQL disconnects)
+Checkpoints: `./data/nlk/checkpoints` (deadletters in `./data/nlk/deadletter`)
+If MySQL crashes (InnoDB assertion), reset the local volume:
+`./scripts/local_down.sh` then `./scripts/local_up.sh` (this clears the MySQL volume).
+
+MySQL counts:
+- `mysql -h 127.0.0.1 -u bsl -pbsl bsl -e "SELECT COUNT(*) FROM nlk_raw_nodes;"`
+- `mysql -h 127.0.0.1 -u bsl -pbsl bsl -e "SELECT COUNT(*) FROM nlk_biblio_docs;"`
+OpenSearch aliases: `curl -s http://localhost:9200/_cat/aliases?v | grep books_doc`
+OpenSearch sample: `curl -s -XPOST http://localhost:9200/books_doc_read/_search -H 'Content-Type: application/json' -d '{"size":3,"query":{"match_all":{}}}'`
+
 ## Search Service (Local)
 Start OpenSearch: `./scripts/local_up.sh`
 Run service: `cd services/search-service && ./gradlew bootRun`

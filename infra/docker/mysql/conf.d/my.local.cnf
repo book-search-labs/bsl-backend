@@ -1,0 +1,29 @@
+[mysqld]
+server_id=1
+port=3306
+
+lower_case_table_names=0
+character-set-server=utf8mb4
+collation-server=utf8mb4_0900_ai_ci
+skip_name_resolve=ON
+sql_mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION
+sync_binlog=0
+
+# Local ingest speed
+innodb_flush_log_at_trx_commit=2
+skip_log_bin
+
+# Memory (adjust to your machine / docker limit)
+innodb_buffer_pool_size=12G
+innodb_redo_log_capacity=2G
+
+innodb_flush_neighbors=0
+innodb_io_capacity=1000
+innodb_io_capacity_max=2000
+
+max_connections=100
+max_allowed_packet=256M
+
+# Turn off during bulk ingest (enable only when investigating)
+slow_query_log=OFF
+log_queries_not_using_indexes=OFF

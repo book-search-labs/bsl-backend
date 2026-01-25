@@ -46,14 +46,15 @@ export async function fetchJson<T>(url: string, init: JsonInit = {}): Promise<T>
   }
 
   const headers = new Headers(requestInit.headers ?? {})
-  if (!headers.has('Content-Type')) {
+  const hasJsonBody = isJsonBody(requestInit.body)
+  if (hasJsonBody && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
   if (!headers.has('Accept')) {
     headers.set('Accept', 'application/json')
   }
 
-  const body = isJsonBody(requestInit.body)
+  const body = hasJsonBody
     ? JSON.stringify(requestInit.body)
     : (requestInit.body as BodyInit | null | undefined)
 
