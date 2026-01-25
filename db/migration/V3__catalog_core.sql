@@ -34,9 +34,7 @@ CREATE TABLE material_override (
   hidden TINYINT(1) NULL,              -- search 제외
   override_json JSON NULL,
   updated_by_admin_id BIGINT UNSIGNED,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_mo_material FOREIGN KEY(material_id) REFERENCES material(material_id),
-  CONSTRAINT fk_mo_admin FOREIGN KEY(updated_by_admin_id) REFERENCES admin_account(admin_id)
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 CREATE TABLE material_merge (
@@ -45,10 +43,7 @@ CREATE TABLE material_merge (
   reason VARCHAR(255),
   created_by_admin_id BIGINT UNSIGNED,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_merge_to (to_material_id),
-  CONSTRAINT fk_mm_from FOREIGN KEY(from_material_id) REFERENCES material(material_id),
-  CONSTRAINT fk_mm_to FOREIGN KEY(to_material_id) REFERENCES material(material_id),
-  CONSTRAINT fk_mm_admin FOREIGN KEY(created_by_admin_id) REFERENCES admin_account(admin_id)
+  INDEX idx_merge_to (to_material_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE material_identifier (
@@ -57,8 +52,7 @@ CREATE TABLE material_identifier (
   value VARCHAR(255) NOT NULL,
   normalized VARCHAR(255),
   PRIMARY KEY(material_id, scheme, value),
-  INDEX idx_ident_lookup (scheme, value),
-  CONSTRAINT fk_mid_material FOREIGN KEY(material_id) REFERENCES material(material_id)
+  INDEX idx_ident_lookup (scheme, value)
 ) ENGINE=InnoDB;
 
 CREATE TABLE agent (
@@ -78,9 +72,7 @@ CREATE TABLE material_agent (
   agent_id VARCHAR(128) NULL,
   agent_name_raw VARCHAR(255) NULL,
   UNIQUE KEY uk_ma (material_id, role, ord),
-  INDEX idx_ma_agent (agent_id),
-  CONSTRAINT fk_ma_material FOREIGN KEY(material_id) REFERENCES material(material_id),
-  CONSTRAINT fk_ma_agent FOREIGN KEY(agent_id) REFERENCES agent(agent_id)
+  INDEX idx_ma_agent (agent_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE concept (
@@ -96,7 +88,5 @@ CREATE TABLE material_concept (
   concept_id VARCHAR(128) NOT NULL,
   rel_type VARCHAR(16) NOT NULL DEFAULT 'SUBJECT',
   PRIMARY KEY(material_id, concept_id, rel_type),
-  INDEX idx_mc_concept (concept_id),
-  CONSTRAINT fk_mc_material FOREIGN KEY(material_id) REFERENCES material(material_id),
-  CONSTRAINT fk_mc_concept FOREIGN KEY(concept_id) REFERENCES concept(concept_id)
+  INDEX idx_mc_concept (concept_id)
 ) ENGINE=InnoDB;

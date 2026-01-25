@@ -25,6 +25,5 @@ CREATE TABLE raw_node (
   ingested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uk_raw_batch_node (batch_id, node_id),
   INDEX idx_raw_node_id (node_id),
-  INDEX idx_raw_kind_time (entity_kind, ingested_at),
-  CONSTRAINT fk_raw_batch FOREIGN KEY (batch_id) REFERENCES ingest_batch(batch_id)
+  INDEX idx_raw_kind_time (entity_kind, ingested_at)
 ) ENGINE=InnoDB;

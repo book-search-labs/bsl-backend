@@ -7,8 +7,7 @@ CREATE TABLE playground_snapshot (
   response_json JSON NOT NULL,       -- results + debug summary
   created_by_admin_id BIGINT UNSIGNED,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_pg_time (created_at),
-  CONSTRAINT fk_pg_admin FOREIGN KEY(created_by_admin_id) REFERENCES admin_account(admin_id)
+  INDEX idx_pg_time (created_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE playground_judgement (
@@ -19,8 +18,5 @@ CREATE TABLE playground_judgement (
   note VARCHAR(255),
   created_by_admin_id BIGINT UNSIGNED,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_pj_snap (snapshot_id),
-  CONSTRAINT fk_pj_snap FOREIGN KEY(snapshot_id) REFERENCES playground_snapshot(snapshot_id),
-  CONSTRAINT fk_pj_material FOREIGN KEY(material_id) REFERENCES material(material_id),
-  CONSTRAINT fk_pj_admin FOREIGN KEY(created_by_admin_id) REFERENCES admin_account(admin_id)
+  INDEX idx_pj_snap (snapshot_id)
 ) ENGINE=InnoDB;

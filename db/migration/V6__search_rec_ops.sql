@@ -7,8 +7,7 @@ CREATE TABLE policy (
   created_by_admin_id BIGINT UNSIGNED,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uk_policy_type_ver (policy_type, version),
-  INDEX idx_policy_active (policy_type, status),
-  CONSTRAINT fk_policy_admin FOREIGN KEY(created_by_admin_id) REFERENCES admin_account(admin_id)
+  INDEX idx_policy_active (policy_type, status)
 ) ENGINE=InnoDB;
 
 CREATE TABLE feature_flag (
@@ -16,8 +15,7 @@ CREATE TABLE feature_flag (
   enabled TINYINT(1) NOT NULL DEFAULT 0,
   rule_json JSON,
   updated_by_admin_id BIGINT UNSIGNED,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_ff_admin FOREIGN KEY(updated_by_admin_id) REFERENCES admin_account(admin_id)
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 CREATE TABLE experiment (
@@ -30,8 +28,7 @@ CREATE TABLE experiment (
   end_at DATETIME,
   created_by_admin_id BIGINT UNSIGNED,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_exp_status_time (status, start_at),
-  CONSTRAINT fk_exp_admin FOREIGN KEY(created_by_admin_id) REFERENCES admin_account(admin_id)
+  INDEX idx_exp_status_time (status, start_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE model_registry (
@@ -53,6 +50,5 @@ CREATE TABLE eval_run (
   dataset VARCHAR(255),
   metrics_json JSON NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_eval_time (created_at),
-  CONSTRAINT fk_eval_model FOREIGN KEY(model_id) REFERENCES model_registry(model_id)
+  INDEX idx_eval_time (created_at)
 ) ENGINE=InnoDB;

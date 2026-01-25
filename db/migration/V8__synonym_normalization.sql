@@ -7,6 +7,5 @@ CREATE TABLE synonym_set (
   created_by_admin_id BIGINT UNSIGNED,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uk_syn (name, version),
-  INDEX idx_syn_active (name, status),
-  CONSTRAINT fk_syn_admin FOREIGN KEY(created_by_admin_id) REFERENCES admin_account(admin_id)
+  INDEX idx_syn_active (name, status)
 ) ENGINE=InnoDB;
