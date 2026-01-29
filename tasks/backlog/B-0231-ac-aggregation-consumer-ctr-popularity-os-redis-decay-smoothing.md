@@ -1,16 +1,16 @@
 # B-0231 — Autocomplete Aggregation Consumer (CTR/Popularity → OpenSearch/Redis)
 
 ## Goal
-Kafka   TBD  
-New *CTR/Popularity aggregates** and reflects the result in OpenSearch(ac candidates) + Redis hot cache**.
+Kafka(또는 outbox relay 후 Kafka)의 `ac_impression/ac_select`를 소비해서
+**CTR/Popularity를 집계**하고, 결과를 **OpenSearch(ac_candidates) + Redis hot cache**에 반영한다.
 
-- time-decay + smoothing application
-- (near-real-time or batch window)
-- Safety even in reprocessing/recovery(Floor/Window)
+- time-decay + smoothing 적용
+- 주기적 반영(near-real-time or batch window)
+- 재처리/중복에도 안전(멱등/윈도우)
 
 ## Background
-- The autocomplete quality is improved to have “the suggestion that the chosen suggestion will rise up” loop.
-- raw counts only if noise/spam/secret cold-start vulnerable → smoothing/decay core.
+- autocomplete 품질은 “선택된 suggestion이 더 위로 올라가는” 루프가 있어야 개선됨.
+- raw counts만 쓰면 노이즈/스팸/초기 cold-start에 취약 → smoothing/decay가 핵심.
 
 ## Scope
 ### 1) Consumer topology
@@ -18,11 +18,11 @@ New *CTR/Popularity aggregates** and reflects the result in OpenSearch(ac candid
   - `ac_impression`
   - `ac_select`
 - state:
-  - (Option A) Redis/KeyDB state store
-  - (Option B) MySQL aggregate table (per day/time) + upsert
+  - (옵션 A) Redis/KeyDB state store
+  - (옵션 B) MySQL 집계 테이블(일별/시간별) + upsert
 - output:
-  - Open BulkSearch   TBD   alias update
-  - Redis hot cache invalidate/warm (optional)
+  - OpenSearch `ac_write` alias에 bulk update
+  - Redis hot cache invalidate/warm (선택)
 
 ### 2) Aggregation model (v1 recommended)
 #### Metrics
@@ -32,12 +32,12 @@ New *CTR/Popularity aggregates** and reflects the result in OpenSearch(ac candid
 
 #### Smoothing (Beta prior)
 - `ctr_smooth = (selects + α) / (impressions + α + β)`
-  - Example: α=1, β=20 (Anti-estroporation)
+  - 예: α=1, β=20 (초기 과대평가 방지)
 
 #### Time decay (windowed)
-- Recent 7d/30d Weight:
+- 최근 7d/30d 가중:
   - `count_7d`, `count_30d`
-  - or   TBD   (half-life standard)
+  - 또는 `exp_decay` (half-life 기준)
 
 ### 3) Storage tables (choose one for v1)
 #### Option A: MySQL aggregate tables (recommended for auditability)
@@ -62,19 +62,19 @@ New *CTR/Popularity aggregates** and reflects the result in OpenSearch(ac candid
 
 ### 6) Idempotency / replay safety
 - consumer must handle duplicates:
-  - use event id/dedup key
+  - use event_id/dedup_key (가능하면 payload에 포함)
   - (MySQL) unique constraint on (event_type, dedup_key) in a consumed-event table (optional)
-  - Minimum: Without Kafka exactly-once option “at-least-once” home + duplicate winding design
+  - 최소: Kafka exactly-once 옵션이 없으면 “at-least-once” 가정 + 중복 완화 설계
 
 ## Non-goals
 - full schema registry rollout (I-0330)
-- admin UI (only in A-0106)
+- admin UI (A-0106에서 표시만)
 
 ## DoD
-- Calculation result output as ac impression/ac select sample event in local
-- ctr smooth /popularity is reflected in OpenSearch ac candidates
-- Redis hot cache performs minimal invalidate so that it does not stale
-- A minimum protection device is applied to prevent water from exploding during the event.
+- 로컬에서 ac_impression/ac_select 샘플 이벤트로 집계 결과 산출
+- ctr_smooth/popularity가 OpenSearch ac_candidates에 반영됨
+- Redis hot cache가 stale되지 않도록 최소 invalidate 수행
+- 재실행/중복 이벤트에도 수치가 폭발하지 않도록 최소 보호장치 적용
 
 ## Observability
 - metrics:

@@ -1,46 +1,46 @@
-# I-0302 — OpenTelemetry end-to-end(trace connection)
+# I-0302 — OpenTelemetry end-to-end(trace 연결)
 
 ## Goal
-BFF → QS → SR → RS/MIS → OpenSearch/DB/Kafka
-p95/p99 creates “on one time” tracking for delays and failure causes.
+BFF → QS → SR → RS/MIS → OpenSearch/DB/Kafka 까지 **단일 trace로 연결**해서,
+p95/p99 지연과 장애 원인을 “한 번에” 추적 가능하게 만든다.
 
 ## Why
-- Unable to operate without observing the multi-service structure
-- Especially hybrid/rerank/LLM phase is required by bottlenecks often → trace
+- 멀티 서비스 구조에서 관측 없으면 운영 불가능
+- 특히 hybrid/rerank/LLM 단계는 병목이 자주 생김 → trace가 필수
 
 ## Scope
-### 1) Trace context standard
-- New  TBD  ,   TBD  ,   TBD 
-- Payment Terms:
+### 1) Trace context 표준
+- `trace_id`, `span_id`, `request_id` 규칙 확정
+- 전파 방식:
   - HTTP: W3C Trace Context(`traceparent`) + `x-request-id`
-  - Kafka: with trace context on message headers
+  - Kafka: message headers에 trace context 포함
 
 ### 2) Instrumentation
 - Spring Boot(BFF/SR/AC):
-  - OTel Java Agent or SDK Instrumentation
+  - OTel Java agent 또는 SDK instrumentation
 - FastAPI(QS):
   - OTel Python instrumentation
 - MIS:
-  - OTel Python
-- OpenSearch/DB client span included (available range)
+  - OTel Python(또는 whichever runtime) instrumentation
+- OpenSearch/DB client span 포함(가능한 범위)
 
 ### 3) Collector/Backend
-- OTel Collector + Jaeger/Tempo
-- Metrics
+- Local: OTel Collector + Jaeger/Tempo 중 택1
+- Metrics와 연계(I-0303)
 
 ### 4) Trace sampling
 - dev: 100%
-- stage/prod: head-based + error/slow return priority (e.g. tail sampling options)
+- stage/prod: head-based + 오류/슬로우 리퀘스트 우선(예: tail sampling 옵션)
 
 ## Non-goals
-- Full log correlation (Log pipeline I-0304)
-- APM Commercial Tool Integration (Optional)
+- 완전한 로그 상관관계(로그 파이프라인은 I-0304)
+- APM 상용툴 통합(선택)
 
 ## DoD
-- BFF→QS→SR→MIS
-- Kafka event also leads to trace (transfer producer→consumer connection)
-- p99 slow section can be identified as span
-- Sampling/PII Policy Default Documentation
+- 검색 요청 1건이 BFF→QS→SR→MIS까지 하나의 trace로 보임
+- Kafka 이벤트에도 trace가 이어짐(적어도 producer→consumer 연결)
+- p99 느린 구간이 span으로 식별 가능
+- 샘플링/PII 정책 기본값 문서화
 
 ## Codex Prompt
 Add end-to-end OpenTelemetry:

@@ -1,20 +1,20 @@
 # B-0268 — SR Debug/Explain API + Playground Snapshot (Score breakdown)
 
 ## Goal
-Debug/Explain API**
-Query→retrieval→fusion→rerank Before the process can be recorded/readed with “reactive form”.
+Search Service에 **Debug/Explain API**를 제공해서,
+쿼리→retrieval→fusion→rerank 전 과정을 “재현 가능한 형태”로 기록/조회할 수 있게 한다.
 
-- “Search Playground”
-- Connect with A-0124(Ricing Debug/Replay UI)
+- 개발/운영이 가능한 “검색 플레이그라운드” 기반
+- A-0124(리랭킹 디버그/리플레이 UI)와 연결
 
 ## Background
-- If Hybrid/LTR/Cross-encoder is mixed, it is impossible to improve.
-- Debug must be provided only on internal/recommended basis without having to be in compliance with actual service response.
+- Hybrid/LTR/Cross-encoder가 섞이면 “왜 이 결과가 나왔는지” 모르면 개선 불가.
+- Debug는 실서비스 응답에 무조건 넣지 않고, 내부/권한 기반으로만 제공해야 한다.
 
 ## Scope
 ### 1) Debug endpoint (internal)
 - POST `/internal/search:explain`
-  - request: regular search req +   TBD  
+  - request: 일반 search req + `debug=true`
   - response:
     - final items
     - stage breakdown
@@ -30,28 +30,28 @@ Query→retrieval→fusion→rerank Before the process can be recorded/readed wi
 - table: `playground_snapshot`
   - snapshot_id, request_id, created_by(admin_id), query_json, response_json(summary), created_at
 - size guard:
-  - store topN/topK/topR high end application
-  - raw text(long snippet)
+  - store topN/topK/topR 상한 적용
+  - raw text(긴 snippet)는 별도 truncate
 
 ### 3) Access control
-- Admin RBAC need(B-0227 link)
-- Records in audit log
+- Admin RBAC 필요(B-0227 연계)
+- audit_log에 기록
 
 ### 4) UX hooks
-- response:
-  - New  TBD   Return
-- In Admin UI:
-  - Open → replay/search:explain
+- response에:
+  - `snapshot_id` 반환
+- Admin UI에서:
+  - snapshot list → open → replay/search:explain 실행
 
 ## Non-goals
-- Admin UI(A-0124) implementation itself
-- RS debug payload(B-0252)
+- Admin UI(A-0124) 구현 자체
+- RS debug payload(B-0252) 구현 자체 (연동만)
 
 ## DoD
-- New  TBD  Implementation + Upgrading
-- Stage candidate and score breakdown
-- snapshot save/view (optional) or provide minimal replay payload
-- User Guide
+- `/internal/search:explain` 구현 + 상한 적용
+- stage별 후보와 score breakdown 제공
+- snapshot 저장/조회(옵션) 또는 최소한 replay payload 제공
+- 권한/감사로그 연결
 
 ## Observability
 - metrics:

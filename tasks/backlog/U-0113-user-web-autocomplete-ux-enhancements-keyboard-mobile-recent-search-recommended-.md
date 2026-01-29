@@ -1,56 +1,56 @@
-# U-0113 — Web User: Advanced UX (Typeahead + Keyboard/Mobile + Recent Search)
+# U-0113 — Web User: 자동완성 UX 고도화 (Typeahead + 키보드/모바일 + 최근검색)
 
 ## Goal
-You can use the "Secure-Free" button.
-- Input Instantly Recommended(autocomplete) Exposure
-- Keyboard/Mobile Complete
-- Copyright (C) 2018. All Rights Reserved.
+검색 입력 경험을 “실서비스급”으로 끌어올린다.
+- 입력 즉시 추천(autocomplete) 노출
+- 키보드/모바일 완성
+- 최근검색/추천쿼리로 재방문 효율 상승
 
 ## Why
-- AC Search Conversion Rate/CTR, Core Lever
-- We use cookies to improve your browsing experience. This website uses cookies to improve your browsing experience. By continuing to use this site, you consent to the use of cookies on your device as described in our 쿠키 정책.
+- AC는 검색 전환율/CTR의 핵심 레버
+- 운영루프(Kafka→집계→CTR)와 맞물려 품질이 계속 좋아짐
 
 ## Scope
-### 1) UI component
--  TBD   +   TBD  
-- Condition:   TBD   
-- debounce(e.g. 80~150ms), Minimum number of letters (e.g. 1~2), Cancel request (AbortController)
+### 1) UI 컴포넌트
+- 공통 `SearchBox` + `TypeaheadDropdown`
+- 상태: `idle / loading / showing / empty / error`
+- debounce(예: 80~150ms), 최소 글자수(예: 1~2), 요청 취소(AbortController)
 
-### 2) Keyboard Navigation
-- ↑/↓ Move, Choose Enter, Close Esc
-- Tab Focus
-- Price:
-  - Skip to main content
-  - Event Issue (Select/Search will be unified by BFF)
+### 2) 키보드 내비게이션
+- ↑/↓ 이동, Enter 선택, Esc 닫기
+- Tab 포커스 흐름 유지
+- 선택 시:
+  - 검색 페이지 이동 + query 반영
+  - 이벤트 발행(선택/검색은 BFF 경유로 통일될 예정)
 
-### 3) Mobile UX
-- IME(Hangle Combination) consideration: compositionstart/end processing
-- Screen Small case dropdown height/scroll optimization
-- “Search” key action unification
+### 3) 모바일 UX
+- IME(한글 조합) 고려: compositionstart/end 처리
+- 화면 작은 경우 dropdown 높이/스크롤 최적화
+- “검색” 키 동작 통일
 
-### 4) Recent Search/Recommended
-- Copyright (c) 2015 SHINSEGAE. All Rights Reserved.
-- Copyright (C) 2015. All Rights Reserved.
-- Provides “Wood/Wood”
+### 4) 최근검색/추천
+- 최근검색(로컬스토리지 1차, 추후 서버 저장 가능)
+- 최근검색 클릭 시 즉시 검색/자동완성 실행
+- “지우기/전체삭제” 제공
 
-### 5) Error/bin results processing
-- Network Error: “Review” button
-- 0 items: "Not recommended" + recent search fallback
+### 5) 에러/빈 결과 처리
+- 네트워크 에러: “재시도” 버튼
+- 0건: “추천 없음” + 최근검색 fallback
 
 ## Non-goals
-- Personalization Recommendation (based on Zir/Yur) after Phase 8
+- 개인화 추천(장르/유저 취향 기반)은 Phase 8 이후
 
 ## DoD
-- Header/Searchpage SearchBox works with the same component
-- Select/Search without UX Break in Keyboard/Mobile
-- Copyright (C) 2018. All Rights Reserved.
-- AC API calls are controlled by debounce/resolution(p95/p99 no worse)
+- 헤더/검색페이지 SearchBox가 동일 컴포넌트로 동작
+- 키보드/모바일에서 UX 깨짐 없이 선택/검색 가능
+- 최근검색이 저장/표시/삭제 가능
+- AC API 호출량이 debounce/취소로 통제됨(p95/p99 악화 없음)
 
 ## Interfaces
-- Current: QS direct-call standard   TBD 
-- Goal: BFF After Switching   TBD   BFF Single Entry Point (Phase 2)
+- 현재: QS direct-call 기준이면 `/autocomplete` 호출
+- 목표: BFF 전환 후 `/autocomplete`는 BFF 단일 진입점(Phase 2)
 
-## Files (example)
+## Files (예시)
 - `web-user/src/components/search/SearchBox.tsx`
 - `web-user/src/components/search/TypeaheadDropdown.tsx`
 - `web-user/src/lib/recentSearch.ts`

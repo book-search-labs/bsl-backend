@@ -1,64 +1,64 @@
-# B-0269 — SR Cache Layer: SERP Cache + Book Detail cache (ETag/Cache-Control) to p99 Defending
+# B-0269 — SR Cache Layer: SERP 캐시 + Book Detail 캐시(ETag/Cache-Control)로 p99 방어
 
 ## Goal
-In the Search Service/Serving section, we introduce the cache layer to stabilize**p99 delays.
+Search Service/Serving 구간에서 **p99 지연을 안정화**하기 위해 캐시 레이어를 도입한다.
 
-- New *SERP Cache**: Same   TBD   shorten the result of the combination
-- New News Book detail cache**:   TBD   To response**ETag/Cache-Control** Apply + (Optional) server cache
-- For "operation" rather than the cache: TTL short, invalidation simple
+- **SERP 캐시**: 동일한 `q_norm + filters + sort + page` 조합의 결과를 짧게 캐싱
+- **Book detail 캐시**: `/books/:id` 응답에 **ETag/Cache-Control** 적용 + (옵션) 서버 캐시
+- 캐시는 “정확도”보다 “운영”을 위해: TTL 짧게, invalidation 단순하게
 
 ## Background
-- Search by tail latency for user UX (p95/p99).
-- Hybrid + rerank + MIS call, the cost/conversion is spun.
-- Hot Quarry/Hotdos are almost solved by cache.
+- 검색은 tail latency가 사용자 UX에 치명적(p95/p99).
+- Hybrid + rerank + MIS 호출이 붙으면 비용/지연이 튄다.
+- 핫쿼리/핫도서는 캐시로 거의 해결된다.
 
 ## Scope
-### 1) SERP Cash (required)
-- Repository: Redis or in-memory Caffeine
+### 1) SERP 캐시(필수)
+- 저장소: Redis(권장) 또는 in-memory Caffeine(단일 인스턴스일 때만)
 - key:
   - `serp:{hash(q_norm + filters + sort + page + size + mode + exp_bucket + policy_version)}`
 - value:
-  - Total, agg summary, pipeline summary
+  - 결과 items(최대 size*N), total, agg 요약, pipeline 요약
 - TTL:
-  - 5~30 seconds (Basic 10 seconds) — Adjusted by traffic / freshness
+  - 5~30초(기본 10초) — 트래픽/신선도에 따라 조절
 - guard:
-  - payload size limit (e.g. 200KB)
-  - Anti-stamp cacheede(L/soft TTL optional)
+  - payload size 제한(예: 200KB)
+  - cache stampede 방지(락/soft TTL 선택)
 
-### 2 years ) Book detail (ETag/Cache-Control) (required)
-- Response Header:
+### 2) Book detail 캐시(ETag/Cache-Control) (필수)
+- 응답 헤더:
   - `ETag`: stable hash(material_id + updated_at + schema_version)
-  - New  TBD  :   TBD   (by environment)
-- Tag:
-  - If-None-Match Match → 304 Return
-- Optional (server cache):
-  - redis material id → detail payload cache (short 1~5 minutes)
+  - `Cache-Control`: `public, max-age=60` (환경별)
+- 요청 처리:
+  - If-None-Match 일치 → 304 반환
+- 옵션(서버 캐시):
+  - Redis에 material_id → detail payload 캐시(짧게 1~5분)
 
-### 3) Invalidation
-- SERP Cash:
-  - Natural Disaster with TTL Expiration (Basic)
-  - prefix flush when reindex alias swap
-- Details:
-  - New  TBD  Change to ETag changes to natural renewal
-  - Redis key delete when receiving admin update event
+### 3) Invalidation(단순화)
+- SERP 캐시:
+  - TTL 만료로 자연 소멸(기본)
+  - (선택) reindex alias swap 시 prefix flush
+- Detail 캐시:
+  - `updated_at` 변경으로 ETag가 바뀌므로 자연 갱신
+  - (선택) admin update 이벤트 수신 시 Redis key 삭제
 
 ### 4) Observability
-- hit/miss/bytes/eviction monitoring
-- Comparison before/after p99 improvement
+- hit/miss/bytes/eviction 모니터링
+- p99 개선 전/후 비교 가능
 
 ## Non-goals
-- Sophisticated cache consistency (invalidation)
-- CDN (Phase 9/I-0313~)
+- 정교한 캐시 일관성(강한 invalidation)
+- CDN 도입(Phase 9/I-0313~)
 
 ## DoD
-- SERP cache operation(hit/miss log/metric)
-- ETag/Cache-Control application + 304 processing on book detail response
-- payload size guard, stampede minimum defense
-- check p95/p99 reduction after cache adoption (with short bench)
+- SERP 캐시가 동작(hit/miss 로그/메트릭)
+- book detail 응답에 ETag/Cache-Control 적용 + 304 처리
+- payload size guard, stampede 최소 방어
+- 캐시 도입 후 p95/p99 감소 확인(간단 벤치 포함)
 
 ## Interfaces
-- Middleware
-- Redis: serp cache + detail cache
+- SR 내부: cache middleware/adapter
+- Redis(있으면): serp cache + detail cache
 
 ## Metrics/Logs
 - `sr_serp_cache_hit_total`, `sr_serp_cache_miss_total`

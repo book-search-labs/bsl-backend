@@ -1,44 +1,44 @@
-# U-0117 — Web User: Checkout UI (Select address/delivery/billing)
+# U-0117 — Web User: Checkout UI (주소/배송/결제수단 선택)
 
 ## Goal
-Please complete the checkout before order creation.
+장바구니에서 주문 생성 전 단계(Checkout)를 완성한다.
 
 ## Why
-- Steps to establish “Order Information” that you need to enter before order creation/payment integration
-- Business issues (address/shipping/research) Most of this happens here
+- 주문 생성/결제 연동 전에 사용자가 입력해야 하는 “주문 정보”를 확정하는 단계
+- 운영 이슈(주소/배송/재고) 대부분이 여기서 발생
 
 ## Scope
-### 1) Checkout step configuration
-- Step 1: Shipping
-- Step 2: Shipping options (with shipping method/promotional option)
-- Step 3: Select payment method (card/simple payment, etc. — MVP is based on “PG”.
+### 1) Checkout 단계 구성
+- Step 1: 배송지(주소)
+- Step 2: 배송 옵션(배송방법/희망일 옵션 있으면)
+- Step 3: 결제수단 선택(카드/간편결제 등 — MVP는 “모의 PG” 기준)
 
-### 2) Address UX
-- Shipping Area / Add New Shipping Area
-- Set up the shipping location
-- Form validation (required/phone number format)
+### 2) 주소 UX
+- 배송지 목록/새 배송지 추가
+- 기본 배송지 설정
+- 폼 validation(필수값/전화번호 포맷)
 
-### 3) Order Summary
-- Terms and Conditions for Overnight Stay
-- Click “Order” button   TBD  
+### 3) 주문 요약
+- 아이템 요약, 결제 예정 금액
+- “주문하기” 버튼 클릭 시 `Order 생성` 호출
 
-### 4) Error processing
-- Re-confirmation Modal when changing the lack of inventory/price
-- Copyright (c) SHINSEGAE LANGUAGE SCHOOL. All Rights Reserved.
+### 4) 에러 처리
+- 재고 부족/가격 변경 시 재확인 모달
+- 서버 에러 시 재시도/리프레시 안내
 
 ## Non-goals
-- Membership/Coupon/Promotion Complex Logic
+- 회원등급/쿠폰/프로모션 복잡 로직
 
 ## DoD
-- Checkout to address/delivery/delivery checkout to order creation
-- validation and error handling
+- Checkout에서 주소/배송/결제수단 선택 후 주문 생성까지 정상 동작
+- validation 및 에러 핸들링 완비
 
 ## Interfaces
-- New  TBD   (Term Data)
-- New  TBD   (Order creation)
-- (Option)   TBD  
+- `GET /checkout` (요약 데이터)
+- `POST /orders` (주문 생성)
+- (옵션) `GET/POST /addresses`
 
-## Files (example)
+## Files (예시)
 - `web-user/src/pages/checkout/CheckoutPage.tsx`
 - `web-user/src/components/checkout/AddressForm.tsx`
 - `web-user/src/components/checkout/PaymentMethodSelect.tsx`

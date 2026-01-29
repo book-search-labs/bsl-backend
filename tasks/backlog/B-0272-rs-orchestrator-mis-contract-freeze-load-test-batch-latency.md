@@ -1,62 +1,62 @@
-# B-0272 — RS(orchestrator) ↔ MIS contract fixed + load test (batch/latency) + Canary-ready
+# B-0272 — RS(orchestrator) ↔ MIS 계약 고정 + 부하테스트(배치/latency) + Canary-ready
 
 ## Goal
-Ranked Service (RS) Fixed the contract (Contract) to call MIS stably,
-**Return test/Return test**
+Ranking Service(RS)가 MIS를 안정적으로 호출하도록 **계약(Contract)을 고정**하고,
+운영 기준의 **부하 테스트/회귀 테스트**를 붙인다.
 
-- RS concentrating on syntion/feature assembly
-- MIS focuses on inference (embedding/rerank)
-- If the contract is broken, stop at CI (compat gate link B-0226)
+- RS는 orchestration/feature assembly에 집중
+- MIS는 inference(embedding/rerank)에 집중
+- 계약이 깨지면 CI에서 막는다(compat gate는 B-0226 연계)
 
 ## Background
-- “Model server” is often changed (version/latest/schedule).
-- RS↔MIS does not fix the contract, and there is a failure during operation.
-- SR is degrade when over latency budget, so performance tests are required.
+- “모델 서버”는 자주 바뀐다(버전/최적화/스케일).
+- RS↔MIS는 계약을 고정하지 않으면 운영 중 장애가 난다.
+- latency budget을 넘으면 SR이 연쇄 degrade 되므로, 성능 테스트가 필수.
 
 ## Scope
 ### 1) Contract definition
-- OpenAPI(or JSON Schema)
+- OpenAPI(or JSON Schema)로:
   - `/v1/score` req/res
-  - Skimming
-  - Model List( TBD  )
+  - 에러 스키마
+  - 모델 목록(`/v1/models`)
 - versioning:
-  - major/minor rules
-  - Disconnecting change
+  - major/minor 규칙
+  - breaking change 차단
 
 ### 2) RS integration
-- In RS:
-  - candidate topR preparation (field limit + best chunk included)
-  - MIS call timeout setting
-  - fallback rule when failure(maintain original order without point)
-- request id/trace id
+- RS에서:
+  - 후보 topR 준비(필드 제한 + best_chunk 포함)
+  - MIS 호출 timeout 설정
+  - 실패 시 fallback 규칙(점수 없이 원래 순서 유지 등)
+- request_id/trace_id 전파
 
-### 3) Load test suite (required)
+### 3) Load test suite (필수)
 - tool:
-  - k6 / locust / vegeta threesome 1
-- Skills News
+  - k6 / locust / vegeta 중 1
+- 시나리오:
   - topR=20/50/100
-  - Persimmonity 1/5/20/50
-  - timeout bound test
-- Payment Terms:
+  - 동시성 1/5/20/50
+  - timeout 경계 테스트
+- 산출물:
   - p50/p95/p99 latency
   - error rate
   - throughput
-  - CPU/RAM usage (simplified record)
+  - CPU/RAM 사용량(간단 기록)
 
-### 4) Canary-ready hooks
--  TBD   can be specified in request
-- or header   TBD  
-- (Real routing B-0274)
+### 4) Canary-ready hooks (준비만)
+- request에 `model_version` 지정 가능
+- 또는 header로 `x-model-version`
+- (실제 routing은 B-0274)
 
 ## Non-goals
-- Implementation of Model Registry Routing(=B-0274)
-- SR fallback full policy(=B-0273)
+- 모델 레지스트리 라우팅 구현(=B-0274)
+- SR의 fallback 전체 정책(=B-0273)
 
 ## DoD
-- RS↔MIS contract file exists in repo and validated in CI
-- RS + timeout + fallback processing completed
-- Load Test Report (Markdown)
-- latency budget stipulated (includes knobs guide in the standard migration)
+- RS↔MIS contract 파일이 repo에 존재하고 CI에서 검증됨
+- RS가 MIS 호출 + timeout + fallback 처리 완료
+- 부하 테스트 리포트(마크다운) 생성
+- latency budget 충족 여부 명시(기준 미달 시 knobs 안내 포함)
 
 ## Codex Prompt
 Lock RS↔MIS contract and performance:

@@ -1,46 +1,46 @@
-# B-0301 — Agent authority (lower notation strain) Normalization Altitude + alias pre-operation
+# B-0301 — Agent authority(저자 표기 변형) 정규화 고도화 + alias 사전 운영화
 
 ## Goal
-The author's name is “Kim Young-ha”, which solves the problems that are marked variously.
-- Search Matching Stabilization (title/author field)
-- Reduction of uniform results
-- Recommendation/Entipreneurship Improvement
+저자명이 “김영하/金英夏/Kim Young-ha”처럼 다양하게 표기되는 문제를 해결해
+- 검색 매칭 안정화(title/author 필드)
+- 중복 결과 감소
+- 추천/랭킹 피처의 엔티티 정합성 개선
 
 ## Scope
 ### 1) Agent canonicalization
-- New  TBD  Certificate
-- New  TBD   table introduction (or existing structure extension):
+- `agent.canonical_name` 생성
+- `agent_alias` 테이블 도입(또는 기존 구조 확장):
   - `agent_id`, `alias`, `alias_norm`, `source`, `confidence`, `created_at`
 
-### 2) Alias creation logic (based on the initial rule)
+### 2) Alias 생성 로직(초기 규칙 기반)
 - normalize rules:
-  - NFKC/Public bag/Public store removal, Lower English, Korean/English conversion options
-- Payment Terms:
-  - NLK source attributes (multi-language labels)
-  - Rule-based strains (whispering/hardening)
-  - Operator Manual Registration (Admin UI from A-0130)
+  - NFKC/공백/구두점 제거, 영문 lower, 한자/한글 변환은 옵션
+- 생성 소스:
+  - NLK 원천 속성들(다국어 라벨)
+  - 규칙 기반 변형(띄어쓰기/하이픈)
+  - 운영자 수동 등록(Admin UI는 A-0130에서)
 
-### 3) Using Search/Query extension
+### 3) Search/Query 확장 사용
 - QS:
-  - Detect “author intent” allows the alias candidate to expand hints
+  - detect “author intent” 시 alias 후보를 expand 힌트로 제공
 - SR:
-  - alias alias
+  - author 필드 검색 시 alias를 함께 매칭
 - Index:
-  - book doc   TBD  or   TBD   + join Strategy(optional)
+  - books_doc에 `author_aliases[]` 또는 `author_id` + join 전략(선택)
 
 ### 4) Quality guard
-- Payment Terms:
-  - low alias boost
-  - Operational Queue when collision (alias maps multiple agent)
+- 과확장 방지:
+  - confidence 낮은 alias는 boost 낮게
+  - 충돌(alias가 여러 agent로 매핑) 시 운영 큐로
 
 ## Non-goals
-- Massive external authority DB integration (VIAF, etc.) — follow
-- Fully automatic disambiguation(manual perfect solution)
+- 대규모 외부 authority DB 통합(VIAF 등) — 추후
+- 완전 자동 disambiguation(동명이인 완벽 해결)
 
 ## DoD
-- agent alias
-- Improved the notational case in the author search (Sample query regression)
-- Collision/Expansion alias drops queue and operators can check (A-0130 connection)
+- agent_alias가 생성/조회 가능
+- author 검색에서 표기 변형 케이스가 개선됨(샘플 쿼리 회귀)
+- 충돌/불확실 alias가 큐로 떨어지고 운영자가 확인 가능(A-0130 연결)
 
 ## Codex Prompt
 Implement agent authority and alias dictionary:

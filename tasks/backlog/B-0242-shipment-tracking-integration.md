@@ -1,16 +1,16 @@
 # B-0242 — Shipment/Tracking (shipment/shipment_item/shipment_event) + carrier status updates
 
 ## Goal
-We will implement order shipping/delivery tracking in operation.
+주문 출고/배송 추적을 운영형으로 구현한다.
 
-- From shipment creation (exit preparation) to invoice registration and delivery status update
-- Tracking status change to event event
-- v1: Mock carrier update/manual update
-- v2: Actual courier API polling/webhook expandable structure
+- shipment 생성(출고 준비)부터 송장(tracking) 등록, 배송 상태 업데이트까지
+- 이벤트(shipment_event)로 상태 변경 추적
+- v1: Mock carrier 업데이트/수동 업데이트
+- v2: 실제 택배사 API 폴링/웹훅 확장 가능 구조
 
 ## Background
-- Shipping is an external system, causing delay/return/purchase problem.
-- Before order status, it is linked with a shipment status, and requires a tracking log for CS response.
+- 배송은 외부 시스템이므로 지연/중복/순서 문제 발생.
+- 주문 상태 전이는 shipment 상태와 연동되며, CS 대응을 위해 추적 로그가 필요.
 
 ## Scope
 ### 1) Data model (recommended)
@@ -37,12 +37,12 @@ We will implement order shipping/delivery tracking in operation.
 ### 2) APIs
 - POST `/api/v1/shipments` (create)
   - body: { order_id, items[] }
-  - validate: order.status=PAID or READY TO SHIP policy
+  - validate: order.status=PAID or READY_TO_SHIP 정책
   - create shipment READY + event
 - POST `/api/v1/shipments/{shipmentId}/tracking`
   - body: { carrier_code, tracking_number }
   - status: READY → SHIPPED, set shipped_at, event append
-  - SHIPPED
+  - also update order.status = SHIPPED or READY_TO_SHIP → SHIPPED (정책 고정)
 - POST `/api/v1/shipments/{shipmentId}/mock/status`
   - body: { status: IN_TRANSIT|DELIVERED }
   - update shipment status + event
@@ -50,24 +50,24 @@ We will implement order shipping/delivery tracking in operation.
 
 ### 3) Carrier integration (v2 extension points)
 - Poller job:
-  - tracking number lists periodically view
-  - If you have a status change, send event append + status before
+  - tracking_number 목록을 주기적으로 조회
+  - 상태 변화가 있으면 shipment_event append + 상태 전이
 - Webhook:
-  - idempotency(provider event id)
+  - carrier webhook 수신, 서명 검증, idempotency(provider_event_id)
 
 ### 4) Idempotency
-- (carrier code + tracking number) unique (optional)
-- status update event id or (shipment id + status + timestamp) dedup
+- tracking 등록은 (carrier_code + tracking_number) unique (optional)
+- status update는 provider_event_id 또는 (shipment_id + status + timestamp) dedup
 
 ## Non-goals
-- Return/Exchange Full Flow (Extra)
-- Multiple shipments/part shipments (extra; v1 can be 1 order = 1 shipment)
+- 반품/교환 전체 플로우(추후)
+- 다중 shipment/부분 배송(추후; v1은 1 order = 1 shipment 가정 가능)
 
 ## DoD
-- Create / Register / Status Update Operation
-- shipment event Customizable
-- Send your inquiry directly to us
-- DELIVERED Scenario E2E possible with mock status
+- shipment 생성/송장 등록/상태 업데이트 동작
+- shipment_event로 추적 가능
+- order 상태 전이가 shipment와 일관되게 동작
+- mock status로 DELIVERED 시나리오 E2E 가능
 
 ## Observability
 - metrics:

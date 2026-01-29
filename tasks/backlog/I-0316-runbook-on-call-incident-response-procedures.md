@@ -1,51 +1,51 @@
-# I-0316 — Runbook / On-call (Disability Procedure)
+# I-0316 — Runbook / On-call (장애 대응 절차)
 
 ## Goal
-When an error occurs during the operation, you can follow “Which look”
-New *Runbook + On-call standard**
+운영 중 장애가 발생했을 때 “누가 봐도” 따라 할 수 있는
+**Runbook(대응 절차) + On-call 기준**을 문서화한다.
 
 ## Why
-- The castle of the operation goes from the "return speed/consultation" than the code
-- BSL has a lot of services, and it is complex to track the cause of failure.
+- 운영의 성패는 코드보다 “복구 속도/일관성”에서 갈림
+- BSL은 서비스가 많아서, 장애 시 원인 추적이 복잡해짐
 
 ## Scope
-### 1) Common Runbook
+### 1) 공통 Runbook
 - Incident triage:
-  - 1) Symptom Classification(5xx/timeout/0-results/latency spike)
-  - 2) Impact range (specific API? FAQs
-  - (degrade mode, feature flag off, rerank off, hybrid off)
-- Log/Trace Make Order:
-  - end-to-end tracking with request id/trace id
-- Rollback Procedure:
-  - Distribution Rollback(I-0315 Link)
-  - Model Rollback(B-0274 Link)
-  - Index alias rollback(B-0223/0224)
+  - 1) 증상 분류(5xx/timeout/0-results/latency spike)
+  - 2) 영향 범위(특정 API? 특정 서비스?)
+  - 3) 즉시 완화(degrade 모드, feature flag off, rerank off, hybrid off)
+- 로그/트레이스 확인 순서:
+  - request_id/trace_id로 end-to-end 추적
+- 롤백 절차:
+  - 배포 롤백(I-0315 연계)
+  - 모델 롤백(B-0274 연계)
+  - 인덱스 alias 롤백(B-0223/0224 연계)
 
-### 2) Runbook by Scenario (min.)
-- OpenSearch Disorder:
+### 2) 시나리오별 Runbook(최소)
+- OpenSearch 장애/지연:
   - degraded(bm25-only, cached SERP)
-  - query timeout tuning
-- Kafka delay/DLQ increase:
-  - outbox backlog processing
-  - replayer execution(Phase 10/I-0340 connection)
-- MIS Disorder:
-  - rerank off → fusion result return
-- ETL ETL /Index job failed:
-  - job run confirmation → Ashdo → Snapshot/Restore(I-0308 Link)
+  - query timeout 튜닝
+- Kafka 지연/DLQ 증가:
+  - outbox backlog 처리
+  - replayer 실행(Phase 10/I-0340 연계)
+- MIS 장애:
+  - rerank off → fusion 결과 반환
+- ETL/Index job 실패:
+  - job_run 확인 → 재시도 → 스냅샷/복구(I-0308 연계)
 
-### 3) On-call standard (simplified)
-- Tag:
+### 3) On-call 기준(간단)
+- 알람 기준:
   - error rate, p99 latency, 0-results rate, outbox backlog, consumer lag
 - Escalation:
-  - Who/Any Order/Any Information Included
+  - 누구에게/어떤 순서로/어떤 정보 포함
 
 ## Non-goals
-- 24/7 Practical operation (Documentation center at Portfolio phase)
+- 24/7 실제 당직 운영(포트폴리오 단계에서는 문서화 중심)
 
 ## DoD
-- New  TBD  write
-- Min. 3 Disability Scenario Rehearsal (Local/Stage)
-- “Rerank/hybrid/2-pass” list and method included in the document
+- `docs/RUNBOOK.md` 작성
+- 최소 3개 장애 시나리오 리허설(로컬/스테이징)
+- “즉시 완화 토글”(rerank/hybrid/2-pass) 목록과 방법이 문서에 포함
 
 ## Codex Prompt
 Create operational runbooks:

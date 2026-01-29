@@ -1,53 +1,53 @@
 # B-0264 — QS Query Cache (normalize cache + enhance cache) for cost reduction
 
 ## Goal
-QS introduces cache to reduce repeated request costs.
+QS에서 반복되는 요청 비용을 줄이기 위해 캐시를 도입한다.
 
 - **Normalize cache**: q_raw→q_norm/q_nospace/detected/canonicalKey
-- New *Enhance cache**: q norm+reason→spell/rewrite/final(Single, TTL/cooldown consideration)
-- The cache will be operated as "short TTL + versioned key" to avoid correctness.
+- **Enhance cache**: q_norm+reason→spell/rewrite/final (단, TTL/쿨다운 고려)
+- 캐시는 correctness를 해치지 않도록 “짧은 TTL + versioned key”로 운영한다.
 
 ## Background
-- Search traffic has many head queries (Zipf),
-Normalize/enhance results increase reuse value.
-- Especially the LLM/T5 result is a large savings effect of cache hit due to expensive size.
+- 검색 트래픽은 헤드 쿼리가 많고(Zipf),
+  normalize/enhance 결과는 재사용 가치가 높다.
+- 특히 LLM/T5 결과는 비용이 크기 때문에 cache hit가 큰 절감 효과.
 
 ## Scope
 ### 1) Cache store
-- Redis
-- key design includes:
+- Redis 사용
+- key design은 반드시 version 포함:
   - `qs:norm:v1:{hash(q_raw|locale)}`
   - `qs:enh:v1:{hash(q_norm|reason|locale|policy_version?)}`
 
 ### 2) TTL policy (v1)
-- Normalize cache: 1~24h (Hot quarry reuse high)
-- Enhance cache: 10m~2h (change/drop consideration)
-- negative cache (optional): “enhance skip/deny” short cache(1~5m)
+- normalize cache: 1~24h (핫쿼리 재사용 높음)
+- enhance cache: 10m~2h (변화/드리프트 고려)
+- negative cache(옵션): “enhance skip/deny”도 짧게 캐시(1~5m)
 
 ### 3) Cache correctness
 - invalidate strategy:
-  - normalize Bump to v2 when the rule/version changes
-  - If synonym set or alias pre-version changes, reflect enhance cache key(optional)
+  - normalize 규칙/버전 변경 시 v2로 bump
+  - synonym_set이나 alias 사전 버전이 바뀌면 enhance cache key에 반영(옵션)
 - payload size guard:
-  - Maximum bytes limit + compression(optional)
+  - 최대 bytes 제한 + 압축(선택)
 
 ### 4) Integration points
 - /query/prepare:
-  - cache hit → instant return
-  - set after calculation
+  - 캐시 hit → 즉시 반환
+  - miss → 계산 후 set
 - /query/enhance:
-  - Check “deny cache” before gating decision (optional)
-  - RUN when only enhance cache lookup → hit when running
+  - gating decision 전에 “deny cache” 확인(옵션)
+  - RUN일 때만 enhance cache lookup → hit면 실행 생략
 
 ## Non-goals
-- SR SERP cache(B-0269)
+- SR의 SERP cache(B-0269)
 - Global governor(B-0306)
 
 ## DoD
-- Normalize cache is running and hit rate metric
-- Enhance cache runs and LLM/T5 calls are reduced as hit
-- You can roll out the version in key safely
-- service top degrade even in cache failure(Redis down)
+- normalize cache가 동작하고 hit rate metric이 나온다
+- enhance cache가 동작하고 LLM/T5 호출이 hit만큼 감소한다
+- key에 version이 포함되어 안전하게 롤아웃 가능
+- cache failure(Redis down)에서도 서비스는 정상 degrade
 
 ## Observability
 - metrics:

@@ -1,27 +1,27 @@
 # A-0124 — Admin Failure Case + Rerank Debug + Replay UI (Search/RAG)
 
 ## Goal
-Search/Licing/RAG's **Providing operation UI that collects, analyzes, and rehabilitation**.
-- 0 results / low confidence / timeout / etc.
-- Pipe Step-by-step score breakdown check
-- Replayable Debugging Loop
+검색/리랭킹/RAG의 **실패 케이스를 수집·분석·재현**하는 운영 UI 제공.
+- 0 results / low confidence / timeout / 이상치 등
+- pipeline 단계별 score breakdown 확인
+- 재실행(replay)로 재현 가능한 디버깅 루프 구축
 
 ## Background
-- Quality issues in operating environments are key to “recurable”
-- RS/MIS/LTR tuning will be reduced without failure case.
+- 운영 환경에서 품질 이슈는 “재현 가능성”이 핵심.
+- RS/MIS/LTR 튜닝은 실패 케이스가 없으면 감으로 하게 된다.
 
 ## Scope
 ### 1) Failure Case List
-- Type News
+- 타입:
   - SEARCH_ZERO_RESULTS
   - SEARCH_LOW_CONFIDENCE
   - RERANK_TIMEOUT / MIS_TIMEOUT
   - HYBRID_VECTOR_FAILURE
   - RAG_UNGROUNDED / MISSING_CITATION
-- Payment Terms:
+- 표시 필드:
   - created_at, request_id, trace_id, session_id
   - query(q_raw/q_norm), filters, pipeline flags
-  - error code, latency breakdown
+  - error_code, latency breakdown(가능하면)
 
 ### 2) Failure Case Detail
 - Request snapshot
@@ -29,25 +29,25 @@ Search/Licing/RAG's **Providing operation UI that collects, analyzes, and rehabi
   - pipeline config(bm25/hybrid/rrf/rerank model)
 - Result snapshot
   - retrieval topN, fusion topM, rerank topK
-  - Stage Score/Purity/Utilization Code
-- Log link: trace/span, raw json
+  - stage별 점수/순위/이유 코드
+- 로그 링크(선택): trace/span, raw json
 
 ### 3) Playground (Run)
-- Restart operators change parameters:
+- 운영자가 파라미터를 바꿔 재실행:
   - mode: bm25-only / hybrid
-  - fusion: rrf / weighted (optional)
-  - rerank: off/ltr/cross-encoder (select model version)
+  - fusion: rrf / weighted (옵션)
+  - rerank: off / ltr / cross-encoder (모델 버전 선택)
   - budgets: topN/topM/topK
-- Results comparison:
-  - before/after NDCG proxy(simplified), top10 change display
+- 결과 비교(diff):
+  - before/after NDCG proxy(간이), top10 변화 표시
 
 ### 4) Replay
-- execute request id based replay
-- replay results save as “new playground run”
+- request_id 기반 replay 실행
+- replay 결과를 “새 playground_run”으로 저장
 
 ## Non-goals
-- SR/RS internal debug implementation (B-0268/B-0252)
-- Model Study Pipeline(B-0294)
+- SR/RS 내부 디버그 구현 자체(B-0268/B-0252)
+- 모델 학습 파이프라인(B-0294)
 
 ## Data / API (via BFF)
 - `GET /admin/debug/failures?type=...&from=...&to=...`
@@ -61,16 +61,16 @@ Search/Licing/RAG's **Providing operation UI that collects, analyzes, and rehabi
 - playground_run(run_id, actor_admin_id, config_json, result_json, created_at)
 
 ## Security / Audit
-- replay/run is an audit log record (operation risk)
-- Model version selection requires RBAC permission (optional)
+- replay/run은 audit_log 기록(운영 위험)
+- 모델 버전 선택은 RBAC 권한 필요(선택)
 
 ## DoD
-- Failure case can be reproduced as request id
-- Step-by-step results/replace breakdown can be checked
-- You can change the settings and re-run comparison
-- RBAC + Audit
+- 실패 케이스를 request_id로 재현 가능
+- 단계별 결과/점수 breakdown 확인 가능
+- 설정 변경 후 재실행 비교까지 가능
+- BFF 경유 + RBAC + audit_log
 
 ## Codex Prompt
-Implement Failure Case/Playground/Replay UI in Admin(React).
-Provide a playground, request id replay, which will change the pipeline option.
-The result shows the breakdown by stage and uses the BFF API only.
+Admin(React)에서 Failure Case/Playground/Replay UI를 구현하라.
+실패 케이스 리스트/상세, pipeline 옵션을 바꿔 실행하는 playground, request_id replay를 제공하라.
+결과는 stage별 breakdown으로 보여주고 BFF API만 사용하라.

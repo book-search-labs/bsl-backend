@@ -1,23 +1,23 @@
 # B-0263 — QS Rewrite Quality Loop (before/after logging + failure curation)
 
 ## Goal
-QS’ spell/rewrite/understanding quality can be improved by “operating loop”,
-New *Compared log** and **Secret Case Curation** Creates pipeline.
+QS의 spell/rewrite/understanding 품질을 “운영 루프”로 개선할 수 있도록,
+**전/후 비교 로그**와 **실패 케이스 큐레이션** 파이프라인을 만든다.
 
-- Track rewrite/spell actually helps(0→>0, improve score)
-- Enable reproduction/analysis (A-0124 linkage) by collecting failure cases
+- rewrite/spell이 실제로 도움이 되는지(0→>0, score 개선)를 추적
+- 실패 케이스를 모아서 Admin에서 재현/분석(A-0124 연계) 가능하게
 
 ## Background
-- LLM/T5 outputs “like”, but can also spoil the search quality
-- Quality improvement must:
-  - (1) Record/after application
-  - (2) Collect failure
-  - (3) Modify rules/prompt/model
-  - (4) You need a cycle to stop again with regression test
+- LLM/T5는 “그럴듯한” 출력을 내지만 검색 품질을 망칠 수도 있음
+- 품질 개선은 반드시:
+  - (1) 적용 전/후를 기록하고
+  - (2) 실패를 모아
+  - (3) 룰/프롬프트/모델을 수정
+  - (4) 회귀 테스트로 다시 막는 사이클이 필요
 
 ## Scope
 ### 1) Compare log schema (DB or OLAP)
-- Table (Ticket: MySQL)   TBD   (v1)
+- 테이블(권장: MySQL) `query_rewrite_log` (v1)
   - `id` PK
   - `request_id`, `trace_id`, `session_id?`
   - `q_raw`, `q_norm`, `canonicalKey`
@@ -28,38 +28,38 @@ New *Compared log** and **Secret Case Curation** Creates pipeline.
   - `final`: { q_final, strategy }
   - `before`: { total_hits, top_score, score_gap }
   - `after`: { total_hits, top_score, score_gap }
-  - New  TBD  : boolean (SR adopted)
+  - `accepted`: boolean (SR이 채택했는지)
   - `failure_tag`: enum (if any)
   - timestamps
 
-> before/after values are callbacked to QS,
-> SR is self-directed to   TBD   and can be used as request id.
-> (Indeed, the SR side log is more natural, and QS is left around the "life information")
+> before/after 값은 SR이 계산한 결과를 QS로 콜백하거나,
+> SR이 자체적으로 `search_attempt_log`에 남기고 request_id로 조인해도 됨.
+> (현실적으로는 SR 쪽 로그가 더 자연스럽고, QS는 “생성 정보” 중심으로 남겨도 됨)
 
 ### 2) Failure curation rules (v1)
-Automatic Tagging:
+자동 태깅(예시):
 - `NO_IMPROVEMENT`: after.total_hits == 0 or top_score not improved
-- New  TBD  : Editing Distance Transitions / Total Transformation
-- New  TBD  : Author/Title moved to another entity (simplified humorous)
-- New  TBD  : SHIMA MI JUNIOR
+- `OVER_CORRECTION`: 편집거리 과도/토큰 변화 과도
+- `ENTITY_DRIFT`: 저자/제목이 다른 엔티티로 이동(간단 휴리스틱)
+- `LLM_INVALID_JSON`: 스키마 미준수
 - `TIMEOUT`: stage timeout
-- New  TBD  : skip to gating
+- `COOLDOWN_SKIP`: gating으로 skip
 - `LOW_CONF_OUTPUT`: conf below threshold
 
 ### 3) Export for Admin replay
-- API(Internal) that allows you to pull the shield case TopN
+- “실패 케이스 TopN”을 뽑을 수 있게 조회 API(내부)
   - `/internal/qc/rewrite/failures?from=...&limit=...`
-- Enable reproduction in A-0124 Playground as payload
+- payload를 그대로 A-0124 Playground에 넣어 재현 가능하게
 
 ## Non-goals
-- Admin UI implementation(A-0124)
-- Offline eval revolving(B-0295) (but used as the seed of failure set)
+- Admin UI 구현(A-0124)
+- Offline eval 회귀(B-0295) (하지만 failure set의 seed로 사용)
 
 ## DoD
-- When running rewrite/spell, the minimum log required before/after comparison is left
-- failure tag is automatically filled (more than 5 basics)
-- can generate replay payload recreated with request id
-- You can calculate “rewrite accept rate”
+- rewrite/spell 실행 시 전/후 비교에 필요한 최소 로그가 남는다
+- failure_tag가 자동으로 채워진다(기본 5종 이상)
+- request_id로 재현 가능한 replay payload를 생성할 수 있다
+- “rewrite_accept_rate”를 계산할 수 있다(지표 존재)
 
 ## Observability
 - metrics:

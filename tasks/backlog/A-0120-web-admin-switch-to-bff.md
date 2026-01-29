@@ -1,33 +1,33 @@
-# A-0120 — Web Admin: Convert API calls to BFF
+# A-0120 — Web Admin: API 호출을 BFF로 전환(무중단)
 
-## Goalkeeper
-- Web Admin(5173)'s API call is pointed to the BFF single entry point**.
-- Admin function (ops/reindex/policy/experiment/products, etc.) will endanger BFF.
-- In the transition process, it can be recovered directly to fallback (short, Admin is conserved).
+## 목표
+- Web Admin(5173)의 API 호출을 **BFF 단일 진입점**으로 점진 전환한다.
+- Admin 기능(ops/reindex/policy/experiment/products 등) 전부가 최종적으로 BFF를 경유한다.
+- 전환 과정에서 장애/지연 시 direct fallback으로 복구 가능(단, Admin은 보수적으로 적용).
 
-## Scope(Scope)
-- Change all server API calls to BFF
-  - ops task / reindex
+## 범위(Scope)
+- Admin이 호출하는 모든 서버 API를 BFF로 변경
+  - Ops: job_run / ops_task / reindex 관련
   - Policies/Experiments
-  - Catalog/Product(with Phase 8)
-- Tag:
+  - Catalog/Product(Phase 8 포함 시)
+- 무중단 토글:
   - `VITE_ADMIN_API_MODE=bff_primary | bff_only`
-  - direct fallback(optional): Allows for read-only screen, write/execute recommended fallback
+  - direct fallback(선택): read-only 화면에 한해 허용, write/execute는 fallback 금지 권장
 
-## Copyright (c) 2014. All Rights Reserved.
-- New *READ series(list/detail)**: Allows direct fallback when BFF failed
-- New *WRITE/EXECUTE family (reindex execution/policy change/distribution/rollback)**: fallback ban
-  - Reason: The operation risk operation should always be done by BFF, Auth/RBAC/Audit/RateLimit
+## 무중단 정책(권장)
+- **READ 계열(list/detail)**: BFF 실패 시 direct fallback 허용
+- **WRITE/EXECUTE 계열(reindex 실행/정책 변경/배포/롤백)**: fallback 금지
+  - 이유: 운영 위험 작업은 항상 BFF의 Auth/RBAC/Audit/RateLimit을 거쳐야 함
 
 ## DoD
-- [ ] All API calls for Admin BFF priority
-- [ ] read-only can be fallback when disability, write/execute refuse fallback
-- [ ] Direct-call removal from prod
-- New News Admin hazards work is only called as a route left in audit log(B-0227 Integration)
+- [ ] Admin의 모든 API 호출이 BFF 우선
+- [ ] read-only는 장애 시 fallback 가능, write/execute는 fallback 금지
+- [ ] prod에서 direct-call 제거 가능
+- [ ] Admin 위험 작업은 audit_log에 남는 경로로만 호출됨(B-0227 연동)
 
 ## Codex Prompt
-Convert all API calls from Web Admin(5173) to BFF.
-- bff primary/bff only mode with env toggle.
-- read-only call only fallback allowed, write/execute implement fallback ban.
-- ops/policy/experiment/products
--  TBD   and add the operation transition/rollback document.
+Web Admin(5173)에서 모든 API 호출을 BFF로 무중단 전환하라.
+- env toggle로 bff_primary/bff_only 모드를 제공하라.
+- read-only 호출만 fallback 허용, write/execute는 fallback 금지로 구현하라.
+- ops/policy/experiment/products 등 모든 API 호출을 API client 레이어로 통일하라.
+- `.env.example`와 운영 전환/rollback 문서를 추가하라.

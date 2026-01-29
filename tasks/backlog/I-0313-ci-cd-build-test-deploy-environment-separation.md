@@ -1,52 +1,52 @@
-# I-0313 — CI/CD (Build/Test/Distribution) + Separate Environment
+# I-0313 — CI/CD (빌드/테스트/배포) + 환경 분리
 
 ## Goal
-Multi-Service (BFF/QS/SR/AC/RS/MIS + Web User/Admin)
-New * Build a consistent CI pipeline** and separate dev/stage/prod environment.
+멀티 서비스(BFF/QS/SR/AC/RS/MIS + Web User/Admin)에 대해
+**일관된 CI 파이프라인**을 구축하고 dev/stage/prod 환경을 분리한다.
 
 ## Why
-- We will continue to change to the ticket unit. If the distribution is manual, it is impossible to operate.
-- To attach Contract/E2E/Offline eval gate, CI should be based on
+- 티켓 단위로 계속 변경되는데 배포가 수동이면 운영이 불가능
+- Contract/E2E/Offline eval gate를 붙이려면 CI가 기반이 되어야 함
 
 ## Scope
-### 1) CI (Pull Request)
-- Backend:
+### 1) CI (Pull Request 기준)
+- Backend(각 서비스):
   - lint/format
   - unit test
   - build (jar/wheel/image)
-  - contract test
-  - API E2E Smoke(Expiration: I-0310)
+  - contract test(연계: B-0226)
+  - API E2E smoke(연계: I-0310)
 - Frontend(User/Admin):
   - typecheck/lint
   - build
-  - Playwright smoke(optional)
+  - (선택) Playwright smoke
 
 ### 2) Artifact build
-- Docker image build + tag strategy
+- Docker image build + tag 전략
   - `service:gitsha`, `service:semver`
-- Image Registry Push (Personal/Project Registry)
+- 이미지 레지스트리 푸시(개인/프로젝트 레지스트리)
 
-### 3) Environmental separation
-- dev/stage/prod stars:
+### 3) 환경 분리
+- dev/stage/prod 별:
   - config(.env / values / secrets)
   - base URL(CORS), rate limit, feature flag
   - observability endpoint
-- Distribution target stage first, prod after verification
+- 배포 대상도 stage 먼저, 검증 후 prod(승격)
 
-### 4) CD (Optional / Pointed)
+### 4) CD (선택/점진)
 - stage:
-  - push → deploy automatic
+  - push → deploy 자동
 - prod:
-  - manual approve or tag based release
+  - manual approve 또는 tag 기반 release
 
 ## Non-goals
-- GitOps/ArgoCD
-- Multi-cylinder/multi-cylinder(add)
+- 완전한 GitOps/ArgoCD(추후)
+- 멀티클러스터/멀티리전(추후)
 
 ## DoD
-- When creating a PR, CI automatically turns, merge blocks when failed
-- Main merge or tag automatic until stage distribution (min.)
-- Distribution Log/Version Tracking (What is your commit in)
+- PR 생성 시 CI가 자동으로 돌고, 실패 시 merge 차단
+- main merge 또는 tag 시 stage 배포까지 자동(최소)
+- 배포 로그/버전 추적 가능(어느 커밋이 어떤 환경에 있는지)
 
 ## Codex Prompt
 Set up CI/CD:

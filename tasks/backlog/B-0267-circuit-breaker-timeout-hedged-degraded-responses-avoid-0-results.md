@@ -1,17 +1,17 @@
-# B-0267 — SR Reliability: Circuit Breaker / Timeout / Hedged + Degraded Response (Not available)
+# B-0267 — SR Reliability: Circuit Breaker / Timeout / Hedged + Degraded Response(0건 방지)
 
 ## Goal
-Search Service is made by the operational type.
+Search Service를 운영형으로 “안 죽게” 만든다.
 
-- <% if (imgObj.width >= imgObj.height) { %>
-- Circuit Breaker + Bulkhead
-- hedged request(optional): Run secondary path when slowing
-- partial failures**best-effort results** Returns(0 prevent)
-- degrade reason response / log / record on event
+- stage별 timeout budget 강제(BM25 / embedding / kNN / rerank)
+- 서킷브레이커 + bulkhead(동시성 제한)
+- hedged request(선택): 느릴 때 보조 경로 실행
+- partial failure라도 **best-effort 결과** 반환(0건 방지)
+- degrade reason을 응답/로그/이벤트에 기록
 
 ## Background
-- hybrid pipelines are more dependable and fails.
-- In operation, it is important to “unfinished results” than “unload response and record degrade”.
+- hybrid 파이프라인은 의존성이 많아 부분 실패가 흔함.
+- 운영에서는 “완벽한 결과”보다 “응답을 내고 degrade를 기록”하는게 중요.
 
 ## Scope
 ### 1) Timeout budgets (example defaults)
@@ -19,29 +19,29 @@ Search Service is made by the operational type.
 - embedding: 20~60ms
 - knn: 120~200ms
 - rerank: 120~250ms
-- Total: 250~400ms
+- total: 250~400ms (환경별)
 
 ### 2) Circuit breaker + bulkhead
-- downstream:
-  - OpenSearch, MIS(embeddings/rerank), RS, etc.
-- Gallery News
+- downstream별:
+  - OpenSearch, MIS(embeddings/rerank), RS 등
+- 정책:
   - failure rate threshold
   - open state cooldown
   - half-open probes
 - bulkhead:
-  - Simultaneous request restriction (quering or fail-fast)
+  - 동시 요청 수 제한(큐잉 or fail-fast)
 
 ### 3) Degrade rules (must-have)
-- bm25-only
-- rerank failure → return to fused order
-- bm25 failed but vector success → vector-only(when possible)
-- Both failed → minimum fallback:
-  - Recent Popular/Trend(option) or empty results + "degraded=true" (However, 0 prevention is recommended fallback)
+- vector 단계 실패 → bm25-only
+- rerank 실패 → fused order 그대로 반환
+- bm25 실패지만 vector 성공 → vector-only(가능하면)
+- 둘 다 실패 → 최소 fallback:
+  - 최근 인기/트렌드(옵션) or 빈 결과 + “degraded=true” (단, 0건 방지는 가능하면 추천 fallback)
 
 ### 4) Hedged request (optional)
-- bm25 is timeout nearing:
-  - simple bm25 query(field/filter minify) execution
-- Effect: Tail latency(p99) reduction target
+- bm25가 timeout nearing이면:
+  - simple bm25 query(필드/필터 축소) 보조 실행
+- 효과: tail latency(p99) 감소 목표
 
 ### 5) Response / Debug annotation
 - response.pipeline:
@@ -50,15 +50,15 @@ Search Service is made by the operational type.
   - `stages`: { bm25: ok/timeout/fail, vector: ..., rerank: ... }
 
 ## Non-goals
-- OpenTelemetry Full Set(I-0302)
-- RS cost Guardian(B-0253) (currently, SR perspective)
+- OpenTelemetry 전체 세팅(I-0302)
+- RS 비용 가드레일(B-0253) (연동은 하되 여기선 SR 관점)
 
 ## DoD
-- stage timeout application (default value + config)
-- Downstream Circuit Breaker + Bulkhead Coverage
-- degrade policy implementation + show results
-- chaos scenario testing:
-  - MIS down, OS slow, RS timeout, etc. "Return response + reason record" check
+- stage별 timeout 적용(기본값 + config)
+- downstream 서킷브레이커 + bulkhead 적용
+- degrade 정책 구현 + 결과에 표시
+- chaos 시나리오 테스트:
+  - MIS down, OS slow, RS timeout 등에서 “응답 반환 + 이유 기록” 확인
 
 ## Observability
 - metrics:

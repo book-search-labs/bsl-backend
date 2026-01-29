@@ -1,47 +1,47 @@
-# I-0310 — E2E Test Automation (Search → Purchase → Order → Payment → Shipping)
+# I-0310 — E2E 테스트 자동화 (검색→장바구니→주문→결제→배송)
 
 ## Goal
-Automatically validate the core user flow with **E2E**
-We use cookies to ensure that we give you the best experience on our website.
+핵심 사용자 플로우를 **엔드투엔드(E2E)**로 자동 검증해서
+릴리즈마다 “기본 동작 보장”을 CI에서 확보한다.
 
 ## Why
-- In microservice/front separation, the function is often broken from “integrated”
-- Only contract testing (B-0226) does not fail UI/Floor
+- 마이크로서비스/프론트 분리에서, 기능은 “통합”에서 자주 깨짐
+- 계약 테스트(B-0226)만으로는 UI/플로우 실패를 못 잡음
 
 ## Scope
-### 1) Test Level
-- API E2E: Running scenarios based on BFF
-- UI E2E (optional): Web User/Admin core screen only with Playwright
+### 1) 테스트 레벨
+- API E2E (우선): BFF 기준으로 시나리오 실행
+- UI E2E (선택): Playwright로 Web User/Admin 핵심 화면만
 
-### 2) Required scenario (v1)
+### 2) 필수 시나리오(v1)
 Search:
-- Search → Check results → Enter details
+- 검색 → 결과 확인 → 상세 진입
 
 Autocomplete:
-- <# if ( data.meta.album ) { #>{{ data.meta.album }}<# } #>
+- 입력 → 추천 노출 → 선택 → 검색 반영
 
-Commerce:
-- {$*display product new icon} {$*display product recommand icon} {$*display product stock icon}
+Commerce(준비되면):
+- 장바구니 담기 → 주문 생성 → 결제(모의) → 배송 상태 변경(모의) → 주문 조회
 
-Ops:
-- reindex job trigger → job status check
+Ops(준비되면):
+- Admin 로그인 → reindex job trigger → job status 확인
 
-### 3) Test data/fixed seeds
-- Test-only user/product/document seeds
-- idempotent reset
+### 3) 테스트 데이터/고정 seed
+- 테스트 전용 사용자/상품/도서 seed
+- idempotent reset(테스트 끝나면 정리)
 
-### 4) CI Integration
-- Launch API E2E in PR/merge
-- Run UI E2E with nightly(optional)
+### 4) CI 통합
+- PR/merge 시 API E2E 실행
+- nightly로 UI E2E 실행(선택)
 
 ## Non-goals
-- Full coverage of all cases (only "Core flow")
+- 모든 케이스의 완전 커버리지(초기엔 “핵심 플로우”만)
 
 ## DoD
-- E2E test suite can be automatically executed (local + CI)
-- Provides log/screenshot (optional) which is broken at any stage when failure
-- Test Data Seed/reset Procedure Documentation
-- Min. 1 Release Gate (merge blocking)
+- E2E 테스트 스위트가 자동 실행 가능(로컬 + CI)
+- 실패 시 어떤 단계에서 깨졌는지 로그/스크린샷(선택) 제공
+- 테스트 데이터 seed/reset 절차 문서화
+- 최소 1개의 릴리즈 게이트로 동작(merge blocking)
 
 ## Codex Prompt
 Implement E2E automation:

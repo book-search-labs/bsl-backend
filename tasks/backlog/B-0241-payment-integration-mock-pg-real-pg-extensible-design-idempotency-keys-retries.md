@@ -1,15 +1,15 @@
-# B-0241 — Payment Integration (Mock PG → Real PG Extension Design) + idempotency + retry/webhook
+# B-0241 — Payment 연동 (Mock PG → Real PG 확장 설계) + idempotency + retry/webhook
 
 ## Goal
-Make your order payment flow as “operated”
+주문 결제 플로우를 “운영형”으로 만든다.
 
-- V1: News News Mock PG**
-- v2: Expandable structure with Real PG (webhook/remote check/reset/background)
-- PAYMENT PENDING → PAID/FAILED/CANCELED
+- v1: **Mock PG**로 결제 성공/실패/취소를 재현 가능
+- v2: Real PG로 확장 가능한 구조(웹훅/서명검증/재시도/멱등)
+- 결제 이벤트로 Order 상태 전이(PAYMENT_PENDING → PAID/FAILED/CANCELED)
 
 ## Background
-- Payments are external systems, so there is a lot of duplicates/paintings/backgrounds.
-- So, you need to have **payment self-consuming + event + fieldback**.
+- 결제는 외부 시스템이므로 중복/지연/순서뒤바뀜이 흔함.
+- 따라서 **payment 자체도 상태머신 + 이벤트 + 멱등키**가 필요.
 
 ## Scope
 ### 1) Data model (recommended)
@@ -19,8 +19,8 @@ Make your order payment flow as “operated”
   - status: INITIATED / AUTHORIZED / CAPTURED / FAILED / CANCELED
   - amount, currency
   - provider: MOCK / KCP / TOSS / STRIPE ...
-  - provider payment id (external payment key)
-  - idempotency key
+  - provider_payment_id (외부 결제키)
+  - idempotency_key (UNIQUE)  ← 결제시도 중복 방지
   - created_at, updated_at
 - `payment_event`
   - payment_event_id (PK)
@@ -41,34 +41,34 @@ Make your order payment flow as “operated”
 
 ### 3) Webhook-ready design (v2)
 - POST `/api/v1/payments/webhook/{provider}`
-  - Signature verification (linked with the following I-0311/Security ticket)
-  - idempotency: provider event id unique processing
-  - out-of-order processing:
-    - CAPTURE can be prescribed prior to the transition
-    - No-op
+  - signature 검증(추후 I-0311/보안 티켓과 연동)
+  - idempotency: provider_event_id unique 처리
+  - out-of-order 처리:
+    - CAPTURE 먼저 와도 상태 전이 가능
+    - 이미 완료된 결제는 no-op
 
 ### 4) Order integration
-- Payment success:
+- 결제 성공(CAPTURED) 시:
   - order_event: PAYMENT_SUCCEEDED
   - orders.status = PAID
-- Payment Failure (FAILED/CANCELED):
+- 결제 실패(FAILED/CANCELED) 시:
   - order_event: PAYMENT_FAILED or PAYMENT_CANCELED
-  - (Policy) Automatic cancel + release available after a certain time (Add ops/cron)
+  - (정책) 일정 시간 후 자동 cancel + inventory release 가능(추후 ops/cron)
 
 ### 5) Retry / idempotency
-- payment create protection with idempotency key
-- webhooks event id
-- If the internal condition is “processed”, it will endlessly
+- payment create는 idempotency_key로 보호
+- webhook은 provider_event_id로 보호
+- 내부 상태 전이는 “이미 처리됨”이면 무해하게 종료
 
 ## Non-goals
-- Partial cancellation/refund(=B-0243)
-- Calculation/Tax invoice etc.
+- 부분취소/부분환불(=B-0243)
+- 정산/세금계산서 등
 
 ## DoD
-- Mock PG enables successful and shield scenario reproduction
-- payment/payment event is left and order status before/Event is accurate
-- Duplicate payment / duplicate webhook processing with idempotency 0
-- Configuration Points Documented
+- Mock PG로 성공/실패 시나리오 재현 가능
+- payment/payment_event가 남고 order 상태 전이/이벤트가 정확
+- idempotency로 중복 결제/중복 웹훅 처리 0
+- provider 확장 포인트가 문서화됨
 
 ## Observability
 - metrics:

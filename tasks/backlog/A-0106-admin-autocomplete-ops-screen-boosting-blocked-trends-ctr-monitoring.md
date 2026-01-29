@@ -1,42 +1,42 @@
 # A-0106 — Admin Autocomplete Ops Screen (boost/ban/trends/CTR)
 
 ## Goal
-For Autocomplete Operations**Provide/Provide/Blacklist/Trend/CTR Monitoring** Screen.
+Autocomplete 운영을 위한 **후보/부스팅/금칙/블랙리스트/트렌드/CTR 모니터링** 화면 제공.
 
 ## Background
-- AC is frequent by p99 and operating issues (final/overflow/input).
-- When the CTR/Popularity aggregates, the operator should look at “Why this candidate is floating”
+- AC는 p99가 빡세고 운영 이슈(금칙어/오류/인기 급변)가 잦음.
+- CTR/Popularity 집계가 붙으면 운영자가 “왜 이 후보가 뜨는지/안 뜨는지”를 봐야 함.
 
 ## Scope
 ### 1) Overview Dashboard
-- Today/7/30:
+- 오늘/7일/30일:
   - `ac_impression`, `ac_select`, CTR, top prefixes, top selected queries
-- Tag:
+- 오류/지연:
   - AC p95/p99, Redis hit ratio, OS miss ratio
 
 ### 2) Candidate Explorer
-- prefix input → candidate TopK list
-  - Component text, score(final), component(text/CTR/popularity), source(OS/Redis)
-  - last updated, decay applied or
+- prefix 입력 → 후보 TopK 리스트
+  - 후보 텍스트, score(최종), 구성요소(텍스트/CTR/popularity), source(OS/Redis)
+  - last_updated, decay 적용 여부
 
 ### 3) Rules Management
 - Boost rules
-  - Specific prefix/pattern weight(+x)
+  - 특정 prefix/패턴에 가중치(+x)
 - Ban words / blacklist
-  - Gold Rules (Part-time / Regular Option)
-  - blacklist query
+  - 금칙어(부분일치/정규식 옵션)
+  - blacklist query(완전일치)
 
 ### 4) Trend Monitor
-- zoom prefix/query (time window)
-- Operating Action Button:
-  - add boost / ban add / candidate pin(optional)
+- 급상승 prefix/query (시간 창)
+- 운영 조치 버튼:
+  - boost 추가 / ban 추가 / 후보 pin(선택)
 
 ## Non-goals
-- Implementation of aggregate algorithm (B-0231 range)
-- AC server logic changes (B-0214~B-0231 range)
+- 집계 알고리즘 자체 구현(B-0231 범위)
+- AC 서버 로직 변경(B-0214~B-0231 범위)
 
 ## Data / API
-- BFF(Final)
+- BFF 경유(최종)
   - `GET /admin/autocomplete/metrics?window=7d`
   - `GET /admin/autocomplete/prefix/{prefix}`
   - `POST /admin/autocomplete/boost-rules`
@@ -45,19 +45,19 @@ For Autocomplete Operations**Provide/Provide/Blacklist/Trend/CTR Monitoring** Sc
 
 ## UI Skeleton
 - Tabs: Overview | Candidates | Rules | Trends
-- Table Common:
-  - Scots Gaelic
-  - CSV export(optional)
+- Table 공통:
+  - 검색/필터/정렬/페이지네이션
+  - CSV export(선택)
 
 ## DoD
-- Operator “Why this is floating?” can be checked by the candidate breakdown
-- Gold Rules/Sending Rules CRUD Available
-- Within 2~3 clicks from trend to operational action (Add rules)
+- 운영자가 “왜 이게 뜨지?”를 후보별 breakdown으로 확인 가능
+- 금칙/부스팅 룰 CRUD 가능
+- 트렌드에서 운영 조치(룰 추가)까지 2~3 클릭 이내
 
 ## Observability
-- Admin action left audit log(B-0227 Integration)
+- Admin 액션은 audit_log에 남는다(B-0227 연동)
 
 ## Codex Prompt
-Implement Autocomplete Ops screen in Admin(React).
-Create a tab (Overview/Candidates/Rules/Trends) structure and show the topK and score breakdown for prefix query.
-We provide CRUD (booting/bending/blacklist) and call BFF API for audit logs.
+Admin(React)에서 Autocomplete Ops 화면을 구현하라.
+탭(Overview/Candidates/Rules/Trends) 구조로 만들고, prefix 조회 시 후보 TopK와 score breakdown을 보여줘라.
+룰 CRUD(부스팅/금칙/블랙리스트)를 제공하고 audit 로그가 남도록 BFF API를 호출하라.

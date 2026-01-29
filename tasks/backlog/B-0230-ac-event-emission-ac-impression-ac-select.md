@@ -1,67 +1,67 @@
 # B-0230 — Emit Autocomplete Events (ac_impression / ac_select) via Outbox → Kafka
 
 ## Goal
-Autocomplete Use Logs ** Issued as Standard Event**
-CTR/Popularity aggregates “operating loop” that leads to the aggregate (=B-0231).
+Autocomplete 사용 로그를 **표준 이벤트로 발행**해서
+CTR/Popularity 집계(=B-0231)로 이어지는 “운영 루프”를 연다.
 
 - event types: `ac_impression`, `ac_select`
-- Recommended: **BFF recorded on outbox event** → relay sent Kafka (B-0248)
-- Event ** dedup key**
+- 권장: **BFF가 outbox_event에 기록** → relay가 Kafka 전송(B-0248)
+- 이벤트는 **멱등(dedup_key)** 하게 설계
 
 ## Background
-- autocomplete should be clicked/selected data “the system that is good”
-- Directly Kafka publish is a big risk of data loss in failure/repair
-outbox pattern is operating standard.
+- autocomplete은 클릭/선택 데이터가 있어야 “좋아지는 시스템”이 된다.
+- 직접 Kafka publish는 장애/재시도에서 데이터 유실 위험이 크므로
+  outbox 패턴이 운영형 표준.
 
 ## Scope
 ### 1) Event schema (v1)
 #### ac_impression
-- At the time of occurrence: short-circuiting of AC response (no exemption)
+- 발생 시점: AC 응답을 내려주기 직전(“노출”의 분모)
 - payload fields (minimum):
   - `event_type`: "ac_impression"
   - `event_time`
-  - New  TBD  ,   TBD  ,   TBD  
-  - New  TBD     TBD   (web/mobile/admin)
-  - New TBD (Original), TBD (정규화)
+  - `request_id`, `trace_id`, `session_id` (가능하면)
+  - `user_id` (익명 허용), `client` (web/mobile/admin)
+  - `q_prefix` (원문), `q_prefix_norm` (정규화)
   - `candidates`: [{ `suggest_text`, `rank`, `source`(cache/os), `score` }]
   - `policy`: { `cache_hit`, `index_version`, `experiment` }
 
 #### ac_select
-- When a user selects a specific suggestion
+- 발생 시점: 사용자가 특정 suggestion을 선택했을 때
 - payload fields:
   - `event_type`: "ac_select"
   - `event_time`
   - `request_id`, `trace_id`, `session_id`, `user_id`
   - `q_prefix_norm`
   - `selected`: { `suggest_text`, `rank`, `source`, `score` }
-  - (Optional)   TBD  : "search submit" | "navigate" etc.
+  - (선택) `next_action`: "search_submit" | "navigate" 등
 
-### 2) dedup key rule (left)
+### 2) dedup_key 규칙(멱등)
 - ac_impression:
-  - New  TBD   (request id only)
+  - `hash(event_type + request_id)` (request_id가 유일해야 함)
 - ac_select:
   - `hash(event_type + request_id + selected.suggest_text)`
-- outbox event   TBD  Uniform prevention with UNIQUE
+- outbox_event에 `dedup_key` UNIQUE로 중복 방지
 
 ### 3) Producer location (recommended)
-- New *BFF**   TBD    Record outbox event while assembly/returning response
-- (대안) AC service outbox event record (장 X: dispersion/operation return↑)
+- **BFF**가 `/autocomplete` 응답을 조립/리턴하면서 outbox_event 기록
+- (대안) AC 서비스가 outbox_event 기록(권장 X: 분산/운영복잡도↑)
 
 ### 4) Storage
-- New  TBD   Table Use (Imi v1.1 schema exist)
+- `outbox_event` 테이블 사용 (이미 v1.1 스키마 존재)
   - status NEW/SENT/FAILED
-  - relay handles B-0248 tickets
+  - relay는 B-0248 티켓에서 처리
 
 ## Non-goals
-- Updates (=B-0231)
-- schema registry(=I-0330)
-- Click/Change(Search Events) (Other B-0232)
+- 집계/feature 업데이트(=B-0231)
+- schema registry 도입(=I-0330)
+- 클릭/체류(검색 이벤트) (그건 B-0232)
 
 ## DoD
-- New  TBD   Record ac impression outbox when responding
-- When the selected event is passed to BFF, ac select outbox records
-- dedup key
-- Complete smoke testing with outbox event row in local
+- `/autocomplete` 응답 시 ac_impression outbox 기록
+- 프론트에서 선택 이벤트가 BFF로 전달되면 ac_select outbox 기록
+- dedup_key로 중복 insert 방지 확인
+- 로컬에서 outbox_event row가 쌓이는 smoke 테스트 완료
 
 ## Observability
 - metrics:
