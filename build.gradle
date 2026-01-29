@@ -22,6 +22,7 @@ allprojects {
 }
 
 def javaServices = [
+    project(':services:bff-service'),
     project(':services:search-service'),
     project(':services:autocomplete-service'),
     project(':services:ranking-service'),

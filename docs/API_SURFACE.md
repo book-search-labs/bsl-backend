@@ -18,6 +18,7 @@ It is intentionally concise, implementation-agnostic, and **must not contradict 
 
 ### Base URLs (Local Dev Defaults)
 
+- BFF (Search API): `http://localhost:8088`
 - Query Service (QS): `http://localhost:8001`
 - Search Service (SS): `http://localhost:8002`
 - Autocomplete Service (ACS): `http://localhost:8003`
@@ -62,7 +63,82 @@ All structured responses that follow `contracts/*` must include:
 
 ---
 
-# 1) Query Service (QS)
+# 1) BFF (Search API)
+
+**Responsibility**: single client entrypoint for search + autocomplete + book detail.
+
+## GET `/health`
+**Purpose**: liveness probe  
+**Response**: `200 OK`
+```json
+{ "status": "ok", "trace_id": "string", "request_id": "string" }
+```
+
+## GET `/ready`
+**Purpose**: readiness probe (downstream connectivity)  
+**Response**: `200 OK`
+```json
+{
+  "status": "ok|degraded",
+  "trace_id": "string",
+  "request_id": "string",
+  "downstream": {
+    "query_service": "ok|error",
+    "search_service": "ok|error",
+    "autocomplete_service": "ok|error"
+  }
+}
+```
+
+## POST `/search`
+**Purpose**: fan-out to QS → SS and return SearchResponse (v1).
+
+### Request
+- Contract: `contracts/search-request.schema.json`
+- Example: `contracts/examples/search-request.sample.json`
+
+### Response
+- Contract: `contracts/search-response.schema.json`
+- Example: `contracts/examples/search-response.sample.json`
+
+### Notes (MVP)
+- If `query_context` is missing, BFF will derive it via QS using `query.raw` when present.
+
+## GET `/autocomplete`
+**Purpose**: return query suggestions for a prefix.
+
+### Request (Query Params)
+- `q` (string, required): prefix
+- `size` (int, optional, default=10)
+
+### Response (Planned MVP Shape)
+```json
+{
+  "version": "v1",
+  "trace_id": "string",
+  "request_id": "string",
+  "took_ms": 1,
+  "suggestions": [
+    { "text": "string", "score": 0.0, "source": "redis|opensearch" }
+  ]
+}
+```
+
+## GET `/books/{docId}`
+**Purpose**: book detail by doc id.
+
+### Response (MVP Shape)
+```json
+{
+  "doc_id": "string",
+  "source": {},
+  "trace_id": "string",
+  "request_id": "string",
+  "took_ms": 1
+}
+```
+
+# 2) Query Service (QS)
 
 **Responsibility**: Query normalization, lightweight understanding, and generation of `QueryContext`.
 
@@ -115,7 +191,7 @@ If supported, the server should treat it as:
 
 ---
 
-# 2) Search Service (SS)
+# 3) Search Service (SS)
 
 **Responsibility**: Retrieval orchestration (OpenSearch BM25/hybrid), filters/facets, and returning hits.
 
@@ -144,7 +220,7 @@ If supported, the server should treat it as:
 
 ---
 
-# 3) Autocomplete Service (ACS) — Planned
+# 4) Autocomplete Service (ACS) — Planned
 
 **Responsibility**: Prefix suggestions with low latency (Redis hot prefixes + OpenSearch prefix fallback).
 
@@ -176,7 +252,7 @@ If supported, the server should treat it as:
 
 ---
 
-# 4) Ranking Service (RS) — Planned
+# 5) Ranking Service (RS) — Planned
 
 **Responsibility**: Re-rank candidate documents (LTR / cross-encoder).
 
@@ -215,7 +291,7 @@ If supported, the server should treat it as:
 
 ---
 
-# 5) Model Inference Service (MIS) — Planned
+# 6) Model Inference Service (MIS) — Planned
 
 **Responsibility**: Centralized model inference (embeddings, scoring) with versioning and performance controls.
 
