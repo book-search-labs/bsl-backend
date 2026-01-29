@@ -38,21 +38,24 @@ public class BookController {
         }
 
         BffBookDetailResponse response = new BffBookDetailResponse();
+        response.setVersion("v1");
         response.setDocId(downstream.getDocId());
         response.setTraceId(context == null ? null : context.getTraceId());
         response.setRequestId(context == null ? null : context.getRequestId());
         response.setTookMs(downstream.getTookMs());
 
-        if (downstream.getSource() != null) {
-            BffBookDetailResponse.Source source = new BffBookDetailResponse.Source();
-            source.setTitleKo(downstream.getSource().getTitleKo());
-            source.setAuthors(downstream.getSource().getAuthors());
-            source.setPublisherName(downstream.getSource().getPublisherName());
-            source.setIssuedYear(downstream.getSource().getIssuedYear());
-            source.setVolume(downstream.getSource().getVolume());
-            source.setEditionLabels(downstream.getSource().getEditionLabels());
-            response.setSource(source);
+        if (downstream.getSource() == null) {
+            throw new DownstreamException(HttpStatus.BAD_GATEWAY, "search_service_error", "Book detail missing source");
         }
+
+        BffBookDetailResponse.Source source = new BffBookDetailResponse.Source();
+        source.setTitleKo(downstream.getSource().getTitleKo());
+        source.setAuthors(downstream.getSource().getAuthors());
+        source.setPublisherName(downstream.getSource().getPublisherName());
+        source.setIssuedYear(downstream.getSource().getIssuedYear());
+        source.setVolume(downstream.getSource().getVolume());
+        source.setEditionLabels(downstream.getSource().getEditionLabels());
+        response.setSource(source);
 
         recordOutbox("book_view", "book", context, Map.of(
             "doc_id", docId

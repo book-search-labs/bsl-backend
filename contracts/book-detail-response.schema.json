@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "book-detail-response.schema.json",
+  "title": "BookDetailResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "doc_id", "trace_id", "request_id", "took_ms", "source"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "doc_id": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "took_ms": { "type": "integer", "minimum": 0 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title_ko", "authors"],
+      "properties": {
+        "title_ko": { "type": "string" },
+        "authors": { "type": "array", "items": { "type": "string" } },
+        "publisher_name": { "type": "string" },
+        "issued_year": { "type": "integer" },
+        "volume": { "type": "integer" },
+        "edition_labels": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

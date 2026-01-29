@@ -1,0 +1,69 @@
+openapi: 3.0.3
+info:
+  title: BFF Internal API (Downstream)
+  version: v1
+paths:
+  /query-context:
+    post:
+      summary: QS query context
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: object
+                  required: [raw]
+                  properties:
+                    raw:
+                      type: string
+      responses:
+        "200":
+          description: Query context
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /search:
+    post:
+      summary: Search service request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Search response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /autocomplete:
+    get:
+      summary: Autocomplete service request
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: size
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Autocomplete response
+          content:
+            application/json:
+              schema:
+                $ref: ../autocomplete-response.schema.json

@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "doc_id": "book_1001",
+  "trace_id": "trace_9f4a2c0b5e1a",
+  "request_id": "req_1b2c3d4e5f6a",
+  "took_ms": 3,
+  "source": {
+    "title_ko": "해리 포터와 마법사의 돌 1",
+    "authors": ["J. K. 롤링"],
+    "publisher_name": "문학수첩",
+    "issued_year": 2000,
+    "volume": 1,
+    "edition_labels": ["first"]
+  }
+}

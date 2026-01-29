@@ -12,6 +12,9 @@ SCHEMA_FILES = {
     "query-context.sample.json": CONTRACTS_DIR / "query-context.schema.json",
     "search-request.sample.json": CONTRACTS_DIR / "search-request.schema.json",
     "search-response.sample.json": CONTRACTS_DIR / "search-response.schema.json",
+    "autocomplete-response.sample.json": CONTRACTS_DIR / "autocomplete-response.schema.json",
+    "book-detail-response.sample.json": CONTRACTS_DIR / "book-detail-response.schema.json",
+    "error.sample.json": CONTRACTS_DIR / "error.schema.json",
 }
 
 def load_json(p: Path) -> dict:

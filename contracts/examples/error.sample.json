@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "bad_request",
+    "message": "request body is required",
+    "details": "missing request"
+  },
+  "trace_id": "trace_9f4a2c0b5e1a",
+  "request_id": "req_1b2c3d4e5f6a"
+}

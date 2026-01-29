@@ -92,10 +92,13 @@ public class SearchController {
                 mappedHit.setDocId(hit.getDocId());
                 mappedHit.setScore(hit.getScore());
                 if (hit.getSource() != null) {
-                    mappedHit.setTitle(hit.getSource().getTitleKo());
-                    mappedHit.setAuthors(hit.getSource().getAuthors());
+                    mappedHit.setTitle(nullToEmpty(hit.getSource().getTitleKo()));
+                    mappedHit.setAuthors(nullToEmptyList(hit.getSource().getAuthors()));
                     mappedHit.setPublisher(hit.getSource().getPublisherName());
                     mappedHit.setPublicationYear(hit.getSource().getIssuedYear());
+                } else {
+                    mappedHit.setTitle("");
+                    mappedHit.setAuthors(List.of());
                 }
                 mapped.add(mappedHit);
             }
@@ -155,5 +158,13 @@ public class SearchController {
         enriched.put("request_id", context.getRequestId());
         enriched.put("trace_id", context.getTraceId());
         outboxService.record(eventType, aggregateType, context.getRequestId(), enriched);
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    private List<String> nullToEmptyList(List<String> value) {
+        return value == null ? List.of() : value;
     }
 }

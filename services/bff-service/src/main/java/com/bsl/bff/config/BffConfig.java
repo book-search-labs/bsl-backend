@@ -8,7 +8,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
 
 @Configuration
-@EnableConfigurationProperties({DownstreamProperties.class, OutboxProperties.class})
+@EnableConfigurationProperties({DownstreamProperties.class, OutboxProperties.class,
+    com.bsl.bff.security.AuthProperties.class,
+    com.bsl.bff.security.RbacProperties.class,
+    com.bsl.bff.ratelimit.RateLimitProperties.class
+})
 public class BffConfig {
     @Bean
     public RestTemplate queryServiceRestTemplate(RestTemplateBuilder builder, DownstreamProperties properties) {
