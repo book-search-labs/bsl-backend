@@ -23,6 +23,9 @@ data/nlk/
 data/nlk/**
 var/ingest/
 var/ingest/**
+var/normalization/
+var/normalization/**
+infra/opensearch/generated/
 
 ### STS ###
 .apt_generated

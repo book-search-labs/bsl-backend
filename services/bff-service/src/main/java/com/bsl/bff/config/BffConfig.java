@@ -40,4 +40,13 @@ public class BffConfig {
             .setReadTimeout(Duration.ofMillis(config.getTimeoutMs()))
             .build();
     }
+
+    @Bean
+    public RestTemplate indexWriterRestTemplate(RestTemplateBuilder builder, DownstreamProperties properties) {
+        DownstreamProperties.ServiceProperties config = properties.getIndexWriterService();
+        return builder
+            .setConnectTimeout(Duration.ofMillis(config.getTimeoutMs()))
+            .setReadTimeout(Duration.ofMillis(config.getTimeoutMs()))
+            .build();
+    }
 }

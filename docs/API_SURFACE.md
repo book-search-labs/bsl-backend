@@ -138,6 +138,50 @@ All structured responses that follow `contracts/*` must include:
 }
 ```
 
+# 1.2) BFF Admin Ops (Internal/Admin)
+
+**Responsibility**: operational visibility and control for reindex + batch jobs.
+
+## GET `/admin/ops/job-runs`
+**Purpose**: list recent job runs.  
+**Query Params**: `limit` (int, optional), `status` (string, optional)  
+**Response**: `contracts/job-run-list-response.schema.json`
+
+## GET `/admin/ops/job-runs/{id}`
+**Purpose**: get a single job run.  
+**Response**: `contracts/job-run-response.schema.json`
+
+## POST `/admin/ops/job-runs/{id}/retry`
+**Purpose**: retry a failed job run (creates a new job_run row).  
+**Response**: `contracts/job-run-response.schema.json`
+
+## GET `/admin/ops/reindex-jobs`
+**Purpose**: list reindex jobs.  
+**Query Params**: `limit` (int, optional), `status` (string, optional), `logical_name` (string, optional)  
+**Response**: `contracts/reindex-job-list-response.schema.json`
+
+## POST `/admin/ops/reindex-jobs/start`
+**Purpose**: start a new reindex job.  
+**Request**: `contracts/reindex-job-create-request.schema.json`  
+**Response**: `contracts/reindex-job-response.schema.json`
+
+## POST `/admin/ops/reindex-jobs/{id}/pause`
+**Purpose**: pause a running reindex job.  
+**Response**: `contracts/reindex-job-response.schema.json`
+
+## POST `/admin/ops/reindex-jobs/{id}/resume`
+**Purpose**: resume a paused reindex job.  
+**Response**: `contracts/reindex-job-response.schema.json`
+
+## POST `/admin/ops/reindex-jobs/{id}/retry`
+**Purpose**: retry a failed reindex job.  
+**Response**: `contracts/reindex-job-response.schema.json`
+
+## GET `/admin/ops/tasks`
+**Purpose**: list ops tasks.  
+**Query Params**: `limit` (int, optional), `status` (string, optional), `task_type` (string, optional)  
+**Response**: `contracts/ops-task-list-response.schema.json`
+
 # 1.5) Index Writer Service (Internal)
 
 **Responsibility**: managed reindex jobs (state machine, pause/resume/checkpoint).

@@ -17,6 +17,10 @@ SCHEMA_FILES = {
     "error.sample.json": CONTRACTS_DIR / "error.schema.json",
     "reindex-job-create-request.sample.json": CONTRACTS_DIR / "reindex-job-create-request.schema.json",
     "reindex-job-response.sample.json": CONTRACTS_DIR / "reindex-job-response.schema.json",
+    "job-run-response.sample.json": CONTRACTS_DIR / "job-run-response.schema.json",
+    "job-run-list-response.sample.json": CONTRACTS_DIR / "job-run-list-response.schema.json",
+    "reindex-job-list-response.sample.json": CONTRACTS_DIR / "reindex-job-list-response.schema.json",
+    "ops-task-list-response.sample.json": CONTRACTS_DIR / "ops-task-list-response.schema.json",
 }
 
 def load_json(p: Path) -> dict:

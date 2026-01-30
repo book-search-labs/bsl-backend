@@ -16,6 +16,7 @@ npm run dev
 ```
 VITE_BFF_BASE_URL=http://localhost:8088
 VITE_ADMIN_API_MODE=bff_primary
+VITE_INDEX_WRITER_BASE_URL=http://localhost:8090
 VITE_BSL_API_BASE_URL=http://localhost:8080
 VITE_API_BASE_URL=http://localhost:8080
 VITE_QUERY_BASE_URL=http://localhost:8001

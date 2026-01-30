@@ -10,8 +10,9 @@ public class PermissionResolver {
     private final Map<Pattern, String> rules = new LinkedHashMap<>();
 
     public PermissionResolver() {
-        rules.put(Pattern.compile("^/admin/ops/reindex.*"), "OPS_REINDEX_RUN");
-        rules.put(Pattern.compile("^/admin/ops/reindex/cancel.*"), "OPS_REINDEX_CANCEL");
+        rules.put(Pattern.compile("^/admin/ops/reindex-jobs.*"), "OPS_REINDEX_RUN");
+        rules.put(Pattern.compile("^/admin/ops/job-runs.*"), "OPS_JOB_RUN");
+        rules.put(Pattern.compile("^/admin/ops/tasks.*"), "OPS_TASK_MANAGE");
         rules.put(Pattern.compile("^/admin/policies.*"), "POLICY_EDIT");
         rules.put(Pattern.compile("^/admin/experiments.*"), "EXPERIMENT_ROLLOUT");
         rules.put(Pattern.compile("^/admin/models.*"), "MODEL_ROLLOUT");

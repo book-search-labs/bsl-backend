@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "job-run.schema.json",
+  "title": "JobRun",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["job_run_id", "job_type", "status", "started_at"],
+  "properties": {
+    "job_run_id": { "type": "integer" },
+    "job_type": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "minLength": 1 },
+    "params": { "type": ["object", "null"], "additionalProperties": true },
+    "error_message": { "type": ["string", "null"] },
+    "started_at": { "type": ["string", "null"], "format": "date-time" },
+    "finished_at": { "type": ["string", "null"], "format": "date-time" }
+  }
+}

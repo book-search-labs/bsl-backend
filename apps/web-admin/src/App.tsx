@@ -6,6 +6,7 @@ import PlaygroundPage from "./pages/PlaygroundPage";
 import ComparePage from "./pages/ComparePage";
 import SettingsPage from "./pages/SettingsPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import OpsJobsPage from "./pages/OpsJobsPage";
 
 export default function App() {
   return (
@@ -26,7 +27,7 @@ export default function App() {
             <Route path="indices" element={<PlaceholderPage title="Indices" />} />
             <Route path="doc-lookup" element={<PlaceholderPage title="Doc Lookup" />} />
           </Route>
-          <Route path="jobs" element={<PlaceholderPage title="Jobs" />} />
+          <Route path="jobs" element={<OpsJobsPage />} />
         </Route>
         <Route path="settings" element={<SettingsPage />} />
       </Route>
