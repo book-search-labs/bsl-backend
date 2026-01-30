@@ -1,3 +1,4 @@
+import { createRequestContext, resolveApiMode, resolveBffBaseUrl, routeRequest } from './client'
 import { fetchJson } from './http'
 
 export type AutocompleteSuggestion = {
@@ -8,6 +9,7 @@ export type AutocompleteSuggestion = {
 }
 
 export type AutocompleteResponse = {
+  version?: string
   trace_id?: string
   request_id?: string
   took_ms?: number
@@ -32,9 +34,27 @@ export async function fetchAutocomplete(
   size: number,
   signal?: AbortSignal,
 ): Promise<AutocompleteResponse> {
-  const baseUrl = resolveAutocompleteBaseUrl()
   const params = new URLSearchParams({ q: query, size: String(size) })
-  const url = joinUrl(baseUrl, `/autocomplete?${params.toString()}`)
+  const requestContext = createRequestContext()
 
-  return fetchJson<AutocompleteResponse>(url, { method: 'GET', signal })
+  const bffCall = (context: typeof requestContext) => {
+    const baseUrl = resolveBffBaseUrl()
+    const url = joinUrl(baseUrl, `/autocomplete?${params.toString()}`)
+    return fetchJson<AutocompleteResponse>(url, { method: 'GET', signal, headers: context.headers })
+  }
+
+  const directCall = (context: typeof requestContext) => {
+    const baseUrl = resolveAutocompleteBaseUrl()
+    const url = joinUrl(baseUrl, `/autocomplete?${params.toString()}`)
+    return fetchJson<AutocompleteResponse>(url, { method: 'GET', signal, headers: context.headers })
+  }
+
+  return routeRequest({
+    route: 'autocomplete',
+    mode: resolveApiMode(),
+    requestContext,
+    bff: bffCall,
+    direct: directCall,
+    shouldFallback: () => !(signal && signal.aborted),
+  })
 }

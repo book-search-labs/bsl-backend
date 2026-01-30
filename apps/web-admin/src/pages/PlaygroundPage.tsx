@@ -16,6 +16,7 @@ import {
 } from "react-bootstrap";
 
 import { fetchJson } from "../lib/api";
+import { createRequestContext, resolveAdminApiMode, resolveBffBaseUrl, routeRequest } from "../lib/apiRouter";
 
 type Mode = "qc_v1_1" | "legacy";
 
@@ -59,8 +60,29 @@ type SearchResponse = {
   [key: string]: unknown;
 };
 
+type BffSearchResponse = {
+  version?: string;
+  trace_id?: string;
+  request_id?: string;
+  took_ms?: number;
+  timed_out?: boolean;
+  total?: number;
+  hits?: Array<{
+    doc_id?: string;
+    score?: number;
+    title?: string;
+    authors?: string[];
+    publisher?: string;
+    publication_year?: number;
+  }>;
+  debug?: { query_dsl?: Record<string, unknown> };
+  [key: string]: unknown;
+};
+
 type LastRequest = {
   mode: Mode;
+  target: "bff" | "direct";
+  bffPayload?: unknown;
   queryPayload?: unknown;
   searchPayload?: unknown;
 };
@@ -85,6 +107,34 @@ function buildCurl(url: string, payload: unknown) {
   ].join("\n");
 }
 
+function mapBffSearchResponse(response: BffSearchResponse): SearchResponse {
+  const hits = Array.isArray(response.hits)
+    ? response.hits
+        .map((hit) => {
+          if (!hit) return null;
+          return {
+            doc_id: hit.doc_id,
+            score: hit.score,
+            source: {
+              title_ko: hit.title ?? "Untitled",
+              authors: Array.isArray(hit.authors) ? hit.authors : [],
+              publisher_name: hit.publisher ?? undefined,
+              issued_year: hit.publication_year ?? undefined,
+            },
+          };
+        })
+        .filter(Boolean)
+    : [];
+
+  return {
+    trace_id: response.trace_id,
+    request_id: response.request_id,
+    took_ms: response.took_ms,
+    hits: hits as SearchResponse["hits"],
+    debug: response.debug as SearchResponse["debug"],
+  };
+}
+
 export default function PlaygroundPage() {
   const [mode, setMode] = useState<Mode>("qc_v1_1");
   const [rawQuery, setRawQuery] = useState(DEFAULT_QUERY);
@@ -99,6 +149,8 @@ export default function PlaygroundPage() {
 
   const queryBaseUrl = import.meta.env.VITE_QUERY_BASE_URL ?? "http://localhost:8001";
   const searchBaseUrl = import.meta.env.VITE_SEARCH_BASE_URL ?? "http://localhost:8080";
+  const bffBaseUrl = resolveBffBaseUrl();
+  const apiMode = resolveAdminApiMode();
 
   const hits = useMemo(() => {
     return Array.isArray(searchResponse?.hits) ? searchResponse?.hits : [];
@@ -107,16 +159,21 @@ export default function PlaygroundPage() {
   const curlPreview = useMemo(() => {
     if (!lastRequest) return null;
     const blocks: string[] = [];
-    if (lastRequest.queryPayload) {
-      blocks.push("# Query Service");
-      blocks.push(buildCurl(joinUrl(queryBaseUrl, "/query-context"), lastRequest.queryPayload));
-    }
-    if (lastRequest.searchPayload) {
-      blocks.push("# Search Service");
-      blocks.push(buildCurl(joinUrl(searchBaseUrl, "/search"), lastRequest.searchPayload));
+    if (lastRequest.target === "bff" && lastRequest.bffPayload) {
+      blocks.push("# BFF");
+      blocks.push(buildCurl(joinUrl(bffBaseUrl, "/search"), lastRequest.bffPayload));
+    } else {
+      if (lastRequest.queryPayload) {
+        blocks.push("# Query Service");
+        blocks.push(buildCurl(joinUrl(queryBaseUrl, "/query-context"), lastRequest.queryPayload));
+      }
+      if (lastRequest.searchPayload) {
+        blocks.push("# Search Service");
+        blocks.push(buildCurl(joinUrl(searchBaseUrl, "/search"), lastRequest.searchPayload));
+      }
     }
     return blocks.join("\n\n");
-  }, [lastRequest, queryBaseUrl, searchBaseUrl]);
+  }, [lastRequest, queryBaseUrl, searchBaseUrl, bffBaseUrl]);
 
   const onRun = async (event: FormEvent) => {
     event.preventDefault();
@@ -139,105 +196,135 @@ export default function PlaygroundPage() {
     setQcResponse(null);
     setSearchResponse(null);
 
+    const requestContext = createRequestContext();
+    const bffPayload = {
+      query: { raw: trimmedQuery },
+      options: { size: safeSize, from: 0, enableVector: vectorEnabled },
+    };
+
+    let directMeta: {
+      qcData?: QueryContext | null;
+      queryPayload?: unknown;
+      searchPayload?: unknown;
+      stage?: "query" | "search";
+    } | null = null;
+
     try {
-      if (mode === "qc_v1_1") {
-        const qcPayload = {
-          query: { raw: trimmedQuery },
-          client: { device: "web_admin" },
-          user: null,
-        };
-
-        const qcResult = await fetchJson<QueryContext>(joinUrl(queryBaseUrl, "/query-context"), {
-          method: "POST",
-          body: JSON.stringify(qcPayload),
-        });
-
-        if (!qcResult.ok) {
-          setLastRequest({ mode, queryPayload: qcPayload });
-          setError({
-            stage: "query",
-            status: qcResult.status,
-            statusText: qcResult.statusText,
-            body: qcResult.body,
+      const { result, target } = await routeRequest<SearchResponse>({
+        route: "search",
+        mode: apiMode,
+        allowFallback: true,
+        requestContext,
+        bff: async (context) => {
+          const bffResult = await fetchJson<BffSearchResponse>(joinUrl(bffBaseUrl, "/search"), {
+            method: "POST",
+            headers: context.headers,
+            body: JSON.stringify(bffPayload),
           });
-          return;
-        }
 
-        const qcData = qcResult.data;
-        if (qcData?.meta?.schemaVersion !== "qc.v1.1") {
-          setLastRequest({ mode, queryPayload: qcPayload });
-          setError({
-            stage: "query",
-            status: 0,
-            statusText: "invalid_schema",
-            body: qcData,
-          });
-          return;
-        }
+          if (!bffResult.ok) {
+            return { ok: false, status: bffResult.status, statusText: bffResult.statusText, body: bffResult.body };
+          }
 
-        const qcForSearch = !vectorEnabled
-          ? {
-              ...qcData,
-              retrievalHints: {
-                ...qcData.retrievalHints,
-                vector: {
-                  ...qcData.retrievalHints?.vector,
-                  enabled: false,
-                },
-              },
+          return {
+            ok: true,
+            status: bffResult.status,
+            data: mapBffSearchResponse(bffResult.data),
+          };
+        },
+        direct: async (context) => {
+          if (mode === "qc_v1_1") {
+            const qcPayload = {
+              query: { raw: trimmedQuery },
+              client: { device: "web_admin" },
+              user: null,
+            };
+
+            const qcResult = await fetchJson<QueryContext>(joinUrl(queryBaseUrl, "/query-context"), {
+              method: "POST",
+              headers: context.headers,
+              body: JSON.stringify(qcPayload),
+            });
+
+            if (!qcResult.ok) {
+              directMeta = { queryPayload: qcPayload, stage: "query" };
+              return { ok: false, status: qcResult.status, statusText: qcResult.statusText, body: qcResult.body };
             }
-          : qcData;
 
-        const searchPayload = {
-          query_context_v1_1: qcForSearch,
-          options: { size: safeSize, from: 0, debug: debugEnabled },
-        };
+            const qcData = qcResult.data;
+            if (qcData?.meta?.schemaVersion !== "qc.v1.1") {
+              directMeta = { queryPayload: qcPayload, qcData, stage: "query" };
+              return { ok: false, status: 0, statusText: "invalid_schema", body: qcData };
+            }
 
-        const searchResult = await fetchJson<SearchResponse>(joinUrl(searchBaseUrl, "/search"), {
-          method: "POST",
-          body: JSON.stringify(searchPayload),
-        });
+            const qcForSearch = !vectorEnabled
+              ? {
+                  ...qcData,
+                  retrievalHints: {
+                    ...qcData.retrievalHints,
+                    vector: {
+                      ...qcData.retrievalHints?.vector,
+                      enabled: false,
+                    },
+                  },
+                }
+              : qcData;
 
-        setQcResponse(qcData);
-        setLastRequest({ mode, queryPayload: qcPayload, searchPayload });
+            const searchPayload = {
+              query_context_v1_1: qcForSearch,
+              options: { size: safeSize, from: 0, debug: debugEnabled },
+            };
 
-        if (!searchResult.ok) {
-          setError({
-            stage: "search",
-            status: searchResult.status,
-            statusText: searchResult.statusText,
-            body: searchResult.body,
+            const searchResult = await fetchJson<SearchResponse>(joinUrl(searchBaseUrl, "/search"), {
+              method: "POST",
+              headers: context.headers,
+              body: JSON.stringify(searchPayload),
+            });
+
+            directMeta = { qcData, queryPayload: qcPayload, searchPayload, stage: searchResult.ok ? "search" : "search" };
+            return searchResult;
+          }
+
+          const legacyPayload = {
+            query: { raw: trimmedQuery },
+            options: { size: safeSize, from: 0, enableVector: vectorEnabled },
+          };
+
+          const legacyResult = await fetchJson<SearchResponse>(joinUrl(searchBaseUrl, "/search"), {
+            method: "POST",
+            headers: context.headers,
+            body: JSON.stringify(legacyPayload),
           });
-          return;
-        }
 
-        setSearchResponse(searchResult.data);
-        return;
-      }
-
-      const legacyPayload = {
-        query: { raw: trimmedQuery },
-        options: { size: safeSize, from: 0, enableVector: vectorEnabled },
-      };
-
-      const legacyResult = await fetchJson<SearchResponse>(joinUrl(searchBaseUrl, "/search"), {
-        method: "POST",
-        body: JSON.stringify(legacyPayload),
+          directMeta = { searchPayload: legacyPayload, stage: "search" };
+          return legacyResult;
+        },
       });
 
-      setLastRequest({ mode, searchPayload: legacyPayload });
+      if (target === "bff") {
+        setQcResponse(null);
+        setLastRequest({ mode, target, bffPayload });
+      } else {
+        setQcResponse(directMeta?.qcData ?? null);
+        setLastRequest({
+          mode,
+          target,
+          queryPayload: directMeta?.queryPayload,
+          searchPayload: directMeta?.searchPayload,
+        });
+      }
 
-      if (!legacyResult.ok) {
+      if (!result.ok) {
         setError({
-          stage: "search",
-          status: legacyResult.status,
-          statusText: legacyResult.statusText,
-          body: legacyResult.body,
+          stage: target === "bff" ? "search" : directMeta?.stage ?? "search",
+          status: result.status,
+          statusText: result.statusText,
+          body: result.body,
         });
         return;
       }
 
-      setSearchResponse(legacyResult.data);
+      setSearchResponse(result.data);
     } finally {
       setLoading(false);
     }
@@ -362,10 +449,16 @@ export default function PlaygroundPage() {
                 </Button>
                 <div className="text-muted small d-flex align-items-center gap-3">
                   <span>
+                    BFF: <span className="fw-semibold">{bffBaseUrl}</span>
+                  </span>
+                  <span>
                     QS: <span className="fw-semibold">{queryBaseUrl}</span>
                   </span>
                   <span>
                     Search: <span className="fw-semibold">{searchBaseUrl}</span>
+                  </span>
+                  <span>
+                    Mode: <span className="fw-semibold">{apiMode}</span>
                   </span>
                 </div>
               </Col>
@@ -492,11 +585,13 @@ export default function PlaygroundPage() {
                 </Tab>
                 <Tab eventKey="qc" title="QueryContext (qc.v1.1)">
                   <pre className="bg-dark text-light p-2 rounded small overflow-auto" style={{ maxHeight: 280 }}>
-                    {mode === "qc_v1_1"
-                      ? qcResponse
-                        ? prettyJson(qcResponse)
-                        : "// Run a search to see qc.v1.1"
-                      : "// Legacy mode does not call Query Service"}
+                    {lastRequest?.target === "bff"
+                      ? "// BFF responses do not expose QueryContext"
+                      : mode === "qc_v1_1"
+                        ? qcResponse
+                          ? prettyJson(qcResponse)
+                          : "// Run a search to see qc.v1.1"
+                        : "// Legacy mode does not call Query Service"}
                   </pre>
                 </Tab>
                 <Tab eventKey="curl" title="cURL">

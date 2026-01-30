@@ -4,6 +4,7 @@ import type { SearchResponse } from '../types/search'
 export type SearchOptions = { size: number; from: number; debug?: boolean }
 
 export type BookDetailResponse = {
+  version?: string
   doc_id?: string
   source?: {
     title_ko?: string
@@ -32,7 +33,11 @@ function resolveSearchBaseUrl() {
   )
 }
 
-export async function postSearchWithQc(qc: unknown, options: SearchOptions): Promise<SearchResponse> {
+export async function postSearchWithQc(
+  qc: unknown,
+  options: SearchOptions,
+  headers?: HeadersInit,
+): Promise<SearchResponse> {
   const searchBaseUrl = resolveSearchBaseUrl()
   const payload = {
     query_context_v1_1: qc,
@@ -41,15 +46,16 @@ export async function postSearchWithQc(qc: unknown, options: SearchOptions): Pro
 
   return fetchJson<SearchResponse>(joinUrl(searchBaseUrl, '/search'), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    headers,
+    body: payload,
   })
 }
 
-export async function getBookByDocId(docId: string): Promise<BookDetailResponse> {
+export async function getBookByDocId(docId: string, headers?: HeadersInit): Promise<BookDetailResponse> {
   const searchBaseUrl = resolveSearchBaseUrl()
   const encodedId = encodeURIComponent(docId)
   return fetchJson<BookDetailResponse>(joinUrl(searchBaseUrl, `/books/${encodedId}`), {
     method: 'GET',
+    headers,
   })
 }

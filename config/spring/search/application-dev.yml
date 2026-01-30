@@ -1,9 +1,10 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+
 server:
   port: ${SEARCH_PORT:8080}
-
-spring:
-  application:
-    name: search-service
 
 opensearch:
   base-url: ${OPENSEARCH_URL:http://localhost:9200}
@@ -23,7 +24,6 @@ app:
     allowed-headers: ${CORS_ALLOW_HEADERS:*}
     exposed-headers: ${CORS_EXPOSED_HEADERS:x-trace-id,x-request-id}
     allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
-
 
 logging:
   level:

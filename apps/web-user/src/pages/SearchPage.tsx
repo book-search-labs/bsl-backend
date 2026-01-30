@@ -2,9 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
+import { search } from '../api/searchApi'
 import { HttpError } from '../api/http'
-import { postQueryContext } from '../api/queryService'
-import { postSearchWithQc } from '../api/searchService'
 import type { BookHit, SearchResponse } from '../types/search'
 
 const DEFAULT_SIZE = 10
@@ -101,10 +100,6 @@ function getHitDebug(hit: BookHit) {
   }
 }
 
-function ensureRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
-}
-
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const query = searchParams.get('q') ?? ''
@@ -119,7 +114,6 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<ErrorMessage | null>(null)
   const [response, setResponse] = useState<SearchResponse | null>(null)
-  const [queryContext, setQueryContext] = useState<unknown | null>(null)
   const [hasSearched, setHasSearched] = useState(false)
   const requestCounter = useRef(0)
 
@@ -165,7 +159,6 @@ export default function SearchPage() {
       setLoading(false)
       setError(null)
       setResponse(null)
-      setQueryContext(null)
       setHasSearched(false)
       return
     }
@@ -177,50 +170,13 @@ export default function SearchPage() {
     setHasSearched(true)
     setError(null)
     setResponse(null)
-    setQueryContext(null)
-
-    let qc: unknown
-    try {
-      qc = await postQueryContext(trimmedQuery)
-    } catch (err) {
-      if (requestId !== requestCounter.current) return
-      const safeError =
-        err instanceof HttpError
-          ? err
-          : new HttpError('unexpected_error', { status: 0, statusText: 'unknown', body: err })
-      setError(formatError(safeError, 'query'))
-      setLoading(false)
-      return
-    }
-
-    if (requestId !== requestCounter.current) return
-
-    let qcForSearch: unknown = qc
-
-    if (!vectorEnabled && qc && typeof qc === 'object') {
-      const qcRecord = ensureRecord(qc)
-      const retrievalHints = ensureRecord(qcRecord.retrievalHints)
-      const vector = ensureRecord(retrievalHints.vector)
-
-      qcForSearch = {
-        ...qcRecord,
-        retrievalHints: {
-          ...retrievalHints,
-          vector: {
-            ...vector,
-            enabled: false,
-          },
-        },
-      }
-    }
-
-    setQueryContext(qcForSearch)
 
     try {
-      const result = await postSearchWithQc(qcForSearch, {
+      const result = await search(trimmedQuery, {
         size: sizeValue,
         from: 0,
         debug: debugEnabled,
+        vector: vectorEnabled,
       })
 
       if (requestId !== requestCounter.current) return
@@ -327,9 +283,8 @@ export default function SearchPage() {
       }
     | undefined
 
-  const qcMeta = queryContext as { meta?: { traceId?: string; requestId?: string } } | null
-  const traceId = response?.trace_id ?? qcMeta?.meta?.traceId ?? '-'
-  const requestId = response?.request_id ?? qcMeta?.meta?.requestId ?? '-'
+  const traceId = response?.trace_id ?? '-'
+  const requestId = response?.request_id ?? '-'
 
   const viewLabel = viewMode === 'card' ? 'Card view' : 'Compact view'
 

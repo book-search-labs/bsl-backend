@@ -37,9 +37,12 @@ export type SearchDebug = {
 }
 
 export type SearchResponse = {
+  version?: string
   trace_id?: string
   request_id?: string
   took_ms?: number
+  timed_out?: boolean
+  total?: number
   ranking_applied?: boolean
   strategy?: string
   hits?: BookHit[]

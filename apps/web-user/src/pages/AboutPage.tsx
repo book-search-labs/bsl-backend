@@ -1,7 +1,9 @@
 export default function AboutPage() {
   const searchBaseUrl = import.meta.env.VITE_SEARCH_BASE_URL
   const queryBaseUrl = import.meta.env.VITE_QUERY_BASE_URL
-  const envPreview = `VITE_SEARCH_BASE_URL=${searchBaseUrl || '(unset)'}\nVITE_QUERY_BASE_URL=${queryBaseUrl || '(unset)'}`
+  const bffBaseUrl = import.meta.env.VITE_BFF_BASE_URL
+  const apiMode = import.meta.env.VITE_API_MODE
+  const envPreview = `VITE_BFF_BASE_URL=${bffBaseUrl || '(unset)'}\nVITE_API_MODE=${apiMode || '(unset)'}\nVITE_SEARCH_BASE_URL=${searchBaseUrl || '(unset)'}\nVITE_QUERY_BASE_URL=${queryBaseUrl || '(unset)'}`
 
   return (
     <section className="page-section">

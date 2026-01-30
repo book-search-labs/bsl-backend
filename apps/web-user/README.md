@@ -8,9 +8,25 @@ cp .env.example .env
 npm run dev -- --port 5174
 ```
 
+## Environment
+```
+VITE_BFF_BASE_URL=http://localhost:8088
+VITE_API_MODE=bff_primary
+VITE_SEARCH_BASE_URL=http://localhost:8080
+VITE_QUERY_BASE_URL=http://localhost:8001
+VITE_AUTOCOMPLETE_SERVICE_BASE_URL=http://localhost:8081
+```
+
 ## Example URLs
 - http://localhost:5174/
 - http://localhost:5174/search?q=%ED%95%B4%EB%A6%AC&size=5&vector=true
+
+## BFF search curl
+```bash
+curl -s -X POST http://localhost:8088/search \
+  -H 'Content-Type: application/json' \
+  -d '{"query":{"raw":"해리"},"options":{"size":5,"from":0,"enableVector":true}}'
+```
 
 ## Search Service curl (qc.v1.1)
 ```bash

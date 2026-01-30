@@ -10,7 +10,7 @@ function joinUrl(base: string, path: string) {
   return `${base.replace(/\/$/, '')}${path}`
 }
 
-export async function postQueryContext(rawQuery: string): Promise<unknown> {
+export async function postQueryContext(rawQuery: string, headers?: HeadersInit): Promise<unknown> {
   const queryBaseUrl = import.meta.env.VITE_QUERY_BASE_URL ?? 'http://localhost:8001'
   const payload: QueryContextPayload = {
     query: { raw: rawQuery },
@@ -20,6 +20,7 @@ export async function postQueryContext(rawQuery: string): Promise<unknown> {
 
   return fetchJson(joinUrl(queryBaseUrl, '/query-context'), {
     method: 'POST',
+    headers,
     body: payload,
   })
 }

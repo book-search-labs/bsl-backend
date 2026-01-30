@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 
 import { HttpError } from '../api/http'
-import { getBookByDocId } from '../api/searchService'
+import { getBookDetail } from '../api/books'
 import type { Book } from '../types/search'
 import { addRecentView } from '../utils/recentViews'
 
@@ -159,7 +159,7 @@ export default function BookDetailPage() {
       setRefreshing(true)
     }
 
-    getBookByDocId(docId)
+    getBookDetail(docId)
     .then((result) => {
       if (!isActive) return
 

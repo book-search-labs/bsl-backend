@@ -1,14 +1,14 @@
 spring:
-  application:
-    name: ranking-service
+  config:
+    activate:
+      on-profile: stage
 
 server:
-  port: ${RANKING_PORT:8082}
-
+  port: ${RANKING_PORT}
 
 app:
   cors:
-    allowed-origins: ${CORS_ALLOW_ORIGINS:http://localhost:4173,http://localhost:5173,http://localhost:5174}
+    allowed-origins: ${CORS_ALLOW_ORIGINS}
     allowed-methods: ${CORS_ALLOW_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
     allowed-headers: ${CORS_ALLOW_HEADERS:*}
     exposed-headers: ${CORS_EXPOSED_HEADERS:x-trace-id,x-request-id}
@@ -16,4 +16,4 @@ app:
 
 logging:
   level:
-    root: ${LOG_LEVEL:DEBUG}
+    root: ${LOG_LEVEL:INFO}

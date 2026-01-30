@@ -1,10 +1,33 @@
+import { createRequestContext, resolveApiMode, resolveBffBaseUrl, routeRequest } from './client'
 import { fetchJson, HttpError } from './http'
 import { postQueryContext } from './queryService'
-import { postSearchWithQc, type SearchOptions } from './searchService'
+import { getBookByDocId, type BookDetailResponse, postSearchWithQc, type SearchOptions } from './searchService'
 import type { Book, BookHit, SearchResponse } from '../types/search'
 
 type SearchRequestOptions = Partial<SearchOptions> & {
   vector?: boolean
+}
+
+type BffSearchHit = {
+  doc_id?: string
+  score?: number
+  title?: string
+  authors?: string[]
+  publisher?: string
+  publication_year?: number
+  [key: string]: unknown
+}
+
+type BffSearchResponse = {
+  version?: string
+  trace_id?: string
+  request_id?: string
+  took_ms?: number
+  timed_out?: boolean
+  total?: number
+  hits?: BffSearchHit[]
+  debug?: { query_dsl?: Record<string, unknown> }
+  [key: string]: unknown
 }
 
 function joinUrl(base: string, path: string) {
@@ -32,13 +55,48 @@ function normalizeBook(hit: BookHit, fallbackDocId?: string): Book | null {
   }
 }
 
-export async function search(query: string, options: SearchRequestOptions = {}): Promise<SearchResponse> {
+function mapBffSearchResponse(response: BffSearchResponse): SearchResponse {
+  const hits = Array.isArray(response.hits)
+    ? response.hits
+        .map((hit) => {
+          if (!hit) return null
+          return {
+            doc_id: hit.doc_id,
+            score: hit.score,
+            source: {
+              title_ko: hit.title ?? null,
+              authors: Array.isArray(hit.authors) ? hit.authors : [],
+              publisher_name: hit.publisher ?? null,
+              issued_year: hit.publication_year ?? null,
+            },
+          }
+        })
+        .filter(Boolean)
+    : []
+
+  return {
+    version: response.version,
+    trace_id: response.trace_id,
+    request_id: response.request_id,
+    took_ms: response.took_ms,
+    timed_out: response.timed_out,
+    total: response.total,
+    hits: hits as BookHit[],
+    debug: response.debug as SearchResponse['debug'],
+  }
+}
+
+async function searchDirect(
+  query: string,
+  options: SearchRequestOptions,
+  headers: HeadersInit,
+): Promise<SearchResponse> {
   const size = options.size ?? 10
   const from = options.from ?? 0
   const vectorEnabled = options.vector ?? true
   const debugEnabled = options.debug ?? false
 
-  const qc = await postQueryContext(query)
+  const qc = await postQueryContext(query, headers)
   let qcForSearch: unknown = qc
 
   if (!vectorEnabled && qc && typeof qc === 'object') {
@@ -58,32 +116,64 @@ export async function search(query: string, options: SearchRequestOptions = {}):
     }
   }
 
-  return postSearchWithQc(qcForSearch, { size, from, debug: debugEnabled })
+  return postSearchWithQc(qcForSearch, { size, from, debug: debugEnabled }, headers)
+}
+
+async function searchViaBff(
+  query: string,
+  options: SearchRequestOptions,
+  headers: HeadersInit,
+): Promise<SearchResponse> {
+  const size = options.size ?? 10
+  const from = options.from ?? 0
+  const vectorEnabled = options.vector ?? true
+
+  const payload = {
+    query: { raw: query },
+    options: { size, from, enableVector: vectorEnabled },
+  }
+
+  const response = await fetchJson<BffSearchResponse>(joinUrl(resolveBffBaseUrl(), '/search'), {
+    method: 'POST',
+    headers,
+    body: payload,
+  })
+
+  return mapBffSearchResponse(response)
+}
+
+export async function search(query: string, options: SearchRequestOptions = {}): Promise<SearchResponse> {
+  const requestContext = createRequestContext()
+  return routeRequest({
+    route: 'search',
+    mode: resolveApiMode(),
+    requestContext,
+    bff: (context) => searchViaBff(query, options, context.headers),
+    direct: (context) => searchDirect(query, options, context.headers),
+  })
 }
 
 export async function searchByDocId(docId: string): Promise<Book | null> {
   if (!docId) return null
 
-  const payload = {
-    query: { raw: docId },
-    options: { size: 5, from: 0, enableVector: false },
-  }
-
-  const searchBaseUrl = import.meta.env.VITE_SEARCH_BASE_URL ?? 'http://localhost:8080'
-
   try {
-    const result = await fetchJson<SearchResponse>(joinUrl(searchBaseUrl, '/search'), {
-      method: 'POST',
-      body: payload,
+    const requestContext = createRequestContext()
+    const detail = await routeRequest<BookDetailResponse>({
+      route: 'book_detail',
+      mode: resolveApiMode(),
+      requestContext,
+      bff: (context) => {
+        const encodedId = encodeURIComponent(docId)
+        return fetchJson<BookDetailResponse>(joinUrl(resolveBffBaseUrl(), `/books/${encodedId}`), {
+          method: 'GET',
+          headers: context.headers,
+        })
+      },
+      direct: (context) => getBookByDocId(docId, context.headers),
     })
 
-    const hits = Array.isArray(result?.hits) ? result.hits : []
-    if (hits.length === 0) return null
-
-    const exact = hits.find((hit) => hit.doc_id === docId)
-    const candidate = exact ?? hits[0]
-
-    return normalizeBook(candidate, docId)
+    if (!detail?.source) return null
+    return normalizeBook({ doc_id: detail.doc_id, source: detail.source }, docId)
   } catch (error) {
     if (error instanceof HttpError && error.status === 404) {
       return null

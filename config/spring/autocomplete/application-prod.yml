@@ -1,0 +1,26 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+server:
+  port: ${AUTOCOMPLETE_PORT}
+
+opensearch:
+  url: ${OPENSEARCH_URL}
+  username: ${OPENSEARCH_USERNAME}
+  password: ${OPENSEARCH_PASSWORD}
+  timeout-ms: ${OPENSEARCH_TIMEOUT_MS:300}
+  index: ${OPENSEARCH_AC_INDEX}
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOW_ORIGINS}
+    allowed-methods: ${CORS_ALLOW_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
+    allowed-headers: ${CORS_ALLOW_HEADERS:*}
+    exposed-headers: ${CORS_EXPOSED_HEADERS:x-trace-id,x-request-id}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+
+logging:
+  level:
+    root: ${LOG_LEVEL:WARN}

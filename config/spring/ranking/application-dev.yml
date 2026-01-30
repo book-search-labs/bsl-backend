@@ -1,9 +1,10 @@
-server:
-  port: ${AUTOCOMPLETE_PORT:8081}
-
 spring:
-  application:
-    name: autocomplete-service
+  config:
+    activate:
+      on-profile: dev
+
+server:
+  port: ${RANKING_PORT:8082}
 
 app:
   cors:
@@ -12,13 +13,6 @@ app:
     allowed-headers: ${CORS_ALLOW_HEADERS:*}
     exposed-headers: ${CORS_EXPOSED_HEADERS:x-trace-id,x-request-id}
     allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
-
-opensearch:
-  url: ${OPENSEARCH_URL:http://localhost:9200}
-  username: ${OPENSEARCH_USERNAME:}
-  password: ${OPENSEARCH_PASSWORD:}
-  timeout-ms: 300
-  index: ac_suggest_read
 
 logging:
   level:
