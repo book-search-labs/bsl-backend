@@ -15,6 +15,8 @@ SCHEMA_FILES = {
     "autocomplete-response.sample.json": CONTRACTS_DIR / "autocomplete-response.schema.json",
     "book-detail-response.sample.json": CONTRACTS_DIR / "book-detail-response.schema.json",
     "error.sample.json": CONTRACTS_DIR / "error.schema.json",
+    "reindex-job-create-request.sample.json": CONTRACTS_DIR / "reindex-job-create-request.schema.json",
+    "reindex-job-response.sample.json": CONTRACTS_DIR / "reindex-job-response.schema.json",
 }
 
 def load_json(p: Path) -> dict:

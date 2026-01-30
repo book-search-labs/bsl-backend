@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "reindex-job.schema.json",
+  "title": "ReindexJob",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["reindex_job_id", "logical_name", "status"],
+  "properties": {
+    "reindex_job_id": { "type": "integer" },
+    "logical_name": { "type": "string", "minLength": 1 },
+    "from_physical": { "type": ["string", "null"] },
+    "to_physical": { "type": ["string", "null"] },
+    "status": {
+      "type": "string",
+      "enum": [
+        "CREATED",
+        "PREPARE",
+        "BUILD_INDEX",
+        "BULK_LOAD",
+        "VERIFY",
+        "ALIAS_SWAP",
+        "CLEANUP",
+        "PAUSED",
+        "FAILED",
+        "RETRY",
+        "RESUME",
+        "SUCCESS"
+      ]
+    },
+    "params": { "type": ["object", "null"], "additionalProperties": true },
+    "progress": { "type": ["object", "null"], "additionalProperties": true },
+    "error": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "message": { "type": "string" },
+        "retryable": { "type": "boolean" },
+        "stage": { "type": "string" },
+        "detail": { "type": ["object", "array", "string", "number", "boolean", "null"] }
+      }
+    },
+    "started_at": { "type": ["string", "null"], "format": "date-time" },
+    "finished_at": { "type": ["string", "null"], "format": "date-time" },
+    "created_at": { "type": ["string", "null"], "format": "date-time" },
+    "updated_at": { "type": ["string", "null"], "format": "date-time" },
+    "paused_at": { "type": ["string", "null"], "format": "date-time" }
+  }
+}

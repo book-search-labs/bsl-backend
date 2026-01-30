@@ -1,0 +1,33 @@
+{
+  "version": "v1",
+  "trace_id": "trace_demo",
+  "request_id": "req_demo",
+  "job": {
+    "reindex_job_id": 101,
+    "logical_name": "books_doc",
+    "from_physical": "books_doc_v1_20260101_001",
+    "to_physical": "books_doc_v1_local_20260130_001",
+    "status": "BULK_LOAD",
+    "params": {
+      "index_prefix": "books_doc_v1_local",
+      "mapping_path": "infra/opensearch/books_doc_v1.mapping.json",
+      "bulk_size": 1000
+    },
+    "progress": {
+      "total": 120000,
+      "processed": 42000,
+      "failed": 2,
+      "retries": 5,
+      "cursor": {
+        "last_material_id": "nlk:CMO123"
+      },
+      "attempts": 1
+    },
+    "error": null,
+    "started_at": "2026-01-30T00:10:00Z",
+    "finished_at": null,
+    "created_at": "2026-01-30T00:09:55Z",
+    "updated_at": "2026-01-30T00:15:00Z",
+    "paused_at": null
+  }
+}

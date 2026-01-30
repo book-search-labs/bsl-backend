@@ -138,6 +138,34 @@ All structured responses that follow `contracts/*` must include:
 }
 ```
 
+# 1.5) Index Writer Service (Internal)
+
+**Responsibility**: managed reindex jobs (state machine, pause/resume/checkpoint).
+
+## Base URL (Local)
+`http://localhost:8090`
+
+## POST `/internal/index/reindex-jobs`
+**Purpose**: create a reindex job.  
+**Request**: `contracts/reindex-job-create-request.schema.json`  
+**Response**: `contracts/reindex-job-response.schema.json`
+
+## GET `/internal/index/reindex-jobs/{id}`
+**Purpose**: fetch job detail.  
+**Response**: `contracts/reindex-job-response.schema.json`
+
+## POST `/internal/index/reindex-jobs/{id}/pause`
+**Purpose**: pause a running job.  
+**Response**: `contracts/reindex-job-response.schema.json`
+
+## POST `/internal/index/reindex-jobs/{id}/resume`
+**Purpose**: resume a paused job.  
+**Response**: `contracts/reindex-job-response.schema.json`
+
+## POST `/internal/index/reindex-jobs/{id}/retry`
+**Purpose**: retry a failed job.  
+**Response**: `contracts/reindex-job-response.schema.json`
+
 # 2) Query Service (QS)
 
 **Responsibility**: Query normalization, lightweight understanding, and generation of `QueryContext`.
