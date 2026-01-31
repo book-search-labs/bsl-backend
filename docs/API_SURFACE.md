@@ -655,6 +655,68 @@ If supported, the server should treat it as:
 
 ---
 
+# 9) Commerce API (via BFF → Commerce Service)
+
+## User (v1)
+- `GET /api/v1/skus?materialId=...`
+- `GET /api/v1/skus/{skuId}`
+- `GET /api/v1/skus/{skuId}/offers`
+- `GET /api/v1/skus/{skuId}/current-offer`
+- `GET /api/v1/materials/{materialId}/current-offer`
+- `GET /api/v1/cart`
+- `POST /api/v1/cart/items`
+- `PATCH /api/v1/cart/items/{cartItemId}`
+- `DELETE /api/v1/cart/items/{cartItemId}`
+- `DELETE /api/v1/cart/items`
+- `GET /api/v1/checkout`
+- `GET /api/v1/addresses`
+- `POST /api/v1/addresses`
+- `POST /api/v1/addresses/{addressId}/default`
+- `POST /api/v1/orders`
+- `GET /api/v1/orders`
+- `GET /api/v1/orders/{orderId}`
+- `POST /api/v1/orders/{orderId}/cancel`
+- `POST /api/v1/payments`
+- `GET /api/v1/payments/{paymentId}`
+- `POST /api/v1/payments/{paymentId}/mock/complete`
+- `POST /api/v1/payments/webhook/{provider}`
+- `POST /api/v1/shipments`
+- `POST /api/v1/shipments/{shipmentId}/tracking`
+- `POST /api/v1/shipments/{shipmentId}/mock/status`
+- `GET /api/v1/shipments/{shipmentId}`
+- `GET /api/v1/shipments/by-order/{orderId}`
+- `POST /api/v1/refunds`
+- `GET /api/v1/refunds/{refundId}`
+- `GET /api/v1/refunds/by-order/{orderId}`
+
+## Admin (v1)
+- `GET /admin/sellers`
+- `POST /admin/sellers`
+- `PATCH /admin/sellers/{sellerId}`
+- `GET /admin/skus`
+- `POST /admin/skus`
+- `PATCH /admin/skus/{skuId}`
+- `GET /admin/offers?sku_id=...`
+- `POST /admin/offers`
+- `PATCH /admin/offers/{offerId}`
+- `GET /admin/inventory/balance?sku_id=...`
+- `GET /admin/inventory/ledger?sku_id=...`
+- `POST /admin/inventory/adjust`
+- `GET /admin/payments`
+- `GET /admin/payments/{paymentId}`
+- `POST /admin/payments/{paymentId}/cancel`
+- `GET /admin/refunds`
+- `GET /admin/refunds/{refundId}`
+- `POST /admin/refunds`
+- `POST /admin/refunds/{refundId}/approve`
+- `POST /admin/refunds/{refundId}/process`
+- `GET /admin/shipments`
+- `GET /admin/shipments/{shipmentId}`
+- `POST /admin/shipments/{shipmentId}/label`
+- `POST /admin/shipments/{shipmentId}/status`
+
+---
+
 ## Minimal Smoke Commands (Local)
 
 ### QS: QueryContext

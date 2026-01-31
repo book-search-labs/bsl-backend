@@ -2,6 +2,7 @@ rootProject.name = 'bsl-backend'
 
 include('services:autocomplete-service')
 include('services:bff-service')
+include('services:commerce-service')
 include('services:outbox-relay-service')
 include('services:model-inference-service')
 include('services:query-service')

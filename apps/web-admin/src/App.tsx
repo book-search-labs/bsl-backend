@@ -12,6 +12,9 @@ import OpsAutocompletePage from "./pages/OpsAutocompletePage";
 import ModelOpsPage from "./pages/ModelOpsPage";
 import RagOpsPage from "./pages/RagOpsPage";
 import RagEvalPage from "./pages/RagEvalPage";
+import ProductOpsPage from "./pages/ProductOpsPage";
+import PaymentRefundOpsPage from "./pages/PaymentRefundOpsPage";
+import ShippingOpsPage from "./pages/ShippingOpsPage";
 
 export default function App() {
   return (
@@ -38,6 +41,11 @@ export default function App() {
           <Route path="models" element={<ModelOpsPage />} />
           <Route path="rag" element={<RagOpsPage />} />
           <Route path="rag-eval" element={<RagEvalPage />} />
+          <Route path="commerce">
+            <Route path="products" element={<ProductOpsPage />} />
+            <Route path="payments" element={<PaymentRefundOpsPage />} />
+            <Route path="shipping" element={<ShippingOpsPage />} />
+          </Route>
         </Route>
         <Route path="settings" element={<SettingsPage />} />
       </Route>

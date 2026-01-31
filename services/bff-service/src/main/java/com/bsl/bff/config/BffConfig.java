@@ -58,4 +58,13 @@ public class BffConfig {
             .setReadTimeout(Duration.ofMillis(config.getTimeoutMs()))
             .build();
     }
+
+    @Bean
+    public RestTemplate commerceServiceRestTemplate(RestTemplateBuilder builder, DownstreamProperties properties) {
+        DownstreamProperties.ServiceProperties config = properties.getCommerceService();
+        return builder
+            .setConnectTimeout(Duration.ofMillis(config.getTimeoutMs()))
+            .setReadTimeout(Duration.ofMillis(config.getTimeoutMs()))
+            .build();
+    }
 }

@@ -72,6 +72,17 @@ const sidebarItems: SidebarNode[] = [
       { type: "leaf", key: "ops-rag", label: "RAG Docs", icon: "bi-journal-text", to: "/ops/rag" },
       { type: "leaf", key: "ops-rag-eval", label: "RAG Eval", icon: "bi-clipboard2-check", to: "/ops/rag-eval" },
       { type: "leaf", key: "ops-jobs", label: "Jobs", icon: "bi-lightning", to: "/ops/jobs" },
+      {
+        type: "group",
+        key: "ops-commerce",
+        label: "Commerce",
+        icon: "bi-bag",
+        children: [
+          { type: "leaf", key: "ops-commerce-products", label: "Products", to: "/ops/commerce/products" },
+          { type: "leaf", key: "ops-commerce-payments", label: "Payments & Refunds", to: "/ops/commerce/payments" },
+          { type: "leaf", key: "ops-commerce-shipping", label: "Shipping", to: "/ops/commerce/shipping" },
+        ],
+      },
     ],
   },
   { type: "leaf", key: "settings", label: "Settings", icon: "bi-sliders", to: "/settings" },

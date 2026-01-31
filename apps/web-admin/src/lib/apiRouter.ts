@@ -33,6 +33,14 @@ export function resolveBffBaseUrl() {
   return import.meta.env.VITE_BFF_BASE_URL ?? 'http://localhost:8088'
 }
 
+function resolveAdminId() {
+  return (
+    localStorage.getItem('bsl.adminId') ??
+    (import.meta.env.VITE_ADMIN_ID as string | undefined) ??
+    '1'
+  )
+}
+
 function randomHex(bytes: number) {
   if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
     const data = new Uint8Array(bytes)
@@ -51,6 +59,7 @@ export function createRequestContext(): ApiRequestContext {
   const spanId = randomHex(8)
   const requestId = `${traceId}-${spanId}`
   const traceparent = `00-${traceId}-${spanId}-01`
+  const adminId = resolveAdminId()
   return {
     requestId,
     traceId,
@@ -59,6 +68,7 @@ export function createRequestContext(): ApiRequestContext {
       'x-request-id': requestId,
       'x-trace-id': traceId,
       traceparent,
+      'x-admin-id': adminId,
     },
   }
 }

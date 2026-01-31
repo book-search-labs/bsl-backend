@@ -35,6 +35,9 @@ bff:
     mis-service:
       base-url: ${MIS_BASE_URL:http://localhost:8005}
       timeout-ms: ${MIS_TIMEOUT_MS:300}
+    commerce-service:
+      base-url: ${COMMERCE_BASE_URL:http://localhost:8091}
+      timeout-ms: ${COMMERCE_TIMEOUT_MS:500}
   outbox:
     enabled: ${BFF_OUTBOX_ENABLED:false}
   rbac:

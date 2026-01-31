@@ -325,6 +325,12 @@ export default function AppShell() {
                 <NavLink to="/search" className={navLinkClassName}>
                   Search
                 </NavLink>
+                <NavLink to="/cart" className={navLinkClassName}>
+                  Cart
+                </NavLink>
+                <NavLink to="/orders" className={navLinkClassName}>
+                  Orders
+                </NavLink>
                 <NavLink to="/chat" className={navLinkClassName}>
                   Chat
                 </NavLink>
