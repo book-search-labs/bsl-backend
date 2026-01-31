@@ -10,6 +10,11 @@ EXAMPLES_DIR = CONTRACTS_DIR / "examples"
 
 SCHEMA_FILES = {
     "query-context.sample.json": CONTRACTS_DIR / "query-context.schema.json",
+    "query-context-v1.sample.json": CONTRACTS_DIR / "query_context" / "v1" / "query-context.schema.json",
+    "query-prepare-request.sample.json": CONTRACTS_DIR / "query-prepare-request.schema.json",
+    "query-enhance-request.sample.json": CONTRACTS_DIR / "query-enhance-request.schema.json",
+    "query-enhance-response.sample.json": CONTRACTS_DIR / "query-enhance-response.schema.json",
+    "query-rewrite-failure-response.sample.json": CONTRACTS_DIR / "query-rewrite-failure-response.schema.json",
     "search-request.sample.json": CONTRACTS_DIR / "search-request.schema.json",
     "search-response.sample.json": CONTRACTS_DIR / "search-response.schema.json",
     "autocomplete-response.sample.json": CONTRACTS_DIR / "autocomplete-response.schema.json",

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "query-rewrite-failure-response.schema.json",
+  "title": "QueryRewriteFailureResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "trace_id", "request_id", "items"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "request_id", "trace_id", "q_raw", "q_norm", "canonical_key", "reason", "decision", "strategy", "failure_tag", "created_at"],
+        "properties": {
+          "id": { "type": "integer", "minimum": 1 },
+          "request_id": { "type": "string" },
+          "trace_id": { "type": "string" },
+          "q_raw": { "type": "string" },
+          "q_norm": { "type": "string" },
+          "canonical_key": { "type": "string" },
+          "reason": { "type": "string" },
+          "decision": { "type": "string" },
+          "strategy": { "type": "string" },
+          "failure_tag": { "type": "string" },
+          "created_at": { "type": "string" },
+          "replay_payload": { "type": "object", "additionalProperties": true }
+        }
+      }
+    }
+  }
+}

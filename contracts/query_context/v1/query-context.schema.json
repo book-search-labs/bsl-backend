@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "query-context-v1.schema.json",
+  "title": "QueryContextV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "trace_id",
+    "request_id",
+    "q_raw",
+    "q_nfkc",
+    "q_norm",
+    "q_nospace",
+    "canonical_key",
+    "locale",
+    "client",
+    "detected",
+    "confidence"
+  ],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "span_id": { "type": ["string", "null"] },
+
+    "q_raw": { "type": "string" },
+    "q_nfkc": { "type": "string" },
+    "q_norm": { "type": "string" },
+    "q_nospace": { "type": "string" },
+    "canonical_key": { "type": "string", "minLength": 1 },
+
+    "locale": { "type": "string", "minLength": 1 },
+    "client": { "type": ["object", "null"], "additionalProperties": true },
+    "user": { "type": ["object", "null"], "additionalProperties": true },
+
+    "detected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "is_isbn", "has_volume", "lang"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["normal", "chosung", "isbn", "mixed"] },
+        "is_isbn": { "type": "boolean" },
+        "has_volume": { "type": "boolean" },
+        "lang": { "type": "string", "minLength": 1 },
+        "volume": { "type": ["integer", "null"], "minimum": 1 },
+        "isbn": { "type": ["string", "null"] },
+        "is_mixed": { "type": "boolean" }
+      }
+    },
+
+    "hints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "intent_hint": { "type": ["string", "null"] },
+        "budget": { "type": ["object", "null"], "additionalProperties": true }
+      }
+    },
+
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["need_spell", "need_rewrite", "need_rerank"],
+      "properties": {
+        "need_spell": { "type": "number", "minimum": 0, "maximum": 1 },
+        "need_rewrite": { "type": "number", "minimum": 0, "maximum": 1 },
+        "need_rerank": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+
+    "expanded": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "series": { "type": "array", "items": { "type": "string" } },
+        "author_variants": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

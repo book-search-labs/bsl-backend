@@ -271,7 +271,7 @@ All structured responses that follow `contracts/*` must include:
 ```
 
 ## POST `/query-context`
-**Purpose**: Convert user input into `QueryContext (v1)`.
+**Purpose**: Convert user input into `QueryContext (qc.v1.1)` (legacy QS response used by BFF/SR pipeline).
 
 ### Request
 **Body (JSON)** — **Preferred (official)**
@@ -298,17 +298,44 @@ If supported, the server should treat it as:
 
 ### Response
 - `200 OK`
-- Contract: `contracts/query-context.schema.json`
-- Example: `contracts/examples/query-context.sample.json`
+- Response shape: **qc.v1.1** (legacy; schema not yet formalized)
 
 ### Notes (MVP)
 - QS must:
   - normalize `query.raw` deterministically
-  - set `query.canonical` = `query.normalized` (MVP)
-  - fill default blocks: `spell`, `rewrite`, `understanding`, `retrieval_hints`
+  - populate `canonicalKey`, `detected`, `slots`, and default blocks
 - `trace_id/request_id`:
   - If headers exist, propagate them
   - Otherwise generate them
+
+## POST `/query/prepare`
+**Purpose**: Convert user input into **QueryContext v1** (frozen contract).
+
+### Request
+- Contract: `contracts/query-prepare-request.schema.json`
+- Example: `contracts/examples/query-prepare-request.sample.json`
+
+### Response
+- Contract: `contracts/query_context/v1/query-context.schema.json`
+- Example: `contracts/examples/query-context-v1.sample.json`
+
+## POST `/query/enhance`
+**Purpose**: Run 2-pass gating (spell/rewrite/RAG) and return decision + enhanced query.
+
+### Request
+- Contract: `contracts/query-enhance-request.schema.json`
+- Example: `contracts/examples/query-enhance-request.sample.json`
+
+### Response
+- Contract: `contracts/query-enhance-response.schema.json`
+- Example: `contracts/examples/query-enhance-response.sample.json`
+
+## GET `/internal/qc/rewrite/failures`
+**Purpose**: List curated rewrite failure cases for replay/analysis.
+
+### Response
+- Contract: `contracts/query-rewrite-failure-response.schema.json`
+- Example: `contracts/examples/query-rewrite-failure-response.sample.json`
 
 ---
 
@@ -483,6 +510,22 @@ curl -s -XPOST http://localhost:8001/query-context \
   -H "x-trace-id: trace_demo" \
   -H "x-request-id: req_demo" \
   -d '{"query":{"raw":"해리포터 1권"}}'
+```
+
+### QS: QueryContext v1 (prepare)
+```bash
+curl -s -XPOST http://localhost:8001/query/prepare \
+  -H "Content-Type: application/json" \
+  -H "x-trace-id: trace_demo" \
+  -H "x-request-id: req_demo" \
+  -d '{"query":{"raw":"해리포터 Vol.1"}}'
+```
+
+### QS: Enhance (gating)
+```bash
+curl -s -XPOST http://localhost:8001/query/enhance \
+  -H "Content-Type: application/json" \
+  -d '{"request_id":"req_demo","trace_id":"trace_demo","q_norm":"해리포터 1권","q_nospace":"해리포터1권","detected":{"mode":"normal","is_isbn":false,"has_volume":true,"lang":"ko"},"reason":"ZERO_RESULTS","signals":{"latency_budget_ms":800,"score_gap":0.01}}'
 ```
 
 ### SS: Search (when implemented)

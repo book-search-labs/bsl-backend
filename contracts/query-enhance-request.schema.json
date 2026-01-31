@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "query-enhance-request.schema.json",
+  "title": "QueryEnhanceRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request_id", "trace_id", "q_norm", "q_nospace", "detected", "reason"],
+  "properties": {
+    "request_id": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "q_norm": { "type": "string", "minLength": 1 },
+    "q_nospace": { "type": "string", "minLength": 1 },
+    "canonical_key": { "type": "string" },
+    "locale": { "type": "string" },
+    "detected": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "reason": {
+      "type": "string",
+      "enum": ["ZERO_RESULTS", "LOW_CONFIDENCE", "HIGH_OOV", "USER_EXPLICIT"]
+    },
+    "signals": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "top_score": { "type": "number" },
+        "score_gap": { "type": "number" },
+        "oov_ratio": { "type": "number" },
+        "token_count": { "type": "integer", "minimum": 0 },
+        "latency_budget_ms": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "top_candidates": {
+      "type": "array",
+      "items": { "type": "object", "additionalProperties": true }
+    }
+  }
+}

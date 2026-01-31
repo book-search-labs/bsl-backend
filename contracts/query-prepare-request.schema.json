@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "query-prepare-request.schema.json",
+  "title": "QueryPrepareRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["query"],
+  "properties": {
+    "query": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw"],
+      "properties": {
+        "raw": { "type": "string", "minLength": 1 }
+      }
+    },
+    "client": { "type": ["object", "null"], "additionalProperties": true },
+    "user": { "type": ["object", "null"], "additionalProperties": true },
+    "raw": { "type": "string" }
+  }
+}

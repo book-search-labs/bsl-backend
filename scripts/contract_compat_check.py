@@ -108,6 +108,7 @@ def collect_contract_files() -> list[Path]:
     files = []
     files.extend(CONTRACTS_DIR.glob("*.schema.json"))
     files.extend((CONTRACTS_DIR / "jsonschema").glob("*.json"))
+    files.extend((CONTRACTS_DIR / "query_context" / "v1").glob("*.json"))
     files.extend(OPENAPI_DIR.glob("*.yaml"))
     files.extend(OPENAPI_DIR.glob("*.yml"))
     files.extend(OPENAPI_DIR.glob("*.json"))
