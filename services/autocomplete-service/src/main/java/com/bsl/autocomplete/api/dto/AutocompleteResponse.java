@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 public class AutocompleteResponse {
+    private String version;
+
     @JsonProperty("trace_id")
     private String traceId;
 
@@ -14,6 +16,14 @@ public class AutocompleteResponse {
     private long tookMs;
 
     private List<Suggestion> suggestions;
+
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
+    }
 
     public String getTraceId() {
         return traceId;
@@ -51,6 +61,13 @@ public class AutocompleteResponse {
         private String text;
         private double score;
         private String source;
+        @JsonProperty("suggest_id")
+        private String suggestId;
+        private String type;
+        @JsonProperty("target_id")
+        private String targetId;
+        @JsonProperty("target_doc_id")
+        private String targetDocId;
 
         public String getText() {
             return text;
@@ -74,6 +91,38 @@ public class AutocompleteResponse {
 
         public void setSource(String source) {
             this.source = source;
+        }
+
+        public String getSuggestId() {
+            return suggestId;
+        }
+
+        public void setSuggestId(String suggestId) {
+            this.suggestId = suggestId;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public String getTargetId() {
+            return targetId;
+        }
+
+        public void setTargetId(String targetId) {
+            this.targetId = targetId;
+        }
+
+        public String getTargetDocId() {
+            return targetDocId;
+        }
+
+        public void setTargetDocId(String targetDocId) {
+            this.targetDocId = targetDocId;
         }
     }
 }

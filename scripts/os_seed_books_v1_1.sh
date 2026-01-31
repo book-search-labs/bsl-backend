@@ -4,7 +4,7 @@ set -euo pipefail
 OS_URL="${OS_URL:-http://localhost:9200}"
 DOC_ALIAS="${DOC_ALIAS:-books_doc_write}"
 VEC_ALIAS="${VEC_ALIAS:-books_vec_write}"
-AC_ALIAS="${AC_ALIAS:-ac_suggest_write}"
+AC_ALIAS="${AC_ALIAS:-ac_write}"
 AUTHORS_ALIAS="${AUTHORS_ALIAS:-authors_doc_write}"
 SERIES_ALIAS="${SERIES_ALIAS:-series_doc_write}"
 
@@ -119,17 +119,17 @@ echo "$VEC_RES" | grep -q '"errors":false' || {
 
 AC_BULK="$(cat <<'AC_EOF'
 { "index": { "_index": "__AC_ALIAS__", "_id": "ac_q1" } }
-{ "suggest_id": "ac_q1", "type": "QUERY", "lang": "ko", "text": "해리포터", "text_kw": "해리포터", "weight": 100, "popularity_7d": 0.80, "ctr_7d": 0.12, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+{ "suggest_id": "ac_q1", "type": "QUERY", "lang": "ko", "text": "해리포터", "text_kw": "해리포터", "weight": 100, "popularity_7d": 0.80, "ctr_7d": 0.12, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__AC_ALIAS__", "_id": "ac_q2" } }
-{ "suggest_id": "ac_q2", "type": "QUERY", "lang": "ko", "text": "클린 코드", "text_kw": "클린 코드", "weight": 90, "popularity_7d": 0.60, "ctr_7d": 0.08, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+{ "suggest_id": "ac_q2", "type": "QUERY", "lang": "ko", "text": "클린 코드", "text_kw": "클린 코드", "weight": 90, "popularity_7d": 0.60, "ctr_7d": 0.08, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__AC_ALIAS__", "_id": "ac_t1" } }
-{ "suggest_id": "ac_t1", "type": "TITLE", "lang": "ko", "text": "해리 포터와 마법사의 돌", "text_kw": "해리 포터와 마법사의 돌", "target_doc_id": "b1", "weight": 95, "popularity_7d": 0.70, "ctr_7d": 0.10, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+{ "suggest_id": "ac_t1", "type": "TITLE", "lang": "ko", "text": "해리 포터와 마법사의 돌", "text_kw": "해리 포터와 마법사의 돌", "target_doc_id": "b1", "weight": 95, "popularity_7d": 0.70, "ctr_7d": 0.10, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__AC_ALIAS__", "_id": "ac_t2" } }
-{ "suggest_id": "ac_t2", "type": "TITLE", "lang": "ko", "text": "클린 코드", "text_kw": "클린 코드", "target_doc_id": "b3", "weight": 85, "popularity_7d": 0.55, "ctr_7d": 0.06, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+{ "suggest_id": "ac_t2", "type": "TITLE", "lang": "ko", "text": "클린 코드", "text_kw": "클린 코드", "target_doc_id": "b3", "weight": 85, "popularity_7d": 0.55, "ctr_7d": 0.06, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__AC_ALIAS__", "_id": "ac_a1" } }
-{ "suggest_id": "ac_a1", "type": "AUTHOR", "lang": "ko", "text": "J.K. 롤링", "text_kw": "J.K. 롤링", "target_id": "a1", "weight": 88, "popularity_7d": 0.65, "ctr_7d": 0.09, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+{ "suggest_id": "ac_a1", "type": "AUTHOR", "lang": "ko", "text": "J.K. 롤링", "text_kw": "J.K. 롤링", "target_id": "a1", "weight": 88, "popularity_7d": 0.65, "ctr_7d": 0.09, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__AC_ALIAS__", "_id": "ac_s1" } }
-{ "suggest_id": "ac_s1", "type": "SERIES", "lang": "ko", "text": "해리 포터", "text_kw": "해리 포터", "target_id": "s1", "weight": 92, "popularity_7d": 0.68, "ctr_7d": 0.11, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+{ "suggest_id": "ac_s1", "type": "SERIES", "lang": "ko", "text": "해리 포터", "text_kw": "해리 포터", "target_id": "s1", "weight": 92, "popularity_7d": 0.68, "ctr_7d": 0.11, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
 AC_EOF
 )"
 
@@ -234,7 +234,7 @@ fi
 echo "OK: knn hits=$KNN_HITS"
 
 echo "Running autocomplete smoke check (text match: 해)..."
-AC_RES_QUERY="$(curl -sS -XPOST "$OS_URL/ac_suggest_read/_search" \
+AC_RES_QUERY="$(curl -sS -XPOST "$OS_URL/ac_read/_search" \
   -H "Content-Type: application/json" \
   -d '{"query":{"match":{"text":"해"}},"size":5}')"
 

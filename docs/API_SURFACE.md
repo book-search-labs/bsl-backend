@@ -119,10 +119,21 @@ All structured responses that follow `contracts/*` must include:
   "request_id": "string",
   "took_ms": 1,
   "suggestions": [
-    { "text": "string", "score": 0.0, "source": "redis|opensearch" }
+    { "text": "string", "score": 0.0, "source": "redis|opensearch", "suggest_id": "string", "type": "string" }
   ]
 }
 ```
+
+## POST `/autocomplete/select`
+**Purpose**: record a suggestion selection event.
+
+### Request
+- Contract: `contracts/autocomplete-select-request.schema.json`
+- Example: `contracts/examples/autocomplete-select-request.sample.json`
+
+### Response
+- Contract: `contracts/ack-response.schema.json`
+- Example: `contracts/examples/ack-response.sample.json`
 
 ## GET `/books/{docId}`
 **Purpose**: book detail by doc id.
@@ -181,6 +192,21 @@ All structured responses that follow `contracts/*` must include:
 **Purpose**: list ops tasks.  
 **Query Params**: `limit` (int, optional), `status` (string, optional), `task_type` (string, optional)  
 **Response**: `contracts/ops-task-list-response.schema.json`
+
+## GET `/admin/ops/autocomplete/suggestions`
+**Purpose**: search autocomplete suggestions for ops review.  
+**Query Params**: `q` (string), `size` (int, optional), `include_blocked` (bool, optional)  
+**Response**: `contracts/autocomplete-admin-suggestions-response.schema.json`
+
+## POST `/admin/ops/autocomplete/suggestions/{id}`
+**Purpose**: update suggestion weight/blocking.  
+**Request**: `contracts/autocomplete-admin-update-request.schema.json`  
+**Response**: `contracts/autocomplete-admin-update-response.schema.json`
+
+## GET `/admin/ops/autocomplete/trends`
+**Purpose**: top suggestions by CTR/Popularity.  
+**Query Params**: `metric` (ctr|popularity|impressions, optional), `limit` (int, optional)  
+**Response**: `contracts/autocomplete-admin-trends-response.schema.json`
 
 # 1.5) Index Writer Service (Internal)
 

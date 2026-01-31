@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ack-response.schema.json",
+  "title": "AckResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "trace_id", "request_id", "status"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "minLength": 1 }
+  }
+}

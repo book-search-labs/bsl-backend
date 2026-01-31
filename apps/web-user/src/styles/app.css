@@ -127,9 +127,37 @@
 }
 
 .search-suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   border: none;
   font-weight: 600;
   text-align: left;
+}
+
+.search-suggestion-text {
+  flex: 1;
+  text-align: left;
+}
+
+.search-suggestion-meta {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8b6f5e;
+  white-space: nowrap;
+}
+
+.search-suggestion-header {
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #8b6f5e;
+  background: rgba(250, 246, 242, 0.9);
+  border-bottom: 1px solid rgba(180, 77, 42, 0.08);
 }
 
 .search-suggestion.active,

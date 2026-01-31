@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "autocomplete-admin-suggestions-response.schema.json",
+  "title": "AutocompleteAdminSuggestionsResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "trace_id", "request_id", "took_ms", "suggestions"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "took_ms": { "type": "integer", "minimum": 0 },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["suggest_id", "text", "type"],
+        "properties": {
+          "suggest_id": { "type": "string" },
+          "text": { "type": "string" },
+          "type": { "type": "string" },
+          "lang": { "type": "string" },
+          "target_id": { "type": "string" },
+          "target_doc_id": { "type": "string" },
+          "weight": { "type": "integer", "minimum": 0 },
+          "ctr_7d": { "type": "number" },
+          "popularity_7d": { "type": "number" },
+          "is_blocked": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

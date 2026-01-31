@@ -4,7 +4,7 @@
 Start: `./scripts/local_up.sh`
 Check: `curl http://localhost:9200`
 Check aliases: `curl -s http://localhost:9200/_cat/aliases?v`
-Autocomplete smoke: `curl -s -XPOST http://localhost:9200/ac_suggest_read/_search -H 'Content-Type: application/json' -d '{"query":{"match":{"text":"해"}},"size":5}'`
+Autocomplete smoke: `curl -s -XPOST http://localhost:9200/ac_read/_search -H 'Content-Type: application/json' -d '{"query":{"match":{"text":"해"}},"size":5}'`
 Author smoke: `curl -s -XPOST http://localhost:9200/authors_doc_read/_search -H 'Content-Type: application/json' -d '{"query":{"match":{"name_ko":"롤링"}},"size":5}'`
 Series smoke: `curl -s -XPOST http://localhost:9200/series_doc_read/_search -H 'Content-Type: application/json' -d '{"query":{"match":{"name":"해리"}},"size":5}'`
 Stop: `./scripts/local_down.sh`
@@ -49,6 +49,15 @@ MySQL counts:
 - `mysql -h 127.0.0.1 -u bsl -pbsl bsl -e "SELECT COUNT(*) FROM nlk_biblio_docs;"`
 OpenSearch aliases: `curl -s http://localhost:9200/_cat/aliases?v | grep books_doc`
 OpenSearch sample: `curl -s -XPOST http://localhost:9200/books_doc_read/_search -H 'Content-Type: application/json' -d '{"size":3,"query":{"match_all":{}}}'`
+
+## Autocomplete Ops Loop (Local)
+Install deps: `python3 -m pip install -r scripts/autocomplete/requirements.txt`
+Run aggregation (outbox → metrics → OpenSearch/Redis): `python3 scripts/autocomplete/aggregate_events.py`
+Defaults:
+- OpenSearch alias: `AC_ALIAS=ac_write`
+- Redis cache keys: `AUTOCOMPLETE_CACHE_KEY_PREFIX=ac:prefix:`
+- Decay half-life: `AC_DECAY_HALF_LIFE_SEC=604800`
+If Redis is not available, cache invalidation is skipped.
 
 ## Search Service (Local)
 Start OpenSearch: `./scripts/local_up.sh`

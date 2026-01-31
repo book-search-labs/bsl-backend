@@ -23,6 +23,9 @@ import org.springframework.web.client.RestTemplate;
 @Component
 public class OpenSearchGateway {
     private static final int MAX_EXPANSIONS = 50;
+    private static final double WEIGHT_FACTOR = 0.02;
+    private static final double CTR_FACTOR = 5.0;
+    private static final double POPULARITY_FACTOR = 2.0;
 
     private final ObjectMapper objectMapper;
     private final OpenSearchProperties properties;
@@ -35,6 +38,14 @@ public class OpenSearchGateway {
     }
 
     public List<SuggestionHit> searchSuggestions(String query, int size) {
+        return searchSuggestionsInternal(query, size, false);
+    }
+
+    public List<SuggestionHit> searchAdminSuggestions(String query, int size, boolean includeBlocked) {
+        return searchSuggestionsInternal(query, size, includeBlocked);
+    }
+
+    private List<SuggestionHit> searchSuggestionsInternal(String query, int size, boolean includeBlocked) {
         Map<String, Object> phrasePrefix = new LinkedHashMap<>();
         phrasePrefix.put("query", query);
         phrasePrefix.put("max_expansions", MAX_EXPANSIONS);
@@ -55,11 +66,39 @@ public class OpenSearchGateway {
         Map<String, Object> boolQuery = new LinkedHashMap<>();
         boolQuery.put("should", shouldQueries);
         boolQuery.put("minimum_should_match", 1);
+        if (!includeBlocked) {
+            boolQuery.put("must_not", List.of(Map.of("term", Map.of("is_blocked", true))));
+        }
+
+        Map<String, Object> functionScore = new LinkedHashMap<>();
+        functionScore.put("query", Map.of("bool", boolQuery));
+        functionScore.put("score_mode", "sum");
+        functionScore.put("boost_mode", "sum");
+        functionScore.put(
+            "functions",
+            List.of(
+                Map.of("field_value_factor", Map.of("field", "weight", "factor", WEIGHT_FACTOR, "missing", 1)),
+                Map.of("field_value_factor", Map.of("field", "ctr_7d", "factor", CTR_FACTOR, "missing", 0)),
+                Map.of("field_value_factor", Map.of("field", "popularity_7d", "factor", POPULARITY_FACTOR, "missing", 0))
+            )
+        );
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("size", size);
-        body.put("query", Map.of("bool", boolQuery));
-        body.put("_source", List.of("text", "value"));
+        body.put("query", Map.of("function_score", functionScore));
+        body.put("_source", List.of(
+            "suggest_id",
+            "type",
+            "lang",
+            "text",
+            "value",
+            "target_id",
+            "target_doc_id",
+            "weight",
+            "ctr_7d",
+            "popularity_7d",
+            "is_blocked"
+        ));
 
         JsonNode response = postJson("/" + properties.getIndex() + "/_search", body);
         return extractSuggestions(response);
@@ -80,7 +119,21 @@ public class OpenSearchGateway {
                 continue;
             }
             double score = hit.path("_score").asDouble(0.0);
-            hits.add(new SuggestionHit(text, score));
+            hits.add(
+                new SuggestionHit(
+                    source.path("suggest_id").asText(null),
+                    text,
+                    source.path("type").asText(null),
+                    source.path("lang").asText(null),
+                    source.path("target_id").asText(null),
+                    source.path("target_doc_id").asText(null),
+                    source.path("weight").isNumber() ? source.path("weight").asInt() : null,
+                    source.path("ctr_7d").isNumber() ? source.path("ctr_7d").asDouble() : null,
+                    source.path("popularity_7d").isNumber() ? source.path("popularity_7d").asDouble() : null,
+                    source.path("is_blocked").asBoolean(false),
+                    score
+                )
+            );
         }
         return hits;
     }
@@ -108,6 +161,40 @@ public class OpenSearchGateway {
         }
     }
 
+    public SuggestionHit getSuggestion(String suggestId) {
+        JsonNode response = getJson("/" + properties.getIndex() + "/_doc/" + suggestId);
+        JsonNode source = response.path("_source");
+        if (source.isMissingNode() || source.isNull()) {
+            return null;
+        }
+        String text = source.path("text").asText(null);
+        if (text == null || text.isBlank()) {
+            text = source.path("value").asText(null);
+        }
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        return new SuggestionHit(
+            source.path("suggest_id").asText(null),
+            text,
+            source.path("type").asText(null),
+            source.path("lang").asText(null),
+            source.path("target_id").asText(null),
+            source.path("target_doc_id").asText(null),
+            source.path("weight").isNumber() ? source.path("weight").asInt() : null,
+            source.path("ctr_7d").isNumber() ? source.path("ctr_7d").asDouble() : null,
+            source.path("popularity_7d").isNumber() ? source.path("popularity_7d").asDouble() : null,
+            source.path("is_blocked").asBoolean(false),
+            0.0
+        );
+    }
+
+    public void updateSuggestion(String suggestId, Map<String, Object> fields) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("doc", fields);
+        postJson("/" + properties.getIndex() + "/_update/" + suggestId, body);
+    }
+
     private String buildUrl(String path) {
         String base = properties.getUrl();
         if (base.endsWith("/")) {
@@ -128,6 +215,26 @@ public class OpenSearchGateway {
         return headers;
     }
 
+    private JsonNode getJson(String path) {
+        String url = buildUrl(path);
+        HttpHeaders headers = buildHeaders();
+        try {
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            return objectMapper.readTree(response.getBody());
+        } catch (ResourceAccessException e) {
+            throw new OpenSearchUnavailableException("OpenSearch unreachable: " + url, e);
+        } catch (HttpStatusCodeException e) {
+            int status = e.getStatusCode().value();
+            if (status == 502 || status == 503 || status == 504) {
+                throw new OpenSearchUnavailableException("OpenSearch unavailable: " + status, e);
+            }
+            throw new OpenSearchRequestException("OpenSearch error: " + status, e);
+        } catch (JsonProcessingException e) {
+            throw new OpenSearchRequestException("Failed to parse OpenSearch response", e);
+        }
+    }
+
     private RestTemplate createRestTemplate(int timeoutMs) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(timeoutMs);
@@ -136,16 +243,82 @@ public class OpenSearchGateway {
     }
 
     public static class SuggestionHit {
+        private final String suggestId;
         private final String text;
+        private final String type;
+        private final String lang;
+        private final String targetId;
+        private final String targetDocId;
+        private final Integer weight;
+        private final Double ctr7d;
+        private final Double popularity7d;
+        private final boolean blocked;
         private final double score;
 
-        public SuggestionHit(String text, double score) {
+        public SuggestionHit(
+            String suggestId,
+            String text,
+            String type,
+            String lang,
+            String targetId,
+            String targetDocId,
+            Integer weight,
+            Double ctr7d,
+            Double popularity7d,
+            boolean blocked,
+            double score
+        ) {
+            this.suggestId = suggestId;
             this.text = text;
+            this.type = type;
+            this.lang = lang;
+            this.targetId = targetId;
+            this.targetDocId = targetDocId;
+            this.weight = weight;
+            this.ctr7d = ctr7d;
+            this.popularity7d = popularity7d;
+            this.blocked = blocked;
             this.score = score;
+        }
+
+        public String getSuggestId() {
+            return suggestId;
         }
 
         public String getText() {
             return text;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public String getLang() {
+            return lang;
+        }
+
+        public String getTargetId() {
+            return targetId;
+        }
+
+        public String getTargetDocId() {
+            return targetDocId;
+        }
+
+        public Integer getWeight() {
+            return weight;
+        }
+
+        public Double getCtr7d() {
+            return ctr7d;
+        }
+
+        public Double getPopularity7d() {
+            return popularity7d;
+        }
+
+        public boolean isBlocked() {
+            return blocked;
         }
 
         public double getScore() {

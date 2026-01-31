@@ -2,6 +2,9 @@ spring:
   config:
     activate:
       on-profile: prod
+  data:
+    redis:
+      url: ${REDIS_URL}
 
 server:
   port: ${AUTOCOMPLETE_PORT}
@@ -12,6 +15,14 @@ opensearch:
   password: ${OPENSEARCH_PASSWORD}
   timeout-ms: ${OPENSEARCH_TIMEOUT_MS:300}
   index: ${OPENSEARCH_AC_INDEX}
+
+autocomplete:
+  cache:
+    enabled: ${AUTOCOMPLETE_CACHE_ENABLED}
+    ttl-seconds: ${AUTOCOMPLETE_CACHE_TTL_SECONDS}
+    max-prefix-length: ${AUTOCOMPLETE_CACHE_MAX_PREFIX}
+    max-items: ${AUTOCOMPLETE_CACHE_MAX_ITEMS}
+    key-prefix: ${AUTOCOMPLETE_CACHE_KEY_PREFIX:ac:prefix:}
 
 app:
   cors:

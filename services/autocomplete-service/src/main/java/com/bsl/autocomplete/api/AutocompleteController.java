@@ -67,6 +67,7 @@ public class AutocompleteController {
 
     private AutocompleteResponse emptyResponse(String traceId, String requestId, long started) {
         AutocompleteResponse response = new AutocompleteResponse();
+        response.setVersion("v1");
         response.setTraceId(traceId);
         response.setRequestId(requestId);
         response.setTookMs((System.nanoTime() - started) / 1_000_000L);

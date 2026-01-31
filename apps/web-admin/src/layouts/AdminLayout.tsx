@@ -66,6 +66,7 @@ const sidebarItems: SidebarNode[] = [
           { type: "leaf", key: "doc-lookup", label: "Doc Lookup", to: "/ops/index/doc-lookup" },
         ],
       },
+      { type: "leaf", key: "ops-autocomplete", label: "Autocomplete", icon: "bi-magic", to: "/ops/autocomplete" },
       { type: "leaf", key: "ops-jobs", label: "Jobs", icon: "bi-lightning", to: "/ops/jobs" },
     ],
   },

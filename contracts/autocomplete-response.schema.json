@@ -19,7 +19,11 @@
         "properties": {
           "text": { "type": "string" },
           "score": { "type": "number" },
-          "source": { "type": "string" }
+          "source": { "type": "string" },
+          "suggest_id": { "type": "string" },
+          "type": { "type": "string" },
+          "target_id": { "type": "string" },
+          "target_doc_id": { "type": "string" }
         }
       }
     }

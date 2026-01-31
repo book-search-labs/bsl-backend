@@ -1,24 +1,29 @@
 package com.bsl.autocomplete.service;
 
 import com.bsl.autocomplete.api.dto.AutocompleteResponse;
+import com.bsl.autocomplete.cache.AutocompleteCacheService;
 import com.bsl.autocomplete.opensearch.OpenSearchGateway;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AutocompleteService {
-    private static final String SOURCE = "opensearch";
+    private static final String SOURCE_OS = "opensearch";
     private static final int FETCH_MULTIPLIER = 3;
     private static final int FETCH_MAX = 50;
+    private static final String VERSION = "v1";
 
     private final OpenSearchGateway openSearchGateway;
+    private final AutocompleteCacheService cacheService;
 
-    public AutocompleteService(OpenSearchGateway openSearchGateway) {
+    public AutocompleteService(OpenSearchGateway openSearchGateway, AutocompleteCacheService cacheService) {
         this.openSearchGateway = openSearchGateway;
+        this.cacheService = cacheService;
     }
 
     public AutocompleteResponse autocomplete(String query, int size, String traceId, String requestId) {
@@ -27,6 +32,7 @@ public class AutocompleteService {
         List<AutocompleteResponse.Suggestion> suggestions = buildSuggestions(query, size);
 
         AutocompleteResponse response = new AutocompleteResponse();
+        response.setVersion(VERSION);
         response.setTraceId(traceId);
         response.setRequestId(requestId);
         response.setTookMs((System.nanoTime() - started) / 1_000_000L);
@@ -39,10 +45,15 @@ public class AutocompleteService {
             return List.of();
         }
 
+        Optional<List<AutocompleteResponse.Suggestion>> cached = cacheService.get(query, size);
+        if (cached.isPresent()) {
+            return cached.get();
+        }
+
         int fetchSize = Math.min(size * FETCH_MULTIPLIER, FETCH_MAX);
         List<OpenSearchGateway.SuggestionHit> hits = openSearchGateway.searchSuggestions(query, fetchSize);
 
-        Map<String, String> deduped = new LinkedHashMap<>();
+        Map<String, OpenSearchGateway.SuggestionHit> deduped = new LinkedHashMap<>();
         Map<String, Double> scores = new LinkedHashMap<>();
         for (OpenSearchGateway.SuggestionHit hit : hits) {
             String candidate = hit.getText();
@@ -55,12 +66,13 @@ public class AutocompleteService {
             }
             String key = trimmed.toLowerCase(Locale.ROOT);
             if (!deduped.containsKey(key)) {
-                deduped.put(key, trimmed);
+                deduped.put(key, hit);
                 scores.put(key, hit.getScore());
             } else {
                 Double existingScore = scores.get(key);
                 if (existingScore == null || hit.getScore() > existingScore) {
                     scores.put(key, hit.getScore());
+                    deduped.put(key, hit);
                 }
             }
             if (deduped.size() >= size) {
@@ -69,13 +81,19 @@ public class AutocompleteService {
         }
 
         List<AutocompleteResponse.Suggestion> suggestions = new ArrayList<>();
-        for (Map.Entry<String, String> entry : deduped.entrySet()) {
+        for (Map.Entry<String, OpenSearchGateway.SuggestionHit> entry : deduped.entrySet()) {
+            OpenSearchGateway.SuggestionHit hit = entry.getValue();
             AutocompleteResponse.Suggestion suggestion = new AutocompleteResponse.Suggestion();
-            suggestion.setText(entry.getValue());
+            suggestion.setText(hit.getText());
             suggestion.setScore(scores.getOrDefault(entry.getKey(), 0.0));
-            suggestion.setSource(SOURCE);
+            suggestion.setSource(SOURCE_OS);
+            suggestion.setSuggestId(hit.getSuggestId());
+            suggestion.setType(hit.getType());
+            suggestion.setTargetDocId(hit.getTargetDocId());
+            suggestion.setTargetId(hit.getTargetId());
             suggestions.add(suggestion);
         }
+        cacheService.put(query, suggestions);
         return suggestions;
     }
 }

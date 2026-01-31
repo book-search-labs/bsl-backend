@@ -10,7 +10,7 @@ public class OpenSearchProperties {
     private String username;
     private String password;
     private int timeoutMs = 300;
-    private String index = "ac_suggest_read";
+    private String index = "ac_read";
 
     public String getUrl() {
         return url;

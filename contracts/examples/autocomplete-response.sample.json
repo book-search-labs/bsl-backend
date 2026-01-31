@@ -4,7 +4,19 @@
   "request_id": "req_1b2c3d4e5f6a",
   "took_ms": 2,
   "suggestions": [
-    { "text": "해리포터", "score": 10.1, "source": "opensearch" },
-    { "text": "해리포터 1권", "score": 9.5, "source": "redis" }
+    {
+      "text": "해리포터",
+      "score": 10.1,
+      "source": "opensearch",
+      "suggest_id": "ac_q1",
+      "type": "QUERY"
+    },
+    {
+      "text": "해리포터 1권",
+      "score": 9.5,
+      "source": "redis",
+      "suggest_id": "ac_q2",
+      "type": "QUERY"
+    }
   ]
 }

@@ -1,0 +1,9 @@
+{
+  "q": "해리",
+  "text": "해리포터",
+  "suggest_id": "ac_q1",
+  "type": "QUERY",
+  "position": 1,
+  "source": "opensearch",
+  "target_doc_id": "b1"
+}

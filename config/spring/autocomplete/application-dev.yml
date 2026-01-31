@@ -2,6 +2,9 @@ spring:
   config:
     activate:
       on-profile: dev
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
 
 server:
   port: ${AUTOCOMPLETE_PORT:8081}
@@ -11,7 +14,15 @@ opensearch:
   username: ${OPENSEARCH_USERNAME:}
   password: ${OPENSEARCH_PASSWORD:}
   timeout-ms: ${OPENSEARCH_TIMEOUT_MS:300}
-  index: ${OPENSEARCH_AC_INDEX:ac_suggest_read}
+  index: ${OPENSEARCH_AC_INDEX:ac_read}
+
+autocomplete:
+  cache:
+    enabled: ${AUTOCOMPLETE_CACHE_ENABLED:true}
+    ttl-seconds: ${AUTOCOMPLETE_CACHE_TTL_SECONDS:300}
+    max-prefix-length: ${AUTOCOMPLETE_CACHE_MAX_PREFIX:6}
+    max-items: ${AUTOCOMPLETE_CACHE_MAX_ITEMS:12}
+    key-prefix: ${AUTOCOMPLETE_CACHE_KEY_PREFIX:ac:prefix:}
 
 app:
   cors:

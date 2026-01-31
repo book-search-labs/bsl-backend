@@ -28,7 +28,7 @@ from lib.paths import checkpoints_dir, dataset_name, deadletter_dir, iter_input_
 
 OS_URL = os.environ.get("OS_URL", "http://localhost:9200")
 BOOKS_ALIAS = os.environ.get("BOOKS_ALIAS", "books_doc_write")
-AC_ALIAS = os.environ.get("AC_ALIAS", "ac_suggest_write")
+AC_ALIAS = os.environ.get("AC_ALIAS", "ac_write")
 AUTHORS_ALIAS = os.environ.get("AUTHORS_ALIAS", "authors_doc_write")
 ENABLE_ENTITY_INDICES = os.environ.get("ENABLE_ENTITY_INDICES", "1") == "1"
 
@@ -169,6 +169,7 @@ def build_suggest_docs(record_id: str, book_doc: Dict[str, Any]) -> List[Dict[st
                 "target_id": record_id,
                 "target_doc_id": record_id,
                 "weight": 1,
+                "is_blocked": False,
                 "updated_at": book_doc.get("updated_at"),
             }
         )
@@ -328,7 +329,7 @@ def main() -> int:
 
     deadletter_dir().mkdir(parents=True, exist_ok=True)
     books_deadletter = deadletter_dir() / "books_doc_deadletter.ndjson"
-    suggest_deadletter = deadletter_dir() / "ac_suggest_deadletter.ndjson"
+    suggest_deadletter = deadletter_dir() / "ac_candidates_deadletter.ndjson"
     authors_deadletter = deadletter_dir() / "authors_doc_deadletter.ndjson"
 
     files = iter_input_files()

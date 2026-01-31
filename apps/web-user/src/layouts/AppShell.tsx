@@ -4,12 +4,13 @@ import {
   type KeyboardEvent,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
-import { fetchAutocomplete, type AutocompleteSuggestion } from '../api/autocomplete'
+import { fetchAutocomplete, postAutocompleteSelect, type AutocompleteSuggestion } from '../api/autocomplete'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { useOutsideClick } from '../hooks/useOutsideClick'
 
@@ -17,6 +18,52 @@ const AUTOCOMPLETE_SIZE = 8
 const AUTOCOMPLETE_DEBOUNCE_MS = 250
 const MIN_QUERY_LENGTH = 1
 const AUTOCOMPLETE_LISTBOX_ID = 'global-search-suggestions'
+const RECENT_STORAGE_KEY = 'bsl.recentSearches'
+const MAX_RECENT = 6
+const DEFAULT_RECOMMENDED = [
+  '해리포터',
+  '클린 코드',
+  '도메인 주도 설계',
+  '엘라스틱서치',
+  '판타지 소설',
+  '소프트웨어 아키텍처',
+]
+
+type SelectableItem = {
+  kind: 'suggestion' | 'recent' | 'recommended'
+  text: string
+  suggestion?: AutocompleteSuggestion
+  position: number
+}
+
+function loadRecentQueries(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((item) => typeof item === 'string' && item.trim().length > 0)
+  } catch {
+    return []
+  }
+}
+
+function saveRecentQueries(items: string[]) {
+  try {
+    localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(items))
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function resolveRecommendedQueries() {
+  const raw = import.meta.env.VITE_AUTOCOMPLETE_RECOMMENDED ?? ''
+  const parsed = raw
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+  return parsed.length > 0 ? parsed : DEFAULT_RECOMMENDED
+}
 
 export default function AppShell() {
   const navigate = useNavigate()
@@ -24,6 +71,7 @@ export default function AppShell() {
   const [searchParams] = useSearchParams()
   const [query, setQuery] = useState('')
   const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([])
+  const [recentQueries, setRecentQueries] = useState<string[]>(() => loadRecentQueries())
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
@@ -32,6 +80,7 @@ export default function AppShell() {
   const formRef = useRef<HTMLFormElement>(null)
   const shouldSuggestRef = useRef(false)
   const debouncedQuery = useDebouncedValue(query, AUTOCOMPLETE_DEBOUNCE_MS)
+  const recommendedQueries = useMemo(() => resolveRecommendedQueries(), [])
 
   useEffect(() => {
     if (location.pathname.startsWith('/search')) {
@@ -64,16 +113,28 @@ export default function AppShell() {
 
   useEffect(() => {
     const trimmed = debouncedQuery.trim()
+    const hasQuery = trimmed.length >= MIN_QUERY_LENGTH
 
-    if (!shouldSuggestRef.current || trimmed.length < MIN_QUERY_LENGTH) {
-      if (trimmed.length < MIN_QUERY_LENGTH) {
-        shouldSuggestRef.current = false
-      }
+    if (!shouldSuggestRef.current) {
       setIsLoading(false)
       setHasFetched(false)
       setErrorMessage(null)
       setSuggestions([])
       closeSuggestions()
+      return
+    }
+
+    if (!hasQuery) {
+      setIsLoading(false)
+      setHasFetched(false)
+      setErrorMessage(null)
+      setSuggestions([])
+      setActiveIndex(-1)
+      if (recentQueries.length > 0 || recommendedQueries.length > 0) {
+        setIsOpen(true)
+      } else {
+        closeSuggestions()
+      }
       return
     }
 
@@ -116,7 +177,18 @@ export default function AppShell() {
       isActive = false
       controller.abort()
     }
-  }, [debouncedQuery, closeSuggestions])
+  }, [debouncedQuery, closeSuggestions, recentQueries.length, recommendedQueries.length])
+
+  const addRecentQuery = useCallback((value: string) => {
+    const trimmed = value.trim()
+    if (!trimmed) return
+    setRecentQueries((prev) => {
+      const deduped = prev.filter((item) => item.toLowerCase() !== trimmed.toLowerCase())
+      const next = [trimmed, ...deduped].slice(0, MAX_RECENT)
+      saveRecentQueries(next)
+      return next
+    })
+  }, [])
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -125,6 +197,7 @@ export default function AppShell() {
     suppressSuggestions()
 
     if (trimmed.length > 0) {
+      addRecentQuery(trimmed)
       navigate(`/search?q=${encodeURIComponent(trimmed)}`)
       return
     }
@@ -138,17 +211,50 @@ export default function AppShell() {
   }
 
   const handleSelectSuggestion = useCallback(
-    (suggestion: AutocompleteSuggestion) => {
-      const text = suggestion.text.trim()
+    (item: SelectableItem) => {
+      const text = item.text.trim()
       if (!text) return
+      void postAutocompleteSelect({
+        q: query.trim() || undefined,
+        text,
+        suggest_id: item.suggestion?.suggest_id,
+        type: item.suggestion?.type,
+        position: item.position,
+        source: item.suggestion?.source ?? item.kind,
+        target_id: item.suggestion?.target_id,
+        target_doc_id: item.suggestion?.target_doc_id,
+      })
       setQuery(text)
+      addRecentQuery(text)
       suppressSuggestions()
       navigate(`/search?q=${encodeURIComponent(text)}`)
     },
-    [navigate, suppressSuggestions],
+    [addRecentQuery, navigate, query, suppressSuggestions],
   )
 
+  const hasQuery = debouncedQuery.trim().length >= MIN_QUERY_LENGTH
+  const suggestionItems: SelectableItem[] = suggestions.map((suggestion, index) => ({
+    kind: 'suggestion',
+    text: suggestion.text,
+    suggestion,
+    position: index + 1,
+  }))
+  const recentItems: SelectableItem[] = recentQueries.map((text, index) => ({
+    kind: 'recent',
+    text,
+    position: index + 1,
+  }))
+  const recommendedItems: SelectableItem[] = recommendedQueries.map((text, index) => ({
+    kind: 'recommended',
+    text,
+    position: index + 1,
+  }))
+
+  const defaultItems = [...recentItems, ...recommendedItems]
+  const listItems = hasQuery ? suggestionItems : defaultItems
+
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    const totalItems = listItems.length
     if (event.key === 'Escape') {
       if (isOpen) {
         event.preventDefault()
@@ -158,41 +264,41 @@ export default function AppShell() {
     }
 
     if (!isOpen && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
-      if (suggestions.length > 0) {
+      if (totalItems > 0) {
         event.preventDefault()
         setIsOpen(true)
-        setActiveIndex(event.key === 'ArrowDown' ? 0 : suggestions.length - 1)
+        setActiveIndex(event.key === 'ArrowDown' ? 0 : totalItems - 1)
       }
       return
     }
 
     if (event.key === 'ArrowDown') {
-      if (suggestions.length > 0) {
+      if (totalItems > 0) {
         event.preventDefault()
-        setActiveIndex((prev) => (prev + 1) % suggestions.length)
+        setActiveIndex((prev) => (prev + 1) % totalItems)
       }
       return
     }
 
     if (event.key === 'ArrowUp') {
-      if (suggestions.length > 0) {
+      if (totalItems > 0) {
         event.preventDefault()
-        setActiveIndex((prev) => (prev <= 0 ? suggestions.length - 1 : prev - 1))
+        setActiveIndex((prev) => (prev <= 0 ? totalItems - 1 : prev - 1))
       }
       return
     }
 
     if (event.key === 'Enter' && isOpen && activeIndex >= 0) {
       event.preventDefault()
-      const suggestion = suggestions[activeIndex]
-      if (suggestion) {
-        handleSelectSuggestion(suggestion)
+      const item = listItems[activeIndex]
+      if (item) {
+        handleSelectSuggestion(item)
       }
     }
   }
 
-  const showEmpty = hasFetched && !isLoading && suggestions.length === 0 && !errorMessage
-  const showDropdown = isOpen && (isLoading || suggestions.length > 0 || showEmpty || Boolean(errorMessage))
+  const showEmpty = hasQuery && hasFetched && !isLoading && suggestions.length === 0 && !errorMessage
+  const showDropdown = isOpen && (isLoading || listItems.length > 0 || showEmpty || Boolean(errorMessage))
   const activeDescendant =
     isOpen && activeIndex >= 0 ? `global-search-option-${activeIndex}` : undefined
 
@@ -242,7 +348,8 @@ export default function AppShell() {
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
                   onFocus={() => {
-                    if (suggestions.length > 0 || showEmpty || errorMessage) {
+                    if (listItems.length > 0 || showEmpty || errorMessage) {
+                      shouldSuggestRef.current = true
                       setIsOpen(true)
                     }
                   }}
@@ -266,28 +373,88 @@ export default function AppShell() {
                     {!isLoading && errorMessage ? (
                       <div className="list-group-item text-muted small">{errorMessage}</div>
                     ) : null}
-                    {!isLoading && !errorMessage
-                      ? suggestions.map((suggestion, index) => {
-                          const isActive = index === activeIndex
-                          const itemId = `global-search-option-${index}`
+                    {!isLoading && !errorMessage && listItems.length > 0 ? (
+                      <div className="search-suggestion-group">
+                        {!hasQuery && recentItems.length > 0 ? (
+                          <>
+                            <div className="search-suggestion-header">Recent searches</div>
+                            {recentItems.map((item, index) => {
+                              const globalIndex = index
+                              const isActive = globalIndex === activeIndex
+                              const itemId = `global-search-option-${globalIndex}`
+                              return (
+                                <button
+                                  key={`recent-${item.text}-${index}`}
+                                  id={itemId}
+                                  type="button"
+                                  role="option"
+                                  aria-selected={isActive}
+                                  className={`list-group-item list-group-item-action search-suggestion${
+                                    isActive ? ' active' : ''
+                                  }`}
+                                  onClick={() => handleSelectSuggestion(item)}
+                                >
+                                  <span className="search-suggestion-text">{item.text}</span>
+                                  <span className="search-suggestion-meta">Recent</span>
+                                </button>
+                              )
+                            })}
+                          </>
+                        ) : null}
+                        {!hasQuery && recommendedItems.length > 0 ? (
+                          <>
+                            <div className="search-suggestion-header">Recommended</div>
+                            {recommendedItems.map((item, index) => {
+                              const offset = recentItems.length
+                              const globalIndex = offset + index
+                              const isActive = globalIndex === activeIndex
+                              const itemId = `global-search-option-${globalIndex}`
+                              return (
+                                <button
+                                  key={`recommended-${item.text}-${index}`}
+                                  id={itemId}
+                                  type="button"
+                                  role="option"
+                                  aria-selected={isActive}
+                                  className={`list-group-item list-group-item-action search-suggestion${
+                                    isActive ? ' active' : ''
+                                  }`}
+                                  onClick={() => handleSelectSuggestion(item)}
+                                >
+                                  <span className="search-suggestion-text">{item.text}</span>
+                                  <span className="search-suggestion-meta">Recommended</span>
+                                </button>
+                              )
+                            })}
+                          </>
+                        ) : null}
+                        {hasQuery
+                          ? suggestionItems.map((item, index) => {
+                              const isActive = index === activeIndex
+                              const itemId = `global-search-option-${index}`
 
-                          return (
-                            <button
-                              key={`${suggestion.text}-${index}`}
-                              id={itemId}
-                              type="button"
-                              role="option"
-                              aria-selected={isActive}
-                              className={`list-group-item list-group-item-action search-suggestion${
-                                isActive ? ' active' : ''
-                              }`}
-                              onClick={() => handleSelectSuggestion(suggestion)}
-                            >
-                              {suggestion.text}
-                            </button>
-                          )
-                        })
-                      : null}
+                              return (
+                                <button
+                                  key={`${item.text}-${index}`}
+                                  id={itemId}
+                                  type="button"
+                                  role="option"
+                                  aria-selected={isActive}
+                                  className={`list-group-item list-group-item-action search-suggestion${
+                                    isActive ? ' active' : ''
+                                  }`}
+                                  onClick={() => handleSelectSuggestion(item)}
+                                >
+                                  <span className="search-suggestion-text">{item.text}</span>
+                                  {item.suggestion?.type ? (
+                                    <span className="search-suggestion-meta">{item.suggestion.type}</span>
+                                  ) : null}
+                                </button>
+                              )
+                            })
+                          : null}
+                      </div>
+                    ) : null}
                     {showEmpty ? (
                       <div className="list-group-item text-muted small">No suggestions yet.</div>
                     ) : null}

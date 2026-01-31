@@ -7,6 +7,7 @@ import ComparePage from "./pages/ComparePage";
 import SettingsPage from "./pages/SettingsPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import OpsJobsPage from "./pages/OpsJobsPage";
+import OpsAutocompletePage from "./pages/OpsAutocompletePage";
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
             <Route path="doc-lookup" element={<PlaceholderPage title="Doc Lookup" />} />
           </Route>
           <Route path="jobs" element={<OpsJobsPage />} />
+          <Route path="autocomplete" element={<OpsAutocompletePage />} />
         </Route>
         <Route path="settings" element={<SettingsPage />} />
       </Route>

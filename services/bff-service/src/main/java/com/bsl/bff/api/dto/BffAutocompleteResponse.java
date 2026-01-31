@@ -63,6 +63,13 @@ public class BffAutocompleteResponse {
         private String text;
         private double score;
         private String source;
+        @JsonProperty("suggest_id")
+        private String suggestId;
+        private String type;
+        @JsonProperty("target_id")
+        private String targetId;
+        @JsonProperty("target_doc_id")
+        private String targetDocId;
 
         public String getText() {
             return text;
@@ -86,6 +93,38 @@ public class BffAutocompleteResponse {
 
         public void setSource(String source) {
             this.source = source;
+        }
+
+        public String getSuggestId() {
+            return suggestId;
+        }
+
+        public void setSuggestId(String suggestId) {
+            this.suggestId = suggestId;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public String getTargetId() {
+            return targetId;
+        }
+
+        public void setTargetId(String targetId) {
+            this.targetId = targetId;
+        }
+
+        public String getTargetDocId() {
+            return targetDocId;
+        }
+
+        public void setTargetDocId(String targetDocId) {
+            this.targetDocId = targetDocId;
         }
     }
 }
