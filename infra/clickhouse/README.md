@@ -8,6 +8,8 @@ This directory contains the ClickHouse bootstrap schema for OLAP ingestion.
 - `search_dwell`
 - `ac_impression`
 - `ac_select`
+- `feat_doc_daily`
+- `feat_qd_daily`
 - `ltr_training_example`
 
 All tables are partitioned by `event_date` and use `ReplacingMergeTree` with a

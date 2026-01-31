@@ -98,6 +98,11 @@ Generate LTR labels:
 python scripts/olap/generate_ltr_labels.py --start-date 2026-01-30 --end-date 2026-01-31
 ```
 
+Aggregate CTR/Popularity features:
+```bash
+python scripts/olap/aggregate_features.py --start-date 2026-01-30 --end-date 2026-01-31
+```
+
 ## Search Service (Local)
 Start OpenSearch: `./scripts/local_up.sh`
 Run service: `cd services/search-service && ./gradlew bootRun`

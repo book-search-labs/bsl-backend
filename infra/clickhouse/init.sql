@@ -134,6 +134,43 @@ CREATE TABLE IF NOT EXISTS bsl_olap.ltr_training_example (
 PARTITION BY event_date
 ORDER BY (event_date, imp_id, doc_id);
 
+CREATE TABLE IF NOT EXISTS bsl_olap.feat_doc_daily (
+    event_date Date,
+    doc_id String,
+    impressions_7d UInt32,
+    clicks_7d UInt32,
+    impressions_30d UInt32,
+    clicks_30d UInt32,
+    impressions_decay Float32,
+    clicks_decay Float32,
+    ctr_7d Float32,
+    ctr_30d Float32,
+    ctr_decay Float32,
+    popularity_7d Float32,
+    popularity_30d Float32,
+    updated_at DateTime DEFAULT now()
+) ENGINE = ReplacingMergeTree(updated_at)
+PARTITION BY event_date
+ORDER BY (event_date, doc_id);
+
+CREATE TABLE IF NOT EXISTS bsl_olap.feat_qd_daily (
+    event_date Date,
+    query_hash String,
+    doc_id String,
+    impressions_7d UInt32,
+    clicks_7d UInt32,
+    impressions_30d UInt32,
+    clicks_30d UInt32,
+    impressions_decay Float32,
+    clicks_decay Float32,
+    ctr_7d Float32,
+    ctr_30d Float32,
+    ctr_decay Float32,
+    updated_at DateTime DEFAULT now()
+) ENGINE = ReplacingMergeTree(updated_at)
+PARTITION BY event_date
+ORDER BY (event_date, query_hash, doc_id);
+
 CREATE TABLE IF NOT EXISTS bsl_olap.add_to_cart (
     event_date Date,
     event_time DateTime,
