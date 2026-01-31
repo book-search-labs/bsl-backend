@@ -17,3 +17,10 @@ app:
 logging:
   level:
     root: ${LOG_LEVEL:DEBUG}
+
+mis:
+  enabled: ${MIS_ENABLED:false}
+  base-url: ${MIS_BASE_URL:http://localhost:8005}
+  timeout-ms: ${MIS_TIMEOUT_MS:200}
+  model-id: ${MIS_MODEL_ID:}
+  task: ${MIS_TASK:rerank}

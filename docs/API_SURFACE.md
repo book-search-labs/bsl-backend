@@ -439,7 +439,7 @@ If supported, the server should treat it as:
 
 ---
 
-# 6) Model Inference Service (MIS) — Planned
+# 6) Model Inference Service (MIS)
 
 **Responsibility**: Centralized model inference (embeddings, scoring) with versioning and performance controls.
 
@@ -449,10 +449,34 @@ If supported, the server should treat it as:
 { "status": "ok" }
 ```
 
-## POST `/embed`
-**Purpose**: Generate embeddings for input texts.
+## GET `/ready`
+**Response**: `200 OK`
+```json
+{ "status": "ok|degraded", "models_ready": 0, "models_total": 0 }
+```
 
-### Request (Planned)
+## GET `/v1/models`
+**Purpose**: List model registry state.
+
+### Response
+- Contract: `contracts/mis-models-response.schema.json`
+- Example: `contracts/examples/mis-models-response.sample.json`
+
+## POST `/v1/score`
+**Purpose**: Score query-document pairs (e.g., cross-encoder).
+
+### Request
+- Contract: `contracts/mis-score-request.schema.json`
+- Example: `contracts/examples/mis-score-request.sample.json`
+
+### Response
+- Contract: `contracts/mis-score-response.schema.json`
+- Example: `contracts/examples/mis-score-response.sample.json`
+
+## POST `/embed`
+**Purpose**: Generate embeddings for input texts (dev fallback).
+
+### Request (MVP shape)
 ```json
 {
   "version": "v1",
@@ -463,7 +487,7 @@ If supported, the server should treat it as:
 }
 ```
 
-### Response (Planned)
+### Response (MVP shape)
 ```json
 {
   "version": "v1",
@@ -471,31 +495,6 @@ If supported, the server should treat it as:
   "request_id": "string",
   "model": "string",
   "vectors": [[0.0, 0.0]]
-}
-```
-
-## POST `/score`
-**Purpose**: Score query-document pairs (e.g., cross-encoder).
-
-### Request (Planned)
-```json
-{
-  "version": "v1",
-  "trace_id": "string",
-  "request_id": "string",
-  "model": "string",
-  "pairs": [{ "query": "string", "doc": "string" }]
-}
-```
-
-### Response (Planned)
-```json
-{
-  "version": "v1",
-  "trace_id": "string",
-  "request_id": "string",
-  "model": "string",
-  "scores": [0.0]
 }
 ```
 

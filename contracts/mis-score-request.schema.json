@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mis-score-request.schema.json",
+  "title": "MisScoreRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "trace_id", "request_id", "pairs"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "model": { "type": "string", "minLength": 1 },
+    "task": { "type": "string", "minLength": 1 },
+    "pairs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["query"],
+        "properties": {
+          "pair_id": { "type": "string", "minLength": 1 },
+          "query": { "type": "string", "minLength": 1 },
+          "doc": { "type": "string" },
+          "doc_id": { "type": "string" },
+          "features": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "lex_rank": { "type": "integer" },
+              "vec_rank": { "type": "integer" },
+              "rrf_score": { "type": "number" },
+              "issued_year": { "type": "integer" },
+              "volume": { "type": "integer" },
+              "edition_labels": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "timeout_ms": { "type": "integer", "minimum": 1 },
+        "return_debug": { "type": "boolean" }
+      }
+    }
+  }
+}

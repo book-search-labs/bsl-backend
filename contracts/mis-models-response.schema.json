@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mis-models-response.schema.json",
+  "title": "MisModelsResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "trace_id", "request_id", "models"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "models": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "task", "status"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "task": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "minLength": 1 },
+          "backend": { "type": "string" },
+          "active": { "type": "boolean" },
+          "canary": { "type": "boolean" },
+          "canary_weight": { "type": "number", "minimum": 0, "maximum": 1 },
+          "artifact_uri": { "type": "string" },
+          "loaded": { "type": "boolean" },
+          "updated_at": { "type": "string" }
+        }
+      }
+    }
+  }
+}

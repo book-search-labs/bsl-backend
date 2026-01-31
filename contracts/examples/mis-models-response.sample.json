@@ -1,0 +1,19 @@
+{
+  "version": "v1",
+  "trace_id": "trace_demo",
+  "request_id": "req_demo",
+  "models": [
+    {
+      "id": "rerank_toy_v1",
+      "task": "rerank",
+      "status": "ready",
+      "backend": "toy",
+      "active": true,
+      "canary": false,
+      "canary_weight": 0.0,
+      "artifact_uri": "local://models/rerank_toy_v1.onnx",
+      "loaded": true,
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  ]
+}

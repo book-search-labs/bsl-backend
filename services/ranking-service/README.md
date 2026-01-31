@@ -6,6 +6,17 @@ cd services/ranking-service
 ./gradlew bootRun
 ```
 
+## MIS Integration
+Rerank attempts MIS scoring when `MIS_ENABLED=true`. If MIS is unavailable, it falls back to the heuristic
+toy scorer.
+
+Env:
+- `MIS_ENABLED` (default: false)
+- `MIS_BASE_URL` (default: http://localhost:8005)
+- `MIS_TIMEOUT_MS` (default: 200)
+- `MIS_MODEL_ID` (default: empty; use MIS registry active)
+- `MIS_TASK` (default: rerank)
+
 ## Test
 ```bash
 cd services/ranking-service

@@ -1,2 +1,4 @@
 fastapi
+numpy
+onnxruntime
 uvicorn[standard]

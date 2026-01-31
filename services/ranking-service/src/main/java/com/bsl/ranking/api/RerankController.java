@@ -3,7 +3,7 @@ package com.bsl.ranking.api;
 import com.bsl.ranking.api.dto.ErrorResponse;
 import com.bsl.ranking.api.dto.RerankRequest;
 import com.bsl.ranking.api.dto.RerankResponse;
-import com.bsl.ranking.service.ToyRerankService;
+import com.bsl.ranking.service.RerankService;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,9 +14,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class RerankController {
-    private final ToyRerankService rerankService;
+    private final RerankService rerankService;
 
-    public RerankController(ToyRerankService rerankService) {
+    public RerankController(RerankService rerankService) {
         this.rerankService = rerankService;
     }
 

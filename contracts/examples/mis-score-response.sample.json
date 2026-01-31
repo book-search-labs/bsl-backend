@@ -1,0 +1,11 @@
+{
+  "version": "v1",
+  "trace_id": "trace_demo",
+  "request_id": "req_demo",
+  "model": "rerank_toy_v1",
+  "took_ms": 5,
+  "scores": [0.42],
+  "debug": {
+    "backend": "toy"
+  }
+}
