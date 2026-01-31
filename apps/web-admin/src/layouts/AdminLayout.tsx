@@ -68,6 +68,7 @@ const sidebarItems: SidebarNode[] = [
         ],
       },
       { type: "leaf", key: "ops-autocomplete", label: "Autocomplete", icon: "bi-magic", to: "/ops/autocomplete" },
+      { type: "leaf", key: "ops-models", label: "Models & Eval", icon: "bi-cpu", to: "/ops/models" },
       { type: "leaf", key: "ops-jobs", label: "Jobs", icon: "bi-lightning", to: "/ops/jobs" },
     ],
   },

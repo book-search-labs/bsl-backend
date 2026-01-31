@@ -25,6 +25,8 @@ var/ingest/
 var/ingest/**
 var/normalization/
 var/normalization/**
+var/models/
+var/models/**
 infra/opensearch/generated/
 
 ### STS ###

@@ -8,6 +8,7 @@ public class DownstreamProperties {
     private ServiceProperties searchService = new ServiceProperties();
     private ServiceProperties autocompleteService = new ServiceProperties();
     private ServiceProperties indexWriterService = new ServiceProperties();
+    private ServiceProperties misService = new ServiceProperties();
 
     public ServiceProperties getQueryService() {
         return queryService;
@@ -39,6 +40,14 @@ public class DownstreamProperties {
 
     public void setIndexWriterService(ServiceProperties indexWriterService) {
         this.indexWriterService = indexWriterService;
+    }
+
+    public ServiceProperties getMisService() {
+        return misService;
+    }
+
+    public void setMisService(ServiceProperties misService) {
+        this.misService = misService;
     }
 
     public static class ServiceProperties {

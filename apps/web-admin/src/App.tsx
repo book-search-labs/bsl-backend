@@ -9,6 +9,7 @@ import SettingsPage from "./pages/SettingsPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import OpsJobsPage from "./pages/OpsJobsPage";
 import OpsAutocompletePage from "./pages/OpsAutocompletePage";
+import ModelOpsPage from "./pages/ModelOpsPage";
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
           </Route>
           <Route path="jobs" element={<OpsJobsPage />} />
           <Route path="autocomplete" element={<OpsAutocompletePage />} />
+          <Route path="models" element={<ModelOpsPage />} />
         </Route>
         <Route path="settings" element={<SettingsPage />} />
       </Route>

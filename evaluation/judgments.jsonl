@@ -1,1 +1,6 @@
-{}
+{"query_id":"q1","doc_id":"b1","grade":3}
+{"query_id":"q1","doc_id":"b2","grade":2}
+{"query_id":"q2","doc_id":"b3","grade":2}
+{"query_id":"q2","doc_id":"b4","grade":1}
+{"query_id":"q3","doc_id":"b5","grade":2}
+{"query_id":"q4","doc_id":"b2","grade":1}

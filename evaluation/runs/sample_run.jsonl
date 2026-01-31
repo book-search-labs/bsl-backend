@@ -1,0 +1,11 @@
+{"query_id":"q1","doc_id":"b1","score":2.0}
+{"query_id":"q1","doc_id":"b2","score":1.5}
+{"query_id":"q1","doc_id":"b3","score":0.2}
+{"query_id":"q2","doc_id":"b4","score":1.2}
+{"query_id":"q2","doc_id":"b3","score":1.1}
+{"query_id":"q2","doc_id":"b6","score":0.1}
+{"query_id":"q3","doc_id":"b5","score":0.9}
+{"query_id":"q3","doc_id":"b7","score":0.1}
+{"query_id":"q4","doc_id":"b8","score":0.2}
+{"query_id":"q4","doc_id":"b2","score":0.15}
+{"query_id":"q4","doc_id":"b9","score":0.1}

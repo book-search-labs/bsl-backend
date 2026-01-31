@@ -199,6 +199,54 @@ All structured responses that follow `contracts/*` must include:
 **Request**: `contracts/reindex-job-create-request.schema.json`  
 **Response**: `contracts/reindex-job-response.schema.json`
 
+## BFF Admin Model Ops (Internal/Admin)
+
+**Responsibility**: model registry visibility + rollout/canary + eval report access.
+
+## GET `/admin/models/registry`
+**Purpose**: list model registry state (proxy to MIS).  
+**Response**: `contracts/mis-models-response.schema.json`
+
+## POST `/admin/models/registry/activate`
+**Purpose**: set an active model for a task (rollout/rollback).  
+**Request (MVP)**:
+```json
+{ "model_id": "string", "task": "rerank" }
+```
+**Response**: `contracts/ack-response.schema.json`
+
+## POST `/admin/models/registry/canary`
+**Purpose**: set canary model + weight.  
+**Request (MVP)**:
+```json
+{ "model_id": "string", "task": "rerank", "canary_weight": 0.05 }
+```
+**Response**: `contracts/ack-response.schema.json`
+
+## POST `/admin/models/registry/rollback`
+**Purpose**: rollback to a previous model (alias of activate).  
+**Request/Response**: same as `/admin/models/registry/activate`
+
+## GET `/admin/models/eval-runs`
+**Purpose**: list offline eval reports (golden/shadow/hard).  
+**Response (MVP shape)**:
+```json
+{
+  "version": "v1",
+  "trace_id": "string",
+  "request_id": "string",
+  "count": 1,
+  "items": [
+    {
+      "run_id": "string",
+      "generated_at": "date-time",
+      "sets": { "golden": { "ndcg_10": 0.0 } },
+      "overall": { "ndcg_10": 0.0 }
+    }
+  ]
+}
+```
+
 ## POST `/admin/ops/reindex-jobs/{id}/pause`
 **Purpose**: pause a running reindex job.  
 **Response**: `contracts/reindex-job-response.schema.json`

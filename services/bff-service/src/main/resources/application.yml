@@ -32,6 +32,9 @@ bff:
     index-writer-service:
       base-url: ${INDEX_WRITER_BASE_URL:http://localhost:8090}
       timeout-ms: ${INDEX_WRITER_TIMEOUT_MS:1000}
+    mis-service:
+      base-url: ${MIS_BASE_URL:http://localhost:8005}
+      timeout-ms: ${MIS_TIMEOUT_MS:300}
   outbox:
     enabled: ${BFF_OUTBOX_ENABLED:false}
   rbac:
@@ -45,6 +48,9 @@ bff:
     autocomplete-per-minute: ${BFF_RATE_LIMIT_AUTOCOMPLETE:300}
     admin-per-minute: ${BFF_RATE_LIMIT_ADMIN:30}
     default-per-minute: ${BFF_RATE_LIMIT_DEFAULT:60}
+  model-ops:
+    registry-path: ${MODEL_REGISTRY_PATH:services/model-inference-service/app/config/model_registry.json}
+    eval-runs-dir: ${EVAL_RUNS_DIR:evaluation/eval_runs}
 
 app:
   cors:

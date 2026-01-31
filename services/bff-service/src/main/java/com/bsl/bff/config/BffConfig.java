@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
 
 @Configuration
-@EnableConfigurationProperties({DownstreamProperties.class, OutboxProperties.class,
+@EnableConfigurationProperties({DownstreamProperties.class, OutboxProperties.class, ModelOpsProperties.class,
     com.bsl.bff.security.AuthProperties.class,
     com.bsl.bff.security.RbacProperties.class,
     com.bsl.bff.ratelimit.RateLimitProperties.class
@@ -44,6 +44,15 @@ public class BffConfig {
     @Bean
     public RestTemplate indexWriterRestTemplate(RestTemplateBuilder builder, DownstreamProperties properties) {
         DownstreamProperties.ServiceProperties config = properties.getIndexWriterService();
+        return builder
+            .setConnectTimeout(Duration.ofMillis(config.getTimeoutMs()))
+            .setReadTimeout(Duration.ofMillis(config.getTimeoutMs()))
+            .build();
+    }
+
+    @Bean
+    public RestTemplate misServiceRestTemplate(RestTemplateBuilder builder, DownstreamProperties properties) {
+        DownstreamProperties.ServiceProperties config = properties.getMisService();
         return builder
             .setConnectTimeout(Duration.ofMillis(config.getTimeoutMs()))
             .setReadTimeout(Duration.ofMillis(config.getTimeoutMs()))

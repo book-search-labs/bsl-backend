@@ -103,6 +103,27 @@ Aggregate CTR/Popularity features:
 python scripts/olap/aggregate_features.py --start-date 2026-01-30 --end-date 2026-01-31
 ```
 
+Build LTR training dataset (point-in-time join):
+```bash
+python scripts/olap/build_training_dataset.py --start-date 2026-01-30 --end-date 2026-01-31 --output /tmp/ltr.jsonl
+```
+
+Train LTR (LightGBM LambdaMART) + export ONNX:
+```bash
+python3 -m pip install lightgbm onnxmltools pyyaml
+python scripts/ltr/train_lambdamart.py --data /tmp/ltr.jsonl --output-dir var/models
+```
+
+Register model artifact (update model_registry.json):
+```bash
+python scripts/ltr/register_model.py --model-id ltr_lambdamart_v1 --artifact-uri local://models/ltr_lambdamart_v1.onnx --activate
+```
+
+Offline eval regression gate:
+```bash
+python scripts/eval/run_eval.py --run evaluation/runs/sample_run.jsonl --baseline evaluation/baseline.json --gate
+```
+
 ## Search Service (Local)
 Start OpenSearch: `./scripts/local_up.sh`
 Run service: `cd services/search-service && ./gradlew bootRun`

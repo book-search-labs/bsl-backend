@@ -1,1 +1,4 @@
-{}
+{"query_id":"q1","query":"harry potter","set":"golden"}
+{"query_id":"q2","query":"machine learning","set":"golden"}
+{"query_id":"q3","query":"romance novel","set":"shadow"}
+{"query_id":"q4","query":"harry poter","set":"hard"}
