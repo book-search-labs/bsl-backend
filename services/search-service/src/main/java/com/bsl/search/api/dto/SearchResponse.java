@@ -85,6 +85,15 @@ public class SearchResponse {
 
         private Stages stages;
 
+        @JsonProperty("query_dsl")
+        private Object queryDsl;
+
+        private Retrieval retrieval;
+
+        private Cache cache;
+
+        private List<String> warnings;
+
         public String getAppliedFallbackId() {
             return appliedFallbackId;
         }
@@ -107,6 +116,38 @@ public class SearchResponse {
 
         public void setStages(Stages stages) {
             this.stages = stages;
+        }
+
+        public Object getQueryDsl() {
+            return queryDsl;
+        }
+
+        public void setQueryDsl(Object queryDsl) {
+            this.queryDsl = queryDsl;
+        }
+
+        public Retrieval getRetrieval() {
+            return retrieval;
+        }
+
+        public void setRetrieval(Retrieval retrieval) {
+            this.retrieval = retrieval;
+        }
+
+        public Cache getCache() {
+            return cache;
+        }
+
+        public void setCache(Cache cache) {
+            this.cache = cache;
+        }
+
+        public List<String> getWarnings() {
+            return warnings;
+        }
+
+        public void setWarnings(List<String> warnings) {
+            this.warnings = warnings;
         }
     }
 
@@ -137,6 +178,166 @@ public class SearchResponse {
 
         public void setRerank(boolean rerank) {
             this.rerank = rerank;
+        }
+    }
+
+    public static class Retrieval {
+        private Stage lexical;
+        private Stage vector;
+        private Stage fusion;
+        private Stage rerank;
+
+        public Stage getLexical() {
+            return lexical;
+        }
+
+        public void setLexical(Stage lexical) {
+            this.lexical = lexical;
+        }
+
+        public Stage getVector() {
+            return vector;
+        }
+
+        public void setVector(Stage vector) {
+            this.vector = vector;
+        }
+
+        public Stage getFusion() {
+            return fusion;
+        }
+
+        public void setFusion(Stage fusion) {
+            this.fusion = fusion;
+        }
+
+        public Stage getRerank() {
+            return rerank;
+        }
+
+        public void setRerank(Stage rerank) {
+            this.rerank = rerank;
+        }
+    }
+
+    public static class Stage {
+        @JsonProperty("took_ms")
+        private Long tookMs;
+
+        @JsonProperty("doc_count")
+        private Integer docCount;
+
+        @JsonProperty("top_k")
+        private Integer topK;
+
+        private Boolean error;
+
+        @JsonProperty("timed_out")
+        private Boolean timedOut;
+
+        @JsonProperty("error_message")
+        private String errorMessage;
+
+        private String mode;
+
+        public Long getTookMs() {
+            return tookMs;
+        }
+
+        public void setTookMs(Long tookMs) {
+            this.tookMs = tookMs;
+        }
+
+        public Integer getDocCount() {
+            return docCount;
+        }
+
+        public void setDocCount(Integer docCount) {
+            this.docCount = docCount;
+        }
+
+        public Integer getTopK() {
+            return topK;
+        }
+
+        public void setTopK(Integer topK) {
+            this.topK = topK;
+        }
+
+        public Boolean getError() {
+            return error;
+        }
+
+        public void setError(Boolean error) {
+            this.error = error;
+        }
+
+        public Boolean getTimedOut() {
+            return timedOut;
+        }
+
+        public void setTimedOut(Boolean timedOut) {
+            this.timedOut = timedOut;
+        }
+
+        public String getErrorMessage() {
+            return errorMessage;
+        }
+
+        public void setErrorMessage(String errorMessage) {
+            this.errorMessage = errorMessage;
+        }
+
+        public String getMode() {
+            return mode;
+        }
+
+        public void setMode(String mode) {
+            this.mode = mode;
+        }
+    }
+
+    public static class Cache {
+        private boolean hit;
+
+        @JsonProperty("age_ms")
+        private Long ageMs;
+
+        @JsonProperty("ttl_ms")
+        private Long ttlMs;
+
+        private String key;
+
+        public boolean isHit() {
+            return hit;
+        }
+
+        public void setHit(boolean hit) {
+            this.hit = hit;
+        }
+
+        public Long getAgeMs() {
+            return ageMs;
+        }
+
+        public void setAgeMs(Long ageMs) {
+            this.ageMs = ageMs;
+        }
+
+        public Long getTtlMs() {
+            return ttlMs;
+        }
+
+        public void setTtlMs(Long ttlMs) {
+            this.ttlMs = ttlMs;
+        }
+
+        public String getKey() {
+            return key;
+        }
+
+        public void setKey(String key) {
+            this.key = key;
         }
     }
 }

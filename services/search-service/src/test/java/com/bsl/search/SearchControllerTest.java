@@ -11,10 +11,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.bsl.search.api.SearchController;
-import com.bsl.search.api.dto.BookDetailResponse;
 import com.bsl.search.api.dto.BookHit;
 import com.bsl.search.api.dto.SearchRequest;
 import com.bsl.search.api.dto.SearchResponse;
+import com.bsl.search.service.BookDetailResult;
 import com.bsl.search.service.HybridSearchService;
 import com.bsl.search.service.InvalidSearchRequestException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -93,7 +93,7 @@ class SearchControllerTest {
 
     @Test
     void getBookByIdReturnsDoc() throws Exception {
-        BookDetailResponse response = new BookDetailResponse();
+        com.bsl.search.api.dto.BookDetailResponse response = new com.bsl.search.api.dto.BookDetailResponse();
         response.setDocId("b1");
         response.setTraceId("trace-1");
         response.setRequestId("req-1");
@@ -103,7 +103,8 @@ class SearchControllerTest {
         source.setTitleKo("Sample");
         response.setSource(source);
 
-        when(hybridSearchService.getBookById(eq("b1"), eq("trace-1"), eq("req-1"))).thenReturn(response);
+        BookDetailResult result = new BookDetailResult(response, "etag-1", false, 0L, 60000L, 60);
+        when(hybridSearchService.getBookById(eq("b1"), eq("trace-1"), eq("req-1"))).thenReturn(result);
 
         mockMvc.perform(get("/books/b1")
                 .header("x-trace-id", "trace-1")

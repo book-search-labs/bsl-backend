@@ -5,6 +5,9 @@ public class Options {
     private Integer from;
     private Boolean enableVector;
     private Integer rrfK;
+    private Boolean debug;
+    private Boolean explain;
+    private Integer timeoutMs;
 
     public Integer getSize() {
         return size;
@@ -36,5 +39,29 @@ public class Options {
 
     public void setRrfK(Integer rrfK) {
         this.rrfK = rrfK;
+    }
+
+    public Boolean getDebug() {
+        return debug;
+    }
+
+    public void setDebug(Boolean debug) {
+        this.debug = debug;
+    }
+
+    public Boolean getExplain() {
+        return explain;
+    }
+
+    public void setExplain(Boolean explain) {
+        this.explain = explain;
+    }
+
+    public Integer getTimeoutMs() {
+        return timeoutMs;
+    }
+
+    public void setTimeoutMs(Integer timeoutMs) {
+        this.timeoutMs = timeoutMs;
     }
 }

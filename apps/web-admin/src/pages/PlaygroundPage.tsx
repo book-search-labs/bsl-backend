@@ -43,6 +43,12 @@ type SearchResponse = {
     doc_id?: string;
     rank?: number;
     score?: number;
+    debug?: {
+      lex_rank?: number;
+      vec_rank?: number;
+      rrf_score?: number;
+      ranking_score?: number;
+    };
     source?: {
       title_ko?: string;
       authors?: string[];
@@ -56,6 +62,15 @@ type SearchResponse = {
     applied_fallback_id?: string;
     query_text_source_used?: string;
     stages?: { lexical?: boolean; vector?: boolean; rerank?: boolean };
+    query_dsl?: Record<string, unknown>;
+    cache?: { hit?: boolean; age_ms?: number; ttl_ms?: number; key?: string };
+    retrieval?: {
+      lexical?: { took_ms?: number; doc_count?: number; top_k?: number; error?: boolean; timed_out?: boolean };
+      vector?: { took_ms?: number; doc_count?: number; top_k?: number; error?: boolean; timed_out?: boolean; mode?: string };
+      fusion?: { took_ms?: number; doc_count?: number };
+      rerank?: { took_ms?: number; top_k?: number; error?: boolean; timed_out?: boolean };
+    };
+    warnings?: string[];
   };
   [key: string]: unknown;
 };
@@ -497,6 +512,8 @@ export default function PlaygroundPage() {
                   const issuedYear = source.issued_year ?? "-";
                   const volume = source.volume ?? "-";
                   const editions = Array.isArray(source.edition_labels) ? source.edition_labels.join(", ") : "-";
+                  const debug = hit.debug ?? {};
+                  const formatScore = (value?: number) => (value === undefined ? "-" : value.toFixed(4));
 
                   return (
                     <div key={hit.doc_id ?? index} className="border rounded p-2 mb-2 bg-white">
@@ -506,6 +523,10 @@ export default function PlaygroundPage() {
                       </div>
                       <div className="text-muted small">
                         Year: {issuedYear} · Volume: {volume}
+                      </div>
+                      <div className="text-muted small">
+                        Scores: lex={debug.lex_rank ?? "-"} vec={debug.vec_rank ?? "-"} rrf={formatScore(debug.rrf_score)}{" "}
+                        rank={formatScore(debug.ranking_score)}
                       </div>
                       <div className="text-muted small">Editions: {editions}</div>
                     </div>

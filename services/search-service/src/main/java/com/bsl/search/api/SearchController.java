@@ -1,17 +1,19 @@
 package com.bsl.search.api;
 
 import com.bsl.search.api.dto.ErrorResponse;
-import com.bsl.search.api.dto.BookDetailResponse;
 import com.bsl.search.api.dto.QueryContext;
 import com.bsl.search.api.dto.QueryContextV1_1;
 import com.bsl.search.api.dto.SearchRequest;
 import com.bsl.search.api.dto.SearchResponse;
 import com.bsl.search.opensearch.OpenSearchUnavailableException;
+import com.bsl.search.service.BookDetailResult;
 import com.bsl.search.service.HybridSearchService;
 import com.bsl.search.service.InvalidSearchRequestException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -74,7 +76,8 @@ public class SearchController {
     public ResponseEntity<?> getBookById(
         @PathVariable("docId") String docId,
         @RequestHeader(value = "x-trace-id", required = false) String traceIdHeader,
-        @RequestHeader(value = "x-request-id", required = false) String requestIdHeader
+        @RequestHeader(value = "x-request-id", required = false) String requestIdHeader,
+        @RequestHeader(value = "If-None-Match", required = false) String ifNoneMatch
     ) {
         String traceId = normalizeOrGenerate(traceIdHeader);
         String requestId = normalizeOrGenerate(requestIdHeader);
@@ -86,13 +89,26 @@ public class SearchController {
         }
 
         try {
-            BookDetailResponse response = searchService.getBookById(docId, traceId, requestId);
-            if (response == null) {
+            BookDetailResult result = searchService.getBookById(docId, traceId, requestId);
+            if (result == null || result.getResponse() == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                     new ErrorResponse("not_found", "Book not found", traceId, requestId)
                 );
             }
-            return ResponseEntity.ok(response);
+            String etag = result.getEtag();
+            CacheControl cacheControl = CacheControl.maxAge(result.getCacheControlMaxAgeSeconds(), TimeUnit.SECONDS)
+                .cachePublic();
+
+            if (etag != null && ifNoneMatch != null && ifNoneMatch.equals(etag)) {
+                return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
+                    .eTag(etag)
+                    .cacheControl(cacheControl)
+                    .build();
+            }
+            return ResponseEntity.ok()
+                .eTag(etag)
+                .cacheControl(cacheControl)
+                .body(result.getResponse());
         } catch (OpenSearchUnavailableException e) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(
                 new ErrorResponse("opensearch_unavailable", "OpenSearch is unavailable", traceId, requestId)

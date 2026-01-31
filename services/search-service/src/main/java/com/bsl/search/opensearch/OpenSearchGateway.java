@@ -53,6 +53,31 @@ public class OpenSearchGateway {
         List<Map<String, Object>> filters,
         List<String> fieldsOverride
     ) {
+        OpenSearchQueryResult result = searchLexicalDetailed(
+            query,
+            topK,
+            boost,
+            timeBudgetMs,
+            operator,
+            minimumShouldMatch,
+            filters,
+            fieldsOverride,
+            false
+        );
+        return result == null ? List.of() : result.getDocIds();
+    }
+
+    public OpenSearchQueryResult searchLexicalDetailed(
+        String query,
+        int topK,
+        Map<String, Double> boost,
+        Integer timeBudgetMs,
+        String operator,
+        String minimumShouldMatch,
+        List<Map<String, Object>> filters,
+        List<String> fieldsOverride,
+        boolean explain
+    ) {
         List<String> fields = buildFields(boost, fieldsOverride);
 
         Map<String, Object> multiMatch = new LinkedHashMap<>();
@@ -75,9 +100,12 @@ public class OpenSearchGateway {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("size", topK);
         body.put("query", Map.of("bool", boolQuery));
+        if (explain) {
+            body.put("explain", true);
+        }
 
         JsonNode response = postJson("/" + properties.getDocIndex() + "/_search", body, timeBudgetMs);
-        return extractDocIds(response);
+        return new OpenSearchQueryResult(extractDocIds(response), body);
     }
 
     public List<String> searchVector(List<Double> vector, int topK) {
@@ -94,6 +122,17 @@ public class OpenSearchGateway {
         Integer timeBudgetMs,
         List<Map<String, Object>> filters
     ) {
+        OpenSearchQueryResult result = searchVectorDetailed(vector, topK, timeBudgetMs, filters, false);
+        return result == null ? List.of() : result.getDocIds();
+    }
+
+    public OpenSearchQueryResult searchVectorDetailed(
+        List<Double> vector,
+        int topK,
+        Integer timeBudgetMs,
+        List<Map<String, Object>> filters,
+        boolean explain
+    ) {
         Map<String, Object> embedding = new LinkedHashMap<>();
         embedding.put("vector", vector);
         embedding.put("k", topK);
@@ -107,9 +146,41 @@ public class OpenSearchGateway {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("size", topK);
         body.put("query", Map.of("knn", knn));
+        if (explain) {
+            body.put("explain", true);
+        }
 
         JsonNode response = postJson("/" + properties.getVecIndex() + "/_search", body, timeBudgetMs);
-        return extractDocIds(response);
+        return new OpenSearchQueryResult(extractDocIds(response), body);
+    }
+
+    public OpenSearchQueryResult searchVectorByTextDetailed(
+        String queryText,
+        int topK,
+        String modelId,
+        Integer timeBudgetMs,
+        List<Map<String, Object>> filters,
+        boolean explain
+    ) {
+        Map<String, Object> neural = new LinkedHashMap<>();
+        Map<String, Object> embedding = new LinkedHashMap<>();
+        embedding.put("query_text", queryText);
+        embedding.put("model_id", modelId);
+        embedding.put("k", topK);
+        if (filters != null && !filters.isEmpty()) {
+            embedding.put("filter", Map.of("bool", Map.of("filter", filters)));
+        }
+        neural.put("embedding", embedding);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("size", topK);
+        body.put("query", Map.of("neural", neural));
+        if (explain) {
+            body.put("explain", true);
+        }
+
+        JsonNode response = postJson("/" + properties.getVecIndex() + "/_search", body, timeBudgetMs);
+        return new OpenSearchQueryResult(extractDocIds(response), body);
     }
 
     public Map<String, JsonNode> mgetSources(List<String> docIds) {

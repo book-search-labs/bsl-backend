@@ -13,8 +13,16 @@ import static org.mockito.Mockito.when;
 import com.bsl.search.api.dto.Options;
 import com.bsl.search.api.dto.SearchRequest;
 import com.bsl.search.api.dto.SearchResponse;
-import com.bsl.search.embed.ToyEmbedder;
+import com.bsl.search.cache.BookDetailCacheService;
+import com.bsl.search.cache.SerpCacheService;
 import com.bsl.search.opensearch.OpenSearchGateway;
+import com.bsl.search.retrieval.FusionStrategy;
+import com.bsl.search.retrieval.LexicalRetriever;
+import com.bsl.search.retrieval.RetrievalStageResult;
+import com.bsl.search.retrieval.RrfFusionStrategy;
+import com.bsl.search.retrieval.VectorRetriever;
+import com.bsl.search.resilience.SearchResilienceProperties;
+import com.bsl.search.resilience.SearchResilienceRegistry;
 import com.bsl.search.ranking.RankingGateway;
 import com.bsl.search.ranking.RankingUnavailableException;
 import com.bsl.search.ranking.dto.RerankResponse;
@@ -24,7 +32,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -39,20 +50,54 @@ class HybridSearchServiceRankingTest {
     @Mock
     private RankingGateway rankingGateway;
 
+    @Mock
+    private LexicalRetriever lexicalRetriever;
+
+    @Mock
+    private VectorRetriever vectorRetriever;
+
+    @Mock
+    private SerpCacheService serpCacheService;
+
+    @Mock
+    private BookDetailCacheService bookDetailCacheService;
+
     private HybridSearchService service;
     private ObjectMapper objectMapper;
+    private ExecutorService executorService;
 
     @BeforeEach
     void setUp() {
-        service = new HybridSearchService(openSearchGateway, new ToyEmbedder(), rankingGateway);
+        executorService = Executors.newSingleThreadExecutor();
+        FusionStrategy fusionStrategy = new RrfFusionStrategy();
+        SearchResilienceProperties properties = new SearchResilienceProperties();
+        SearchResilienceRegistry resilienceRegistry = new SearchResilienceRegistry(properties);
+        service = new HybridSearchService(
+            openSearchGateway,
+            lexicalRetriever,
+            vectorRetriever,
+            fusionStrategy,
+            rankingGateway,
+            resilienceRegistry,
+            serpCacheService,
+            bookDetailCacheService,
+            executorService
+        );
         objectMapper = new ObjectMapper();
+        when(serpCacheService.isEnabled()).thenReturn(false);
+    }
+
+    @AfterEach
+    void tearDown() {
+        executorService.shutdownNow();
     }
 
     @Test
     void searchUsesRankingOrderWhenAvailable() {
         SearchRequest request = buildRequest("harry");
-        when(openSearchGateway.searchLexical(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any()))
-            .thenReturn(List.of("b1", "b2"));
+        when(lexicalRetriever.retrieve(any()))
+            .thenReturn(RetrievalStageResult.success(List.of("b1", "b2"), null, 5L));
+        when(vectorRetriever.retrieve(any())).thenReturn(RetrievalStageResult.empty());
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
 
         RerankResponse rerankResponse = new RerankResponse();
@@ -81,8 +126,9 @@ class HybridSearchServiceRankingTest {
     @Test
     void searchFallsBackToRrfWhenRankingUnavailable() {
         SearchRequest request = buildRequest("harry");
-        when(openSearchGateway.searchLexical(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any()))
-            .thenReturn(List.of("b1", "b2"));
+        when(lexicalRetriever.retrieve(any()))
+            .thenReturn(RetrievalStageResult.success(List.of("b1", "b2"), null, 5L));
+        when(vectorRetriever.retrieve(any())).thenReturn(RetrievalStageResult.empty());
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
         when(rankingGateway.rerank(eq("harry"), anyList(), anyInt(), anyString(), anyString()))
             .thenThrow(new RankingUnavailableException("down", new RuntimeException("timeout")));

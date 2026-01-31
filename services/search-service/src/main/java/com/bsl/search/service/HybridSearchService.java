@@ -7,11 +7,17 @@ import com.bsl.search.api.dto.QueryContext;
 import com.bsl.search.api.dto.QueryContextV1_1;
 import com.bsl.search.api.dto.SearchRequest;
 import com.bsl.search.api.dto.SearchResponse;
-import com.bsl.search.embed.ToyEmbedder;
+import com.bsl.search.cache.BookDetailCacheService;
+import com.bsl.search.cache.SerpCacheService;
 import com.bsl.search.merge.RrfFusion;
 import com.bsl.search.opensearch.OpenSearchGateway;
-import com.bsl.search.opensearch.OpenSearchRequestException;
-import com.bsl.search.opensearch.OpenSearchUnavailableException;
+import com.bsl.search.retrieval.FusionStrategy;
+import com.bsl.search.retrieval.LexicalRetriever;
+import com.bsl.search.retrieval.RetrievalStageContext;
+import com.bsl.search.retrieval.RetrievalStageResult;
+import com.bsl.search.retrieval.VectorRetriever;
+import com.bsl.search.resilience.CircuitBreaker;
+import com.bsl.search.resilience.SearchResilienceRegistry;
 import com.bsl.search.ranking.RankingGateway;
 import com.bsl.search.ranking.RankingUnavailableException;
 import com.bsl.search.ranking.dto.RerankRequest;
@@ -23,6 +29,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -52,13 +64,35 @@ public class HybridSearchService {
     private static final int QC_TIMEOUT_MAX_MS = 500;
 
     private final OpenSearchGateway openSearchGateway;
-    private final ToyEmbedder toyEmbedder;
+    private final LexicalRetriever lexicalRetriever;
+    private final VectorRetriever vectorRetriever;
+    private final FusionStrategy fusionStrategy;
     private final RankingGateway rankingGateway;
+    private final SearchResilienceRegistry resilienceRegistry;
+    private final SerpCacheService serpCacheService;
+    private final BookDetailCacheService bookDetailCacheService;
+    private final ExecutorService searchExecutor;
 
-    public HybridSearchService(OpenSearchGateway openSearchGateway, ToyEmbedder toyEmbedder, RankingGateway rankingGateway) {
+    public HybridSearchService(
+        OpenSearchGateway openSearchGateway,
+        LexicalRetriever lexicalRetriever,
+        VectorRetriever vectorRetriever,
+        FusionStrategy fusionStrategy,
+        RankingGateway rankingGateway,
+        SearchResilienceRegistry resilienceRegistry,
+        SerpCacheService serpCacheService,
+        BookDetailCacheService bookDetailCacheService,
+        ExecutorService searchExecutor
+    ) {
         this.openSearchGateway = openSearchGateway;
-        this.toyEmbedder = toyEmbedder;
+        this.lexicalRetriever = lexicalRetriever;
+        this.vectorRetriever = vectorRetriever;
+        this.fusionStrategy = fusionStrategy;
         this.rankingGateway = rankingGateway;
+        this.resilienceRegistry = resilienceRegistry;
+        this.serpCacheService = serpCacheService;
+        this.bookDetailCacheService = bookDetailCacheService;
+        this.searchExecutor = searchExecutor;
     }
 
     public SearchResponse search(SearchRequest request, String traceId, String requestId) {
@@ -71,8 +105,31 @@ public class HybridSearchService {
         return searchLegacy(request, traceId, requestId);
     }
 
-    public BookDetailResponse getBookById(String docId, String traceId, String requestId) {
+    public BookDetailResult getBookById(String docId, String traceId, String requestId) {
         long started = System.nanoTime();
+        if (bookDetailCacheService.isEnabled()) {
+            Optional<BookDetailCacheService.CachedBook> cached = bookDetailCacheService.get(docId);
+            if (cached.isPresent()) {
+                BookDetailCacheService.CachedBook entry = cached.get();
+                BookDetailResponse cachedResponse = copyBookDetailResponse(
+                    entry.getResponse(),
+                    traceId,
+                    requestId,
+                    (System.nanoTime() - started) / 1_000_000L
+                );
+                long ageMs = Math.max(0L, System.currentTimeMillis() - entry.getCreatedAt());
+                long ttlMs = Math.max(0L, entry.getExpiresAt() - entry.getCreatedAt());
+                return new BookDetailResult(
+                    cachedResponse,
+                    entry.getEtag(),
+                    true,
+                    ageMs,
+                    ttlMs,
+                    bookDetailCacheService.getCacheControlMaxAgeSeconds()
+                );
+            }
+        }
+
         JsonNode source = openSearchGateway.getSourceById(docId);
         if (source == null || source.isMissingNode()) {
             return null;
@@ -89,7 +146,19 @@ public class HybridSearchService {
         response.setTraceId(traceId);
         response.setRequestId(requestId);
         response.setTookMs((System.nanoTime() - started) / 1_000_000L);
-        return response;
+
+        if (bookDetailCacheService.isEnabled()) {
+            bookDetailCacheService.put(resolvedDocId, response);
+        }
+        String etag = bookDetailCacheService.computeEtag(response);
+        return new BookDetailResult(
+            response,
+            etag,
+            false,
+            0L,
+            bookDetailCacheService.getTtlMs(),
+            bookDetailCacheService.getCacheControlMaxAgeSeconds()
+        );
     }
 
     private SearchResponse searchLegacy(SearchRequest request, String traceId, String requestId) {
@@ -98,58 +167,29 @@ public class HybridSearchService {
         Options options = request.getOptions() == null ? new Options() : request.getOptions();
         int size = options.getSize() != null ? Math.max(options.getSize(), 0) : DEFAULT_SIZE;
         int from = options.getFrom() != null ? Math.max(options.getFrom(), 0) : DEFAULT_FROM;
-        boolean enableVector = options.getEnableVector() == null || options.getEnableVector();
-        int rrfK = options.getRrfK() != null ? options.getRrfK() : DEFAULT_RRF_K;
-
-        QueryContext queryContext = request.getQueryContext();
-        QueryContext.RetrievalHints retrievalHints = queryContext == null ? null : queryContext.getRetrievalHints();
-
-        String query = resolveLegacyQueryText(request, queryContext);
-        if (isBlank(query)) {
+        ExecutionPlan plan = buildLegacyPlan(request, options);
+        plan.rerankTopK = Math.min(Math.max(from + size, DEFAULT_SIZE), plan.lexicalTopK);
+        if (isBlank(plan.queryText)) {
             throw new InvalidSearchRequestException("query text is required");
         }
 
-        int topK = DEFAULT_LEX_TOP_K;
-        int vecTopK = DEFAULT_VEC_TOP_K;
-        if (retrievalHints != null && retrievalHints.getTopK() != null) {
-            topK = clamp(retrievalHints.getTopK(), MIN_TOP_K, MAX_TOP_K);
-            vecTopK = topK;
+        String cacheKey = buildSerpCacheKey(plan, from, size);
+        Optional<SearchResponse> cachedResponse = maybeServeSerpCache(cacheKey, traceId, requestId, started, plan);
+        if (cachedResponse.isPresent()) {
+            return cachedResponse.get();
         }
 
-        Integer timeBudgetMs = null;
-        if (retrievalHints != null && retrievalHints.getTimeBudgetMs() != null) {
-            timeBudgetMs = clamp(retrievalHints.getTimeBudgetMs(), MIN_TIME_BUDGET_MS, MAX_TIME_BUDGET_MS);
-        }
-
-        boolean allowVector = applyStrategy(enableVector, retrievalHints == null ? null : retrievalHints.getStrategy());
-        Map<String, Double> boost = retrievalHints == null ? null : retrievalHints.getBoost();
-
-        RetrievalResult retrieval = retrieveCandidates(
-            query,
-            true,
-            allowVector,
-            topK,
-            vecTopK,
-            rrfK,
-            boost,
-            null,
-            null,
-            Collections.emptyList(),
-            null,
-            timeBudgetMs
-        );
-
+        RetrievalResult retrieval = retrieveCandidates(plan);
         RerankOutcome rerankOutcome = applyRerank(
-            query,
+            plan,
             retrieval,
             from,
             size,
-            Math.min(from + size, retrieval.fused.size()),
-            true,
             traceId,
             requestId
         );
 
+        SearchResponse.Debug debug = buildDebug(plan, retrieval, rerankOutcome, null, cacheKey, false);
         SearchResponse response = buildResponse(
             started,
             traceId,
@@ -157,8 +197,19 @@ public class HybridSearchService {
             rerankOutcome.hits,
             rerankOutcome.rankingApplied,
             "hybrid_rrf_v1",
-            null
+            debug
         );
+
+        if (shouldStoreSerpCache(plan, response, cacheKey)) {
+            serpCacheService.put(cacheKey, stripDebug(response));
+        }
+
+        if (response.getHits() == null || response.getHits().isEmpty()) {
+            Optional<SearchResponse> degraded = maybeServeSerpCache(cacheKey, traceId, requestId, started, plan, true);
+            if (degraded.isPresent()) {
+                return degraded.get();
+            }
+        }
         return response;
     }
 
@@ -175,46 +226,26 @@ public class HybridSearchService {
         int size = options.getSize() != null ? Math.max(options.getSize(), 0) : DEFAULT_SIZE;
         int from = options.getFrom() != null ? Math.max(options.getFrom(), 0) : DEFAULT_FROM;
 
-        ExecutionPlan plan = buildPlanFromQcV11(qc);
+        ExecutionPlan plan = buildPlanFromQcV11(qc, options);
         if (isBlank(plan.queryText)) {
             throw new InvalidSearchRequestException("query text is required");
         }
 
         String appliedFallbackId = null;
-        RetrievalResult retrieval = retrieveCandidates(
-            plan.queryText,
-            plan.lexicalEnabled,
-            plan.vectorEnabled,
-            plan.lexicalTopK,
-            plan.vectorTopK,
-            plan.rrfK,
-            null,
-            plan.lexicalOperator,
-            plan.minimumShouldMatch,
-            plan.filters,
-            plan.lexicalFields,
-            plan.timeBudgetMs
-        );
+        String cacheKey = buildSerpCacheKey(plan, from, size);
+        Optional<SearchResponse> cachedResponse = maybeServeSerpCache(cacheKey, traceId, requestId, started, plan);
+        if (cachedResponse.isPresent()) {
+            return cachedResponse.get();
+        }
 
-        if (retrieval.vectorError) {
+        RetrievalResult retrieval = retrieveCandidates(plan);
+
+        if (retrieval.vector.isError() || retrieval.vector.isTimedOut()) {
             FallbackApplication fallback = applyFallback(plan, Trigger.VECTOR_ERROR);
             if (fallback.applied) {
                 appliedFallbackId = fallback.id;
                 plan = fallback.plan;
-                retrieval = retrieveCandidates(
-                    plan.queryText,
-                    plan.lexicalEnabled,
-                    plan.vectorEnabled,
-                    plan.lexicalTopK,
-                    plan.vectorTopK,
-                    plan.rrfK,
-                    null,
-                    plan.lexicalOperator,
-                    plan.minimumShouldMatch,
-                    plan.filters,
-                    plan.lexicalFields,
-                    plan.timeBudgetMs
-                );
+                retrieval = retrieveCandidates(plan);
             }
         }
 
@@ -223,30 +254,15 @@ public class HybridSearchService {
             if (fallback.applied) {
                 appliedFallbackId = fallback.id;
                 plan = fallback.plan;
-                retrieval = retrieveCandidates(
-                    plan.queryText,
-                    plan.lexicalEnabled,
-                    plan.vectorEnabled,
-                    plan.lexicalTopK,
-                    plan.vectorTopK,
-                    plan.rrfK,
-                    null,
-                    plan.lexicalOperator,
-                    plan.minimumShouldMatch,
-                    plan.filters,
-                    plan.lexicalFields,
-                    plan.timeBudgetMs
-                );
+                retrieval = retrieveCandidates(plan);
             }
         }
 
         RerankOutcome rerankOutcome = applyRerank(
-            plan.queryText,
+            plan,
             retrieval,
             from,
             size,
-            Math.min(plan.rerankTopK, retrieval.fused.size()),
-            plan.rerankEnabled,
             traceId,
             requestId
         );
@@ -256,27 +272,12 @@ public class HybridSearchService {
             if (fallback.applied) {
                 appliedFallbackId = fallback.id;
                 plan = fallback.plan;
-                retrieval = retrieveCandidates(
-                    plan.queryText,
-                    plan.lexicalEnabled,
-                    plan.vectorEnabled,
-                    plan.lexicalTopK,
-                    plan.vectorTopK,
-                    plan.rrfK,
-                    null,
-                    plan.lexicalOperator,
-                    plan.minimumShouldMatch,
-                    plan.filters,
-                    plan.lexicalFields,
-                    plan.timeBudgetMs
-                );
+                retrieval = retrieveCandidates(plan);
                 rerankOutcome = applyRerank(
-                    plan.queryText,
+                    plan,
                     retrieval,
                     from,
                     size,
-                    Math.min(plan.rerankTopK, retrieval.fused.size()),
-                    plan.rerankEnabled,
                     traceId,
                     requestId
                 );
@@ -284,14 +285,7 @@ public class HybridSearchService {
         }
 
         String strategy = resolveQcStrategy(plan, appliedFallbackId);
-        SearchResponse.Debug debug = new SearchResponse.Debug();
-        debug.setAppliedFallbackId(appliedFallbackId);
-        debug.setQueryTextSourceUsed(plan.queryTextSourceUsed);
-        SearchResponse.Stages stages = new SearchResponse.Stages();
-        stages.setLexical(plan.lexicalEnabled);
-        stages.setVector(plan.vectorEnabled);
-        stages.setRerank(plan.rerankEnabled);
-        debug.setStages(stages);
+        SearchResponse.Debug debug = buildDebug(plan, retrieval, rerankOutcome, appliedFallbackId, cacheKey, false);
 
         SearchResponse response = buildResponse(
             started,
@@ -302,6 +296,17 @@ public class HybridSearchService {
             strategy,
             debug
         );
+
+        if (shouldStoreSerpCache(plan, response, cacheKey)) {
+            serpCacheService.put(cacheKey, stripDebug(response));
+        }
+
+        if (response.getHits() == null || response.getHits().isEmpty()) {
+            Optional<SearchResponse> degraded = maybeServeSerpCache(cacheKey, traceId, requestId, started, plan, true);
+            if (degraded.isPresent()) {
+                return degraded.get();
+            }
+        }
         return response;
     }
 
@@ -430,106 +435,200 @@ public class HybridSearchService {
         return hits;
     }
 
-    private RetrievalResult retrieveCandidates(
-        String query,
-        boolean lexicalEnabled,
-        boolean vectorEnabled,
-        int lexicalTopK,
-        int vectorTopK,
-        int rrfK,
-        Map<String, Double> boost,
-        String operator,
-        String minimumShouldMatch,
-        List<Map<String, Object>> filters,
-        List<String> fieldsOverride,
-        Integer timeBudgetMs
-    ) {
-        List<String> lexicalDocIds = Collections.emptyList();
-        if (lexicalEnabled) {
-            lexicalDocIds = openSearchGateway.searchLexical(
-                query,
-                lexicalTopK,
-                boost,
-                timeBudgetMs,
-                operator,
-                minimumShouldMatch,
-                filters,
-                fieldsOverride
-            );
-        }
-        Map<String, Integer> lexRanks = rankMap(lexicalDocIds);
+    private RetrievalResult retrieveCandidates(ExecutionPlan plan) {
+        RetrievalStageResult lexicalResult = RetrievalStageResult.empty();
+        RetrievalStageResult vectorResult = RetrievalStageResult.empty();
 
-        boolean vectorError = false;
-        Map<String, Integer> vecRanks = Collections.emptyMap();
-        if (vectorEnabled) {
-            try {
-                List<Double> vector = toyEmbedder.embed(query);
-                List<String> vecDocIds = openSearchGateway.searchVector(vector, vectorTopK, timeBudgetMs, filters);
-                vecRanks = rankMap(vecDocIds);
-            } catch (OpenSearchUnavailableException | OpenSearchRequestException e) {
-                vectorError = true;
-                vecRanks = Collections.emptyMap();
+        RetrievalStageContext lexicalContext = new RetrievalStageContext(
+            plan.queryText,
+            plan.lexicalTopK,
+            plan.boost,
+            plan.lexicalBudgetMs != null ? plan.lexicalBudgetMs : plan.timeBudgetMs,
+            plan.lexicalOperator,
+            plan.minimumShouldMatch,
+            plan.filters,
+            plan.lexicalFields,
+            plan.debugEnabled,
+            plan.explainEnabled
+        );
+
+        RetrievalStageContext vectorContext = new RetrievalStageContext(
+            plan.queryText,
+            plan.vectorTopK,
+            null,
+            plan.vectorBudgetMs != null ? plan.vectorBudgetMs : plan.timeBudgetMs,
+            null,
+            null,
+            plan.filters,
+            null,
+            plan.debugEnabled,
+            plan.explainEnabled
+        );
+
+        CompletableFuture<RetrievalStageResult> lexicalFuture = plan.lexicalEnabled
+            ? CompletableFuture.supplyAsync(() -> lexicalRetriever.retrieve(lexicalContext), searchExecutor)
+            : CompletableFuture.completedFuture(RetrievalStageResult.empty());
+
+        CompletableFuture<RetrievalStageResult> vectorFuture;
+        CircuitBreaker vectorBreaker = resilienceRegistry.getVectorBreaker();
+        if (!plan.vectorEnabled) {
+            vectorFuture = CompletableFuture.completedFuture(RetrievalStageResult.skipped("vector_disabled"));
+        } else if (!vectorBreaker.allowRequest()) {
+            vectorFuture = CompletableFuture.completedFuture(RetrievalStageResult.skipped("vector_circuit_open"));
+        } else {
+            vectorFuture = CompletableFuture.supplyAsync(() -> vectorRetriever.retrieve(vectorContext), searchExecutor);
+        }
+
+        lexicalResult = awaitStage(lexicalFuture, plan.lexicalBudgetMs != null ? plan.lexicalBudgetMs : plan.timeBudgetMs);
+        vectorResult = awaitStage(vectorFuture, plan.vectorBudgetMs != null ? plan.vectorBudgetMs : plan.timeBudgetMs);
+
+        if (plan.vectorEnabled && !vectorResult.isSkipped()) {
+            if (vectorResult.isError() || vectorResult.isTimedOut()) {
+                vectorBreaker.recordFailure();
+            } else {
+                vectorBreaker.recordSuccess();
             }
         }
 
-        List<RrfFusion.Candidate> fused = RrfFusion.fuse(lexRanks, vecRanks, rrfK);
-        List<String> fusedDocIds = toDocIds(fused);
-        Map<String, JsonNode> sources = fusedDocIds.isEmpty()
-            ? Collections.emptyMap()
-            : openSearchGateway.mgetSources(fusedDocIds, timeBudgetMs);
+        Map<String, Integer> lexRanks = rankMap(lexicalResult.getDocIds());
+        Map<String, Integer> vecRanks = rankMap(vectorResult.getDocIds());
 
-        return new RetrievalResult(fused, sources, vectorError);
+        long fusionStarted = System.nanoTime();
+        List<RrfFusion.Candidate> fused = fusionStrategy.fuse(lexRanks, vecRanks, plan.rrfK);
+        long fusionTookMs = (System.nanoTime() - fusionStarted) / 1_000_000L;
+
+        List<String> fusedDocIds = toDocIds(fused);
+        Map<String, JsonNode> sources;
+        if (fusedDocIds.isEmpty()) {
+            sources = Collections.emptyMap();
+        } else {
+            try {
+                sources = openSearchGateway.mgetSources(fusedDocIds, plan.timeBudgetMs);
+            } catch (RuntimeException e) {
+                sources = Collections.emptyMap();
+            }
+        }
+
+        return new RetrievalResult(fused, sources, lexicalResult, vectorResult, fusionTookMs);
     }
 
     private RerankOutcome applyRerank(
-        String query,
+        ExecutionPlan plan,
         RetrievalResult retrieval,
         int from,
         int size,
-        int rerankSize,
-        boolean rerankEnabled,
         String traceId,
         String requestId
     ) {
-        if (!rerankEnabled || retrieval.fused.isEmpty() || rerankSize <= 0) {
+        if (!plan.rerankEnabled || retrieval.fused.isEmpty() || plan.rerankTopK <= 0) {
             return new RerankOutcome(
                 buildHitsFromFused(retrieval.fused, from, size, retrieval.sources),
                 false,
-                false
+                false,
+                false,
+                0L,
+                null
             );
         }
 
-        int limit = Math.min(rerankSize, retrieval.fused.size());
+        CircuitBreaker rerankBreaker = resilienceRegistry.getRerankBreaker();
+        if (!rerankBreaker.allowRequest()) {
+            return new RerankOutcome(
+                buildHitsFromFused(retrieval.fused, from, size, retrieval.sources),
+                false,
+                true,
+                false,
+                0L,
+                "rerank_circuit_open"
+            );
+        }
+
+        int limit = Math.min(plan.rerankTopK, retrieval.fused.size());
         List<RrfFusion.Candidate> rerankSlice = retrieval.fused.subList(0, limit);
         List<RerankRequest.Candidate> rerankCandidates = buildRerankCandidates(rerankSlice, retrieval.sources);
         Map<String, RrfFusion.Candidate> fusedById = toCandidateMap(retrieval.fused);
 
-        try {
-            RerankResponse rerankResponse = rankingGateway.rerank(
-                query,
-                rerankCandidates,
-                limit,
-                traceId,
-                requestId
-            );
+        CompletableFuture<RerankResponse> future = CompletableFuture.supplyAsync(
+            () -> rankingGateway.rerank(plan.queryText, rerankCandidates, limit, traceId, requestId),
+            searchExecutor
+        );
 
+        long started = System.nanoTime();
+        int timeoutMs = resolveRerankTimeoutMs(plan);
+        int hedgeDelayMs = Math.max(0, resilienceRegistry.getProperties().getRerankHedgeDelayMs());
+
+        try {
+            RerankResponse rerankResponse;
+            if (hedgeDelayMs > 0 && timeoutMs > 0 && hedgeDelayMs < timeoutMs) {
+                rerankResponse = future.get(hedgeDelayMs, TimeUnit.MILLISECONDS);
+            } else if (timeoutMs > 0) {
+                rerankResponse = future.get(timeoutMs, TimeUnit.MILLISECONDS);
+            } else {
+                rerankResponse = future.get();
+            }
+
+            long tookMs = (System.nanoTime() - started) / 1_000_000L;
             if (rerankResponse != null && rerankResponse.getHits() != null) {
+                rerankBreaker.recordSuccess();
                 return new RerankOutcome(
                     buildHitsFromRanking(rerankResponse.getHits(), fusedById, from, size, retrieval.sources),
                     true,
-                    false
+                    false,
+                    false,
+                    tookMs,
+                    null
                 );
             }
+            rerankBreaker.recordFailure();
             return new RerankOutcome(
                 buildHitsFromFused(retrieval.fused, from, size, retrieval.sources),
                 false,
-                true
+                true,
+                false,
+                tookMs,
+                "rerank_empty"
+            );
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            rerankBreaker.recordFailure();
+            return new RerankOutcome(
+                buildHitsFromFused(retrieval.fused, from, size, retrieval.sources),
+                false,
+                true,
+                true,
+                0L,
+                "rerank_timeout"
+            );
+        } catch (ExecutionException e) {
+            rerankBreaker.recordFailure();
+            return new RerankOutcome(
+                buildHitsFromFused(retrieval.fused, from, size, retrieval.sources),
+                false,
+                true,
+                false,
+                0L,
+                errorMessage(e)
+            );
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            rerankBreaker.recordFailure();
+            return new RerankOutcome(
+                buildHitsFromFused(retrieval.fused, from, size, retrieval.sources),
+                false,
+                true,
+                false,
+                0L,
+                "rerank_interrupted"
             );
         } catch (RankingUnavailableException e) {
+            rerankBreaker.recordFailure();
             return new RerankOutcome(
                 buildHitsFromFused(retrieval.fused, from, size, retrieval.sources),
                 false,
-                true
+                true,
+                false,
+                0L,
+                e.getMessage()
             );
         }
     }
@@ -555,7 +654,340 @@ public class HybridSearchService {
         return response;
     }
 
-    private ExecutionPlan buildPlanFromQcV11(QueryContextV1_1 qc) {
+    private ExecutionPlan buildLegacyPlan(SearchRequest request, Options options) {
+        ExecutionPlan plan = new ExecutionPlan(null);
+        QueryContext queryContext = request.getQueryContext();
+        QueryContext.RetrievalHints retrievalHints = queryContext == null ? null : queryContext.getRetrievalHints();
+
+        plan.queryText = resolveLegacyQueryText(request, queryContext);
+        plan.queryTextSourceUsed = "legacy";
+        plan.lexicalEnabled = true;
+        plan.rerankEnabled = true;
+
+        boolean enableVector = options.getEnableVector() == null || options.getEnableVector();
+        boolean allowVector = applyStrategy(enableVector, retrievalHints == null ? null : retrievalHints.getStrategy());
+        plan.vectorEnabled = allowVector;
+
+        int topK = DEFAULT_LEX_TOP_K;
+        int vecTopK = DEFAULT_VEC_TOP_K;
+        if (retrievalHints != null && retrievalHints.getTopK() != null) {
+            topK = clamp(retrievalHints.getTopK(), MIN_TOP_K, MAX_TOP_K);
+            vecTopK = topK;
+        }
+        plan.lexicalTopK = topK;
+        plan.vectorTopK = vecTopK;
+        plan.rrfK = options.getRrfK() != null ? options.getRrfK() : DEFAULT_RRF_K;
+        plan.rerankTopK = Math.min(DEFAULT_LEX_TOP_K, Math.max(DEFAULT_SIZE, topK));
+        plan.boost = retrievalHints == null ? null : retrievalHints.getBoost();
+        plan.filters = Collections.emptyList();
+        plan.fallbackPolicy = Collections.emptyList();
+
+        Integer timeBudgetMs = null;
+        if (options.getTimeoutMs() != null) {
+            timeBudgetMs = clamp(options.getTimeoutMs(), MIN_TIME_BUDGET_MS, MAX_TIME_BUDGET_MS);
+        } else if (retrievalHints != null && retrievalHints.getTimeBudgetMs() != null) {
+            timeBudgetMs = clamp(retrievalHints.getTimeBudgetMs(), MIN_TIME_BUDGET_MS, MAX_TIME_BUDGET_MS);
+        }
+        plan.timeBudgetMs = timeBudgetMs;
+        plan.lexicalBudgetMs = timeBudgetMs;
+        plan.vectorBudgetMs = timeBudgetMs;
+        plan.rerankBudgetMs = timeBudgetMs;
+
+        plan.debugEnabled = Boolean.TRUE.equals(options.getDebug());
+        plan.explainEnabled = Boolean.TRUE.equals(options.getExplain());
+        return plan;
+    }
+
+    private SearchResponse.Debug buildDebug(
+        ExecutionPlan plan,
+        RetrievalResult retrieval,
+        RerankOutcome rerankOutcome,
+        String appliedFallbackId,
+        String cacheKey,
+        boolean cacheHit
+    ) {
+        boolean include = plan.debugEnabled || plan.explainEnabled || appliedFallbackId != null || cacheHit;
+        if (!include) {
+            return null;
+        }
+
+        SearchResponse.Debug debug = new SearchResponse.Debug();
+        debug.setAppliedFallbackId(appliedFallbackId);
+        debug.setQueryTextSourceUsed(plan.queryTextSourceUsed);
+
+        SearchResponse.Stages stages = new SearchResponse.Stages();
+        stages.setLexical(plan.lexicalEnabled);
+        stages.setVector(plan.vectorEnabled);
+        stages.setRerank(plan.rerankEnabled);
+        debug.setStages(stages);
+
+        if (plan.debugEnabled || plan.explainEnabled) {
+            Map<String, Object> queryDsl = new HashMap<>();
+            if (retrieval.lexical.getQueryDsl() != null) {
+                queryDsl.put("lexical", retrieval.lexical.getQueryDsl());
+            }
+            if (retrieval.vector.getQueryDsl() != null) {
+                queryDsl.put("vector", retrieval.vector.getQueryDsl());
+            }
+            if (!queryDsl.isEmpty()) {
+                debug.setQueryDsl(queryDsl);
+            }
+
+            SearchResponse.Retrieval retrievalDebug = new SearchResponse.Retrieval();
+            retrievalDebug.setLexical(buildStage(retrieval.lexical, plan.lexicalTopK, null));
+            retrievalDebug.setVector(buildStage(retrieval.vector, plan.vectorTopK, vectorRetriever.mode()));
+            retrievalDebug.setFusion(buildFusionStage(retrieval));
+            retrievalDebug.setRerank(buildRerankStage(plan, rerankOutcome));
+            debug.setRetrieval(retrievalDebug);
+        }
+
+        SearchResponse.Cache cache = new SearchResponse.Cache();
+        cache.setHit(cacheHit);
+        cache.setKey(cacheKey);
+        debug.setCache(cache);
+
+        List<String> warnings = buildWarnings(retrieval, rerankOutcome);
+        if (!warnings.isEmpty()) {
+            debug.setWarnings(warnings);
+        }
+
+        return debug;
+    }
+
+    private SearchResponse.Stage buildStage(RetrievalStageResult result, int topK, String mode) {
+        SearchResponse.Stage stage = new SearchResponse.Stage();
+        if (result != null) {
+            stage.setTookMs(result.getTookMs());
+            stage.setDocCount(result.getDocIds() == null ? 0 : result.getDocIds().size());
+            stage.setError(result.isError());
+            stage.setTimedOut(result.isTimedOut());
+            stage.setErrorMessage(result.getErrorMessage());
+        }
+        stage.setTopK(topK);
+        stage.setMode(mode);
+        return stage;
+    }
+
+    private SearchResponse.Stage buildFusionStage(RetrievalResult retrieval) {
+        SearchResponse.Stage stage = new SearchResponse.Stage();
+        stage.setDocCount(retrieval.fused == null ? 0 : retrieval.fused.size());
+        stage.setTookMs(retrieval.fusionTookMs);
+        return stage;
+    }
+
+    private SearchResponse.Stage buildRerankStage(ExecutionPlan plan, RerankOutcome rerankOutcome) {
+        SearchResponse.Stage stage = new SearchResponse.Stage();
+        stage.setTopK(plan.rerankTopK);
+        stage.setTookMs(rerankOutcome.tookMs);
+        stage.setError(rerankOutcome.rerankError);
+        stage.setTimedOut(rerankOutcome.rerankTimedOut);
+        stage.setErrorMessage(rerankOutcome.errorMessage);
+        return stage;
+    }
+
+    private List<String> buildWarnings(RetrievalResult retrieval, RerankOutcome rerankOutcome) {
+        List<String> warnings = new ArrayList<>();
+        if (retrieval.lexical.isError()) {
+            warnings.add("lexical_error");
+        }
+        if (retrieval.lexical.isTimedOut()) {
+            warnings.add("lexical_timeout");
+        }
+        if (retrieval.vector.isSkipped()) {
+            String reason = retrieval.vector.getErrorMessage();
+            if (reason != null && reason.contains("vector_disabled")) {
+                // no warning for intentionally disabled vector retrieval
+            } else {
+                warnings.add("vector_skipped");
+            }
+        }
+        if (retrieval.vector.isError()) {
+            warnings.add("vector_error");
+        }
+        if (retrieval.vector.isTimedOut()) {
+            warnings.add("vector_timeout");
+        }
+        if (rerankOutcome.rerankTimedOut) {
+            warnings.add("rerank_timeout");
+        }
+        if (rerankOutcome.rerankError) {
+            warnings.add("rerank_error");
+        }
+        return warnings;
+    }
+
+    private String buildSerpCacheKey(ExecutionPlan plan, int from, int size) {
+        if (!serpCacheService.isEnabled()) {
+            return null;
+        }
+        Map<String, Object> fields = serpCacheService.baseKeyFields(
+            plan.queryText,
+            plan.lexicalEnabled,
+            plan.vectorEnabled,
+            plan.lexicalTopK,
+            plan.vectorTopK,
+            plan.rrfK,
+            plan.rerankEnabled,
+            plan.rerankTopK,
+            from,
+            size,
+            plan.boost,
+            plan.lexicalOperator,
+            plan.minimumShouldMatch,
+            plan.filters,
+            plan.lexicalFields
+        );
+        return serpCacheService.buildKey(fields);
+    }
+
+    private Optional<SearchResponse> maybeServeSerpCache(
+        String cacheKey,
+        String traceId,
+        String requestId,
+        long started,
+        ExecutionPlan plan
+    ) {
+        return maybeServeSerpCache(cacheKey, traceId, requestId, started, plan, false);
+    }
+
+    private Optional<SearchResponse> maybeServeSerpCache(
+        String cacheKey,
+        String traceId,
+        String requestId,
+        long started,
+        ExecutionPlan plan,
+        boolean degradedOnly
+    ) {
+        if (!serpCacheService.isEnabled() || cacheKey == null) {
+            return Optional.empty();
+        }
+        if (!degradedOnly && (plan.debugEnabled || plan.explainEnabled)) {
+            return Optional.empty();
+        }
+        Optional<SerpCacheService.CachedResponse> cached = serpCacheService.get(cacheKey);
+        if (cached.isEmpty()) {
+            return Optional.empty();
+        }
+        SerpCacheService.CachedResponse entry = cached.get();
+        SearchResponse cachedResponse = copySearchResponse(entry.getResponse(), traceId, requestId, started);
+        SearchResponse.Debug debug = buildDebug(plan, emptyRetrieval(plan), emptyRerankOutcome(), null, cacheKey, true);
+        if (debug != null && debug.getCache() != null) {
+            long ageMs = Math.max(0L, System.currentTimeMillis() - entry.getCreatedAt());
+            long ttlMs = Math.max(0L, entry.getExpiresAt() - entry.getCreatedAt());
+            debug.getCache().setAgeMs(ageMs);
+            debug.getCache().setTtlMs(ttlMs);
+        }
+        cachedResponse.setDebug(debug);
+        return Optional.of(cachedResponse);
+    }
+
+    private boolean shouldStoreSerpCache(ExecutionPlan plan, SearchResponse response, String cacheKey) {
+        if (!serpCacheService.isEnabled() || cacheKey == null) {
+            return false;
+        }
+        if (plan.debugEnabled || plan.explainEnabled) {
+            return false;
+        }
+        return response != null && response.getHits() != null && !response.getHits().isEmpty();
+    }
+
+    private SearchResponse stripDebug(SearchResponse response) {
+        if (response == null) {
+            return null;
+        }
+        SearchResponse stripped = new SearchResponse();
+        stripped.setTraceId(response.getTraceId());
+        stripped.setRequestId(response.getRequestId());
+        stripped.setTookMs(response.getTookMs());
+        stripped.setRankingApplied(response.isRankingApplied());
+        stripped.setStrategy(response.getStrategy());
+        stripped.setHits(response.getHits());
+        stripped.setDebug(null);
+        return stripped;
+    }
+
+    private SearchResponse copySearchResponse(SearchResponse response, String traceId, String requestId, long started) {
+        SearchResponse copied = new SearchResponse();
+        copied.setTraceId(traceId);
+        copied.setRequestId(requestId);
+        copied.setTookMs((System.nanoTime() - started) / 1_000_000L);
+        if (response != null) {
+            copied.setRankingApplied(response.isRankingApplied());
+            copied.setStrategy(response.getStrategy());
+            copied.setHits(response.getHits());
+        }
+        return copied;
+    }
+
+    private RetrievalResult emptyRetrieval(ExecutionPlan plan) {
+        RetrievalStageResult emptyStage = RetrievalStageResult.empty();
+        return new RetrievalResult(List.of(), Collections.emptyMap(), emptyStage, emptyStage, 0L);
+    }
+
+    private RerankOutcome emptyRerankOutcome() {
+        return new RerankOutcome(List.of(), false, false, false, 0L, null);
+    }
+
+    private int resolveRerankTimeoutMs(ExecutionPlan plan) {
+        if (plan == null) {
+            return 0;
+        }
+        if (plan.rerankBudgetMs != null) {
+            return plan.rerankBudgetMs;
+        }
+        if (plan.timeBudgetMs != null) {
+            return plan.timeBudgetMs;
+        }
+        return 0;
+    }
+
+    private RetrievalStageResult awaitStage(CompletableFuture<RetrievalStageResult> future, Integer timeoutMs) {
+        try {
+            if (timeoutMs != null && timeoutMs > 0) {
+                return future.get(timeoutMs, TimeUnit.MILLISECONDS);
+            }
+            return future.get();
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            return RetrievalStageResult.timedOut();
+        } catch (ExecutionException e) {
+            return RetrievalStageResult.error(errorMessage(e));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return RetrievalStageResult.error("interrupted");
+        }
+    }
+
+    private String errorMessage(Exception e) {
+        if (e == null) {
+            return null;
+        }
+        Throwable cause = e instanceof ExecutionException ? e.getCause() : e;
+        if (cause == null) {
+            return e.getMessage();
+        }
+        return cause.getMessage();
+    }
+
+    private BookDetailResponse copyBookDetailResponse(
+        BookDetailResponse response,
+        String traceId,
+        String requestId,
+        long tookMs
+    ) {
+        if (response == null) {
+            return null;
+        }
+        BookDetailResponse copied = new BookDetailResponse();
+        copied.setDocId(response.getDocId());
+        copied.setSource(response.getSource());
+        copied.setTraceId(traceId);
+        copied.setRequestId(requestId);
+        copied.setTookMs(tookMs);
+        return copied;
+    }
+
+    private ExecutionPlan buildPlanFromQcV11(QueryContextV1_1 qc, Options options) {
         ExecutionPlan plan = new ExecutionPlan(qc);
         QueryContextV1_1.RetrievalHints hints = qc.getRetrievalHints();
         QueryContextV1_1.Query query = qc.getQuery();
@@ -595,10 +1027,28 @@ public class HybridSearchService {
             : hints.getFallbackPolicy();
 
         int timeoutMs = DEFAULT_QC_TIMEOUT_MS;
-        if (hints != null && hints.getExecutionHint() != null && hints.getExecutionHint().getTimeoutMs() != null) {
+        if (options != null && options.getTimeoutMs() != null) {
+            timeoutMs = clamp(options.getTimeoutMs(), QC_TIMEOUT_MIN_MS, QC_TIMEOUT_MAX_MS);
+        } else if (hints != null && hints.getExecutionHint() != null && hints.getExecutionHint().getTimeoutMs() != null) {
             timeoutMs = clamp(hints.getExecutionHint().getTimeoutMs(), QC_TIMEOUT_MIN_MS, QC_TIMEOUT_MAX_MS);
         }
         plan.timeBudgetMs = timeoutMs;
+
+        if (hints != null && hints.getExecutionHint() != null && hints.getExecutionHint().getBudgetMs() != null) {
+            QueryContextV1_1.BudgetMs budget = hints.getExecutionHint().getBudgetMs();
+            if (budget.getLexical() != null) {
+                plan.lexicalBudgetMs = clamp(budget.getLexical(), QC_TIMEOUT_MIN_MS, QC_TIMEOUT_MAX_MS);
+            }
+            if (budget.getVector() != null) {
+                plan.vectorBudgetMs = clamp(budget.getVector(), QC_TIMEOUT_MIN_MS, QC_TIMEOUT_MAX_MS);
+            }
+            if (budget.getRerank() != null) {
+                plan.rerankBudgetMs = clamp(budget.getRerank(), QC_TIMEOUT_MIN_MS, QC_TIMEOUT_MAX_MS);
+            }
+        }
+
+        plan.debugEnabled = options != null && Boolean.TRUE.equals(options.getDebug());
+        plan.explainEnabled = options != null && Boolean.TRUE.equals(options.getExplain());
 
         return plan;
     }
@@ -789,10 +1239,12 @@ public class HybridSearchService {
             }
         }
         if (!isBlank(mutations.getUseQueryTextSource())) {
-            QueryTextSelection selection = selectQueryText(plan.context.getQuery(), mutations.getUseQueryTextSource());
-            if (!isBlank(selection.text)) {
-                plan.queryText = selection.text;
-                plan.queryTextSourceUsed = selection.sourceUsed;
+            if (plan.context != null) {
+                QueryTextSelection selection = selectQueryText(plan.context.getQuery(), mutations.getUseQueryTextSource());
+                if (!isBlank(selection.text)) {
+                    plan.queryText = selection.text;
+                    plan.queryTextSourceUsed = selection.sourceUsed;
+                }
             }
         }
         if (mutations.getAdjustHint() != null && mutations.getAdjustHint().getLexical() != null
@@ -897,7 +1349,13 @@ public class HybridSearchService {
         private List<String> lexicalFields;
         private List<Map<String, Object>> filters;
         private List<QueryContextV1_1.FallbackPolicy> fallbackPolicy;
+        private Map<String, Double> boost;
         private Integer timeBudgetMs;
+        private Integer lexicalBudgetMs;
+        private Integer vectorBudgetMs;
+        private Integer rerankBudgetMs;
+        private boolean debugEnabled;
+        private boolean explainEnabled;
 
         private ExecutionPlan(QueryContextV1_1 context) {
             this.context = context;
@@ -921,19 +1379,35 @@ public class HybridSearchService {
             this.lexicalFields = other.lexicalFields;
             this.filters = other.filters;
             this.fallbackPolicy = other.fallbackPolicy;
+            this.boost = other.boost;
             this.timeBudgetMs = other.timeBudgetMs;
+            this.lexicalBudgetMs = other.lexicalBudgetMs;
+            this.vectorBudgetMs = other.vectorBudgetMs;
+            this.rerankBudgetMs = other.rerankBudgetMs;
+            this.debugEnabled = other.debugEnabled;
+            this.explainEnabled = other.explainEnabled;
         }
     }
 
     private static class RetrievalResult {
         private final List<RrfFusion.Candidate> fused;
         private final Map<String, JsonNode> sources;
-        private final boolean vectorError;
+        private final RetrievalStageResult lexical;
+        private final RetrievalStageResult vector;
+        private final long fusionTookMs;
 
-        private RetrievalResult(List<RrfFusion.Candidate> fused, Map<String, JsonNode> sources, boolean vectorError) {
+        private RetrievalResult(
+            List<RrfFusion.Candidate> fused,
+            Map<String, JsonNode> sources,
+            RetrievalStageResult lexical,
+            RetrievalStageResult vector,
+            long fusionTookMs
+        ) {
             this.fused = fused;
             this.sources = sources;
-            this.vectorError = vectorError;
+            this.lexical = lexical;
+            this.vector = vector;
+            this.fusionTookMs = fusionTookMs;
         }
     }
 
@@ -941,11 +1415,24 @@ public class HybridSearchService {
         private final List<BookHit> hits;
         private final boolean rankingApplied;
         private final boolean rerankError;
+        private final boolean rerankTimedOut;
+        private final long tookMs;
+        private final String errorMessage;
 
-        private RerankOutcome(List<BookHit> hits, boolean rankingApplied, boolean rerankError) {
+        private RerankOutcome(
+            List<BookHit> hits,
+            boolean rankingApplied,
+            boolean rerankError,
+            boolean rerankTimedOut,
+            long tookMs,
+            String errorMessage
+        ) {
             this.hits = hits;
             this.rankingApplied = rankingApplied;
             this.rerankError = rerankError;
+            this.rerankTimedOut = rerankTimedOut;
+            this.tookMs = tookMs;
+            this.errorMessage = errorMessage;
         }
     }
 
