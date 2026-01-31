@@ -102,14 +102,14 @@ public class HybridSearchService {
         this.experimentProperties = experimentProperties;
     }
 
-    public SearchResponse search(SearchRequest request, String traceId, String requestId) {
+    public SearchResponse search(SearchRequest request, String traceId, String requestId, String traceparent) {
         if (request == null) {
             throw new InvalidSearchRequestException("request body is required");
         }
         if (request.getQueryContextV1_1() != null) {
-            return searchWithQcV11(request, traceId, requestId);
+            return searchWithQcV11(request, traceId, requestId, traceparent);
         }
-        return searchLegacy(request, traceId, requestId);
+        return searchLegacy(request, traceId, requestId, traceparent);
     }
 
     public BookDetailResult getBookById(String docId, String traceId, String requestId) {
@@ -168,7 +168,12 @@ public class HybridSearchService {
         );
     }
 
-    private SearchResponse searchLegacy(SearchRequest request, String traceId, String requestId) {
+    private SearchResponse searchLegacy(
+        SearchRequest request,
+        String traceId,
+        String requestId,
+        String traceparent
+    ) {
         long started = System.nanoTime();
 
         Options options = request.getOptions() == null ? new Options() : request.getOptions();
@@ -194,7 +199,8 @@ public class HybridSearchService {
             from,
             size,
             traceId,
-            requestId
+            requestId,
+            traceparent
         );
 
         SearchResponse.Debug debug = buildDebug(plan, retrieval, rerankOutcome, null, cacheKey, false);
@@ -223,7 +229,12 @@ public class HybridSearchService {
         return response;
     }
 
-    private SearchResponse searchWithQcV11(SearchRequest request, String traceId, String requestId) {
+    private SearchResponse searchWithQcV11(
+        SearchRequest request,
+        String traceId,
+        String requestId,
+        String traceparent
+    ) {
         long started = System.nanoTime();
 
         QueryContextV1_1 qc = request.getQueryContextV1_1();
@@ -275,7 +286,8 @@ public class HybridSearchService {
             from,
             size,
             traceId,
-            requestId
+            requestId,
+            traceparent
         );
 
         if (rerankOutcome.rerankError && appliedFallbackId == null) {
@@ -290,7 +302,8 @@ public class HybridSearchService {
                     from,
                     size,
                     traceId,
-                    requestId
+                    requestId,
+                    traceparent
                 );
             }
         }
@@ -531,7 +544,8 @@ public class HybridSearchService {
         int from,
         int size,
         String traceId,
-        String requestId
+        String requestId,
+        String traceparent
     ) {
         if (!plan.rerankEnabled || retrieval.fused.isEmpty() || plan.rerankTopK <= 0) {
             return new RerankOutcome(
@@ -562,7 +576,7 @@ public class HybridSearchService {
         Map<String, RrfFusion.Candidate> fusedById = toCandidateMap(retrieval.fused);
 
         CompletableFuture<RerankResponse> future = CompletableFuture.supplyAsync(
-            () -> rankingGateway.rerank(plan.queryText, rerankCandidates, limit, traceId, requestId),
+            () -> rankingGateway.rerank(plan.queryText, rerankCandidates, limit, traceId, requestId, traceparent),
             searchExecutor
         );
 

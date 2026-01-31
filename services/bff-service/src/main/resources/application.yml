@@ -60,8 +60,49 @@ app:
     allowed-origins: ${CORS_ALLOW_ORIGINS:http://localhost:4173,http://localhost:5173,http://localhost:5174}
     allowed-methods: ${CORS_ALLOW_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
     allowed-headers: ${CORS_ALLOW_HEADERS:*}
-    exposed-headers: ${CORS_EXPOSED_HEADERS:x-trace-id,x-request-id}
+    exposed-headers: ${CORS_EXPOSED_HEADERS:x-trace-id,x-request-id,traceparent}
     allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+
+security:
+  headers:
+    enabled: ${SECURITY_HEADERS_ENABLED:true}
+    frame-options: ${SECURITY_FRAME_OPTIONS:DENY}
+    referrer-policy: ${SECURITY_REFERRER_POLICY:no-referrer}
+    permissions-policy: ${SECURITY_PERMISSIONS_POLICY:geolocation=(), microphone=(), camera=()}
+    cross-origin-opener-policy: ${SECURITY_COOP:same-origin}
+    cross-origin-resource-policy: ${SECURITY_CORP:same-site}
+    hsts-enabled: ${SECURITY_HSTS_ENABLED:false}
+    hsts-max-age: ${SECURITY_HSTS_MAX_AGE:31536000}
+  csrf:
+    enabled: ${SECURITY_CSRF_ENABLED:true}
+    allowed-origins: ${SECURITY_CSRF_ALLOWED_ORIGINS:${CORS_ALLOW_ORIGINS:http://localhost:4173,http://localhost:5173,http://localhost:5174}}
+  admin-approval:
+    enabled: ${SECURITY_ADMIN_APPROVAL_ENABLED:false}
+    risky-paths: ${SECURITY_ADMIN_APPROVAL_RISKY_PATHS:^/admin/ops/reindex-jobs.*,^/admin/ops/job-runs.*,^/admin/sellers.*,^/admin/skus.*,^/admin/offers.*,^/admin/inventory/adjust.*,^/admin/payments.*,^/admin/refunds.*,^/admin/shipments.*}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.95,0.99
+  tracing:
+    sampling:
+      probability: ${TRACE_SAMPLE_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
 
 logging:
   level:

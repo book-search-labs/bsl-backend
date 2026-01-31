@@ -29,7 +29,8 @@ public class RerankController {
     public ResponseEntity<?> rerank(
         @RequestBody(required = false) RerankRequest request,
         @RequestHeader(value = "x-trace-id", required = false) String traceHeader,
-        @RequestHeader(value = "x-request-id", required = false) String requestHeader
+        @RequestHeader(value = "x-request-id", required = false) String requestHeader,
+        @RequestHeader(value = "traceparent", required = false) String traceparent
     ) {
         String traceId = RequestIdUtil.resolveOrGenerate(traceHeader);
         String requestId = RequestIdUtil.resolveOrGenerate(requestHeader);
@@ -46,7 +47,7 @@ public class RerankController {
             );
         }
 
-        RerankResponse response = rerankService.rerank(request, traceId, requestId);
+        RerankResponse response = rerankService.rerank(request, traceId, requestId, traceparent);
         return ResponseEntity.ok(response);
     }
 

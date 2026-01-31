@@ -42,10 +42,11 @@ public class SearchController {
     public ResponseEntity<?> search(
         @RequestBody(required = false) SearchRequest request,
         @RequestHeader(value = "x-trace-id", required = false) String traceIdHeader,
-        @RequestHeader(value = "x-request-id", required = false) String requestIdHeader
+        @RequestHeader(value = "x-request-id", required = false) String requestIdHeader,
+        @RequestHeader(value = "traceparent", required = false) String traceparent
     ) {
         RequestKind kind = resolveKind(request);
-        String traceId = resolveTraceId(kind, request, traceIdHeader);
+        String traceId = resolveTraceId(kind, request, traceIdHeader, traceparent);
         String requestId = resolveRequestId(kind, request, requestIdHeader);
 
         if (request == null) {
@@ -55,7 +56,7 @@ public class SearchController {
         }
 
         try {
-            SearchResponse response = searchService.search(request, traceId, requestId);
+            SearchResponse response = searchService.search(request, traceId, requestId, traceparent);
             return ResponseEntity.ok(response);
         } catch (InvalidSearchRequestException e) {
             return ResponseEntity.badRequest().body(
@@ -142,7 +143,7 @@ public class SearchController {
         return RequestKind.LEGACY;
     }
 
-    private String resolveTraceId(RequestKind kind, SearchRequest request, String headerValue) {
+    private String resolveTraceId(RequestKind kind, SearchRequest request, String headerValue, String traceparent) {
         if (kind == RequestKind.QC_V1_1) {
             QueryContextV1_1 context = request.getQueryContextV1_1();
             String fromContext = context != null && context.getMeta() != null
@@ -155,7 +156,15 @@ public class SearchController {
             String fromContext = context == null ? null : context.getTraceId();
             return normalizeOrGenerate(fromContext);
         }
-        return normalizeOrGenerate(headerValue);
+        String normalized = normalize(headerValue);
+        if (normalized != null) {
+            return normalized;
+        }
+        String fromTraceparent = extractTraceId(traceparent);
+        if (fromTraceparent != null) {
+            return fromTraceparent;
+        }
+        return UUID.randomUUID().toString();
     }
 
     private String resolveRequestId(RequestKind kind, SearchRequest request, String headerValue) {
@@ -179,6 +188,24 @@ public class SearchController {
             return value;
         }
         return UUID.randomUUID().toString();
+    }
+
+    private String normalize(String value) {
+        if (value != null && !value.trim().isEmpty()) {
+            return value;
+        }
+        return null;
+    }
+
+    private String extractTraceId(String traceparent) {
+        if (traceparent == null || traceparent.isBlank()) {
+            return null;
+        }
+        String[] parts = traceparent.trim().split("-");
+        if (parts.length != 4) {
+            return null;
+        }
+        return parts[1];
     }
 
     private enum RequestKind {

@@ -24,16 +24,17 @@ public class BffRequestContextFilter extends OncePerRequestFilter {
         FilterChain filterChain
     ) throws ServletException, IOException {
         String requestId = IdGenerator.resolveRequestId(request.getHeader("x-request-id"));
-        String traceId = IdGenerator.resolveTraceId(request.getHeader("x-trace-id"));
         String traceparent = request.getHeader("traceparent");
+        String traceId = IdGenerator.resolveTraceId(request.getHeader("x-trace-id"), traceparent);
+        String resolvedTraceparent = IdGenerator.resolveTraceparent(traceparent, traceId);
         long startedAt = System.nanoTime();
 
-        RequestContext context = new RequestContext(requestId, traceId, traceparent, startedAt);
+        RequestContext context = new RequestContext(requestId, traceId, resolvedTraceparent, startedAt);
         RequestContextHolder.set(context);
         response.setHeader("x-request-id", requestId);
         response.setHeader("x-trace-id", traceId);
-        if (traceparent != null && !traceparent.isBlank()) {
-            response.setHeader("traceparent", traceparent);
+        if (resolvedTraceparent != null && !resolvedTraceparent.isBlank()) {
+            response.setHeader("traceparent", resolvedTraceparent);
         }
 
         try {

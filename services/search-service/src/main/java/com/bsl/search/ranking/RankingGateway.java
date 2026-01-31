@@ -27,8 +27,14 @@ public class RankingGateway {
         this.properties = properties;
     }
 
-    public RerankResponse rerank(String queryText, List<RerankRequest.Candidate> candidates, int size,
-                                 String traceId, String requestId) {
+    public RerankResponse rerank(
+        String queryText,
+        List<RerankRequest.Candidate> candidates,
+        int size,
+        String traceId,
+        String requestId,
+        String traceparent
+    ) {
         RerankRequest request = new RerankRequest();
         RerankRequest.Query query = new RerankRequest.Query();
         query.setText(queryText);
@@ -42,6 +48,9 @@ public class RankingGateway {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.add("x-trace-id", traceId);
         headers.add("x-request-id", requestId);
+        if (traceparent != null && !traceparent.isBlank()) {
+            headers.add("traceparent", traceparent);
+        }
 
         HttpEntity<RerankRequest> entity = new HttpEntity<>(request, headers);
 

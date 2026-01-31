@@ -20,7 +20,7 @@ public class CorsConfig implements WebMvcConfigurer {
     @Value("${app.cors.allowed-headers:*}")
     private String allowedHeaders;
 
-    @Value("${app.cors.exposed-headers:x-trace-id,x-request-id}")
+    @Value("${app.cors.exposed-headers:x-trace-id,x-request-id,traceparent}")
     private String exposedHeaders;
 
     @Value("${app.cors.allow-credentials:true}")

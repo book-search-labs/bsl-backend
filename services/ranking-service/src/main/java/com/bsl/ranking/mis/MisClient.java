@@ -36,7 +36,8 @@ public class MisClient {
         int timeoutMs,
         boolean returnDebug,
         String traceId,
-        String requestId
+        String requestId,
+        String traceparent
     ) {
         if (!properties.isEnabled()) {
             throw new MisUnavailableException("mis disabled");
@@ -86,6 +87,9 @@ public class MisClient {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.add("x-trace-id", traceId);
         headers.add("x-request-id", requestId);
+        if (traceparent != null && !traceparent.isBlank()) {
+            headers.add("traceparent", traceparent);
+        }
         HttpEntity<MisScoreRequest> entity = new HttpEntity<>(scoreRequest, headers);
 
         try {

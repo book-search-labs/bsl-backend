@@ -28,6 +28,7 @@ services:
     environment:
       - discovery.type=single-node
       - plugins.security.disabled=true
+      - path.repo=/usr/share/opensearch/backup
       - OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g
     ports:
       - "9200:9200"
@@ -39,6 +40,7 @@ services:
       retries: 12
     volumes:
       - opensearch-data:/usr/share/opensearch/data
+      - opensearch-backup:/usr/share/opensearch/backup
 
   clickhouse:
     image: clickhouse/clickhouse-server:24.8
@@ -73,5 +75,6 @@ services:
 volumes:
   mysql-data:
   opensearch-data:
+  opensearch-backup:
   clickhouse-data:
   gradle-cache:

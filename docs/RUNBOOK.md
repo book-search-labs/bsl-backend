@@ -158,3 +158,79 @@ Test book detail: `curl -s http://localhost:8080/books/b1`
 ## Ranking Service (Local)
 Run service: `cd services/ranking-service && ./gradlew bootRun`
 Test rerank: `curl -s -XPOST http://localhost:8082/rerank -H 'Content-Type: application/json' -d '{"query":{"text":"해리"},"candidates":[{"doc_id":"b1","features":{"rrf_score":0.167,"lex_rank":1,"vec_rank":2,"issued_year":1999,"volume":1,"edition_labels":["recover"]}}],"options":{"size":10}}'`
+
+---
+
+# Phase 9 — Observability & Operations (Production)
+
+## Observability stack (local)
+```bash
+./scripts/observability_up.sh
+# Grafana: http://localhost:3000
+# Prometheus: http://localhost:9090
+# Tempo: http://localhost:3200
+# Loki: http://localhost:3100
+# Metabase: http://localhost:3001
+```
+Stop:
+```bash
+./scripts/observability_down.sh
+```
+
+## MySQL backup / restore
+Backup:
+```bash
+./scripts/mysql_backup.sh
+```
+Restore (from a backup file):
+```bash
+./scripts/mysql_restore.sh /path/to/backup.sql.gz
+```
+
+## OpenSearch snapshot / restore
+Register snapshot repo + snapshot:
+```bash
+./scripts/opensearch_snapshot.sh
+```
+Restore a snapshot:
+```bash
+./scripts/opensearch_restore.sh SNAPSHOT_NAME
+```
+Retention cleanup (delete snapshots older than N days):
+```bash
+SNAPSHOT_RETENTION_DAYS=7 ./scripts/opensearch_snapshot_retention.sh
+```
+
+## DR rehearsal (minimum)
+1) Take a **MySQL** backup + **OpenSearch** snapshot.
+2) Spin up a clean environment.
+3) Restore MySQL + OpenSearch.
+4) Run smoke tests (search + checkout flow).
+5) Document recovery time + gaps.
+
+## Incident response (on-call)
+- **SEV1:** system down, data loss risk → page immediately, rollback or failover.
+- **SEV2:** partial outage, high error rate → mitigate within 30–60 min.
+- **SEV3:** degraded performance, non-critical impact → fix in next business day.
+
+### Standard procedure
+1) Triage: validate alert + scope blast radius
+2) Mitigate: rollback, disable feature flag, scale resources
+3) Communicate: status update to stakeholders
+4) Diagnose: root cause + remediation
+5) Postmortem: action items + owners
+
+## Release check (prod)
+- Health checks green (BFF + Search + Autocomplete + Commerce)
+- p95/p99 latency within SLO
+- Error rate < 1%
+- DB + OpenSearch disk < 80%
+
+## Admin risky-action approval (optional)
+If enabled (`SECURITY_ADMIN_APPROVAL_ENABLED=true`), risky admin paths require `x-approval-id`.
+Create approval via SQL (example):
+```sql
+INSERT INTO admin_action_approval (requested_by_admin_id, action, status, approved_by_admin_id)
+VALUES (1, 'POST /admin/ops/reindex-jobs/start', 'APPROVED', 2);
+```
+Then call the API with `x-approval-id` set to the row id.

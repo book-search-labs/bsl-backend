@@ -39,7 +39,7 @@ public class RerankService {
         this.guardrails = guardrails;
     }
 
-    public RerankResponse rerank(RerankRequest request, String traceId, String requestId) {
+    public RerankResponse rerank(RerankRequest request, String traceId, String requestId, String traceparent) {
         long started = System.nanoTime();
         List<String> reasonCodes = new ArrayList<>();
         boolean debugEnabled = request.getOptions() != null && Boolean.TRUE.equals(request.getOptions().getDebug());
@@ -93,7 +93,8 @@ public class RerankService {
                     timeoutMs,
                     debugEnabled,
                     traceId,
-                    requestId
+                    requestId,
+                    traceparent
                 );
                 if (scoreResponse == null || scoreResponse.getScores() == null) {
                     throw new MisUnavailableException("mis returned empty scores");
