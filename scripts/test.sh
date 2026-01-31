@@ -27,4 +27,15 @@ else
   echo "  - python not found; skipping contract compatibility check"
 fi
 
-echo "[3/3] Done"
+echo "[3/3] Canonical quality checks (optional)"
+if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
+  else
+    echo "  - python not found; skipping canonical checks"
+  fi
+else
+  echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
+fi
+
+echo "[4/4] Done"
