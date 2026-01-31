@@ -10,6 +10,8 @@ import PlaceholderPage from "./pages/PlaceholderPage";
 import OpsJobsPage from "./pages/OpsJobsPage";
 import OpsAutocompletePage from "./pages/OpsAutocompletePage";
 import ModelOpsPage from "./pages/ModelOpsPage";
+import RagOpsPage from "./pages/RagOpsPage";
+import RagEvalPage from "./pages/RagEvalPage";
 
 export default function App() {
   return (
@@ -34,6 +36,8 @@ export default function App() {
           <Route path="jobs" element={<OpsJobsPage />} />
           <Route path="autocomplete" element={<OpsAutocompletePage />} />
           <Route path="models" element={<ModelOpsPage />} />
+          <Route path="rag" element={<RagOpsPage />} />
+          <Route path="rag-eval" element={<RagEvalPage />} />
         </Route>
         <Route path="settings" element={<SettingsPage />} />
       </Route>

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "chat-feedback-request.schema.json",
+  "title": "ChatFeedbackRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "trace_id", "request_id", "session_id", "rating"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "session_id": { "type": "string", "minLength": 1 },
+    "message_id": { "type": ["string", "null"] },
+    "rating": { "type": "string", "enum": ["up", "down"] },
+    "reason_code": { "type": ["string", "null"] },
+    "comment": { "type": ["string", "null"] },
+    "flag_hallucination": { "type": ["boolean", "null"] },
+    "flag_insufficient": { "type": ["boolean", "null"] }
+  }
+}

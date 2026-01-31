@@ -1,0 +1,28 @@
+{
+  "settings": {
+    "index": {
+      "knn": true
+    },
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "1s"
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "doc_id": { "type": "keyword" },
+      "chunk_id": { "type": "keyword" },
+      "citation_key": { "type": "keyword" },
+      "embedding": {
+        "type": "knn_vector",
+        "dimension": 1024,
+        "method": {
+          "name": "hnsw",
+          "engine": "lucene",
+          "space_type": "cosinesimil"
+        }
+      },
+      "updated_at": { "type": "date" }
+    }
+  }
+}

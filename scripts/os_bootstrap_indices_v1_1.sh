@@ -4,6 +4,8 @@ set -euo pipefail
 OS_URL="${OS_URL:-http://localhost:9200}"
 DOC_INDEX="${DOC_INDEX:-books_doc_v1_20260116_001}"
 VEC_INDEX="${VEC_INDEX:-books_vec_v1_20260116_001}"
+DOCS_DOC_INDEX="${DOCS_DOC_INDEX:-docs_doc_v1_20260116_001}"
+DOCS_VEC_INDEX="${DOCS_VEC_INDEX:-docs_vec_v1_20260116_001}"
 AC_INDEX="${AC_INDEX:-ac_candidates_v1_20260116_001}"
 AUTHORS_INDEX="${AUTHORS_INDEX:-authors_doc_v1_20260116_001}"
 SERIES_INDEX="${SERIES_INDEX:-series_doc_v1_20260116_001}"
@@ -14,6 +16,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 DOC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/books_doc_v1.mapping.json"
 VEC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/books_vec_v1.mapping.json"
+DOCS_DOC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/docs_doc_v1.mapping.json"
+DOCS_VEC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/docs_vec_v1.mapping.json"
 AC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/ac_candidates_v1.mapping.json"
 AUTHORS_MAPPING_FILE="$ROOT_DIR/infra/opensearch/authors_doc_v1.mapping.json"
 AUTHORS_MAPPING_FALLBACK_FILE="$ROOT_DIR/infra/opensearch/authors_doc_v1.local.mapping.json"
@@ -26,6 +30,16 @@ fi
 
 if [ ! -f "$VEC_MAPPING_FILE" ]; then
   echo "Mapping file not found: $VEC_MAPPING_FILE" >&2
+  exit 1
+fi
+
+if [ ! -f "$DOCS_DOC_MAPPING_FILE" ]; then
+  echo "Mapping file not found: $DOCS_DOC_MAPPING_FILE" >&2
+  exit 1
+fi
+
+if [ ! -f "$DOCS_VEC_MAPPING_FILE" ]; then
+  echo "Mapping file not found: $DOCS_VEC_MAPPING_FILE" >&2
   exit 1
 fi
 
@@ -121,6 +135,30 @@ if ! index_exists "$VEC_INDEX"; then
   create_index "$VEC_INDEX" "$VEC_MAPPING_FILE"
 fi
 
+if index_exists "$DOCS_DOC_INDEX"; then
+  if [ "$KEEP_INDEX" = "1" ]; then
+    echo "Index $DOCS_DOC_INDEX exists and KEEP_INDEX=1. Skipping delete/recreate."
+  else
+    delete_index "$DOCS_DOC_INDEX"
+  fi
+fi
+
+if ! index_exists "$DOCS_DOC_INDEX"; then
+  create_index "$DOCS_DOC_INDEX" "$DOCS_DOC_MAPPING_FILE"
+fi
+
+if index_exists "$DOCS_VEC_INDEX"; then
+  if [ "$KEEP_INDEX" = "1" ]; then
+    echo "Index $DOCS_VEC_INDEX exists and KEEP_INDEX=1. Skipping delete/recreate."
+  else
+    delete_index "$DOCS_VEC_INDEX"
+  fi
+fi
+
+if ! index_exists "$DOCS_VEC_INDEX"; then
+  create_index "$DOCS_VEC_INDEX" "$DOCS_VEC_MAPPING_FILE"
+fi
+
 if index_exists "$AC_INDEX"; then
   if [ "$KEEP_INDEX" = "1" ]; then
     echo "Index $AC_INDEX exists and KEEP_INDEX=1. Skipping delete/recreate."
@@ -172,7 +210,7 @@ else
   echo "ENABLE_ENTITY_INDICES=0; skipping authors/series indices."
 fi
 
-echo "Updating aliases (doc/vec/ac/authors/series read/write)"
+echo "Updating aliases (doc/vec/docs/ac/authors/series read/write)"
 
 remove_alias() {
   local alias_name="$1"
@@ -207,6 +245,10 @@ remove_alias "books_doc_read" "books_doc_v1_*"
 remove_alias "books_doc_write" "books_doc_v1_*"
 remove_alias "books_vec_read" "books_vec_v1_*"
 remove_alias "books_vec_write" "books_vec_v1_*"
+remove_alias "docs_doc_read" "docs_doc_v1_*"
+remove_alias "docs_doc_write" "docs_doc_v1_*"
+remove_alias "docs_vec_read" "docs_vec_v1_*"
+remove_alias "docs_vec_write" "docs_vec_v1_*"
 remove_alias "ac_read" "ac_candidates_v1_*"
 remove_alias "ac_write" "ac_candidates_v1_*"
 remove_alias "authors_doc_read" "authors_doc_v1_*"
@@ -218,6 +260,10 @@ add_alias "$DOC_INDEX" "books_doc_read"
 add_alias "$DOC_INDEX" "books_doc_write" "1"
 add_alias "$VEC_INDEX" "books_vec_read"
 add_alias "$VEC_INDEX" "books_vec_write" "1"
+add_alias "$DOCS_DOC_INDEX" "docs_doc_read"
+add_alias "$DOCS_DOC_INDEX" "docs_doc_write" "1"
+add_alias "$DOCS_VEC_INDEX" "docs_vec_read"
+add_alias "$DOCS_VEC_INDEX" "docs_vec_write" "1"
 add_alias "$AC_INDEX" "ac_read"
 add_alias "$AC_INDEX" "ac_write" "1"
 add_alias "$AUTHORS_INDEX" "authors_doc_read"

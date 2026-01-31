@@ -124,6 +124,31 @@ Offline eval regression gate:
 python scripts/eval/run_eval.py --run evaluation/runs/sample_run.jsonl --baseline evaluation/baseline.json --gate
 ```
 
+## RAG Docs (Indexing)
+
+Create RAG indices (OpenSearch):
+```bash
+DOCS_DOC_INDEX=docs_doc_v1_20260131_001 DOCS_VEC_INDEX=docs_vec_v1_20260131_001 ./scripts/os_bootstrap_indices_v1_1.sh
+```
+
+Build chunks + embeddings:
+```bash
+python scripts/rag/build_doc_chunks.py --input-dir data/rag/docs
+python scripts/rag/embed_chunks.py --input var/rag/docs_embed.jsonl --output var/rag/docs_vec.jsonl
+```
+
+Index into OpenSearch:
+```bash
+python scripts/rag/index_chunks.py --docs var/rag/docs_doc.jsonl --vec var/rag/docs_vec.jsonl --deletes var/rag/docs_deletes.jsonl
+```
+
+## LLM Gateway (Local)
+```bash
+cd services/llm-gateway-service
+python -m pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8010
+```
+
 ## Search Service (Local)
 Start OpenSearch: `./scripts/local_up.sh`
 Run service: `cd services/search-service && ./gradlew bootRun`

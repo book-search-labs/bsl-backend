@@ -1,0 +1,18 @@
+{
+  "version": "v1",
+  "trace_id": "trace_demo",
+  "request_id": "req_demo",
+  "status": "ok",
+  "answer": {"role": "assistant", "content": "Returns are accepted within 30 days. [policy#0]"},
+  "sources": [
+    {
+      "citation_key": "policy#0",
+      "doc_id": "policy",
+      "chunk_id": "policy::chunk_0",
+      "title": "Return Policy",
+      "url": "https://example.com/policy",
+      "snippet": "Returns are accepted within 30 days of purchase."
+    }
+  ],
+  "citations": ["policy#0"]
+}

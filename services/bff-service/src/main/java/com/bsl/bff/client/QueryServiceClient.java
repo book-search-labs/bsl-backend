@@ -51,4 +51,24 @@ public class QueryServiceClient {
             throw new DownstreamException(status, "query_service_error", "Query service error");
         }
     }
+
+    public JsonNode chat(Map<String, Object> body, RequestContext context) {
+        String url = properties.getBaseUrl() + "/chat";
+        HttpHeaders headers = DownstreamHeaders.from(context);
+        headers.add(HttpHeaders.CONTENT_TYPE, "application/json");
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+        try {
+            ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.POST, entity, JsonNode.class);
+            return response.getBody();
+        } catch (ResourceAccessException ex) {
+            throw new DownstreamException(HttpStatus.SERVICE_UNAVAILABLE, "query_service_timeout", "Query service timeout");
+        } catch (HttpStatusCodeException ex) {
+            HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+            if (status == null) {
+                status = HttpStatus.SERVICE_UNAVAILABLE;
+            }
+            throw new DownstreamException(status, "query_service_error", "Query service error");
+        }
+    }
 }

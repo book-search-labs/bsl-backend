@@ -10,13 +10,14 @@ export async function fetchJson<T>(url: string, options: FetchOptions = {}): Pro
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    const headers: Record<string, string> = { ...(init.headers ?? {}) } as Record<string, string>;
+    if (!(init.body instanceof FormData)) {
+      headers["Content-Type"] = "application/json";
+    }
     const response = await fetch(url, {
       ...init,
       signal: controller.signal,
-      headers: {
-        "Content-Type": "application/json",
-        ...(init.headers ?? {}),
-      },
+      headers,
     });
 
     const text = await response.text();

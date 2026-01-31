@@ -120,6 +120,34 @@ public class OpsRepository {
         return jdbcTemplate.query(sql.toString(), opsTaskMapper(), params.toArray());
     }
 
+    public OpsTaskDto createOpsTask(String taskType, Object payload) {
+        String payloadJson = toJson(payload);
+        Timestamp now = Timestamp.from(Instant.now());
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement ps = connection.prepareStatement(
+                "INSERT INTO ops_task (task_type, status, payload_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+                new String[] {"task_id"}
+            );
+            ps.setString(1, taskType);
+            ps.setString(2, "OPEN");
+            ps.setString(3, payloadJson == null ? "{}" : payloadJson);
+            ps.setTimestamp(4, now);
+            ps.setTimestamp(5, now);
+            return ps;
+        }, keyHolder);
+
+        Long id = keyHolder.getKey() == null ? null : keyHolder.getKey().longValue();
+        OpsTaskDto dto = new OpsTaskDto();
+        dto.setTaskId(id);
+        dto.setTaskType(taskType);
+        dto.setStatus("OPEN");
+        dto.setPayload(payload);
+        dto.setCreatedAt(now.toInstant());
+        dto.setUpdatedAt(now.toInstant());
+        return dto;
+    }
+
     private void appendFilter(StringBuilder sql, List<Object> params, String column, String value) {
         if (value == null || value.isBlank()) {
             return;

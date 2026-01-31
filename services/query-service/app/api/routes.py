@@ -13,6 +13,7 @@ from app.core.cache import get_cache
 from app.core.enhance import evaluate_gate, load_config
 from app.core.metrics import metrics
 from app.core.rewrite_log import get_rewrite_log, now_iso
+from app.core.chat import run_chat
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -214,6 +215,27 @@ async def query_enhance(request: Request):
         ttl=_enhance_cache_ttl(),
     )
     _log_enhance(body, response, canonical_key)
+    return JSONResponse(content=response, headers=_response_headers(trace_id, request_id, traceparent))
+
+
+@router.post("/chat")
+async def chat(request: Request):
+    trace_id, request_id, _, traceparent = _extract_ids(request)
+    body = await request.json()
+    if not isinstance(body, dict):
+        return _error_response(
+            "invalid_request",
+            "Request body must be a JSON object.",
+            trace_id,
+            request_id,
+        )
+
+    if isinstance(body.get("trace_id"), str) and body.get("trace_id"):
+        trace_id = body.get("trace_id")
+    if isinstance(body.get("request_id"), str) and body.get("request_id"):
+        request_id = body.get("request_id")
+
+    response = await run_chat(body, trace_id, request_id)
     return JSONResponse(content=response, headers=_response_headers(trace_id, request_id, traceparent))
 
 

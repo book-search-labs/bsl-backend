@@ -127,6 +127,31 @@ All structured responses that follow `contracts/*` must include:
 - Contract: `contracts/ack-response.schema.json`
 - Example: `contracts/examples/ack-response.sample.json`
 
+## POST `/chat`
+**Purpose**: RAG chat response with citations (BFF → QS `/chat`).  
+
+### Request
+- Contract: `contracts/chat-request.schema.json`
+- Example: `contracts/examples/chat-request.sample.json`
+
+### Response
+- Contract: `contracts/chat-response.schema.json`
+- Example: `contracts/examples/chat-response.sample.json`
+
+### Streaming (optional)
+- `POST /chat?stream=true` returns `text/event-stream`
+- Events: `meta` (JSON ChatResponse), `token` (string), `done` (`[DONE]`)
+
+## POST `/chat/feedback`
+**Purpose**: user feedback for chat answers (👍/👎 + flags).  
+
+### Request
+- Contract: `contracts/chat-feedback-request.schema.json`
+- Example: `contracts/examples/chat-feedback-request.sample.json`
+
+### Response
+- Contract: `contracts/ack-response.schema.json`
+
 ## GET `/autocomplete`
 **Purpose**: return query suggestions for a prefix.
 
@@ -246,6 +271,26 @@ All structured responses that follow `contracts/*` must include:
   ]
 }
 ```
+
+## BFF Admin RAG Ops (Internal/Admin)
+
+**Responsibility**: document upload + index reindex/rollback + eval labeling.
+
+## POST `/admin/rag/docs/upload`
+**Purpose**: upload a RAG document (stored for later indexing).  
+**Response**: `contracts/ack-response.schema.json`
+
+## POST `/admin/rag/index/reindex`
+**Purpose**: create a RAG reindex ops task.  
+**Response**: `contracts/ack-response.schema.json`
+
+## POST `/admin/rag/index/rollback`
+**Purpose**: create a RAG rollback ops task.  
+**Response**: `contracts/ack-response.schema.json`
+
+## POST `/admin/rag/eval/label`
+**Purpose**: store manual eval/label judgments for RAG answers.  
+**Response**: `contracts/ack-response.schema.json`
 
 ## POST `/admin/ops/reindex-jobs/{id}/pause`
 **Purpose**: pause a running reindex job.  
@@ -377,6 +422,17 @@ If supported, the server should treat it as:
 ### Response
 - Contract: `contracts/query-enhance-response.schema.json`
 - Example: `contracts/examples/query-enhance-response.sample.json`
+
+## POST `/chat`
+**Purpose**: RAG chat orchestration (rewrite → retrieve → generate with citations).
+
+### Request
+- Contract: `contracts/chat-request.schema.json`
+- Example: `contracts/examples/chat-request.sample.json`
+
+### Response
+- Contract: `contracts/chat-response.schema.json`
+- Example: `contracts/examples/chat-response.sample.json`
 
 ## GET `/internal/qc/rewrite/failures`
 **Purpose**: List curated rewrite failure cases for replay/analysis.
@@ -546,6 +602,54 @@ If supported, the server should treat it as:
   "request_id": "string",
   "model": "string",
   "vectors": [[0.0, 0.0]]
+}
+```
+
+---
+
+# 7) LLM Gateway (LLMGW)
+
+**Responsibility**: Centralized LLM calls with keys/quotas/retries/audit/cost control.
+
+## GET `/health`
+**Response**: `200 OK`
+```json
+{ "status": "ok" }
+```
+
+## GET `/ready`
+**Response**: `200 OK`
+```json
+{ "status": "ok" }
+```
+
+## POST `/v1/generate`
+**Purpose**: Generate a citation-aware response from context.
+
+### Request (MVP shape)
+```json
+{
+  "version": "v1",
+  "trace_id": "string",
+  "request_id": "string",
+  "model": "string",
+  "messages": [{ "role": "user", "content": "string" }],
+  "context": { "chunks": [{ "citation_key": "doc#0", "content": "text" }] },
+  "citations_required": true
+}
+```
+
+### Response (MVP shape)
+```json
+{
+  "version": "v1",
+  "trace_id": "string",
+  "request_id": "string",
+  "model": "string",
+  "content": "string",
+  "citations": ["doc#0"],
+  "tokens": 100,
+  "cost_usd": 0.002
 }
 ```
 
