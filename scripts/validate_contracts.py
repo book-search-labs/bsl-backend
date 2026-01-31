@@ -14,6 +14,8 @@ SCHEMA_FILES = {
     "search-response.sample.json": CONTRACTS_DIR / "search-response.schema.json",
     "autocomplete-response.sample.json": CONTRACTS_DIR / "autocomplete-response.schema.json",
     "autocomplete-select-request.sample.json": CONTRACTS_DIR / "autocomplete-select-request.schema.json",
+    "search-click-request.sample.json": CONTRACTS_DIR / "search-click-request.schema.json",
+    "search-dwell-request.sample.json": CONTRACTS_DIR / "search-dwell-request.schema.json",
     "ack-response.sample.json": CONTRACTS_DIR / "ack-response.schema.json",
     "autocomplete-admin-suggestions-response.sample.json": CONTRACTS_DIR / "autocomplete-admin-suggestions-response.schema.json",
     "autocomplete-admin-update-request.sample.json": CONTRACTS_DIR / "autocomplete-admin-update-request.schema.json",

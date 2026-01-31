@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 
 import { HttpError } from '../api/http'
 import { getBookDetail } from '../api/books'
+import { postSearchDwell } from '../api/searchApi'
 import type { Book } from '../types/search'
 import { addRecentView } from '../utils/recentViews'
 
@@ -10,6 +11,9 @@ const STORAGE_PREFIX = 'bsl:lastHit:'
 
 type CachedHit = {
   doc_id?: string
+  imp_id?: string
+  query_hash?: string
+  position?: number
   source?: {
     title_ko?: string
     authors?: string[]
@@ -69,11 +73,19 @@ function parseNumberParam(value: string | null) {
   return Number.isFinite(n) && n > 0 ? n : undefined
 }
 
-function writeCachedHit(docId: string, source?: CachedHit['source'], fromQuery?: CachedHit['fromQuery']) {
+function writeCachedHit(
+  docId: string,
+  source?: CachedHit['source'],
+  fromQuery?: CachedHit['fromQuery'],
+  eventContext?: Pick<CachedHit, 'imp_id' | 'query_hash' | 'position'>,
+) {
   const payload: CachedHit = {
     doc_id: docId,
     source: source ?? null,
     fromQuery: fromQuery ?? undefined,
+    imp_id: eventContext?.imp_id,
+    query_hash: eventContext?.query_hash,
+    position: eventContext?.position,
     ts: Date.now(),
   }
 
@@ -107,6 +119,7 @@ export default function BookDetailPage() {
   }, [fromParam, qParam, sizeParam, vectorParam])
 
   const [cachedHit, setCachedHit] = useState<CachedHit | null>(null)
+  const dwellContextRef = useRef<CachedHit | null>(null)
   const [book, setBook] = useState<Book | null>(null)
 
   const [loading, setLoading] = useState(false)
@@ -130,6 +143,7 @@ export default function BookDetailPage() {
     // 1) Read cache first for instant render
     const cached = readCachedHit(docId)
     setCachedHit(cached)
+    dwellContextRef.current = cached
 
     const hasCached = Boolean(cached && cached.source)
 
@@ -192,13 +206,29 @@ export default function BookDetailPage() {
       // Prefer URL params (if present), otherwise keep existing cached fromQuery.
       const mergedFromQuery = fromQueryFromUrl ?? cached?.fromQuery
 
-      writeCachedHit(resolvedDocId, result.source ?? null, mergedFromQuery)
+      writeCachedHit(resolvedDocId, result.source ?? null, mergedFromQuery, {
+        imp_id: cached?.imp_id,
+        query_hash: cached?.query_hash,
+        position: cached?.position,
+      })
       setCachedHit({
         doc_id: resolvedDocId,
         source: result.source ?? null,
         fromQuery: mergedFromQuery,
+        imp_id: cached?.imp_id,
+        query_hash: cached?.query_hash,
+        position: cached?.position,
         ts: Date.now(),
       })
+      dwellContextRef.current = {
+        doc_id: resolvedDocId,
+        source: result.source ?? null,
+        fromQuery: mergedFromQuery,
+        imp_id: cached?.imp_id,
+        query_hash: cached?.query_hash,
+        position: cached?.position,
+        ts: Date.now(),
+      }
 
       addRecentView({
         docId: nextBook.docId,
@@ -240,6 +270,27 @@ export default function BookDetailPage() {
       isActive = false
     }
   }, [docId, retryToken, fromQueryFromUrl])
+
+  useEffect(() => {
+    if (!docId) return
+    const startedAt = Date.now()
+    return () => {
+      const context = dwellContextRef.current
+      if (!context?.imp_id || !context?.query_hash || !context?.position) {
+        return
+      }
+      const dwellMs = Math.max(0, Date.now() - startedAt)
+      postSearchDwell({
+        imp_id: context.imp_id,
+        doc_id: docId,
+        position: context.position,
+        query_hash: context.query_hash,
+        dwell_ms: dwellMs,
+      }).catch(() => {
+        // Ignore event failures
+      })
+    }
+  }, [docId])
 
   const backLink = useMemo(() => {
     if (fromParam === 'search') {

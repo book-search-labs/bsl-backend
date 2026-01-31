@@ -40,6 +40,8 @@ export type SearchResponse = {
   version?: string
   trace_id?: string
   request_id?: string
+  imp_id?: string
+  query_hash?: string
   took_ms?: number
   timed_out?: boolean
   total?: number

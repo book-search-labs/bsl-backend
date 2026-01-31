@@ -12,6 +12,7 @@ Per-env templates live under `config/spring/<service>/`:
 - `config/spring/search/application-*.yml`
 - `config/spring/autocomplete/application-*.yml`
 - `config/spring/ranking/application-*.yml`
+- `config/spring/outbox-relay/application-*.yml`
 
 These files contain **environment-variable placeholders** only (no secrets).
 Stage/prod files intentionally omit default values to **fail fast** when env vars are missing.
@@ -93,6 +94,16 @@ Autocomplete:
 
 Ranking:
 - `RANKING_PORT`
+
+Outbox Relay:
+- `OUTBOX_RELAY_PORT`
+- `KAFKA_BOOTSTRAP_SERVERS`
+- `OUTBOX_RELAY_ENABLED`, `OUTBOX_RELAY_POLL_INTERVAL_MS`, `OUTBOX_RELAY_BATCH_SIZE`
+- `OUTBOX_RELAY_MAX_RETRIES`, `OUTBOX_RELAY_BACKOFF_MS`
+- `OUTBOX_RELAY_DLQ_ENABLED`, `OUTBOX_RELAY_DLQ_SUFFIX`
+- `OUTBOX_RELAY_PRODUCER`
+- `OUTBOX_RELAY_TOPIC_SEARCH_IMPRESSION`, `OUTBOX_RELAY_TOPIC_SEARCH_CLICK`, `OUTBOX_RELAY_TOPIC_SEARCH_DWELL`
+- `OUTBOX_RELAY_TOPIC_AC_IMPRESSION`, `OUTBOX_RELAY_TOPIC_AC_SELECT`
 
 FastAPI (shared):
 - `BSL_ENV`, `BSL_TENANT_ID`, `BSL_LOCALE`, `BSL_TIMEZONE`

@@ -14,6 +14,12 @@ public class BffSearchResponse {
     @JsonProperty("request_id")
     private String requestId;
 
+    @JsonProperty("imp_id")
+    private String impId;
+
+    @JsonProperty("query_hash")
+    private String queryHash;
+
     @JsonProperty("took_ms")
     private long tookMs;
 
@@ -45,6 +51,22 @@ public class BffSearchResponse {
 
     public void setRequestId(String requestId) {
         this.requestId = requestId;
+    }
+
+    public String getImpId() {
+        return impId;
+    }
+
+    public void setImpId(String impId) {
+        this.impId = impId;
+    }
+
+    public String getQueryHash() {
+        return queryHash;
+    }
+
+    public void setQueryHash(String queryHash) {
+        this.queryHash = queryHash;
     }
 
     public long getTookMs() {

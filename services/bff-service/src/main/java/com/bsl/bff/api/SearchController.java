@@ -15,8 +15,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -39,7 +46,11 @@ public class SearchController {
     }
 
     @PostMapping("/search")
-    public BffSearchResponse search(@RequestBody(required = false) BffSearchRequest request) {
+    public BffSearchResponse search(
+        @RequestBody(required = false) BffSearchRequest request,
+        @RequestHeader(value = "x-experiment-id", required = false) String experimentId,
+        @RequestHeader(value = "x-policy-id", required = false) String policyId
+    ) {
         RequestContext context = RequestContextHolder.get();
         if (request == null) {
             throw new BadRequestException("request body is required");
@@ -76,6 +87,10 @@ public class SearchController {
         response.setVersion("v1");
         response.setTraceId(context == null ? null : context.getTraceId());
         response.setRequestId(context == null ? null : context.getRequestId());
+        String impId = "imp_" + UUID.randomUUID().toString().replace("-", "");
+        String queryHash = computeQueryHash(rawQuery, queryContextV11, queryContext);
+        response.setImpId(impId);
+        response.setQueryHash(queryHash);
         response.setTookMs(searchResponse.getTookMs() > 0
             ? searchResponse.getTookMs()
             : (System.nanoTime() - started) / 1_000_000L);
@@ -113,6 +128,7 @@ public class SearchController {
         payload.put("from", resolveFrom(request));
         payload.put("size", resolveSize(request));
         recordOutbox("search_request", "search", context, payload);
+        recordImpression(context, impId, queryHash, rawQuery, experimentId, policyId, payload, mapped);
 
         return response;
     }
@@ -160,11 +176,114 @@ public class SearchController {
         outboxService.record(eventType, aggregateType, context.getRequestId(), enriched);
     }
 
+    private void recordImpression(
+        RequestContext context,
+        String impId,
+        String queryHash,
+        String rawQuery,
+        String experimentId,
+        String policyId,
+        Map<String, Object> basePayload,
+        List<BffSearchResponse.Hit> hits
+    ) {
+        if (context == null) {
+            return;
+        }
+        Map<String, Object> payload = new HashMap<>(basePayload);
+        payload.put("imp_id", impId);
+        if (queryHash != null && !queryHash.isBlank()) {
+            payload.put("query_hash", queryHash);
+        }
+        if (rawQuery != null && !rawQuery.isBlank()) {
+            payload.put("query_raw", rawQuery);
+        }
+        if (experimentId != null && !experimentId.isBlank()) {
+            payload.put("experiment_id", experimentId.trim());
+        }
+        if (policyId != null && !policyId.isBlank()) {
+            payload.put("policy_id", policyId.trim());
+        }
+        payload.put("event_time", OffsetDateTime.now(ZoneOffset.UTC).toString());
+        List<Map<String, Object>> results = new ArrayList<>();
+        int position = 1;
+        if (hits != null) {
+            for (BffSearchResponse.Hit hit : hits) {
+                if (hit == null || hit.getDocId() == null || hit.getDocId().isBlank()) {
+                    continue;
+                }
+                Map<String, Object> entry = new HashMap<>();
+                entry.put("doc_id", hit.getDocId());
+                entry.put("position", position++);
+                results.add(entry);
+            }
+        }
+        payload.put("results", results);
+        outboxService.record("search_impression", "search", impId, enrichPayload(context, payload));
+    }
+
+    private Map<String, Object> enrichPayload(RequestContext context, Map<String, Object> payload) {
+        Map<String, Object> enriched = new HashMap<>(payload);
+        enriched.put("request_id", context.getRequestId());
+        enriched.put("trace_id", context.getTraceId());
+        return enriched;
+    }
+
     private String nullToEmpty(String value) {
         return value == null ? "" : value;
     }
 
     private List<String> nullToEmptyList(List<String> value) {
         return value == null ? List.of() : value;
+    }
+
+    private String computeQueryHash(String rawQuery, JsonNode queryContextV11, JsonNode queryContext) {
+        String normalized = extractQueryField(queryContextV11, "normalized");
+        if (normalized == null || normalized.isBlank()) {
+            normalized = extractQueryField(queryContext, "normalized");
+        }
+        if (normalized == null || normalized.isBlank()) {
+            normalized = extractQueryField(queryContextV11, "canonical");
+        }
+        if (normalized == null || normalized.isBlank()) {
+            normalized = extractQueryField(queryContext, "canonical");
+        }
+        String base = normalized;
+        if (base == null || base.isBlank()) {
+            base = rawQuery;
+        }
+        if (base == null || base.isBlank()) {
+            return null;
+        }
+        return sha256(base.trim().toLowerCase());
+    }
+
+    private String extractQueryField(JsonNode node, String field) {
+        if (node == null) {
+            return null;
+        }
+        JsonNode queryNode = node.get("query");
+        if (queryNode == null || queryNode.isMissingNode()) {
+            return null;
+        }
+        JsonNode fieldNode = queryNode.get(field);
+        if (fieldNode == null || fieldNode.isMissingNode()) {
+            return null;
+        }
+        String value = fieldNode.asText(null);
+        return value == null || value.isBlank() ? null : value;
+    }
+
+    private String sha256(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 not available", ex);
+        }
     }
 }

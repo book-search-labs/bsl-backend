@@ -26,6 +26,7 @@ def javaServices = [
     project(':services:search-service'),
     project(':services:autocomplete-service'),
     project(':services:ranking-service'),
+    project(':services:outbox-relay-service'),
 ]
 
 def pythonServices = [

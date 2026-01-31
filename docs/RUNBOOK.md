@@ -59,6 +59,27 @@ Defaults:
 - Decay half-life: `AC_DECAY_HALF_LIFE_SEC=604800`
 If Redis is not available, cache invalidation is skipped.
 
+## Kafka + Outbox Relay (Local)
+Start Kafka (Redpanda single-node):
+`docker run -d --name bsl-kafka -p 9092:9092 -p 9644:9644 redpandadata/redpanda:latest redpanda start --overprovisioned --smp 1 --memory 1G --reserve-memory 0M --node-id 0 --check=false --advertise-kafka-addr localhost:9092`
+
+Run relay:
+```bash
+export SPRING_PROFILES_ACTIVE=dev
+export SPRING_CONFIG_ADDITIONAL_LOCATION=../../config/spring/outbox-relay/
+cd services/outbox-relay-service
+./gradlew bootRun
+```
+
+Ensure BFF outbox is enabled when emitting events:
+`BFF_OUTBOX_ENABLED=true`
+
+Check relay health: `curl -s http://localhost:8095/health`
+Metrics: `curl -s http://localhost:8095/metrics`
+Replay failed outbox events:
+`python3 -m pip install -r scripts/outbox/requirements.txt`
+`python3 scripts/outbox/replay_outbox.py --status FAILED --limit 500`
+
 ## Search Service (Local)
 Start OpenSearch: `./scripts/local_up.sh`
 Run service: `cd services/search-service && ./gradlew bootRun`

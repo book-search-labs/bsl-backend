@@ -9,6 +9,8 @@
     "version": { "type": "string", "minLength": 1 },
     "trace_id": { "type": "string", "minLength": 1 },
     "request_id": { "type": "string", "minLength": 1 },
+    "imp_id": { "type": "string", "minLength": 1 },
+    "query_hash": { "type": "string", "minLength": 1 },
 
     "took_ms": { "type": "integer", "minimum": 0 },
     "timed_out": { "type": "boolean" },

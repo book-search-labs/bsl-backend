@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { search } from '../api/searchApi'
+import { postSearchClick, search } from '../api/searchApi'
 import { HttpError } from '../api/http'
 import type { BookHit, SearchResponse } from '../types/search'
 
@@ -250,7 +250,7 @@ export default function SearchPage() {
   }
 
   const handleSelectHit = useCallback(
-    (hit: BookHit) => {
+    (hit: BookHit, position: number) => {
       if (!hit.doc_id) return
 
       const debug = getHitDebug(hit)
@@ -263,6 +263,9 @@ export default function SearchPage() {
           size: sizeValue,
           vector: vectorEnabled,
         },
+        imp_id: response?.imp_id ?? undefined,
+        query_hash: response?.query_hash ?? undefined,
+        position,
         ts: Date.now(),
       }
 
@@ -271,8 +274,19 @@ export default function SearchPage() {
       } catch {
         // Ignore storage failures
       }
+
+      if (response?.imp_id && response?.query_hash) {
+        postSearchClick({
+          imp_id: response.imp_id,
+          doc_id: hit.doc_id,
+          position,
+          query_hash: response.query_hash,
+        }).catch(() => {
+          // Ignore event failures
+        })
+      }
     },
-    [sizeValue, trimmedQuery, vectorEnabled],
+    [response?.imp_id, response?.query_hash, sizeValue, trimmedQuery, vectorEnabled],
   )
 
   const debugSummary = response?.debug as
@@ -533,7 +547,7 @@ export default function SearchPage() {
                           <Link
                             className="result-title"
                             to={docLink}
-                            onClick={() => handleSelectHit(hit)}
+                            onClick={() => handleSelectHit(hit, index + 1)}
                           >
                             {title}
                           </Link>
@@ -566,7 +580,7 @@ export default function SearchPage() {
                           <Link
                             to={docLink}
                             className="btn btn-outline-dark btn-sm"
-                            onClick={() => handleSelectHit(hit)}
+                            onClick={() => handleSelectHit(hit, index + 1)}
                           >
                             View detail
                           </Link>

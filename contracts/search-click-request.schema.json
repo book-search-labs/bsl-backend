@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "search-click-request.schema.json",
+  "title": "SearchClickRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["imp_id", "doc_id", "position", "query_hash"],
+  "properties": {
+    "imp_id": { "type": "string", "minLength": 1 },
+    "doc_id": { "type": "string", "minLength": 1 },
+    "position": { "type": "integer", "minimum": 1 },
+    "query_hash": { "type": "string", "minLength": 1 },
+    "experiment_id": { "type": "string" },
+    "policy_id": { "type": "string" }
+  }
+}

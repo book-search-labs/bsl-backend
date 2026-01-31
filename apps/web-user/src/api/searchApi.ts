@@ -22,12 +22,27 @@ type BffSearchResponse = {
   version?: string
   trace_id?: string
   request_id?: string
+  imp_id?: string
+  query_hash?: string
   took_ms?: number
   timed_out?: boolean
   total?: number
   hits?: BffSearchHit[]
   debug?: { query_dsl?: Record<string, unknown> }
   [key: string]: unknown
+}
+
+type SearchClickEvent = {
+  imp_id: string
+  doc_id: string
+  position: number
+  query_hash: string
+  experiment_id?: string
+  policy_id?: string
+}
+
+type SearchDwellEvent = SearchClickEvent & {
+  dwell_ms: number
 }
 
 function joinUrl(base: string, path: string) {
@@ -78,6 +93,8 @@ function mapBffSearchResponse(response: BffSearchResponse): SearchResponse {
     version: response.version,
     trace_id: response.trace_id,
     request_id: response.request_id,
+    imp_id: response.imp_id,
+    query_hash: response.query_hash,
     took_ms: response.took_ms,
     timed_out: response.timed_out,
     total: response.total,
@@ -180,4 +197,22 @@ export async function searchByDocId(docId: string): Promise<Book | null> {
     }
     throw error
   }
+}
+
+export async function postSearchClick(event: SearchClickEvent): Promise<void> {
+  const requestContext = createRequestContext()
+  await fetchJson(joinUrl(resolveBffBaseUrl(), '/search/click'), {
+    method: 'POST',
+    headers: requestContext.headers,
+    body: event,
+  })
+}
+
+export async function postSearchDwell(event: SearchDwellEvent): Promise<void> {
+  const requestContext = createRequestContext()
+  await fetchJson(joinUrl(resolveBffBaseUrl(), '/search/dwell'), {
+    method: 'POST',
+    headers: requestContext.headers,
+    body: event,
+  })
 }

@@ -103,6 +103,29 @@ All structured responses that follow `contracts/*` must include:
 
 ### Notes (MVP)
 - If `query_context` is missing, BFF will derive it via QS using `query.raw` when present.
+- Response includes `imp_id` + `query_hash` for search event logging.
+
+## POST `/search/click`
+**Purpose**: record a search result click event.
+
+### Request
+- Contract: `contracts/search-click-request.schema.json`
+- Example: `contracts/examples/search-click-request.sample.json`
+
+### Response
+- Contract: `contracts/ack-response.schema.json`
+- Example: `contracts/examples/ack-response.sample.json`
+
+## POST `/search/dwell`
+**Purpose**: record a search result dwell event.
+
+### Request
+- Contract: `contracts/search-dwell-request.schema.json`
+- Example: `contracts/examples/search-dwell-request.sample.json`
+
+### Response
+- Contract: `contracts/ack-response.schema.json`
+- Example: `contracts/examples/ack-response.sample.json`
 
 ## GET `/autocomplete`
 **Purpose**: return query suggestions for a prefix.
