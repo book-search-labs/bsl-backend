@@ -47,6 +47,7 @@ const sidebarItems: SidebarNode[] = [
     icon: "bi-search",
     children: [
       { type: "leaf", key: "search-playground", label: "Search Playground", to: "/search-playground" },
+      { type: "leaf", key: "rerank-playground", label: "Rerank Playground", to: "/rerank-playground" },
       { type: "leaf", key: "compare", label: "Compare", to: "/tools/compare" },
     ],
   },

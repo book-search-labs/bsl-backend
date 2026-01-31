@@ -3,6 +3,7 @@ package com.bsl.ranking.service;
 import com.bsl.ranking.api.dto.RerankRequest;
 import com.bsl.ranking.api.dto.RerankResponse;
 import java.util.List;
+import java.util.Map;
 
 public final class HeuristicScorer {
     private static final double RANK_BASE = 60.0;
@@ -12,22 +13,53 @@ public final class HeuristicScorer {
 
     public static ScoreResult score(RerankRequest.Candidate candidate) {
         RerankRequest.Features features = candidate.getFeatures();
-        Integer lexRank = features == null ? null : features.getLexRank();
-        Integer vecRank = features == null ? null : features.getVecRank();
-        Double baseScore = features == null ? null : features.getRrfScore();
-        Integer issuedYear = features == null ? null : features.getIssuedYear();
-        Integer volume = features == null ? null : features.getVolume();
-        List<String> editionLabels = features == null ? null : features.getEditionLabels();
+        Map<String, Double> featureMap = Map.of(
+            "rrf_score", features == null || features.getRrfScore() == null ? 0.0 : features.getRrfScore(),
+            "lex_rank", features == null || features.getLexRank() == null ? 0.0 : features.getLexRank().doubleValue(),
+            "vec_rank", features == null || features.getVecRank() == null ? 0.0 : features.getVecRank().doubleValue(),
+            "issued_year", features == null || features.getIssuedYear() == null ? 0.0 : features.getIssuedYear().doubleValue(),
+            "volume", features == null || features.getVolume() == null ? 0.0 : features.getVolume().doubleValue()
+        );
+        return score(candidate.getDocId(), featureMap, features == null ? null : features.getEditionLabels());
+    }
+
+    public static ScoreResult score(String docId, Map<String, Double> features, List<String> editionLabels) {
+        Double lexRankRaw = features.get("lex_rank");
+        Double vecRankRaw = features.get("vec_rank");
+        Double baseScore = features.get("rrf_score");
+        Double issuedYearRaw = features.get("issued_year");
+        Double volumeRaw = features.get("volume");
+        Double ctr = features.get("ctr_7d");
+        Double popularity = features.get("popularity_30d");
+
+        Integer lexRank = lexRankRaw == null ? null : lexRankRaw.intValue();
+        Integer vecRank = vecRankRaw == null ? null : vecRankRaw.intValue();
+        Integer issuedYear = issuedYearRaw == null ? null : issuedYearRaw.intValue();
+        Integer volume = volumeRaw == null ? null : volumeRaw.intValue();
 
         double base = baseScore == null ? 0.0 : baseScore;
         double lexBonus = lexRank == null ? 0.0 : 1.0 / (RANK_BASE + lexRank);
         double vecBonus = vecRank == null ? 0.0 : 1.0 / (RANK_BASE + vecRank);
         double freshnessBonus = computeFreshnessBonus(issuedYear);
         double slotBonus = computeSlotBonus(volume, editionLabels);
+        double ctrBonus = ctr == null ? 0.0 : 0.05 * ctr;
+        double popularityBonus = popularity == null ? 0.0 : 0.02 * popularity;
 
-        double score = base + (2.0 * lexBonus) + vecBonus + (0.2 * freshnessBonus) + slotBonus;
+        double score = base + (2.0 * lexBonus) + vecBonus + (0.2 * freshnessBonus) + slotBonus + ctrBonus + popularityBonus;
 
-        return new ScoreResult(candidate.getDocId(), score, lexRank, vecRank, base, lexBonus, vecBonus, freshnessBonus, slotBonus);
+        return new ScoreResult(
+            docId,
+            score,
+            lexRank,
+            vecRank,
+            base,
+            lexBonus,
+            vecBonus,
+            freshnessBonus,
+            slotBonus,
+            ctrBonus,
+            popularityBonus
+        );
     }
 
     public static RerankResponse.Debug toDebug(ScoreResult result) {
@@ -39,6 +71,8 @@ public final class HeuristicScorer {
         debug.setVecBonus(result.vecBonus());
         debug.setFreshnessBonus(result.freshnessBonus());
         debug.setSlotBonus(result.slotBonus());
+        debug.setCtrBonus(result.ctrBonus());
+        debug.setPopularityBonus(result.popularityBonus());
         return debug;
     }
 
@@ -81,6 +115,8 @@ public final class HeuristicScorer {
         double lexBonus,
         double vecBonus,
         double freshnessBonus,
-        double slotBonus
+        double slotBonus,
+        double ctrBonus,
+        double popularityBonus
     ) {}
 }

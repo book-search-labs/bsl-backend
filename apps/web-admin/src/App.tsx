@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import AdminLayout from "./layouts/AdminLayout";
 import DashboardPage from "./pages/DashboardPage";
 import PlaygroundPage from "./pages/PlaygroundPage";
+import RerankPlaygroundPage from "./pages/RerankPlaygroundPage";
 import ComparePage from "./pages/ComparePage";
 import SettingsPage from "./pages/SettingsPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="dashboard/v2" element={<DashboardPage />} />
         <Route path="dashboard/v3" element={<DashboardPage />} />
         <Route path="search-playground" element={<PlaygroundPage />} />
+        <Route path="rerank-playground" element={<RerankPlaygroundPage />} />
         <Route path="tools">
           <Route path="playground" element={<Navigate to="/search-playground" replace />} />
           <Route path="compare" element={<ComparePage />} />

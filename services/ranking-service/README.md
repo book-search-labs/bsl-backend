@@ -17,6 +17,18 @@ Env:
 - `MIS_MODEL_ID` (default: empty; use MIS registry active)
 - `MIS_TASK` (default: rerank)
 
+## Feature Spec + Store
+- Feature spec: `config/features.yaml` (set `FEATURE_SPEC_PATH` to override)
+- Local feature store: `config/feature_store.json` (set `FEATURE_STORE_PATH` to override)
+
+Guardrails (env overrides):
+- `RERANK_MAX_CANDIDATES`
+- `RERANK_MAX_TOP_N`
+- `RERANK_MAX_MIS_CANDIDATES`
+- `RERANK_MIN_CANDIDATES_MIS`
+- `RERANK_MIN_QUERY_LEN_MIS`
+- `RERANK_TIMEOUT_MS_MAX`
+
 ## Test
 ```bash
 cd services/ranking-service

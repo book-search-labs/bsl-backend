@@ -14,6 +14,7 @@ import {
   Tabs,
   ToggleButton,
 } from "react-bootstrap";
+import { Link } from "react-router-dom";
 
 import { fetchJson } from "../lib/api";
 import { createRequestContext, resolveAdminApiMode, resolveBffBaseUrl, routeRequest } from "../lib/apiRouter";
@@ -362,7 +363,15 @@ export default function PlaygroundPage() {
 
   return (
     <>
-      <h3 className="mb-3">Search Playground</h3>
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div>
+          <h3 className="mb-1">Search Playground</h3>
+          <div className="text-muted">Inspect query context, retrieval, and debug info.</div>
+        </div>
+        <Button as={Link} to="/rerank-playground" variant="outline-primary">
+          Open Rerank Playground
+        </Button>
+      </div>
 
       <Card className="shadow-sm mb-3">
         <Card.Body>

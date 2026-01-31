@@ -2,6 +2,7 @@ package com.bsl.ranking.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import java.util.Map;
 
 public class RerankResponse {
     @JsonProperty("trace_id")
@@ -15,6 +16,7 @@ public class RerankResponse {
 
     private String model;
     private List<Hit> hits;
+    private DebugInfo debug;
 
     public String getTraceId() {
         return traceId;
@@ -54,6 +56,14 @@ public class RerankResponse {
 
     public void setHits(List<Hit> hits) {
         this.hits = hits;
+    }
+
+    public DebugInfo getDebug() {
+        return debug;
+    }
+
+    public void setDebug(DebugInfo debug) {
+        this.debug = debug;
     }
 
     public static class Hit {
@@ -119,6 +129,17 @@ public class RerankResponse {
         @JsonProperty("slot_bonus")
         private double slotBonus;
 
+        @JsonProperty("ctr_bonus")
+        private Double ctrBonus;
+
+        @JsonProperty("popularity_bonus")
+        private Double popularityBonus;
+
+        private Map<String, Double> features;
+
+        @JsonProperty("reason_codes")
+        private List<String> reasonCodes;
+
         public Integer getLexRank() {
             return lexRank;
         }
@@ -173,6 +194,117 @@ public class RerankResponse {
 
         public void setSlotBonus(double slotBonus) {
             this.slotBonus = slotBonus;
+        }
+
+        public Double getCtrBonus() {
+            return ctrBonus;
+        }
+
+        public void setCtrBonus(Double ctrBonus) {
+            this.ctrBonus = ctrBonus;
+        }
+
+        public Double getPopularityBonus() {
+            return popularityBonus;
+        }
+
+        public void setPopularityBonus(Double popularityBonus) {
+            this.popularityBonus = popularityBonus;
+        }
+
+        public Map<String, Double> getFeatures() {
+            return features;
+        }
+
+        public void setFeatures(Map<String, Double> features) {
+            this.features = features;
+        }
+
+        public List<String> getReasonCodes() {
+            return reasonCodes;
+        }
+
+        public void setReasonCodes(List<String> reasonCodes) {
+            this.reasonCodes = reasonCodes;
+        }
+    }
+
+    public static class DebugInfo {
+        @JsonProperty("model_id")
+        private String modelId;
+
+        @JsonProperty("feature_set_version")
+        private String featureSetVersion;
+
+        @JsonProperty("candidates_in")
+        private Integer candidatesIn;
+
+        @JsonProperty("candidates_used")
+        private Integer candidatesUsed;
+
+        @JsonProperty("timeout_ms")
+        private Integer timeoutMs;
+
+        @JsonProperty("rerank_applied")
+        private Boolean rerankApplied;
+
+        @JsonProperty("reason_codes")
+        private List<String> reasonCodes;
+
+        public String getModelId() {
+            return modelId;
+        }
+
+        public void setModelId(String modelId) {
+            this.modelId = modelId;
+        }
+
+        public String getFeatureSetVersion() {
+            return featureSetVersion;
+        }
+
+        public void setFeatureSetVersion(String featureSetVersion) {
+            this.featureSetVersion = featureSetVersion;
+        }
+
+        public Integer getCandidatesIn() {
+            return candidatesIn;
+        }
+
+        public void setCandidatesIn(Integer candidatesIn) {
+            this.candidatesIn = candidatesIn;
+        }
+
+        public Integer getCandidatesUsed() {
+            return candidatesUsed;
+        }
+
+        public void setCandidatesUsed(Integer candidatesUsed) {
+            this.candidatesUsed = candidatesUsed;
+        }
+
+        public Integer getTimeoutMs() {
+            return timeoutMs;
+        }
+
+        public void setTimeoutMs(Integer timeoutMs) {
+            this.timeoutMs = timeoutMs;
+        }
+
+        public Boolean getRerankApplied() {
+            return rerankApplied;
+        }
+
+        public void setRerankApplied(Boolean rerankApplied) {
+            this.rerankApplied = rerankApplied;
+        }
+
+        public List<String> getReasonCodes() {
+            return reasonCodes;
+        }
+
+        public void setReasonCodes(List<String> reasonCodes) {
+            this.reasonCodes = reasonCodes;
         }
     }
 }

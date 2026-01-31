@@ -24,3 +24,20 @@ mis:
   timeout-ms: ${MIS_TIMEOUT_MS:200}
   model-id: ${MIS_MODEL_ID:}
   task: ${MIS_TASK:rerank}
+
+feature-spec:
+  path: ${FEATURE_SPEC_PATH:config/features.yaml}
+  strict: ${FEATURE_SPEC_STRICT:true}
+
+feature-store:
+  path: ${FEATURE_STORE_PATH:config/feature_store.json}
+  refresh-ms: ${FEATURE_STORE_REFRESH_MS:10000}
+
+ranking:
+  guardrails:
+    max-candidates: ${RERANK_MAX_CANDIDATES:200}
+    max-top-n: ${RERANK_MAX_TOP_N:50}
+    max-mis-candidates: ${RERANK_MAX_MIS_CANDIDATES:100}
+    min-candidates-for-mis: ${RERANK_MIN_CANDIDATES_MIS:5}
+    min-query-length-for-mis: ${RERANK_MIN_QUERY_LEN_MIS:2}
+    timeout-ms-max: ${RERANK_TIMEOUT_MS_MAX:500}

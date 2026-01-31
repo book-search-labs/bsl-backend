@@ -400,7 +400,7 @@ If supported, the server should treat it as:
 
 ---
 
-# 5) Ranking Service (RS) — Planned
+# 5) Ranking Service (RS)
 
 **Responsibility**: Re-rank candidate documents (LTR / cross-encoder).
 
@@ -413,27 +413,30 @@ If supported, the server should treat it as:
 ## POST `/rerank`
 **Purpose**: Re-rank candidates for a query.
 
-### Request (Planned)
+### Request (MVP)
 ```json
 {
-  "version": "v1",
-  "trace_id": "string",
-  "request_id": "string",
-  "query_context": { "..." : "QueryContext v1" },
-  "candidates": [{ "doc_id": "string" }],
-  "top_k": 10
+  "query": { "text": "string" },
+  "candidates": [
+    { "doc_id": "string", "features": { "rrf_score": 0.1, "lex_rank": 1, "vec_rank": 2 } }
+  ],
+  "options": { "size": 10, "debug": false, "rerank": true, "timeout_ms": 200 }
 }
 ```
 
-### Response (Planned)
+### Response (MVP)
 ```json
 {
-  "version": "v1",
   "trace_id": "string",
   "request_id": "string",
-  "reranked": [
-    { "doc_id": "string", "score": 0.0, "rank": 1 }
-  ]
+  "model": "string",
+  "hits": [
+    { "doc_id": "string", "score": 0.0, "rank": 1, "debug": { "features": { "rrf_score": 0.1 } } }
+  ],
+  "debug": {
+    "feature_set_version": "fs_v1",
+    "reason_codes": ["size_capped"]
+  }
 }
 ```
 

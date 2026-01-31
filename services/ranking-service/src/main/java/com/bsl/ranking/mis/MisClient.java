@@ -30,7 +30,14 @@ public class MisClient {
         return properties.isEnabled();
     }
 
-    public MisScoreResponse score(String queryText, List<RerankRequest.Candidate> candidates, String traceId, String requestId) {
+    public MisScoreResponse score(
+        String queryText,
+        List<RerankRequest.Candidate> candidates,
+        int timeoutMs,
+        boolean returnDebug,
+        String traceId,
+        String requestId
+    ) {
         if (!properties.isEnabled()) {
             throw new MisUnavailableException("mis disabled");
         }
@@ -46,8 +53,9 @@ public class MisClient {
         scoreRequest.setTask(properties.getTask());
 
         MisScoreRequest.Options options = new MisScoreRequest.Options();
-        options.setTimeoutMs(properties.getTimeoutMs());
-        options.setReturnDebug(false);
+        int resolvedTimeout = timeoutMs > 0 ? timeoutMs : properties.getTimeoutMs();
+        options.setTimeoutMs(resolvedTimeout);
+        options.setReturnDebug(returnDebug);
         scoreRequest.setOptions(options);
 
         List<MisScoreRequest.Pair> pairs = new ArrayList<>();
