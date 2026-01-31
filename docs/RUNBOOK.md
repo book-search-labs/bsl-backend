@@ -61,6 +61,9 @@ If Redis is not available, cache invalidation is skipped.
 
 ## Kafka + Outbox Relay (Local)
 Start Kafka (Redpanda single-node):
+`docker compose up -d redpanda`
+
+Alternate (standalone):
 `docker run -d --name bsl-kafka -p 9092:9092 -p 9644:9644 redpandadata/redpanda:latest redpanda start --overprovisioned --smp 1 --memory 1G --reserve-memory 0M --node-id 0 --check=false --advertise-kafka-addr localhost:9092`
 
 Run relay:
@@ -79,6 +82,21 @@ Metrics: `curl -s http://localhost:8095/metrics`
 Replay failed outbox events:
 `python3 -m pip install -r scripts/outbox/requirements.txt`
 `python3 scripts/outbox/replay_outbox.py --status FAILED --limit 500`
+
+## OLAP (ClickHouse) + Loader (Local)
+Start ClickHouse (docker compose):
+`docker compose up -d clickhouse`
+
+Run OLAP loader (Kafka → ClickHouse):
+```bash
+cd services/olap-loader-service
+./gradlew bootRun
+```
+
+Generate LTR labels:
+```bash
+python scripts/olap/generate_ltr_labels.py --start-date 2026-01-30 --end-date 2026-01-31
+```
 
 ## Search Service (Local)
 Start OpenSearch: `./scripts/local_up.sh`

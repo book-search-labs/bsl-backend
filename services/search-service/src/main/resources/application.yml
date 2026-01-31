@@ -23,6 +23,15 @@ embedding:
   timeout-ms: ${EMBEDDING_TIMEOUT_MS:200}
 
 search:
+  experiments:
+    enabled: ${SEARCH_EXPERIMENTS_ENABLED:false}
+    explore-rate: ${SEARCH_EXPERIMENT_EXPLORE_RATE:0.01}
+    shuffle-start: ${SEARCH_EXPERIMENT_SHUFFLE_START:5}
+    shuffle-end: ${SEARCH_EXPERIMENT_SHUFFLE_END:20}
+    min-results: ${SEARCH_EXPERIMENT_MIN_RESULTS:20}
+    min-query-length: ${SEARCH_EXPERIMENT_MIN_QUERY_LENGTH:2}
+    exclude-isbn: ${SEARCH_EXPERIMENT_EXCLUDE_ISBN:true}
+    exclude-quoted: ${SEARCH_EXPERIMENT_EXCLUDE_QUOTED:true}
   execution:
     pool-size: ${SEARCH_EXEC_POOL_SIZE:6}
   vector:

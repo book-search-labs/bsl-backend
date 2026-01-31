@@ -20,6 +20,9 @@ public class SearchResponse {
     private List<BookHit> hits;
     private Debug debug;
 
+    @JsonProperty("experiment_bucket")
+    private String experimentBucket;
+
     public String getTraceId() {
         return traceId;
     }
@@ -76,6 +79,14 @@ public class SearchResponse {
         this.debug = debug;
     }
 
+    public String getExperimentBucket() {
+        return experimentBucket;
+    }
+
+    public void setExperimentBucket(String experimentBucket) {
+        this.experimentBucket = experimentBucket;
+    }
+
     public static class Debug {
         @JsonProperty("applied_fallback_id")
         private String appliedFallbackId;
@@ -93,6 +104,12 @@ public class SearchResponse {
         private Cache cache;
 
         private List<String> warnings;
+
+        @JsonProperty("experiment_bucket")
+        private String experimentBucket;
+
+        @JsonProperty("experiment_applied")
+        private Boolean experimentApplied;
 
         public String getAppliedFallbackId() {
             return appliedFallbackId;
@@ -148,6 +165,22 @@ public class SearchResponse {
 
         public void setWarnings(List<String> warnings) {
             this.warnings = warnings;
+        }
+
+        public String getExperimentBucket() {
+            return experimentBucket;
+        }
+
+        public void setExperimentBucket(String experimentBucket) {
+            this.experimentBucket = experimentBucket;
+        }
+
+        public Boolean getExperimentApplied() {
+            return experimentApplied;
+        }
+
+        public void setExperimentApplied(Boolean experimentApplied) {
+            this.experimentApplied = experimentApplied;
         }
     }
 

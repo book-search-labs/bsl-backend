@@ -9,6 +9,7 @@ import com.bsl.search.api.dto.SearchRequest;
 import com.bsl.search.api.dto.SearchResponse;
 import com.bsl.search.cache.BookDetailCacheService;
 import com.bsl.search.cache.SerpCacheService;
+import com.bsl.search.experiment.SearchExperimentProperties;
 import com.bsl.search.merge.RrfFusion;
 import com.bsl.search.opensearch.OpenSearchGateway;
 import com.bsl.search.retrieval.FusionStrategy;
@@ -30,11 +31,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -72,6 +75,8 @@ public class HybridSearchService {
     private final SerpCacheService serpCacheService;
     private final BookDetailCacheService bookDetailCacheService;
     private final ExecutorService searchExecutor;
+    private final SearchExperimentProperties experimentProperties;
+    private static final Pattern ISBN_PATTERN = Pattern.compile("^(97(8|9))?\\d{9}[\\dXx]$");
 
     public HybridSearchService(
         OpenSearchGateway openSearchGateway,
@@ -82,7 +87,8 @@ public class HybridSearchService {
         SearchResilienceRegistry resilienceRegistry,
         SerpCacheService serpCacheService,
         BookDetailCacheService bookDetailCacheService,
-        ExecutorService searchExecutor
+        ExecutorService searchExecutor,
+        SearchExperimentProperties experimentProperties
     ) {
         this.openSearchGateway = openSearchGateway;
         this.lexicalRetriever = lexicalRetriever;
@@ -93,6 +99,7 @@ public class HybridSearchService {
         this.serpCacheService = serpCacheService;
         this.bookDetailCacheService = bookDetailCacheService;
         this.searchExecutor = searchExecutor;
+        this.experimentProperties = experimentProperties;
     }
 
     public SearchResponse search(SearchRequest request, String traceId, String requestId) {
@@ -172,6 +179,7 @@ public class HybridSearchService {
         if (isBlank(plan.queryText)) {
             throw new InvalidSearchRequestException("query text is required");
         }
+        assignExperimentBucket(plan, requestId);
 
         String cacheKey = buildSerpCacheKey(plan, from, size);
         Optional<SearchResponse> cachedResponse = maybeServeSerpCache(cacheKey, traceId, requestId, started, plan);
@@ -190,15 +198,17 @@ public class HybridSearchService {
         );
 
         SearchResponse.Debug debug = buildDebug(plan, retrieval, rerankOutcome, null, cacheKey, false);
+        List<BookHit> finalHits = maybeApplyExploration(plan, rerankOutcome.hits, from, size, requestId, debug);
         SearchResponse response = buildResponse(
             started,
             traceId,
             requestId,
-            rerankOutcome.hits,
+            finalHits,
             rerankOutcome.rankingApplied,
             "hybrid_rrf_v1",
             debug
         );
+        response.setExperimentBucket(plan.experimentBucket);
 
         if (shouldStoreSerpCache(plan, response, cacheKey)) {
             serpCacheService.put(cacheKey, stripDebug(response));
@@ -230,6 +240,7 @@ public class HybridSearchService {
         if (isBlank(plan.queryText)) {
             throw new InvalidSearchRequestException("query text is required");
         }
+        assignExperimentBucket(plan, requestId);
 
         String appliedFallbackId = null;
         String cacheKey = buildSerpCacheKey(plan, from, size);
@@ -286,16 +297,18 @@ public class HybridSearchService {
 
         String strategy = resolveQcStrategy(plan, appliedFallbackId);
         SearchResponse.Debug debug = buildDebug(plan, retrieval, rerankOutcome, appliedFallbackId, cacheKey, false);
+        List<BookHit> finalHits = maybeApplyExploration(plan, rerankOutcome.hits, from, size, requestId, debug);
 
         SearchResponse response = buildResponse(
             started,
             traceId,
             requestId,
-            rerankOutcome.hits,
+            finalHits,
             rerankOutcome.rankingApplied,
             strategy,
             debug
         );
+        response.setExperimentBucket(plan.experimentBucket);
 
         if (shouldStoreSerpCache(plan, response, cacheKey)) {
             serpCacheService.put(cacheKey, stripDebug(response));
@@ -654,6 +667,115 @@ public class HybridSearchService {
         return response;
     }
 
+    private void assignExperimentBucket(ExecutionPlan plan, String requestId) {
+        plan.experimentBucket = "control";
+        if (experimentProperties == null || !experimentProperties.isEnabled()) {
+            return;
+        }
+        if (shouldSkipExplore(plan)) {
+            return;
+        }
+        double rollout = experimentProperties.getExploreRate();
+        if (rollout <= 0.0) {
+            return;
+        }
+        String seedSource = requestId == null ? plan.queryText : requestId;
+        double value = hashToUnitInterval(seedSource);
+        if (value < rollout) {
+            plan.experimentBucket = "explore";
+        }
+    }
+
+    private List<BookHit> maybeApplyExploration(
+        ExecutionPlan plan,
+        List<BookHit> hits,
+        int from,
+        int size,
+        String requestId,
+        SearchResponse.Debug debug
+    ) {
+        if (hits == null || hits.isEmpty()) {
+            return hits;
+        }
+        if (!"explore".equals(plan.experimentBucket)) {
+            return hits;
+        }
+        if (from > 0) {
+            return hits;
+        }
+        if (hits.size() < experimentProperties.getMinResults()) {
+            return hits;
+        }
+        int start = Math.max(0, experimentProperties.getShuffleStart() - 1);
+        int end = Math.min(hits.size(), experimentProperties.getShuffleEnd());
+        if (end - start < 2) {
+            return hits;
+        }
+
+        List<BookHit> reordered = new ArrayList<>(hits);
+        List<BookHit> slice = new ArrayList<>(reordered.subList(start, end));
+        long seed = seedFrom(requestId, plan.queryText);
+        Collections.shuffle(slice, new Random(seed));
+        for (int i = 0; i < slice.size(); i++) {
+            reordered.set(start + i, slice.get(i));
+        }
+        for (int i = 0; i < reordered.size(); i++) {
+            BookHit hit = reordered.get(i);
+            if (hit != null) {
+                hit.setRank(i + 1);
+            }
+        }
+        plan.exploreApplied = true;
+        if (debug != null) {
+            debug.setExperimentBucket(plan.experimentBucket);
+            debug.setExperimentApplied(true);
+        }
+        return reordered;
+    }
+
+    private boolean shouldSkipExplore(ExecutionPlan plan) {
+        String query = plan.queryText;
+        if (query == null) {
+            return true;
+        }
+        String trimmed = query.trim();
+        if (trimmed.length() < experimentProperties.getMinQueryLength()) {
+            return true;
+        }
+        if (experimentProperties.isExcludeQuoted() && (trimmed.contains("\"") || trimmed.contains("'"))) {
+            return true;
+        }
+        if (experimentProperties.isExcludeIsbn() && isIsbnQuery(trimmed)) {
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isIsbnQuery(String query) {
+        if (query == null) {
+            return false;
+        }
+        String normalized = query.replaceAll("[^0-9Xx]", "");
+        if (normalized.length() != 10 && normalized.length() != 13) {
+            return false;
+        }
+        return ISBN_PATTERN.matcher(normalized).matches();
+    }
+
+    private double hashToUnitInterval(String value) {
+        if (value == null || value.isEmpty()) {
+            return 1.0;
+        }
+        int hash = value.hashCode();
+        long unsigned = Integer.toUnsignedLong(hash);
+        return unsigned / (double) 0x1_0000_0000L;
+    }
+
+    private long seedFrom(String requestId, String queryText) {
+        String seedSource = requestId == null || requestId.isBlank() ? queryText : requestId;
+        return seedSource == null ? 0L : seedSource.hashCode();
+    }
+
     private ExecutionPlan buildLegacyPlan(SearchRequest request, Options options) {
         ExecutionPlan plan = new ExecutionPlan(null);
         QueryContext queryContext = request.getQueryContext();
@@ -750,6 +872,8 @@ public class HybridSearchService {
         if (!warnings.isEmpty()) {
             debug.setWarnings(warnings);
         }
+        debug.setExperimentBucket(plan.experimentBucket);
+        debug.setExperimentApplied(plan.exploreApplied);
 
         return debug;
     }
@@ -837,6 +961,9 @@ public class HybridSearchService {
             plan.filters,
             plan.lexicalFields
         );
+        if (plan.experimentBucket != null) {
+            fields.put("experiment_bucket", plan.experimentBucket);
+        }
         return serpCacheService.buildKey(fields);
     }
 
@@ -902,6 +1029,7 @@ public class HybridSearchService {
         stripped.setRankingApplied(response.isRankingApplied());
         stripped.setStrategy(response.getStrategy());
         stripped.setHits(response.getHits());
+        stripped.setExperimentBucket(response.getExperimentBucket());
         stripped.setDebug(null);
         return stripped;
     }
@@ -915,6 +1043,7 @@ public class HybridSearchService {
             copied.setRankingApplied(response.isRankingApplied());
             copied.setStrategy(response.getStrategy());
             copied.setHits(response.getHits());
+            copied.setExperimentBucket(response.getExperimentBucket());
         }
         return copied;
     }
@@ -1356,6 +1485,8 @@ public class HybridSearchService {
         private Integer rerankBudgetMs;
         private boolean debugEnabled;
         private boolean explainEnabled;
+        private String experimentBucket;
+        private boolean exploreApplied;
 
         private ExecutionPlan(QueryContextV1_1 context) {
             this.context = context;
@@ -1386,6 +1517,8 @@ public class HybridSearchService {
             this.rerankBudgetMs = other.rerankBudgetMs;
             this.debugEnabled = other.debugEnabled;
             this.explainEnabled = other.explainEnabled;
+            this.experimentBucket = other.experimentBucket;
+            this.exploreApplied = other.exploreApplied;
         }
     }
 

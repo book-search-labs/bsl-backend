@@ -19,6 +19,9 @@ public class SearchServiceResponse {
     private String strategy;
     private List<BookHit> hits;
 
+    @JsonProperty("experiment_bucket")
+    private String experimentBucket;
+
     public String getTraceId() {
         return traceId;
     }
@@ -65,6 +68,14 @@ public class SearchServiceResponse {
 
     public void setHits(List<BookHit> hits) {
         this.hits = hits;
+    }
+
+    public String getExperimentBucket() {
+        return experimentBucket;
+    }
+
+    public void setExperimentBucket(String experimentBucket) {
+        this.experimentBucket = experimentBucket;
     }
 
     public static class BookHit {

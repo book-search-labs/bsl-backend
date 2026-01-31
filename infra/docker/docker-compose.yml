@@ -38,7 +38,37 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
       - ./mysql/conf.d:/etc/mysql/conf.d:ro
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ../clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+  redpanda:
+    image: redpandadata/redpanda:latest
+    container_name: redpanda
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --node-id=0
+      - --check=false
+      - --advertise-kafka-addr=localhost:9092
+    ports:
+      - "9092:9092"
+      - "9644:9644"
 
 volumes:
   opensearch-data:
   mysql-data:
+  clickhouse-data:

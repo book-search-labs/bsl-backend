@@ -121,6 +121,8 @@ public class SearchController {
         response.setHits(mapped);
         response.setTotal(mapped.size());
 
+        String experimentBucket = searchResponse.getExperimentBucket();
+
         Map<String, Object> payload = new HashMap<>();
         if (rawQuery != null) {
             payload.put("query", rawQuery);
@@ -128,7 +130,17 @@ public class SearchController {
         payload.put("from", resolveFrom(request));
         payload.put("size", resolveSize(request));
         recordOutbox("search_request", "search", context, payload);
-        recordImpression(context, impId, queryHash, rawQuery, experimentId, policyId, payload, mapped);
+        recordImpression(
+            context,
+            impId,
+            queryHash,
+            rawQuery,
+            experimentId,
+            policyId,
+            experimentBucket,
+            payload,
+            mapped
+        );
 
         return response;
     }
@@ -183,6 +195,7 @@ public class SearchController {
         String rawQuery,
         String experimentId,
         String policyId,
+        String experimentBucket,
         Map<String, Object> basePayload,
         List<BffSearchResponse.Hit> hits
     ) {
@@ -202,6 +215,9 @@ public class SearchController {
         }
         if (policyId != null && !policyId.isBlank()) {
             payload.put("policy_id", policyId.trim());
+        }
+        if (experimentBucket != null && !experimentBucket.isBlank()) {
+            payload.put("experiment_bucket", experimentBucket.trim());
         }
         payload.put("event_time", OffsetDateTime.now(ZoneOffset.UTC).toString());
         List<Map<String, Object>> results = new ArrayList<>();
