@@ -281,7 +281,7 @@ public class HybridSearchService {
             if (fallback.applied) {
                 appliedFallbackId = fallback.id;
                 plan = fallback.plan;
-                retrieval = retrieveCandidates(plan, requestId);
+                retrieval = retrieveCandidates(plan, traceId, requestId);
             }
         }
 
@@ -290,7 +290,7 @@ public class HybridSearchService {
             if (fallback.applied) {
                 appliedFallbackId = fallback.id;
                 plan = fallback.plan;
-                retrieval = retrieveCandidates(plan, requestId);
+                retrieval = retrieveCandidates(plan, traceId, requestId);
             }
         }
 
@@ -309,7 +309,7 @@ public class HybridSearchService {
             if (fallback.applied) {
                 appliedFallbackId = fallback.id;
                 plan = fallback.plan;
-                retrieval = retrieveCandidates(plan, requestId);
+                retrieval = retrieveCandidates(plan, traceId, requestId);
                 rerankOutcome = applyRerank(
                     plan,
                     retrieval,

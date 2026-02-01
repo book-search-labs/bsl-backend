@@ -26,6 +26,9 @@
           "decision": { "type": "string" },
           "strategy": { "type": "string" },
           "failure_tag": { "type": "string" },
+          "error_code": { "type": ["string", "null"] },
+          "error_message": { "type": ["string", "null"] },
+          "success": { "type": ["boolean", "null"] },
           "created_at": { "type": "string" },
           "replay_payload": { "type": "object", "additionalProperties": true }
         }

@@ -1,0 +1,30 @@
+{
+  "version": "v1",
+  "trace_id": "trace_high_oov",
+  "request_id": "req_high_oov",
+  "decision": "RUN",
+  "strategy": "SPELL_ONLY",
+  "reason_codes": ["HIGH_OOV"],
+  "spell": {
+    "applied": true,
+    "original": "haarry potter",
+    "corrected": "harry potter",
+    "method": "mock",
+    "confidence": 0.85
+  },
+  "rewrite": {
+    "applied": false,
+    "rewritten": "harry potter",
+    "method": "none",
+    "confidence": 0.0,
+    "notes": "skipped"
+  },
+  "final": {
+    "text": "harry potter",
+    "source": "spell"
+  },
+  "cache": {
+    "enhance_hit": false,
+    "deny_hit": false
+  }
+}

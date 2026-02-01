@@ -3,17 +3,65 @@
   "trace_id": "trace_9f4a2c0b5e1a",
   "request_id": "req_1b2c3d4e5f6a",
   "query_context": {
-    "version": "v1",
-    "trace_id": "trace_9f4a2c0b5e1a",
-    "request_id": "req_1b2c3d4e5f6a",
-    "client": { "app": "web", "locale": "ko-KR" },
-    "user": { "user_id": "u_123" },
+    "meta": {
+      "schemaVersion": "qc.v1.1",
+      "traceId": "trace_9f4a2c0b5e1a",
+      "requestId": "req_1b2c3d4e5f6a",
+      "spanId": null,
+      "timestampMs": 1700000000000,
+      "tenantId": "books",
+      "locale": "ko-KR",
+      "timezone": "Asia/Seoul",
+      "client": { "app": "web", "locale": "ko-KR" },
+      "user": { "user_id": "u_123" },
+      "compat": {
+        "minSearchRequestVersion": "sr.v1.0",
+        "minRerankRequestVersion": "rr.v1.0"
+      }
+    },
     "query": {
       "raw": "해리포터 1권",
-      "normalized": "해리포터 1권",
-      "canonical": "해리포터 1권",
-      "language": { "detected": "ko", "confidence": 0.95 },
-      "tokens": ["해리포터", "1권"]
+      "nfkc": "해리포터 1권",
+      "norm": "해리포터 1권",
+      "nospace": "해리포터1권",
+      "final": "해리포터 1권",
+      "finalSource": "norm",
+      "canonicalKey": "ck:0f1e2d3c4b5a",
+      "tokens": [
+        { "t": "해리포터", "pos": 0, "type": "term", "protected": false },
+        { "t": "1권", "pos": 1, "type": "term", "protected": false }
+      ],
+      "protectedSpans": [],
+      "normalized": { "rulesApplied": [] }
+    },
+    "detected": {
+      "mode": "normal",
+      "isIsbn": false,
+      "hasVolume": true,
+      "lang": { "primary": "ko", "confidence": 0.95 },
+      "isMixed": false
+    },
+    "slots": {
+      "isbn": null,
+      "volume": 1,
+      "edition": [],
+      "set": { "value": false, "confidence": 0.3, "source": "rule" },
+      "chosung": { "value": false, "confidence": 0.8, "source": "rule" }
+    },
+    "understanding": {
+      "intent": "WORK_LOOKUP",
+      "confidence": 0.5,
+      "method": "mvp",
+      "entities": {
+        "title": [],
+        "author": [],
+        "publisher": [],
+        "series": []
+      },
+      "constraints": {
+        "preferredLogicalFields": ["title_ko", "series_ko", "author_ko"],
+        "mustPreserve": []
+      }
     },
     "spell": {
       "applied": false,
@@ -28,17 +76,21 @@
       "method": "none",
       "notes": "MVP"
     },
-    "understanding": {
-      "intent": "book_search",
-      "entities": [],
-      "filters": {}
+    "retrievalHints": {
+      "planId": "MVP_V1_1",
+      "queryTextSource": "query.final",
+      "lexical": { "enabled": true, "topKHint": 300 },
+      "vector": { "enabled": true, "topKHint": 200 },
+      "rerank": { "enabled": false, "topKHint": 50 },
+      "filters": [],
+      "fallbackPolicy": [],
+      "executionHint": { "timeoutMs": 120 },
+      "guardrails": { "maxLexicalTopK": 1000 }
     },
-    "retrieval_hints": {
-      "strategy": "bm25",
-      "top_k": 200,
-      "time_budget_ms": 350,
-      "boost": { "title": 2.0, "author": 1.2 }
-    }
+    "features": {},
+    "policy": {},
+    "executionTrace": {},
+    "debug": { "cache": { "norm_hit": false } }
   },
   "pagination": { "from": 0, "size": 20 },
   "sort": { "mode": "relevance" },

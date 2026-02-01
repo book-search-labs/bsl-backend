@@ -1,0 +1,36 @@
+{
+  "version": "v1",
+  "trace_id": "trace_low_conf",
+  "request_id": "req_low_conf",
+  "decision": "RUN",
+  "strategy": "REWRITE_ONLY",
+  "reason_codes": ["LOW_CONFIDENCE"],
+  "spell": {
+    "applied": false,
+    "original": "harry potter",
+    "corrected": "harry potter",
+    "method": "none",
+    "confidence": 0.0
+  },
+  "rewrite": {
+    "applied": true,
+    "rewritten": "harry potter series",
+    "method": "llm",
+    "confidence": 0.7,
+    "notes": "ok"
+  },
+  "final": {
+    "text": "harry potter series",
+    "source": "rewrite"
+  },
+  "hints": {
+    "acceptance": {
+      "reason": "LOW_CONFIDENCE",
+      "recommended_accept_if": ["score_gap_improve", "results_improve"]
+    }
+  },
+  "cache": {
+    "enhance_hit": false,
+    "deny_hit": false
+  }
+}

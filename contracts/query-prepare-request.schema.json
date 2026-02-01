@@ -4,7 +4,7 @@
   "title": "QueryPrepareRequest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["query"],
+  "anyOf": [{ "required": ["query"] }, { "required": ["raw"] }],
   "properties": {
     "query": {
       "type": "object",

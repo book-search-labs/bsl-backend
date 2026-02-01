@@ -9,7 +9,7 @@ CONTRACTS_DIR = ROOT / "contracts"
 EXAMPLES_DIR = CONTRACTS_DIR / "examples"
 
 SCHEMA_FILES = {
-    "query-context.sample.json": CONTRACTS_DIR / "query-context.schema.json",
+    "query-context.sample.json": CONTRACTS_DIR / "query-context-v1_1.schema.json",
     "query-context-v1.sample.json": CONTRACTS_DIR / "query_context" / "v1" / "query-context.schema.json",
     "query-prepare-request.sample.json": CONTRACTS_DIR / "query-prepare-request.schema.json",
     "query-enhance-request.sample.json": CONTRACTS_DIR / "query-enhance-request.schema.json",

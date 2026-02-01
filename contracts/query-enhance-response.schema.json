@@ -48,6 +48,30 @@
         "source": { "type": "string" }
       }
     },
+    "hints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "acceptance": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reason": { "type": "string" },
+            "recommended_accept_if": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "rag": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "candidate_count": { "type": "integer", "minimum": 0 },
+        "source": { "type": "string" },
+        "degraded": { "type": "boolean" },
+        "reason_code": { "type": "string" }
+      }
+    },
     "cache": {
       "type": "object",
       "additionalProperties": false,

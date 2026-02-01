@@ -7,27 +7,30 @@
   "reason_codes": ["ZERO_RESULTS"],
   "spell": {
     "applied": true,
-    "original": "harry potter",
+    "original": "harry pottre",
     "corrected": "harry potter",
-    "method": "noop",
-    "confidence": 1.0
+    "method": "mock",
+    "confidence": 0.9
   },
   "rewrite": {
     "applied": true,
     "rewritten": "harry potter",
-    "method": "noop",
-    "confidence": 0.6,
-    "notes": "MVP"
+    "method": "llm",
+    "confidence": 0.8,
+    "notes": "ok"
   },
   "final": {
     "text": "harry potter",
     "source": "rewrite"
   },
+  "hints": {
+    "acceptance": {
+      "reason": "ZERO_RESULTS",
+      "recommended_accept_if": ["results_improve"]
+    }
+  },
   "cache": {
     "enhance_hit": false,
     "deny_hit": false
-  },
-  "debug": {
-    "cooldown_hit": false
   }
 }

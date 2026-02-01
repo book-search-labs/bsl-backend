@@ -41,11 +41,18 @@ class RewriteLog:
                     after_json TEXT,
                     accepted INTEGER,
                     failure_tag TEXT,
+                    error_code TEXT,
+                    error_message TEXT,
                     replay_payload TEXT,
                     created_at TEXT
                 )
                 """
             )
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(query_rewrite_log)").fetchall()}
+            if "error_code" not in columns:
+                conn.execute("ALTER TABLE query_rewrite_log ADD COLUMN error_code TEXT")
+            if "error_message" not in columns:
+                conn.execute("ALTER TABLE query_rewrite_log ADD COLUMN error_message TEXT")
             conn.commit()
 
     def log(self, entry: dict[str, Any]) -> None:
@@ -57,9 +64,9 @@ class RewriteLog:
                     reason, decision, strategy,
                     spell_json, rewrite_json, final_json,
                     before_json, after_json,
-                    accepted, failure_tag, replay_payload,
-                    created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    accepted, failure_tag, error_code, error_message,
+                    replay_payload, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     entry.get("request_id"),
@@ -77,18 +84,25 @@ class RewriteLog:
                     _to_json(entry.get("after")),
                     entry.get("accepted"),
                     entry.get("failure_tag"),
+                    entry.get("error_code"),
+                    entry.get("error_message"),
                     _to_json(entry.get("replay_payload")),
                     entry.get("created_at"),
                 ),
             )
             conn.commit()
 
-    def list_failures(self, since: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
-        query = "SELECT id, request_id, trace_id, q_raw, q_norm, canonical_key, reason, decision, strategy, failure_tag, replay_payload, created_at FROM query_rewrite_log WHERE failure_tag IS NOT NULL"
+    def list_failures(self, since: str | None = None, limit: int = 50, reason: str | None = None) -> list[dict[str, Any]]:
+        query = \"SELECT id, request_id, trace_id, q_raw, q_norm, canonical_key, reason, decision, strategy, failure_tag, error_code, error_message, replay_payload, created_at FROM query_rewrite_log WHERE failure_tag IS NOT NULL\"
         params: list[Any] = []
+        if reason:
+            query += \" AND reason = ?\"
+            params.append(reason)
         if since:
-            query += " AND created_at >= ?"
-            params.append(since)
+            normalized = _normalize_since(since)
+            if normalized:
+                query += \" AND created_at >= ?\"
+                params.append(normalized)
         query += " ORDER BY id DESC LIMIT ?"
         params.append(limit)
         with self._connect() as conn:
@@ -105,9 +119,9 @@ def _to_json(value: Any) -> str | None:
 
 def _row_to_failure(row: sqlite3.Row) -> dict[str, Any]:
     payload = None
-    if row[10]:
+    if row[12]:
         try:
-            payload = json.loads(row[10])
+            payload = json.loads(row[12])
         except json.JSONDecodeError:
             payload = None
     return {
@@ -121,9 +135,24 @@ def _row_to_failure(row: sqlite3.Row) -> dict[str, Any]:
         "decision": row[7],
         "strategy": row[8],
         "failure_tag": row[9],
+        "error_code": row[10],
+        "error_message": row[11],
+        "success": False,
         "replay_payload": payload,
-        "created_at": row[11],
+        "created_at": row[13],
     }
+
+
+def _normalize_since(value: str) -> str | None:
+    if not value:
+        return None
+    try:
+        if value.isdigit():
+            ts = int(value)
+            return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts))
+    except Exception:
+        return None
+    return value
 
 
 _rewrite_log: RewriteLog | None = None

@@ -1,0 +1,41 @@
+{
+  "version": "v1",
+  "trace_id": "trace_user",
+  "request_id": "req_user",
+  "decision": "RUN",
+  "strategy": "RAG_REWRITE",
+  "reason_codes": ["USER_EXPLICIT"],
+  "spell": {
+    "applied": false,
+    "original": "harry potter set",
+    "corrected": "harry potter set",
+    "method": "none",
+    "confidence": 0.0
+  },
+  "rewrite": {
+    "applied": true,
+    "rewritten": "harry potter complete set",
+    "method": "llm_rag",
+    "confidence": 0.75,
+    "notes": "ok"
+  },
+  "final": {
+    "text": "harry potter complete set",
+    "source": "rewrite"
+  },
+  "hints": {
+    "acceptance": {
+      "reason": "USER_EXPLICIT",
+      "recommended_accept_if": ["user_override"]
+    }
+  },
+  "rag": {
+    "candidate_count": 3,
+    "source": "opensearch",
+    "degraded": false
+  },
+  "cache": {
+    "enhance_hit": false,
+    "deny_hit": false
+  }
+}

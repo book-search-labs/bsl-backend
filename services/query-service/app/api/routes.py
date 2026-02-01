@@ -11,8 +11,11 @@ from fastapi.responses import JSONResponse
 from app.core.analyzer import analyze_query
 from app.core.cache import get_cache
 from app.core.enhance import evaluate_gate, load_config
+from app.core.rag_candidates import retrieve_candidates
+from app.core.rewrite import run_rewrite
 from app.core.metrics import metrics
 from app.core.rewrite_log import get_rewrite_log, now_iso
+from app.core.spell import run_spell
 from app.core.chat import run_chat
 
 router = APIRouter()
@@ -164,10 +167,12 @@ async def query_enhance(request: Request):
                 request_id,
                 decision=decision,
                 strategy=cached.get("strategy", strategy),
-                reason_codes=reason_codes,
+                reason_codes=cached.get("reason_codes", reason_codes),
                 spell=cached.get("spell"),
                 rewrite=cached.get("rewrite"),
                 final=cached.get("final"),
+                hints=cached.get("hints"),
+                rag=cached.get("rag"),
                 cache_flags={"enhance_hit": True, "deny_hit": False},
             )
             _log_enhance(body, response, canonical_key)
@@ -188,10 +193,19 @@ async def query_enhance(request: Request):
         _log_enhance(body, response, canonical_key)
         return JSONResponse(content=response, headers=_response_headers(trace_id, request_id, traceparent))
 
-    spell = _apply_spell(q_norm, strategy)
-    rewrite = _apply_rewrite(spell["corrected"], strategy)
-    final_text = rewrite["rewritten"] if rewrite["applied"] else spell["corrected"]
-    final_source = "rewrite" if rewrite["applied"] else "spell"
+    spell, spell_meta = await _apply_spell(q_norm, strategy, trace_id, request_id, locale)
+    rewrite, rewrite_meta, rag_info = await _apply_rewrite(
+        spell.get("corrected", q_norm),
+        strategy,
+        trace_id,
+        request_id,
+        locale,
+        reason,
+    )
+    reason_codes = _merge_reason_codes(reason_codes, spell_meta, rewrite_meta, rag_info)
+    hints = _build_acceptance_hints(reason, strategy)
+
+    final_text, final_source = _select_final(q_norm, spell, rewrite)
 
     response = _build_enhance_response(
         trace_id,
@@ -202,19 +216,24 @@ async def query_enhance(request: Request):
         spell=spell,
         rewrite=rewrite,
         final={"text": final_text, "source": final_source},
+        hints=hints,
+        rag=rag_info,
         cache_flags={"enhance_hit": cache_hit, "deny_hit": False},
     )
     CACHE.set_json(
         enhance_cache_key,
         {
             "strategy": strategy,
+            "reason_codes": reason_codes,
             "spell": spell,
             "rewrite": rewrite,
             "final": {"text": final_text, "source": final_source},
+            "hints": hints,
+            "rag": rag_info,
         },
         ttl=_enhance_cache_ttl(),
     )
-    _log_enhance(body, response, canonical_key)
+    _log_enhance(body, response, canonical_key, spell_meta=spell_meta, rewrite_meta=rewrite_meta, rag_meta=rag_info)
     return JSONResponse(content=response, headers=_response_headers(trace_id, request_id, traceparent))
 
 
@@ -243,14 +262,18 @@ async def chat(request: Request):
 async def rewrite_failures(request: Request):
     trace_id, request_id, _, traceparent = _extract_ids(request)
     params = request.query_params
-    since = params.get("from")
+    since = params.get("since") or params.get("from")
+    reason = params.get("reason")
     limit_raw = params.get("limit", "50")
     try:
-        limit = max(1, min(int(limit_raw), 200))
+        limit = max(1, min(int(limit_raw), 500))
     except ValueError:
         limit = 50
-    items = get_rewrite_log().list_failures(since=since, limit=limit)
-    canonical_key = analysis.get("canonical_key") or _hash_key(analysis.get("norm", ""))
+    try:
+        items = get_rewrite_log().list_failures(since=since, limit=limit, reason=reason)
+    except Exception as exc:
+        logger.warning("rewrite failure list failed: %s", exc)
+        items = []
     response = {
         "version": "v1",
         "trace_id": trace_id,
@@ -483,6 +506,7 @@ def _build_qc_v1_response(
     cache_hit: bool,
 ) -> dict:
     locale = _resolve_locale(body)
+    canonical_key = analysis.get("canonical_key") or _hash_key(analysis.get("norm", ""))
     detected = {
         "mode": analysis.get("mode"),
         "is_isbn": bool(analysis.get("isbn")),
@@ -516,25 +540,146 @@ def _build_qc_v1_response(
     return response
 
 
-def _apply_spell(text: str, strategy: str) -> dict:
-    applied = strategy in {"SPELL_ONLY", "SPELL_THEN_REWRITE"}
-    return {
-        "applied": applied,
-        "original": text,
-        "corrected": text,
-        "method": "noop" if applied else "none",
-        "confidence": 1.0,
-    }
+async def _apply_spell(
+    text: str,
+    strategy: str,
+    trace_id: str,
+    request_id: str,
+    locale: str,
+) -> tuple[dict, dict]:
+    if strategy not in {"SPELL_ONLY", "SPELL_THEN_REWRITE"}:
+        return (
+            {
+                "applied": False,
+                "original": text,
+                "corrected": text,
+                "method": "none",
+                "confidence": 0.0,
+            },
+            {"provider": "none", "error_code": None, "error_message": None, "reject_reason": None},
+        )
+    return await run_spell(text, trace_id, request_id, locale)
 
 
-def _apply_rewrite(text: str, strategy: str) -> dict:
-    applied = strategy in {"REWRITE_ONLY", "SPELL_THEN_REWRITE", "RAG_REWRITE"}
+async def _apply_rewrite(
+    text: str,
+    strategy: str,
+    trace_id: str,
+    request_id: str,
+    locale: str,
+    reason: str | None,
+) -> tuple[dict, dict, dict | None]:
+    if strategy not in {"REWRITE_ONLY", "SPELL_THEN_REWRITE", "RAG_REWRITE"}:
+        return (
+            {
+                "applied": False,
+                "rewritten": text,
+                "method": "none",
+                "confidence": 0.0,
+                "notes": "skipped",
+            },
+            {"provider": "none", "error_code": None, "error_message": None, "reject_reason": None},
+            None,
+        )
+
+    candidates = None
+    rag_info = None
+    if strategy == "RAG_REWRITE":
+        metrics.inc("qs_rag_rewrite_attempt_total")
+        candidates = await retrieve_candidates(text, trace_id, request_id)
+        rag_info = {
+            "candidate_count": len(candidates),
+            "source": "opensearch",
+            "degraded": False,
+        }
+        if candidates:
+            metrics.inc("qs_rag_rewrite_hit_total")
+        else:
+            metrics.inc("qs_rag_rewrite_miss_total")
+            rag_info["degraded"] = True
+            rag_info["reason_code"] = "RAG_NO_CANDIDATES"
+            fallback = os.getenv("QS_RAG_REWRITE_FALLBACK", "rewrite_only").lower()
+            if fallback not in {"rewrite_only", "rewrite"}:
+                metrics.inc("qs_rag_rewrite_degrade_total", {"mode": "skip"})
+                return (
+                    {
+                        "applied": False,
+                        "rewritten": text,
+                        "method": "rag_skip",
+                        "confidence": 0.0,
+                        "notes": "rag_no_candidates",
+                    },
+                    {"provider": "rag", "error_code": None, "error_message": None, "reject_reason": "rag_no_candidates"},
+                    rag_info,
+                )
+            metrics.inc("qs_rag_rewrite_degrade_total", {"mode": "rewrite_only"})
+            candidates = None
+
+    rewrite_payload, rewrite_meta = await run_rewrite(text, trace_id, request_id, reason, locale, candidates=candidates)
+    return rewrite_payload, rewrite_meta, rag_info
+
+
+def _merge_reason_codes(
+    reason_codes: list[str],
+    spell_meta: dict | None,
+    rewrite_meta: dict | None,
+    rag_info: dict | None,
+) -> list[str]:
+    merged = list(reason_codes)
+
+    def _append(code: str | None) -> None:
+        if code and code not in merged:
+            merged.append(code)
+
+    if spell_meta:
+        error_code = spell_meta.get("error_code")
+        reject_reason = spell_meta.get("reject_reason")
+        if error_code:
+            _append(f"SPELL_ERROR_{str(error_code).upper()}")
+        if reject_reason:
+            _append(f"SPELL_REJECT_{str(reject_reason).upper()}")
+
+    if rewrite_meta:
+        error_code = rewrite_meta.get("error_code")
+        reject_reason = rewrite_meta.get("reject_reason")
+        if error_code:
+            _append(f"REWRITE_ERROR_{str(error_code).upper()}")
+        if reject_reason:
+            _append(f"REWRITE_REJECT_{str(reject_reason).upper()}")
+
+    if rag_info and rag_info.get("reason_code"):
+        _append(str(rag_info.get("reason_code")))
+
+    return merged
+
+
+def _select_final(q_norm: str, spell: dict, rewrite: dict) -> tuple[str, str]:
+    if rewrite and rewrite.get("applied"):
+        return rewrite.get("rewritten", q_norm), "rewrite"
+    if spell and spell.get("applied"):
+        return spell.get("corrected", q_norm), "spell"
+    return q_norm, "original"
+
+
+def _build_acceptance_hints(reason: str | None, strategy: str) -> dict | None:
+    if strategy not in {"REWRITE_ONLY", "SPELL_THEN_REWRITE", "RAG_REWRITE"}:
+        return None
+    if not reason:
+        return None
+    recommended = []
+    if reason == "ZERO_RESULTS":
+        recommended = ["results_improve"]
+    elif reason == "LOW_CONFIDENCE":
+        recommended = ["score_gap_improve", "results_improve"]
+    elif reason == "HIGH_OOV":
+        recommended = ["results_improve"]
+    elif reason == "USER_EXPLICIT":
+        recommended = ["user_override"]
     return {
-        "applied": applied,
-        "rewritten": text,
-        "method": "noop" if applied else "none",
-        "confidence": 0.6 if applied else 0.0,
-        "notes": "MVP",
+        "acceptance": {
+            "reason": reason,
+            "recommended_accept_if": recommended,
+        }
     }
 
 
@@ -547,6 +692,8 @@ def _build_enhance_response(
     spell: dict | None = None,
     rewrite: dict | None = None,
     final: dict | None = None,
+    hints: dict | None = None,
+    rag: dict | None = None,
     cache_flags: dict | None = None,
 ) -> dict:
     response = {
@@ -564,6 +711,10 @@ def _build_enhance_response(
         response["rewrite"] = rewrite
     if final:
         response["final"] = final
+    if hints:
+        response["hints"] = hints
+    if rag:
+        response["rag"] = rag
     return response
 
 
@@ -578,7 +729,14 @@ def _log_prepare(trace_id: str, request_id: str, analysis: dict[str, Any]) -> No
     )
 
 
-def _log_enhance(body: dict, response: dict, canonical_key: str) -> None:
+def _log_enhance(
+    body: dict,
+    response: dict,
+    canonical_key: str,
+    spell_meta: dict | None = None,
+    rewrite_meta: dict | None = None,
+    rag_meta: dict | None = None,
+) -> None:
     decision = response.get("decision")
     strategy = response.get("strategy")
     reason_codes = response.get("reason_codes", [])
@@ -598,10 +756,26 @@ def _log_enhance(body: dict, response: dict, canonical_key: str) -> None:
             failure_tag = "POLICY_SKIP"
         metrics.inc("qs_enhance_skipped_total", {"skip_reason": failure_tag})
     elif decision == "RUN":
-        final = response.get("final", {})
-        if final and final.get("text") == body.get("q_norm"):
-            failure_tag = "NO_IMPROVEMENT"
-        metrics.inc("qs_rewrite_attempt_total", {"strategy": str(strategy)})
+        if rewrite_meta:
+            error_code = rewrite_meta.get("error_code")
+            reject_reason = rewrite_meta.get("reject_reason")
+            if error_code:
+                failure_tag = f"REWRITE_ERROR_{str(error_code).upper()}"
+            elif reject_reason:
+                failure_tag = f"REWRITE_REJECT_{str(reject_reason).upper()}"
+        if failure_tag is None and spell_meta:
+            error_code = spell_meta.get("error_code")
+            reject_reason = spell_meta.get("reject_reason")
+            if error_code:
+                failure_tag = f"SPELL_ERROR_{str(error_code).upper()}"
+            elif reject_reason:
+                failure_tag = f"SPELL_REJECT_{str(reject_reason).upper()}"
+        if failure_tag is None and rag_meta and rag_meta.get("reason_code"):
+            failure_tag = str(rag_meta.get("reason_code"))
+        if failure_tag is None:
+            final = response.get("final", {})
+            if final and final.get("text") == body.get("q_norm"):
+                failure_tag = "NO_IMPROVEMENT"
 
     log_entry = {
         "request_id": body.get("request_id") or response.get("request_id"),
@@ -619,6 +793,8 @@ def _log_enhance(body: dict, response: dict, canonical_key: str) -> None:
         "after": body.get("after"),
         "accepted": body.get("accepted"),
         "failure_tag": failure_tag,
+        "error_code": (rewrite_meta or {}).get("error_code") or (spell_meta or {}).get("error_code"),
+        "error_message": (rewrite_meta or {}).get("error_message") or (spell_meta or {}).get("error_message"),
         "replay_payload": {
             "q_norm": body.get("q_norm"),
             "q_nospace": body.get("q_nospace"),

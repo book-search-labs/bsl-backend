@@ -1,9 +1,14 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.api import routes
+from app.core.cache import CacheClient
+from app.core.enhance import load_config
 
 
 def test_query_enhance_skip_isbn():
+    routes.CACHE = CacheClient(None)
+    routes.ENHANCE_CONFIG = load_config()
     client = TestClient(app)
     payload = {
         "request_id": "req_test",
@@ -22,6 +27,8 @@ def test_query_enhance_skip_isbn():
 
 
 def test_query_enhance_run_zero_results():
+    routes.CACHE = CacheClient(None)
+    routes.ENHANCE_CONFIG = load_config()
     client = TestClient(app)
     payload = {
         "request_id": "req_test_2",

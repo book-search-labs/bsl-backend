@@ -1,0 +1,20 @@
+{
+  "request_id": "req_high_oov",
+  "trace_id": "trace_high_oov",
+  "q_norm": "haarry potter",
+  "q_nospace": "haarrypotter",
+  "canonical_key": "ck:0f1e2d3c4b5a",
+  "locale": "en-US",
+  "detected": {
+    "mode": "normal",
+    "is_isbn": false,
+    "has_volume": false,
+    "lang": "en"
+  },
+  "reason": "HIGH_OOV",
+  "signals": {
+    "oov_ratio": 0.6,
+    "token_count": 2,
+    "latency_budget_ms": 800
+  }
+}

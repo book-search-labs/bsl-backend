@@ -4,7 +4,7 @@
   "title": "QueryEnhanceRequest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["request_id", "trace_id", "q_norm", "q_nospace", "detected", "reason"],
+  "required": ["request_id", "trace_id", "q_norm", "q_nospace", "detected"],
   "properties": {
     "request_id": { "type": "string", "minLength": 1 },
     "trace_id": { "type": "string", "minLength": 1 },
@@ -17,8 +17,8 @@
       "additionalProperties": true
     },
     "reason": {
-      "type": "string",
-      "enum": ["ZERO_RESULTS", "LOW_CONFIDENCE", "HIGH_OOV", "USER_EXPLICIT"]
+      "type": ["string", "null"],
+      "enum": ["ZERO_RESULTS", "LOW_CONFIDENCE", "HIGH_OOV", "USER_EXPLICIT", null]
     },
     "signals": {
       "type": "object",
@@ -34,6 +34,8 @@
     "top_candidates": {
       "type": "array",
       "items": { "type": "object", "additionalProperties": true }
-    }
+    },
+    "after": { "type": ["object", "null"], "additionalProperties": true },
+    "accepted": { "type": ["boolean", "null"] }
   }
 }
