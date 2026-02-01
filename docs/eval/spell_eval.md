@@ -27,6 +27,20 @@ python scripts/eval/spell_eval.py --dataset data/eval/spell/golden.jsonl --out d
 python scripts/eval/spell_eval.py --dataset data/eval/spell/hard.jsonl --out data/eval/reports --mode mis --mis-url http://localhost:8005
 ```
 
+## Spell Model Enablement
+
+For local dev with a real ONNX model, run:
+
+```bash
+./scripts/mis/run_mis_spell.sh
+```
+
+Then validate via:
+
+```bash
+./scripts/mis/spell_smoke_test.sh
+```
+
 ## Outputs
 
 - `data/eval/reports/spell_eval.json`

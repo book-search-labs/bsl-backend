@@ -27,6 +27,8 @@ var/normalization/
 var/normalization/**
 var/models/
 var/models/**
+models/
+models/**
 infra/opensearch/generated/
 
 ### STS ###

@@ -1,7 +1,10 @@
+import logging
 from typing import Optional
 
 from app.core.models import BaseSpellModel, OnnxSpellModel, ToySpellModel
 from app.core.settings import SETTINGS
+
+logger = logging.getLogger(__name__)
 
 
 class SpellModelManager:
@@ -26,7 +29,7 @@ class SpellModelManager:
                 if not SETTINGS.spell_model_path or not SETTINGS.spell_tokenizer_path:
                     raise RuntimeError("spell_model_path_or_tokenizer_missing")
                 output_name = SETTINGS.spell_output_name or None
-                return OnnxSpellModel(
+                model = OnnxSpellModel(
                     SETTINGS.spell_model_path,
                     SETTINGS.spell_tokenizer_path,
                     SETTINGS.spell_max_len,
@@ -34,10 +37,24 @@ class SpellModelManager:
                     SETTINGS.spell_decoder_start_id,
                     SETTINGS.onnx_providers,
                 )
+                logger.info(
+                    "spell model loaded backend=onnx model_id=%s path=%s tokenizer=%s",
+                    SETTINGS.spell_model_id,
+                    SETTINGS.spell_model_path,
+                    SETTINGS.spell_tokenizer_path,
+                )
+                return model
             except Exception:
                 if SETTINGS.spell_fallback.lower() in {"toy", "mock"}:
+                    logger.warning(
+                        "spell model load failed, falling back to toy backend=%s model_id=%s",
+                        backend,
+                        SETTINGS.spell_model_id,
+                        exc_info=True,
+                    )
                     return ToySpellModel()
                 raise
         if backend == "toy":
+            logger.info("spell model loaded backend=toy model_id=%s", SETTINGS.spell_model_id)
             return ToySpellModel()
         raise RuntimeError(f"spell_backend_not_supported: {backend}")

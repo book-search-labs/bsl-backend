@@ -71,6 +71,54 @@ Stateless inference endpoints for rerank/embedding with concurrency limits, queu
 - `MIS_SPELL_DECODER_START_ID` (default: 0)
 - `MIS_SPELL_FALLBACK` (default: `toy`)
 
+## Spell Model Enablement (ONNX)
+
+### Artifact layout
+
+Store the spell model artifacts under the repository (or an external mount). Recommended layout:
+
+```
+models/
+  spell/
+    t5-typo-ko-v1/
+      spell.onnx
+      tokenizer.json
+```
+
+### Local run (fail-closed)
+
+```bash
+./scripts/mis/run_mis_spell.sh
+```
+
+This sets:
+- `MIS_SPELL_BACKEND=onnx`
+- `MIS_SPELL_MODEL_ID=t5-typo-ko-v1`
+- `MIS_SPELL_MODEL_PATH=.../spell.onnx`
+- `MIS_SPELL_TOKENIZER_PATH=.../tokenizer.json`
+- `MIS_SPELL_FALLBACK=error`
+
+### Smoke test
+
+```bash
+./scripts/mis/spell_smoke_test.sh
+```
+
+### Docker note
+
+If running MIS in a container, mount the host model directory to the same path in the container:
+
+```
+./models/spell/t5-typo-ko-v1 -> /models/spell/t5-typo-ko-v1
+```
+
+and set:
+
+```
+MIS_SPELL_MODEL_PATH=/models/spell/t5-typo-ko-v1/spell.onnx
+MIS_SPELL_TOKENIZER_PATH=/models/spell/t5-typo-ko-v1/tokenizer.json
+```
+
 ## Model Registry & Artifacts
 
 `app/config/model_registry.json` controls active/canary routing. `artifact_uri` may reference local paths
