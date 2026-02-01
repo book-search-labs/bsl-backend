@@ -11,7 +11,10 @@ import org.springframework.web.client.RestTemplate;
 @EnableConfigurationProperties({DownstreamProperties.class, OutboxProperties.class, ModelOpsProperties.class,
     com.bsl.bff.security.AuthProperties.class,
     com.bsl.bff.security.RbacProperties.class,
-    com.bsl.bff.ratelimit.RateLimitProperties.class
+    com.bsl.bff.ratelimit.RateLimitProperties.class,
+    com.bsl.bff.budget.BudgetProperties.class,
+    com.bsl.bff.security.PiiMaskingProperties.class,
+    com.bsl.bff.security.AbuseDetectionProperties.class
 })
 public class BffConfig {
     @Bean

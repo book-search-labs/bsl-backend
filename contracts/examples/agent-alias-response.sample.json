@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "trace_id": "trace_demo",
+  "request_id": "req_demo",
+  "alias": {
+    "alias_id": 10,
+    "alias_name": "J. K. Rowling",
+    "canonical_name": "Joanne Rowling",
+    "canonical_agent_id": "nlk:AGT-1",
+    "status": "ACTIVE",
+    "created_at": "2026-01-31T00:00:00Z",
+    "updated_at": "2026-01-31T00:00:00Z"
+  }
+}

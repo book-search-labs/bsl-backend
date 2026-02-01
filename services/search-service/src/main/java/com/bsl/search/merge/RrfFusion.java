@@ -46,7 +46,7 @@ public final class RrfFusion {
         private final Integer lexRank;
         private final Integer vecRank;
 
-        private Candidate(String docId, double score, Integer lexRank, Integer vecRank) {
+        Candidate(String docId, double score, Integer lexRank, Integer vecRank) {
             this.docId = docId;
             this.score = score;
             this.lexRank = lexRank;

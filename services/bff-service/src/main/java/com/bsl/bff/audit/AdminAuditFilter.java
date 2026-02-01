@@ -22,9 +22,11 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 public class AdminAuditFilter extends OncePerRequestFilter {
     private static final int MAX_BODY_BYTES = 10_000;
     private final AuditLogRepository repository;
+    private final com.bsl.bff.security.PiiMasker piiMasker;
 
-    public AdminAuditFilter(AuditLogRepository repository) {
+    public AdminAuditFilter(AuditLogRepository repository, com.bsl.bff.security.PiiMasker piiMasker) {
         this.repository = repository;
+        this.piiMasker = piiMasker;
     }
 
     @Override
@@ -61,6 +63,9 @@ public class AdminAuditFilter extends OncePerRequestFilter {
         }
         RequestContext context = RequestContextHolder.get();
         String body = readBody(request);
+        if (piiMasker != null) {
+            body = piiMasker.maskJson(body);
+        }
         repository.insert(
             adminId,
             request.getMethod() + " " + request.getRequestURI(),

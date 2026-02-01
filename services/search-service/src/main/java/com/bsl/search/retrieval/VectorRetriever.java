@@ -15,15 +15,21 @@ public class VectorRetriever implements Retriever {
     private final OpenSearchGateway openSearchGateway;
     private final EmbeddingProvider embeddingProvider;
     private final VectorSearchProperties properties;
+    private final VectorResultCacheService cacheService;
+    private final VectorDocPromoter docPromoter;
 
     public VectorRetriever(
         OpenSearchGateway openSearchGateway,
         EmbeddingProvider embeddingProvider,
-        VectorSearchProperties properties
+        VectorSearchProperties properties,
+        VectorResultCacheService cacheService,
+        VectorDocPromoter docPromoter
     ) {
         this.openSearchGateway = openSearchGateway;
         this.embeddingProvider = embeddingProvider;
         this.properties = properties;
+        this.cacheService = cacheService;
+        this.docPromoter = docPromoter;
     }
 
     @Override
@@ -49,6 +55,16 @@ public class VectorRetriever implements Retriever {
 
         long started = System.nanoTime();
         try {
+            String mode = mode();
+            String modelId = properties.getModelId();
+            var cached = cacheService.get(context, mode, modelId);
+            if (cached.isPresent()) {
+                List<String> cachedDocIds = cached.get().getDocIds();
+                Object cachedDsl = context.isDebug() ? cached.get().getQueryDsl() : null;
+                long tookMs = (System.nanoTime() - started) / 1_000_000L;
+                return RetrievalStageResult.success(cachedDocIds, cachedDsl, tookMs);
+            }
+
             OpenSearchQueryResult result;
             if (properties.getMode() == VectorSearchMode.OPENSEARCH_NEURAL) {
                 if (properties.getModelId() == null || properties.getModelId().isBlank()) {
@@ -73,9 +89,10 @@ public class VectorRetriever implements Retriever {
                 );
             }
 
-            List<String> docIds = result == null ? List.of() : result.getDocIds();
+            List<String> docIds = result == null ? List.of() : docPromoter.promote(result.getDocIds());
             Map<String, Object> queryDsl = context.isDebug() ? (result == null ? null : result.getQueryDsl()) : null;
             long tookMs = (System.nanoTime() - started) / 1_000_000L;
+            cacheService.put(context, mode, modelId, docIds, queryDsl);
             return RetrievalStageResult.success(docIds, queryDsl, tookMs);
         } catch (EmbeddingUnavailableException e) {
             return RetrievalStageResult.error(e.getMessage());

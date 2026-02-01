@@ -61,6 +61,7 @@ Dashboard: **BSL Service SLOs** (provisioned).
 - **Structured** log lines with `trace_id`, `request_id`, `service` name
 - **Sampling**: allow INFO logs in prod, DEBUG only for short windows
 - **Retention**: 7–30 days for infra logs; 30–90 days for audit logs
+- **PII masking**: mask fields like `name`, `email`, `phone`, `addr*` before storing in audit logs
 
 ### Audit logs (admin actions)
 - Admin mutations are persisted to `audit_log` (DB).

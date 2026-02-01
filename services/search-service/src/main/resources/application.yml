@@ -21,6 +21,12 @@ embedding:
   base-url: ${EMBEDDING_BASE_URL:http://localhost:8005}
   model: ${EMBEDDING_MODEL:}
   timeout-ms: ${EMBEDDING_TIMEOUT_MS:200}
+  cache:
+    enabled: ${EMBEDDING_CACHE_ENABLED:true}
+    ttl-ms: ${EMBEDDING_CACHE_TTL_MS:60000}
+    max-entries: ${EMBEDDING_CACHE_MAX:2000}
+    max-text-length: ${EMBEDDING_CACHE_MAX_TEXT:200}
+    normalize: ${EMBEDDING_CACHE_NORMALIZE:true}
 
 search:
   experiments:
@@ -37,6 +43,28 @@ search:
   vector:
     mode: ${SEARCH_VECTOR_MODE:EMBEDDING}
     model-id: ${SEARCH_VECTOR_MODEL_ID:}
+    cache:
+      enabled: ${SEARCH_VECTOR_CACHE_ENABLED:true}
+      ttl-ms: ${SEARCH_VECTOR_CACHE_TTL_MS:20000}
+      max-entries: ${SEARCH_VECTOR_CACHE_MAX:2000}
+      max-text-length: ${SEARCH_VECTOR_CACHE_MAX_TEXT:200}
+      normalize: ${SEARCH_VECTOR_CACHE_NORMALIZE:true}
+      cache-debug: ${SEARCH_VECTOR_CACHE_DEBUG:false}
+    promotion:
+      enabled: ${SEARCH_VECTOR_PROMOTION_ENABLED:false}
+      separators: ${SEARCH_VECTOR_PROMOTION_SEPARATORS:#,::}
+  fusion:
+    default-method: ${SEARCH_FUSION_DEFAULT:rrf}
+    experiment-enabled: ${SEARCH_FUSION_EXPERIMENT_ENABLED:false}
+    weighted-rate: ${SEARCH_FUSION_WEIGHTED_RATE:0.2}
+    lex-weight: ${SEARCH_FUSION_LEX_WEIGHT:1.0}
+    vec-weight: ${SEARCH_FUSION_VEC_WEIGHT:1.0}
+  grouping:
+    enabled: ${SEARCH_GROUPING_ENABLED:false}
+    fill-variants: ${SEARCH_GROUPING_FILL_VARIANTS:true}
+    recover-penalty: ${SEARCH_GROUPING_RECOVER_PENALTY:0.15}
+    set-penalty: ${SEARCH_GROUPING_SET_PENALTY:0.2}
+    special-penalty: ${SEARCH_GROUPING_SPECIAL_PENALTY:0.1}
   resilience:
     vector-failure-threshold: ${SEARCH_VECTOR_FAIL_THRESHOLD:3}
     vector-open-ms: ${SEARCH_VECTOR_OPEN_MS:30000}

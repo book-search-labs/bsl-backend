@@ -11,12 +11,15 @@ import com.bsl.search.cache.BookDetailCacheService;
 import com.bsl.search.cache.SerpCacheService;
 import com.bsl.search.experiment.SearchExperimentProperties;
 import com.bsl.search.merge.RrfFusion;
+import com.bsl.search.merge.WeightedFusion;
 import com.bsl.search.opensearch.OpenSearchGateway;
-import com.bsl.search.retrieval.FusionStrategy;
+import com.bsl.search.retrieval.FusionMethod;
+import com.bsl.search.retrieval.FusionPolicyProperties;
 import com.bsl.search.retrieval.LexicalRetriever;
 import com.bsl.search.retrieval.RetrievalStageContext;
 import com.bsl.search.retrieval.RetrievalStageResult;
 import com.bsl.search.retrieval.VectorRetriever;
+import com.bsl.search.service.grouping.MaterialGroupingService;
 import com.bsl.search.resilience.CircuitBreaker;
 import com.bsl.search.resilience.SearchResilienceRegistry;
 import com.bsl.search.ranking.RankingGateway;
@@ -69,37 +72,40 @@ public class HybridSearchService {
     private final OpenSearchGateway openSearchGateway;
     private final LexicalRetriever lexicalRetriever;
     private final VectorRetriever vectorRetriever;
-    private final FusionStrategy fusionStrategy;
+    private final FusionPolicyProperties fusionPolicy;
     private final RankingGateway rankingGateway;
     private final SearchResilienceRegistry resilienceRegistry;
     private final SerpCacheService serpCacheService;
     private final BookDetailCacheService bookDetailCacheService;
     private final ExecutorService searchExecutor;
     private final SearchExperimentProperties experimentProperties;
+    private final MaterialGroupingService groupingService;
     private static final Pattern ISBN_PATTERN = Pattern.compile("^(97(8|9))?\\d{9}[\\dXx]$");
 
     public HybridSearchService(
         OpenSearchGateway openSearchGateway,
         LexicalRetriever lexicalRetriever,
         VectorRetriever vectorRetriever,
-        FusionStrategy fusionStrategy,
+        FusionPolicyProperties fusionPolicy,
         RankingGateway rankingGateway,
         SearchResilienceRegistry resilienceRegistry,
         SerpCacheService serpCacheService,
         BookDetailCacheService bookDetailCacheService,
         ExecutorService searchExecutor,
-        SearchExperimentProperties experimentProperties
+        SearchExperimentProperties experimentProperties,
+        MaterialGroupingService groupingService
     ) {
         this.openSearchGateway = openSearchGateway;
         this.lexicalRetriever = lexicalRetriever;
         this.vectorRetriever = vectorRetriever;
-        this.fusionStrategy = fusionStrategy;
+        this.fusionPolicy = fusionPolicy;
         this.rankingGateway = rankingGateway;
         this.resilienceRegistry = resilienceRegistry;
         this.serpCacheService = serpCacheService;
         this.bookDetailCacheService = bookDetailCacheService;
         this.searchExecutor = searchExecutor;
         this.experimentProperties = experimentProperties;
+        this.groupingService = groupingService;
     }
 
     public SearchResponse search(SearchRequest request, String traceId, String requestId, String traceparent) {
@@ -192,7 +198,7 @@ public class HybridSearchService {
             return cachedResponse.get();
         }
 
-        RetrievalResult retrieval = retrieveCandidates(plan);
+        RetrievalResult retrieval = retrieveCandidates(plan, requestId);
         RerankOutcome rerankOutcome = applyRerank(
             plan,
             retrieval,
@@ -205,13 +211,14 @@ public class HybridSearchService {
 
         SearchResponse.Debug debug = buildDebug(plan, retrieval, rerankOutcome, null, cacheKey, false);
         List<BookHit> finalHits = maybeApplyExploration(plan, rerankOutcome.hits, from, size, requestId, debug);
+        finalHits = groupingService.apply(plan.queryText, finalHits, size);
         SearchResponse response = buildResponse(
             started,
             traceId,
             requestId,
             finalHits,
             rerankOutcome.rankingApplied,
-            "hybrid_rrf_v1",
+            resolveLegacyStrategy(plan),
             debug
         );
         response.setExperimentBucket(plan.experimentBucket);
@@ -260,14 +267,14 @@ public class HybridSearchService {
             return cachedResponse.get();
         }
 
-        RetrievalResult retrieval = retrieveCandidates(plan);
+        RetrievalResult retrieval = retrieveCandidates(plan, requestId);
 
         if (retrieval.vector.isError() || retrieval.vector.isTimedOut()) {
             FallbackApplication fallback = applyFallback(plan, Trigger.VECTOR_ERROR);
             if (fallback.applied) {
                 appliedFallbackId = fallback.id;
                 plan = fallback.plan;
-                retrieval = retrieveCandidates(plan);
+                retrieval = retrieveCandidates(plan, requestId);
             }
         }
 
@@ -276,7 +283,7 @@ public class HybridSearchService {
             if (fallback.applied) {
                 appliedFallbackId = fallback.id;
                 plan = fallback.plan;
-                retrieval = retrieveCandidates(plan);
+                retrieval = retrieveCandidates(plan, requestId);
             }
         }
 
@@ -295,7 +302,7 @@ public class HybridSearchService {
             if (fallback.applied) {
                 appliedFallbackId = fallback.id;
                 plan = fallback.plan;
-                retrieval = retrieveCandidates(plan);
+                retrieval = retrieveCandidates(plan, requestId);
                 rerankOutcome = applyRerank(
                     plan,
                     retrieval,
@@ -311,6 +318,7 @@ public class HybridSearchService {
         String strategy = resolveQcStrategy(plan, appliedFallbackId);
         SearchResponse.Debug debug = buildDebug(plan, retrieval, rerankOutcome, appliedFallbackId, cacheKey, false);
         List<BookHit> finalHits = maybeApplyExploration(plan, rerankOutcome.hits, from, size, requestId, debug);
+        finalHits = groupingService.apply(plan.queryText, finalHits, size);
 
         SearchResponse response = buildResponse(
             started,
@@ -461,7 +469,7 @@ public class HybridSearchService {
         return hits;
     }
 
-    private RetrievalResult retrieveCandidates(ExecutionPlan plan) {
+    private RetrievalResult retrieveCandidates(ExecutionPlan plan, String requestId) {
         RetrievalStageResult lexicalResult = RetrievalStageResult.empty();
         RetrievalStageResult vectorResult = RetrievalStageResult.empty();
 
@@ -520,7 +528,8 @@ public class HybridSearchService {
         Map<String, Integer> vecRanks = rankMap(vectorResult.getDocIds());
 
         long fusionStarted = System.nanoTime();
-        List<RrfFusion.Candidate> fused = fusionStrategy.fuse(lexRanks, vecRanks, plan.rrfK);
+        FusionMethod fusionMethod = resolveFusionMethod(plan, requestId);
+        List<RrfFusion.Candidate> fused = fuseCandidates(lexRanks, vecRanks, plan, fusionMethod);
         long fusionTookMs = (System.nanoTime() - fusionStarted) / 1_000_000L;
 
         List<String> fusedDocIds = toDocIds(fused);
@@ -536,6 +545,49 @@ public class HybridSearchService {
         }
 
         return new RetrievalResult(fused, sources, lexicalResult, vectorResult, fusionTookMs);
+    }
+
+    private List<RrfFusion.Candidate> fuseCandidates(
+        Map<String, Integer> lexRanks,
+        Map<String, Integer> vecRanks,
+        ExecutionPlan plan,
+        FusionMethod method
+    ) {
+        int k = plan.rrfK;
+        if (method == FusionMethod.WEIGHTED) {
+            double lexWeight = fusionPolicy == null ? 1.0 : fusionPolicy.getLexWeight();
+            double vecWeight = fusionPolicy == null ? 1.0 : fusionPolicy.getVecWeight();
+            return WeightedFusion.fuse(lexRanks, vecRanks, k, lexWeight, vecWeight);
+        }
+        return RrfFusion.fuse(lexRanks, vecRanks, k);
+    }
+
+    private FusionMethod resolveFusionMethod(ExecutionPlan plan, String requestId) {
+        FusionMethod fromPlan = plan == null ? null : plan.fusionMethod;
+        if (fromPlan != null) {
+            return fromPlan;
+        }
+        if (fusionPolicy == null) {
+            if (plan != null) {
+                plan.fusionMethod = FusionMethod.RRF;
+            }
+            return FusionMethod.RRF;
+        }
+        if (fusionPolicy.isExperimentEnabled() && requestId != null) {
+            double rate = Math.max(0.0, fusionPolicy.getWeightedRate());
+            if (rate > 0.0 && hashToUnitInterval(requestId) < rate) {
+                if (plan != null) {
+                    plan.fusionMethod = FusionMethod.WEIGHTED;
+                }
+                return FusionMethod.WEIGHTED;
+            }
+        }
+        FusionMethod configured = FusionMethod.fromString(fusionPolicy.getDefaultMethod());
+        FusionMethod resolved = configured == null ? FusionMethod.RRF : configured;
+        if (plan != null) {
+            plan.fusionMethod = resolved;
+        }
+        return resolved;
     }
 
     private RerankOutcome applyRerank(
@@ -1157,6 +1209,9 @@ public class HybridSearchService {
         if (vector != null && vector.getFusionHint() != null && vector.getFusionHint().getK() != null) {
             plan.rrfK = clamp(vector.getFusionHint().getK(), QC_RRF_K_MIN, QC_RRF_K_MAX);
         }
+        if (vector != null && vector.getFusionHint() != null) {
+            plan.fusionMethod = FusionMethod.fromString(vector.getFusionHint().getMethod());
+        }
 
         QueryContextV1_1.Rerank rerank = hints == null ? null : hints.getRerank();
         plan.rerankEnabled = rerank != null && Boolean.TRUE.equals(rerank.getEnabled());
@@ -1401,16 +1456,32 @@ public class HybridSearchService {
     }
 
     private String resolveQcStrategy(ExecutionPlan plan, String appliedFallbackId) {
+        String base;
         if (appliedFallbackId != null && !plan.vectorEnabled) {
-            return "hybrid_rrf_v1_1_fallback_lexical";
+            base = "hybrid_rrf_v1_1_fallback_lexical";
+        } else if (plan.lexicalEnabled && plan.vectorEnabled) {
+            base = "hybrid_rrf_v1_1";
+        } else if (plan.lexicalEnabled) {
+            base = "bm25_v1_1";
+        } else {
+            base = "hybrid_rrf_v1_1";
         }
-        if (plan.lexicalEnabled && plan.vectorEnabled) {
-            return "hybrid_rrf_v1_1";
+        return applyFusionSuffix(base, plan);
+    }
+
+    private String resolveLegacyStrategy(ExecutionPlan plan) {
+        String base = plan.vectorEnabled ? "hybrid_rrf_v1" : "bm25_v1";
+        return applyFusionSuffix(base, plan);
+    }
+
+    private String applyFusionSuffix(String base, ExecutionPlan plan) {
+        if (base == null) {
+            return null;
         }
-        if (plan.lexicalEnabled) {
-            return "bm25_v1_1";
+        if (plan != null && plan.fusionMethod == FusionMethod.WEIGHTED && base.contains("rrf")) {
+            return base.replace("rrf", "weighted");
         }
-        return "hybrid_rrf_v1_1";
+        return base;
     }
 
     private String normalizeOperator(String operator) {
@@ -1487,6 +1558,7 @@ public class HybridSearchService {
         private int vectorTopK;
         private int rerankTopK;
         private int rrfK;
+        private FusionMethod fusionMethod;
         private String lexicalOperator;
         private String minimumShouldMatch;
         private List<String> lexicalFields;
@@ -1519,6 +1591,7 @@ public class HybridSearchService {
             this.vectorTopK = other.vectorTopK;
             this.rerankTopK = other.rerankTopK;
             this.rrfK = other.rrfK;
+            this.fusionMethod = other.fusionMethod;
             this.lexicalOperator = other.lexicalOperator;
             this.minimumShouldMatch = other.minimumShouldMatch;
             this.lexicalFields = other.lexicalFields;

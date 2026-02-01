@@ -24,7 +24,7 @@ jobs:
           python-version: '3.11'
 
       - name: Contract & spec validation
-        run: ./scripts/test.sh
+        run: RUN_SCHEMA_CHECK=1 ./scripts/test.sh
 
       - name: Java tests
         run: ./gradlew test

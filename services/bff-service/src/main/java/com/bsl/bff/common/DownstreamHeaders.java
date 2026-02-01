@@ -1,6 +1,8 @@
 package com.bsl.bff.common;
 
 import org.springframework.http.HttpHeaders;
+import com.bsl.bff.budget.BudgetContext;
+import com.bsl.bff.budget.BudgetContextHolder;
 
 public final class DownstreamHeaders {
     private DownstreamHeaders() {
@@ -19,6 +21,10 @@ public final class DownstreamHeaders {
         }
         if (context.getTraceparent() != null && !context.getTraceparent().isBlank()) {
             headers.add("traceparent", context.getTraceparent());
+        }
+        BudgetContext budget = BudgetContextHolder.get();
+        if (budget != null) {
+            headers.add("x-budget-ms", String.valueOf(budget.remainingMs()));
         }
         return headers;
     }

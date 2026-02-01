@@ -34,6 +34,12 @@ SCHEMA_FILES = {
     "job-run-list-response.sample.json": CONTRACTS_DIR / "job-run-list-response.schema.json",
     "reindex-job-list-response.sample.json": CONTRACTS_DIR / "reindex-job-list-response.schema.json",
     "ops-task-list-response.sample.json": CONTRACTS_DIR / "ops-task-list-response.schema.json",
+    "authority-merge-group-list-response.sample.json": CONTRACTS_DIR / "authority-merge-group-list-response.schema.json",
+    "authority-merge-group-resolve-request.sample.json": CONTRACTS_DIR / "authority-merge-group-resolve-request.schema.json",
+    "authority-merge-group-response.sample.json": CONTRACTS_DIR / "authority-merge-group-response.schema.json",
+    "agent-alias-list-response.sample.json": CONTRACTS_DIR / "agent-alias-list-response.schema.json",
+    "agent-alias-upsert-request.sample.json": CONTRACTS_DIR / "agent-alias-upsert-request.schema.json",
+    "agent-alias-response.sample.json": CONTRACTS_DIR / "agent-alias-response.schema.json",
 }
 
 def load_json(p: Path) -> dict:

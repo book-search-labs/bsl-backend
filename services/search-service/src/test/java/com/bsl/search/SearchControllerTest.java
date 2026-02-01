@@ -63,7 +63,7 @@ class SearchControllerTest {
         hit.setSource(source);
         response.setHits(List.of(hit));
 
-        when(hybridSearchService.search(any(), anyString(), anyString())).thenReturn(response);
+        when(hybridSearchService.search(any(), anyString(), anyString(), anyString())).thenReturn(response);
 
         SearchRequest request = new SearchRequest();
         SearchRequest.Query query = new SearchRequest.Query();
@@ -81,7 +81,7 @@ class SearchControllerTest {
 
     @Test
     void searchRejectsMissingQuery() throws Exception {
-        when(hybridSearchService.search(any(), anyString(), anyString()))
+        when(hybridSearchService.search(any(), anyString(), anyString(), anyString()))
             .thenThrow(new InvalidSearchRequestException("query text is required"));
 
         mockMvc.perform(post("/search")

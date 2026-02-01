@@ -2,6 +2,10 @@ package com.bsl.bff.api;
 
 import com.bsl.bff.api.dto.BffSearchRequest;
 import com.bsl.bff.api.dto.BffSearchResponse;
+import com.bsl.bff.authority.AgentAliasService;
+import com.bsl.bff.budget.BudgetContext;
+import com.bsl.bff.budget.BudgetContextHolder;
+import com.bsl.bff.budget.BudgetProperties;
 import com.bsl.bff.client.QueryServiceClient;
 import com.bsl.bff.client.SearchServiceClient;
 import com.bsl.bff.client.dto.DownstreamSearchRequest;
@@ -34,15 +38,21 @@ public class SearchController {
     private final QueryServiceClient queryServiceClient;
     private final SearchServiceClient searchServiceClient;
     private final OutboxService outboxService;
+    private final BudgetProperties budgetProperties;
+    private final AgentAliasService aliasService;
 
     public SearchController(
         QueryServiceClient queryServiceClient,
         SearchServiceClient searchServiceClient,
-        OutboxService outboxService
+        OutboxService outboxService,
+        BudgetProperties budgetProperties,
+        AgentAliasService aliasService
     ) {
         this.queryServiceClient = queryServiceClient;
         this.searchServiceClient = searchServiceClient;
         this.outboxService = outboxService;
+        this.budgetProperties = budgetProperties;
+        this.aliasService = aliasService;
     }
 
     @PostMapping("/search")
@@ -60,11 +70,15 @@ public class SearchController {
         JsonNode queryContextV11 = request.getQueryContextV11();
         JsonNode queryContext = request.getQueryContext();
 
+        BudgetContext budget = BudgetContextHolder.get();
+
         if (queryContextV11 == null && queryContext == null) {
             if (rawQuery == null || rawQuery.trim().isEmpty()) {
                 throw new BadRequestException("query.raw is required");
             }
-            queryContextV11 = queryServiceClient.fetchQueryContext(rawQuery, context);
+            if (budget == null || budget.remainingMs() > budgetProperties.getDownstreamReserveMs()) {
+                queryContextV11 = queryServiceClient.fetchQueryContext(rawQuery, context);
+            }
         }
 
         DownstreamSearchRequest downstreamRequest = new DownstreamSearchRequest();
@@ -75,7 +89,7 @@ public class SearchController {
         }
         downstreamRequest.setQueryContextV11(queryContextV11);
         downstreamRequest.setQueryContext(queryContext);
-        downstreamRequest.setOptions(toDownstreamOptions(request));
+        downstreamRequest.setOptions(toDownstreamOptions(request, budget));
 
         long started = System.nanoTime();
         SearchServiceResponse searchResponse = searchServiceClient.search(downstreamRequest, context);
@@ -118,6 +132,7 @@ public class SearchController {
                 mapped.add(mappedHit);
             }
         }
+        applyAuthorAliases(mapped);
         response.setHits(mapped);
         response.setTotal(mapped.size());
 
@@ -145,6 +160,36 @@ public class SearchController {
         return response;
     }
 
+    private void applyAuthorAliases(List<BffSearchResponse.Hit> hits) {
+        if (aliasService == null || hits == null || hits.isEmpty()) {
+            return;
+        }
+        List<String> allAuthors = new ArrayList<>();
+        for (BffSearchResponse.Hit hit : hits) {
+            if (hit.getAuthors() != null) {
+                allAuthors.addAll(hit.getAuthors());
+            }
+        }
+        if (allAuthors.isEmpty()) {
+            return;
+        }
+        List<String> resolved = aliasService.applyAliases(allAuthors);
+        if (resolved == null || resolved.size() != allAuthors.size()) {
+            return;
+        }
+        int cursor = 0;
+        for (BffSearchResponse.Hit hit : hits) {
+            if (hit.getAuthors() == null || hit.getAuthors().isEmpty()) {
+                continue;
+            }
+            List<String> updated = new ArrayList<>();
+            for (int i = 0; i < hit.getAuthors().size(); i++) {
+                updated.add(resolved.get(cursor++));
+            }
+            hit.setAuthors(updated);
+        }
+    }
+
     private DownstreamSearchRequest.Options toDownstreamOptions(BffSearchRequest request) {
         DownstreamSearchRequest.Options options = new DownstreamSearchRequest.Options();
         int from = resolveFrom(request);
@@ -154,6 +199,22 @@ public class SearchController {
         if (request.getOptions() != null) {
             options.setEnableVector(request.getOptions().getEnableVector());
             options.setRrfK(request.getOptions().getRrfK());
+        }
+        return options;
+    }
+
+    private DownstreamSearchRequest.Options toDownstreamOptions(BffSearchRequest request, BudgetContext budget) {
+        DownstreamSearchRequest.Options options = toDownstreamOptions(request);
+        if (budget == null) {
+            return options;
+        }
+        long remainingMs = budget.remainingMs();
+        int reserve = budgetProperties.getDownstreamReserveMs();
+        long available = Math.max(0, remainingMs - reserve);
+        if (available > 0) {
+            int timeout = (int) Math.min(available, budgetProperties.getMaxDownstreamTimeoutMs());
+            timeout = Math.max(timeout, budgetProperties.getMinDownstreamTimeoutMs());
+            options.setTimeoutMs(timeout);
         }
         return options;
     }

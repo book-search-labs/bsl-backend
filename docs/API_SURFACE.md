@@ -324,6 +324,30 @@ All structured responses that follow `contracts/*` must include:
 **Query Params**: `metric` (ctr|popularity|impressions, optional), `limit` (int, optional)  
 **Response**: `contracts/autocomplete-admin-trends-response.schema.json`
 
+## GET `/admin/authority/merge-groups`
+**Purpose**: list material merge groups (canonical selection queue).  
+**Query Params**: `limit` (int, optional), `status` (string, optional)  
+**Response**: `contracts/authority-merge-group-list-response.schema.json`
+
+## POST `/admin/authority/merge-groups/{id}/resolve`
+**Purpose**: mark a merge group as resolved by selecting a master material.  
+**Request**: `contracts/authority-merge-group-resolve-request.schema.json`  
+**Response**: `contracts/authority-merge-group-response.schema.json`
+
+## GET `/admin/authority/agent-aliases`
+**Purpose**: list author alias dictionary entries.  
+**Query Params**: `limit` (int, optional), `q` (string, optional), `status` (string, optional)  
+**Response**: `contracts/agent-alias-list-response.schema.json`
+
+## POST `/admin/authority/agent-aliases`
+**Purpose**: upsert an author alias entry.  
+**Request**: `contracts/agent-alias-upsert-request.schema.json`  
+**Response**: `contracts/agent-alias-response.schema.json`
+
+## DELETE `/admin/authority/agent-aliases/{id}`
+**Purpose**: delete (soft) an author alias entry.  
+**Response**: `contracts/agent-alias-response.schema.json`
+
 # 1.5) Index Writer Service (Internal)
 
 **Responsibility**: managed reindex jobs (state machine, pause/resume/checkpoint).

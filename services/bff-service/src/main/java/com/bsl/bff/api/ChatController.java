@@ -4,8 +4,11 @@ import com.bsl.bff.api.dto.BffAckResponse;
 import com.bsl.bff.api.dto.BffChatFeedbackRequest;
 import com.bsl.bff.api.dto.BffChatRequest;
 import com.bsl.bff.api.dto.BffChatResponse;
+import com.bsl.bff.budget.BudgetContext;
+import com.bsl.bff.budget.BudgetContextHolder;
 import com.bsl.bff.client.QueryServiceClient;
 import com.bsl.bff.common.BadRequestException;
+import com.bsl.bff.common.DownstreamException;
 import com.bsl.bff.common.RequestContext;
 import com.bsl.bff.common.RequestContextHolder;
 import com.bsl.bff.outbox.OutboxService;
@@ -43,6 +46,10 @@ public class ChatController {
     ) {
         if (request == null || request.getMessage() == null || request.getMessage().getContent() == null) {
             throw new BadRequestException("message is required");
+        }
+        BudgetContext budget = BudgetContextHolder.get();
+        if (budget != null && budget.isExceeded()) {
+            throw new DownstreamException(org.springframework.http.HttpStatus.GATEWAY_TIMEOUT, "budget_exhausted", "Budget exhausted");
         }
         RequestContext context = RequestContextHolder.get();
         Map<String, Object> body = objectMapper.convertValue(request, Map.class);

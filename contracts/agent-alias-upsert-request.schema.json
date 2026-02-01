@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-alias-upsert-request.schema.json",
+  "title": "AgentAliasUpsertRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["alias_name", "canonical_name"],
+  "properties": {
+    "alias_name": { "type": "string", "minLength": 1 },
+    "canonical_name": { "type": "string", "minLength": 1 },
+    "canonical_agent_id": { "type": ["string", "null"] },
+    "status": { "type": "string" }
+  }
+}

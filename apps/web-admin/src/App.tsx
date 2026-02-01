@@ -15,6 +15,7 @@ import RagEvalPage from "./pages/RagEvalPage";
 import ProductOpsPage from "./pages/ProductOpsPage";
 import PaymentRefundOpsPage from "./pages/PaymentRefundOpsPage";
 import ShippingOpsPage from "./pages/ShippingOpsPage";
+import AuthorityOpsPage from "./pages/AuthorityOpsPage";
 
 export default function App() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="models" element={<ModelOpsPage />} />
           <Route path="rag" element={<RagOpsPage />} />
           <Route path="rag-eval" element={<RagEvalPage />} />
+          <Route path="authority" element={<AuthorityOpsPage />} />
           <Route path="commerce">
             <Route path="products" element={<ProductOpsPage />} />
             <Route path="payments" element={<PaymentRefundOpsPage />} />

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "outbox_envelope_v1.schema.json",
+  "title": "OutboxEventEnvelopeV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_type",
+    "dedup_key",
+    "occurred_at",
+    "producer",
+    "aggregate_type",
+    "aggregate_id",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "enum": ["v1"] },
+    "event_id": { "type": "string", "minLength": 1 },
+    "event_type": { "type": "string", "minLength": 1 },
+    "dedup_key": { "type": "string", "minLength": 1 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "producer": { "type": "string", "minLength": 1 },
+    "aggregate_type": { "type": "string", "minLength": 1 },
+    "aggregate_id": { "type": "string", "minLength": 1 },
+    "payload": { "type": "object" }
+  }
+}

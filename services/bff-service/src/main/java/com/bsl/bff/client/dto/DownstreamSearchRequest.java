@@ -67,6 +67,7 @@ public class DownstreamSearchRequest {
         private Boolean enableVector;
 
         private Integer rrfK;
+        private Integer timeoutMs;
 
         public Integer getSize() {
             return size;
@@ -98,6 +99,14 @@ public class DownstreamSearchRequest {
 
         public void setRrfK(Integer rrfK) {
             this.rrfK = rrfK;
+        }
+
+        public Integer getTimeoutMs() {
+            return timeoutMs;
+        }
+
+        public void setTimeoutMs(Integer timeoutMs) {
+            this.timeoutMs = timeoutMs;
         }
     }
 }

@@ -234,3 +234,45 @@ INSERT INTO admin_action_approval (requested_by_admin_id, action, status, approv
 VALUES (1, 'POST /admin/ops/reindex-jobs/start', 'APPROVED', 2);
 ```
 Then call the API with `x-approval-id` set to the row id.
+
+---
+
+# Phase 10 — Hardening (Optional)
+
+## Chaos / Degrade rehearsals
+Simulate dependency failure and verify fallback behavior:
+1) Stop OpenSearch (search should return degraded / cached results)
+2) Stop MIS or Ranking (search should return fused results without rerank)
+3) Stop Redis (autocomplete should fall back to OpenSearch)
+4) Stop Commerce DB (checkout should fail fast with clear errors)
+
+Document:
+- time to detect
+- time to recover
+- regression gaps
+
+## Privacy: user export/delete
+Export a user:
+```bash
+python3 scripts/privacy/export_user_data.py --user-id 1001 --pretty
+```
+
+Delete/anonymize a user:
+```bash
+python3 scripts/privacy/delete_user_data.py --user-id 1001
+```
+
+Hard-delete commerce rows:
+```bash
+python3 scripts/privacy/delete_user_data.py --user-id 1001 --delete-commerce
+```
+
+Purge old audit logs:
+```bash
+AUDIT_LOG_RETENTION_DAYS=90 ./scripts/privacy/purge_audit_log.sh
+```
+
+## Event schema compatibility check
+```bash
+RUN_SCHEMA_CHECK=1 ./scripts/test.sh
+```

@@ -15,6 +15,7 @@ public class PermissionResolver {
         rules.put(Pattern.compile("^/admin/ops/tasks.*"), "OPS_TASK_MANAGE");
         rules.put(Pattern.compile("^/admin/ops/autocomplete.*"), "OPS_AUTOCOMPLETE_MANAGE");
         rules.put(Pattern.compile("^/admin/rag.*"), "RAG_OPS");
+        rules.put(Pattern.compile("^/admin/authority.*"), "AUTHORITY_MANAGE");
         rules.put(Pattern.compile("^/admin/policies.*"), "POLICY_EDIT");
         rules.put(Pattern.compile("^/admin/experiments.*"), "EXPERIMENT_ROLLOUT");
         rules.put(Pattern.compile("^/admin/models.*"), "MODEL_ROLLOUT");

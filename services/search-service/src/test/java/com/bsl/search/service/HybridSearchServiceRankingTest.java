@@ -16,16 +16,17 @@ import com.bsl.search.api.dto.SearchResponse;
 import com.bsl.search.cache.BookDetailCacheService;
 import com.bsl.search.cache.SerpCacheService;
 import com.bsl.search.opensearch.OpenSearchGateway;
-import com.bsl.search.retrieval.FusionStrategy;
+import com.bsl.search.retrieval.FusionPolicyProperties;
 import com.bsl.search.retrieval.LexicalRetriever;
 import com.bsl.search.retrieval.RetrievalStageResult;
-import com.bsl.search.retrieval.RrfFusionStrategy;
 import com.bsl.search.retrieval.VectorRetriever;
 import com.bsl.search.resilience.SearchResilienceProperties;
 import com.bsl.search.resilience.SearchResilienceRegistry;
 import com.bsl.search.ranking.RankingGateway;
 import com.bsl.search.ranking.RankingUnavailableException;
 import com.bsl.search.ranking.dto.RerankResponse;
+import com.bsl.search.service.grouping.MaterialGroupingProperties;
+import com.bsl.search.service.grouping.MaterialGroupingService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -69,19 +70,24 @@ class HybridSearchServiceRankingTest {
     @BeforeEach
     void setUp() {
         executorService = Executors.newSingleThreadExecutor();
-        FusionStrategy fusionStrategy = new RrfFusionStrategy();
         SearchResilienceProperties properties = new SearchResilienceProperties();
         SearchResilienceRegistry resilienceRegistry = new SearchResilienceRegistry(properties);
+        FusionPolicyProperties fusionPolicy = new FusionPolicyProperties();
+        MaterialGroupingProperties groupingProperties = new MaterialGroupingProperties();
+        groupingProperties.setEnabled(false);
+        MaterialGroupingService groupingService = new MaterialGroupingService(groupingProperties);
         service = new HybridSearchService(
             openSearchGateway,
             lexicalRetriever,
             vectorRetriever,
-            fusionStrategy,
+            fusionPolicy,
             rankingGateway,
             resilienceRegistry,
             serpCacheService,
             bookDetailCacheService,
-            executorService
+            executorService,
+            new com.bsl.search.experiment.SearchExperimentProperties(),
+            groupingService
         );
         objectMapper = new ObjectMapper();
         when(serpCacheService.isEnabled()).thenReturn(false);
@@ -111,10 +117,10 @@ class HybridSearchServiceRankingTest {
         hit2.setRank(2);
         rerankResponse.setHits(List.of(hit1, hit2));
 
-        when(rankingGateway.rerank(eq("harry"), anyList(), anyInt(), anyString(), anyString()))
+        when(rankingGateway.rerank(eq("harry"), anyList(), anyInt(), anyString(), anyString(), any()))
             .thenReturn(rerankResponse);
 
-        SearchResponse response = service.search(request, "trace-1", "req-1");
+        SearchResponse response = service.search(request, "trace-1", "req-1", null);
 
         assertTrue(response.isRankingApplied());
         assertEquals(2, response.getHits().size());
@@ -130,10 +136,10 @@ class HybridSearchServiceRankingTest {
             .thenReturn(RetrievalStageResult.success(List.of("b1", "b2"), null, 5L));
         when(vectorRetriever.retrieve(any())).thenReturn(RetrievalStageResult.empty());
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
-        when(rankingGateway.rerank(eq("harry"), anyList(), anyInt(), anyString(), anyString()))
+        when(rankingGateway.rerank(eq("harry"), anyList(), anyInt(), anyString(), anyString(), any()))
             .thenThrow(new RankingUnavailableException("down", new RuntimeException("timeout")));
 
-        SearchResponse response = service.search(request, "trace-1", "req-1");
+        SearchResponse response = service.search(request, "trace-1", "req-1", null);
 
         assertFalse(response.isRankingApplied());
         assertEquals(2, response.getHits().size());
