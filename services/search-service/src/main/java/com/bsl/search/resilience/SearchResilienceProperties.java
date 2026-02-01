@@ -6,11 +6,29 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "search.resilience")
 public class SearchResilienceProperties {
+    private int embedFailureThreshold = 3;
+    private long embedOpenMs = 30000;
     private int vectorFailureThreshold = 3;
     private long vectorOpenMs = 30000;
     private int rerankFailureThreshold = 3;
     private long rerankOpenMs = 30000;
     private int rerankHedgeDelayMs = 60;
+
+    public int getEmbedFailureThreshold() {
+        return embedFailureThreshold;
+    }
+
+    public void setEmbedFailureThreshold(int embedFailureThreshold) {
+        this.embedFailureThreshold = embedFailureThreshold;
+    }
+
+    public long getEmbedOpenMs() {
+        return embedOpenMs;
+    }
+
+    public void setEmbedOpenMs(long embedOpenMs) {
+        this.embedOpenMs = embedOpenMs;
+    }
 
     public int getVectorFailureThreshold() {
         return vectorFailureThreshold;

@@ -42,7 +42,7 @@ ENABLE_VECTOR_INDEX = os.environ.get("ENABLE_VECTOR_INDEX", "1") == "1"
 ENABLE_CHUNK_INDEX = os.environ.get("ENABLE_CHUNK_INDEX", "0") == "1"
 
 EMBED_PROVIDER = os.environ.get("EMBED_PROVIDER", "mis").lower()
-MIS_URL = os.environ.get("MIS_URL", "http://localhost:8005").rstrip("/")
+MIS_URL = os.environ.get("MIS_URL", "").rstrip("/")
 EMBED_MODEL = os.environ.get("EMBED_MODEL", "")
 EMBED_BATCH_SIZE = int(os.environ.get("EMBED_BATCH_SIZE", "32"))
 EMBED_TIMEOUT_SEC = float(os.environ.get("EMBED_TIMEOUT_SEC", "5"))
@@ -359,7 +359,8 @@ class Embedder:
         self.normalize = normalize
 
     def cache_key(self) -> str:
-        return self.model or self.provider
+        suffix = "norm1" if self.normalize else "norm0"
+        return f"{self.model or self.provider}:{suffix}"
 
     def embed_texts(self, texts: List[str]) -> List[List[float]]:
         if not texts:
@@ -438,6 +439,8 @@ class Embedder:
 class EmbedMetrics:
     def __init__(self) -> None:
         self.batch_count = 0
+        self.embed_calls = 0
+        self.failed_batches = 0
         self.fail_total = 0
         self.cache_hit = 0
         self.cache_miss = 0
@@ -448,6 +451,7 @@ def build_embedding_actions(
     embedder: Embedder,
     cache: Optional[EmbeddingCache],
     deadletter_path: Path,
+    embed_deadletter: Path,
     metrics: EmbedMetrics,
 ) -> List[Dict[str, Any]]:
     actions: List[Dict[str, Any]] = []
@@ -477,6 +481,7 @@ def build_embedding_actions(
         batch = pending[start : start + batch_size]
         texts = [entry["text"] for entry in batch]
         metrics.batch_count += 1
+        metrics.embed_calls += len(batch)
         started = time.time()
         try:
             vectors = embedder.embed_texts(texts)
@@ -486,13 +491,15 @@ def build_embedding_actions(
                 print(f"[embed] provider failed, fallback to toy: {exc}")
             else:
                 metrics.fail_total += len(batch)
-                write_embed_deadletter(deadletter_path, batch, str(exc))
+                metrics.failed_batches += 1
+                write_embed_deadletter(embed_deadletter, batch, str(exc))
                 continue
         took_ms = int((time.time() - started) * 1000)
         print(f"[embed] batch={len(batch)} took_ms={took_ms}")
         if len(vectors) != len(batch):
             metrics.fail_total += len(batch)
-            write_embed_deadletter(deadletter_path, batch, "embedding size mismatch")
+            metrics.failed_batches += 1
+            write_embed_deadletter(embed_deadletter, batch, "embedding size mismatch")
             continue
         for entry, vector in zip(batch, vectors):
             entry["doc"]["embedding"] = vector
@@ -550,6 +557,7 @@ def process_file(
     books_deadletter: Path,
     vec_deadletter: Path,
     chunk_deadletter: Path,
+    embed_deadletter: Path,
     suggest_deadletter: Path,
     authors_deadletter: Path,
     embedder: Embedder,
@@ -579,11 +587,23 @@ def process_file(
         nonlocal book_actions, vec_candidates, chunk_candidates, suggest_actions, author_actions, last_checkpoint
         post_bulk(BOOKS_ALIAS, book_actions, books_deadletter)
         if ENABLE_VECTOR_INDEX and alias_exists(VEC_ALIAS):
-            vec_actions = build_embedding_actions(vec_candidates, embedder, cache, vec_deadletter, metrics)
+            vec_actions = build_embedding_actions(
+                vec_candidates,
+                embedder,
+                cache,
+                vec_deadletter,
+                embed_deadletter,
+                metrics,
+            )
             post_bulk(VEC_ALIAS, vec_actions, vec_deadletter)
         if ENABLE_CHUNK_INDEX and alias_exists(CHUNK_ALIAS):
             chunk_actions = build_embedding_actions(
-                chunk_candidates, embedder, cache, chunk_deadletter, metrics
+                chunk_candidates,
+                embedder,
+                cache,
+                chunk_deadletter,
+                embed_deadletter,
+                metrics,
             )
             post_bulk(CHUNK_ALIAS, chunk_actions, chunk_deadletter)
         post_bulk(AC_ALIAS, suggest_actions, suggest_deadletter)
@@ -778,6 +798,7 @@ def main() -> int:
     books_deadletter = deadletter_dir() / "books_doc_deadletter.ndjson"
     vec_deadletter = deadletter_dir() / "books_vec_deadletter.ndjson"
     chunk_deadletter = deadletter_dir() / "book_chunks_deadletter.ndjson"
+    embed_deadletter = deadletter_dir() / "embed_fail_deadletter.ndjson"
     suggest_deadletter = deadletter_dir() / "ac_candidates_deadletter.ndjson"
     authors_deadletter = deadletter_dir() / "authors_doc_deadletter.ndjson"
 
@@ -795,6 +816,10 @@ def main() -> int:
         except Exception as exc:
             print(f"[embed] redis cache unavailable: {exc}. disabling cache.")
             cache = None
+
+    if EMBED_PROVIDER == "mis" and not MIS_URL:
+        print("MIS_URL is required when EMBED_PROVIDER=mis")
+        return 1
 
     embedder = Embedder(
         EMBED_PROVIDER,
@@ -819,6 +844,7 @@ def main() -> int:
             books_deadletter,
             vec_deadletter,
             chunk_deadletter,
+            embed_deadletter,
             suggest_deadletter,
             authors_deadletter,
             embedder,
@@ -832,8 +858,8 @@ def main() -> int:
     if ENABLE_VECTOR_INDEX or ENABLE_CHUNK_INDEX:
         print(
             "[embed] batches="
-            f"{metrics.batch_count} cache_hit={metrics.cache_hit} cache_miss={metrics.cache_miss} "
-            f"fail_total={metrics.fail_total}"
+            f"{metrics.batch_count} calls={metrics.embed_calls} failed_batches={metrics.failed_batches} "
+            f"cache_hit={metrics.cache_hit} cache_miss={metrics.cache_miss} fail_total={metrics.fail_total}"
         )
 
     print("[opensearch] ingestion complete")

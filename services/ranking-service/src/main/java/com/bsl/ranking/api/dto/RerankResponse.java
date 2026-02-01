@@ -135,6 +135,9 @@ public class RerankResponse {
         @JsonProperty("popularity_bonus")
         private Double popularityBonus;
 
+        @JsonProperty("raw_features")
+        private Map<String, Object> rawFeatures;
+
         private Map<String, Double> features;
 
         @JsonProperty("reason_codes")
@@ -212,6 +215,14 @@ public class RerankResponse {
             this.popularityBonus = popularityBonus;
         }
 
+        public Map<String, Object> getRawFeatures() {
+            return rawFeatures;
+        }
+
+        public void setRawFeatures(Map<String, Object> rawFeatures) {
+            this.rawFeatures = rawFeatures;
+        }
+
         public Map<String, Double> getFeatures() {
             return features;
         }
@@ -250,6 +261,8 @@ public class RerankResponse {
 
         @JsonProperty("reason_codes")
         private List<String> reasonCodes;
+
+        private Map<String, Object> replay;
 
         public String getModelId() {
             return modelId;
@@ -305,6 +318,14 @@ public class RerankResponse {
 
         public void setReasonCodes(List<String> reasonCodes) {
             this.reasonCodes = reasonCodes;
+        }
+
+        public Map<String, Object> getReplay() {
+            return replay;
+        }
+
+        public void setReplay(Map<String, Object> replay) {
+            this.replay = replay;
         }
     }
 }

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -76,6 +77,8 @@ class HybridSearchServiceRankingTest {
         MaterialGroupingProperties groupingProperties = new MaterialGroupingProperties();
         groupingProperties.setEnabled(false);
         MaterialGroupingService groupingService = new MaterialGroupingService(groupingProperties);
+        RerankPolicyProperties rerankPolicy = new RerankPolicyProperties();
+        SearchBudgetProperties budgetProperties = new SearchBudgetProperties();
         service = new HybridSearchService(
             openSearchGateway,
             lexicalRetriever,
@@ -87,7 +90,9 @@ class HybridSearchServiceRankingTest {
             bookDetailCacheService,
             executorService,
             new com.bsl.search.experiment.SearchExperimentProperties(),
-            groupingService
+            groupingService,
+            rerankPolicy,
+            budgetProperties
         );
         objectMapper = new ObjectMapper();
         when(serpCacheService.isEnabled()).thenReturn(false);
@@ -117,7 +122,7 @@ class HybridSearchServiceRankingTest {
         hit2.setRank(2);
         rerankResponse.setHits(List.of(hit1, hit2));
 
-        when(rankingGateway.rerank(eq("harry"), anyList(), anyInt(), anyString(), anyString(), any()))
+        when(rankingGateway.rerank(eq("harry"), anyList(), anyInt(), anyInt(), anyBoolean(), anyString(), anyString(), any()))
             .thenReturn(rerankResponse);
 
         SearchResponse response = service.search(request, "trace-1", "req-1", null);
@@ -136,7 +141,7 @@ class HybridSearchServiceRankingTest {
             .thenReturn(RetrievalStageResult.success(List.of("b1", "b2"), null, 5L));
         when(vectorRetriever.retrieve(any())).thenReturn(RetrievalStageResult.empty());
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
-        when(rankingGateway.rerank(eq("harry"), anyList(), anyInt(), anyString(), anyString(), any()))
+        when(rankingGateway.rerank(eq("harry"), anyList(), anyInt(), anyInt(), anyBoolean(), anyString(), anyString(), any()))
             .thenThrow(new RankingUnavailableException("down", new RuntimeException("timeout")));
 
         SearchResponse response = service.search(request, "trace-1", "req-1", null);

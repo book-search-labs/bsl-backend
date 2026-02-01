@@ -12,6 +12,11 @@ except Exception:  # pragma: no cover - optional dependency
     onnxruntime = None
     np = None
 
+try:
+    from tokenizers import Tokenizer  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    Tokenizer = None
+
 
 FEATURE_ORDER = ["rrf_score", "lex_rank", "vec_rank", "issued_year", "volume", "has_recover"]
 
@@ -34,6 +39,11 @@ class ScoreResult:
 
 class BaseModel:
     def score(self, pairs: List[dict]) -> List[ScoreResult]:
+        raise NotImplementedError
+
+
+class BaseEmbedModel:
+    def embed(self, texts: List[str], normalize: bool) -> List[List[float]]:
         raise NotImplementedError
 
 
@@ -148,3 +158,147 @@ class OnnxRerankModel(BaseModel):
             "has_recover": float(has_recover),
         }
         return [values.get(name, 0.0) for name in self._feature_order]
+
+
+class ToyEmbedModel(BaseEmbedModel):
+    def __init__(self, dim: int) -> None:
+        self._dim = max(1, dim)
+
+    def embed(self, texts: List[str], normalize: bool) -> List[List[float]]:
+        results = []
+        for text in texts:
+            values = self._embed_one(text or "")
+            if normalize:
+                norm = math.sqrt(sum(v * v for v in values)) or 1.0
+                values = [v / norm for v in values]
+            results.append(values)
+        return results
+
+    def _embed_one(self, text: str) -> List[float]:
+        import hashlib
+        import random
+
+        seed_bytes = hashlib.sha256(text.encode("utf-8")).digest()[:8]
+        seed = int.from_bytes(seed_bytes, "big", signed=False)
+        rng = random.Random(seed)
+        return [rng.random() for _ in range(self._dim)]
+
+
+class OnnxEmbedModel(BaseEmbedModel):
+    def __init__(
+        self,
+        model_path: str,
+        tokenizer_path: str,
+        max_len: int,
+        output_name: str | None = None,
+        providers: Optional[Iterable[str]] = None,
+    ):
+        if onnxruntime is None or np is None:
+            raise RuntimeError("onnxruntime not available")
+        if Tokenizer is None:
+            raise RuntimeError("tokenizers not available")
+        if not os.path.exists(model_path):
+            raise RuntimeError(f"onnx embed model missing: {model_path}")
+        if not os.path.exists(tokenizer_path):
+            raise RuntimeError(f"tokenizer missing: {tokenizer_path}")
+        provider_list = list(providers) if providers else ["CPUExecutionProvider"]
+        self._session = onnxruntime.InferenceSession(model_path, providers=provider_list)
+        self._tokenizer = Tokenizer.from_file(tokenizer_path)
+        self._max_len = max(8, max_len)
+        self._output_name = output_name or self._session.get_outputs()[0].name
+        self._input_names = [item.name for item in self._session.get_inputs()]
+        self._tokenizer.enable_truncation(max_length=self._max_len)
+        self._tokenizer.enable_padding(length=self._max_len)
+
+    def embed(self, texts: List[str], normalize: bool) -> List[List[float]]:
+        if not texts:
+            return []
+        encodings = self._tokenizer.encode_batch(texts)
+        inputs = {
+            "input_ids": np.asarray([enc.ids for enc in encodings], dtype=np.int64),
+            "attention_mask": np.asarray([enc.attention_mask for enc in encodings], dtype=np.int64),
+        }
+        if "token_type_ids" in self._input_names:
+            inputs["token_type_ids"] = np.asarray([enc.type_ids for enc in encodings], dtype=np.int64)
+        payload = {name: inputs[name] for name in self._input_names if name in inputs}
+        outputs = self._session.run([self._output_name], payload)[0]
+        vectors = self._pool(outputs, inputs["attention_mask"])
+        if normalize:
+            vectors = self._l2_normalize(vectors)
+        return vectors.tolist()
+
+    def _pool(self, outputs, attention_mask):
+        if outputs.ndim == 2:
+            return outputs
+        if outputs.ndim == 3:
+            mask = attention_mask[:, :, None].astype(np.float32)
+            summed = (outputs * mask).sum(axis=1)
+            counts = mask.sum(axis=1)
+            counts[counts == 0] = 1.0
+            return summed / counts
+        return outputs.reshape(outputs.shape[0], -1)
+
+    def _l2_normalize(self, vectors):
+        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+        norms[norms == 0] = 1.0
+        return vectors / norms
+
+
+class OnnxCrossEncoderModel(BaseModel):
+    def __init__(
+        self,
+        model_path: str,
+        tokenizer_path: str,
+        max_len: int,
+        output_name: Optional[str],
+        logit_index: Optional[int],
+        providers: Optional[Iterable[str]] = None,
+    ):
+        if onnxruntime is None or np is None:
+            raise RuntimeError("onnxruntime not available")
+        if Tokenizer is None:
+            raise RuntimeError("tokenizers not available")
+        if not os.path.exists(model_path):
+            raise RuntimeError(f"onnx rerank model missing: {model_path}")
+        if not os.path.exists(tokenizer_path):
+            raise RuntimeError(f"tokenizer missing: {tokenizer_path}")
+        provider_list = list(providers) if providers else ["CPUExecutionProvider"]
+        self._session = onnxruntime.InferenceSession(model_path, providers=provider_list)
+        self._tokenizer = Tokenizer.from_file(tokenizer_path)
+        self._max_len = max(8, max_len)
+        self._output_name = output_name or self._session.get_outputs()[0].name
+        self._input_names = [item.name for item in self._session.get_inputs()]
+        self._logit_index = logit_index
+        self._tokenizer.enable_truncation(max_length=self._max_len)
+        self._tokenizer.enable_padding(length=self._max_len)
+
+    def score(self, pairs: List[dict]) -> List[ScoreResult]:
+        if not pairs:
+            return []
+        encodings = self._tokenizer.encode_batch(
+            [(pair.get("query", ""), pair.get("doc", "")) for pair in pairs]
+        )
+        inputs = {
+            "input_ids": np.asarray([enc.ids for enc in encodings], dtype=np.int64),
+            "attention_mask": np.asarray([enc.attention_mask for enc in encodings], dtype=np.int64),
+        }
+        if "token_type_ids" in self._input_names:
+            inputs["token_type_ids"] = np.asarray([enc.type_ids for enc in encodings], dtype=np.int64)
+        payload = {name: inputs[name] for name in self._input_names if name in inputs}
+        outputs = self._session.run([self._output_name], payload)[0]
+        scores = self._extract_scores(outputs)
+        results = []
+        for score in scores:
+            results.append(ScoreResult(score=float(score), debug={"backend": "onnx_cross"}))
+        return results
+
+    def _extract_scores(self, outputs):
+        if outputs.ndim == 1:
+            return outputs
+        if outputs.ndim == 2:
+            if outputs.shape[1] == 1:
+                return outputs[:, 0]
+            idx = self._logit_index if self._logit_index is not None else 1
+            idx = max(0, min(idx, outputs.shape[1] - 1))
+            return outputs[:, idx]
+        return outputs.reshape(outputs.shape[0], -1)[:, 0]

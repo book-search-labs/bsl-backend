@@ -20,6 +20,9 @@ class ModelSpec:
     input_name: Optional[str] = None
     output_name: Optional[str] = None
     feature_order: Optional[List[str]] = None
+    tokenizer_uri: Optional[str] = None
+    max_len: Optional[int] = None
+    logit_index: Optional[int] = None
 
     def to_dict(self, loaded: bool) -> dict:
         return {
@@ -69,6 +72,9 @@ class ModelRegistry:
                 input_name=item.get("input_name"),
                 output_name=item.get("output_name"),
                 feature_order=item.get("feature_order"),
+                tokenizer_uri=item.get("tokenizer_uri"),
+                max_len=item.get("max_len"),
+                logit_index=item.get("logit_index"),
             )
             if model.model_id:
                 models[model.model_id] = model

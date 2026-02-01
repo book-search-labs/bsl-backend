@@ -46,6 +46,10 @@ public class RerankRequest {
 
     public static class Options {
         private Integer size;
+        private Boolean debug;
+
+        @JsonProperty("timeout_ms")
+        private Integer timeoutMs;
 
         public Integer getSize() {
             return size;
@@ -54,11 +58,29 @@ public class RerankRequest {
         public void setSize(Integer size) {
             this.size = size;
         }
+
+        public Boolean getDebug() {
+            return debug;
+        }
+
+        public void setDebug(Boolean debug) {
+            this.debug = debug;
+        }
+
+        public Integer getTimeoutMs() {
+            return timeoutMs;
+        }
+
+        public void setTimeoutMs(Integer timeoutMs) {
+            this.timeoutMs = timeoutMs;
+        }
     }
 
     public static class Candidate {
         @JsonProperty("doc_id")
         private String docId;
+
+        private String doc;
 
         private Features features;
 
@@ -68,6 +90,14 @@ public class RerankRequest {
 
         public void setDocId(String docId) {
             this.docId = docId;
+        }
+
+        public String getDoc() {
+            return doc;
+        }
+
+        public void setDoc(String doc) {
+            this.doc = doc;
         }
 
         public Features getFeatures() {

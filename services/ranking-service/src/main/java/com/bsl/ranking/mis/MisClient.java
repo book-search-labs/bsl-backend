@@ -68,6 +68,11 @@ public class MisClient {
             pair.setPairId(candidate.getDocId());
             pair.setQuery(queryText == null ? "" : queryText);
             pair.setDocId(candidate.getDocId());
+            String docText = candidate.getDoc();
+            if (docText == null || docText.isBlank()) {
+                docText = candidate.getDocId();
+            }
+            pair.setDoc(docText);
 
             MisScoreRequest.Features features = new MisScoreRequest.Features();
             if (candidate.getFeatures() != null) {

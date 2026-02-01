@@ -1,6 +1,6 @@
 from typing import Dict, Optional, Tuple
 
-from app.core.models import BaseModel, OnnxRerankModel, ToyRerankModel
+from app.core.models import BaseModel, OnnxCrossEncoderModel, OnnxRerankModel, ToyRerankModel
 from app.core.registry import ModelRegistry, ModelSpec
 from app.core.settings import SETTINGS
 
@@ -37,6 +37,25 @@ class ModelManager:
             except Exception:
                 self._model_status[spec.model_id] = "error"
                 return None
+        if spec.backend == "onnx_cross":
+            try:
+                path = self._resolve_artifact_path(spec)
+                tokenizer_path = self._resolve_tokenizer_path(spec)
+                max_len = spec.max_len or 256
+                model = OnnxCrossEncoderModel(
+                    path,
+                    tokenizer_path,
+                    max_len,
+                    spec.output_name,
+                    spec.logit_index,
+                    SETTINGS.onnx_providers,
+                )
+                self._models[spec.model_id] = model
+                self._model_status[spec.model_id] = "ready"
+                return model
+            except Exception:
+                self._model_status[spec.model_id] = "error"
+                return None
         model = ToyRerankModel()
         self._models[spec.model_id] = model
         self._model_status[spec.model_id] = "ready"
@@ -58,3 +77,15 @@ class ModelManager:
             # Remote URIs require external sync into local model dir.
             return f"{SETTINGS.model_dir.rstrip('/')}/{spec.model_id}.onnx"
         return f"{SETTINGS.model_dir.rstrip('/')}/{uri}"
+
+    def _resolve_tokenizer_path(self, spec: ModelSpec) -> str:
+        uri = spec.tokenizer_uri or ""
+        if uri.startswith("local://"):
+            uri = uri.replace("local://", "")
+        if uri.startswith("/"):
+            return uri
+        if "://" in uri:
+            return f"{SETTINGS.model_dir.rstrip('/')}/{spec.model_id}.tokenizer.json"
+        if uri:
+            return f"{SETTINGS.model_dir.rstrip('/')}/{uri}"
+        return f"{SETTINGS.model_dir.rstrip('/')}/{spec.model_id}.tokenizer.json"

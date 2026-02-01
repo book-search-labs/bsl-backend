@@ -80,6 +80,8 @@ public class HybridSearchService {
     private final ExecutorService searchExecutor;
     private final SearchExperimentProperties experimentProperties;
     private final MaterialGroupingService groupingService;
+    private final RerankPolicyProperties rerankPolicy;
+    private final SearchBudgetProperties budgetProperties;
     private static final Pattern ISBN_PATTERN = Pattern.compile("^(97(8|9))?\\d{9}[\\dXx]$");
 
     public HybridSearchService(
@@ -93,7 +95,9 @@ public class HybridSearchService {
         BookDetailCacheService bookDetailCacheService,
         ExecutorService searchExecutor,
         SearchExperimentProperties experimentProperties,
-        MaterialGroupingService groupingService
+        MaterialGroupingService groupingService,
+        RerankPolicyProperties rerankPolicy,
+        SearchBudgetProperties budgetProperties
     ) {
         this.openSearchGateway = openSearchGateway;
         this.lexicalRetriever = lexicalRetriever;
@@ -106,6 +110,8 @@ public class HybridSearchService {
         this.searchExecutor = searchExecutor;
         this.experimentProperties = experimentProperties;
         this.groupingService = groupingService;
+        this.rerankPolicy = rerankPolicy;
+        this.budgetProperties = budgetProperties;
     }
 
     public SearchResponse search(SearchRequest request, String traceId, String requestId, String traceparent) {
@@ -187,6 +193,7 @@ public class HybridSearchService {
         int from = options.getFrom() != null ? Math.max(options.getFrom(), 0) : DEFAULT_FROM;
         ExecutionPlan plan = buildLegacyPlan(request, options);
         plan.rerankTopK = Math.min(Math.max(from + size, DEFAULT_SIZE), plan.lexicalTopK);
+        applyRerankTopKGuardrail(plan);
         if (isBlank(plan.queryText)) {
             throw new InvalidSearchRequestException("query text is required");
         }
@@ -198,7 +205,7 @@ public class HybridSearchService {
             return cachedResponse.get();
         }
 
-        RetrievalResult retrieval = retrieveCandidates(plan, requestId);
+        RetrievalResult retrieval = retrieveCandidates(plan, traceId, requestId);
         RerankOutcome rerankOutcome = applyRerank(
             plan,
             retrieval,
@@ -267,7 +274,7 @@ public class HybridSearchService {
             return cachedResponse.get();
         }
 
-        RetrievalResult retrieval = retrieveCandidates(plan, requestId);
+        RetrievalResult retrieval = retrieveCandidates(plan, traceId, requestId);
 
         if (retrieval.vector.isError() || retrieval.vector.isTimedOut()) {
             FallbackApplication fallback = applyFallback(plan, Trigger.VECTOR_ERROR);
@@ -386,6 +393,7 @@ public class HybridSearchService {
             features.setRrfScore(candidate.getScore());
 
             JsonNode source = sources.get(candidate.getDocId());
+            rerankCandidate.setDoc(buildDocText(candidate.getDocId(), source));
             if (source != null && !source.isMissingNode()) {
                 features.setIssuedYear(readInteger(source, "issued_year"));
                 features.setVolume(readInteger(source, "volume"));
@@ -469,7 +477,7 @@ public class HybridSearchService {
         return hits;
     }
 
-    private RetrievalResult retrieveCandidates(ExecutionPlan plan, String requestId) {
+    private RetrievalResult retrieveCandidates(ExecutionPlan plan, String traceId, String requestId) {
         RetrievalStageResult lexicalResult = RetrievalStageResult.empty();
         RetrievalStageResult vectorResult = RetrievalStageResult.empty();
 
@@ -483,7 +491,9 @@ public class HybridSearchService {
             plan.filters,
             plan.lexicalFields,
             plan.debugEnabled,
-            plan.explainEnabled
+            plan.explainEnabled,
+            traceId,
+            requestId
         );
 
         RetrievalStageContext vectorContext = new RetrievalStageContext(
@@ -496,7 +506,9 @@ public class HybridSearchService {
             plan.filters,
             null,
             plan.debugEnabled,
-            plan.explainEnabled
+            plan.explainEnabled,
+            traceId,
+            requestId
         );
 
         CompletableFuture<RetrievalStageResult> lexicalFuture = plan.lexicalEnabled
@@ -590,6 +602,41 @@ public class HybridSearchService {
         return resolved;
     }
 
+    private String shouldSkipRerank(ExecutionPlan plan, RetrievalResult retrieval) {
+        if (plan == null) {
+            return "rerank_plan_missing";
+        }
+        if (!plan.rerankEnabled) {
+            return "rerank_disabled";
+        }
+        if (retrieval == null || retrieval.fused.isEmpty()) {
+            return "rerank_no_candidates";
+        }
+        if (plan.rerankTopK <= 0) {
+            return "rerank_topk_zero";
+        }
+        if (rerankPolicy != null && !rerankPolicy.isEnabled()) {
+            return "rerank_policy_disabled";
+        }
+        if (rerankPolicy != null) {
+            if (rerankPolicy.isSkipIsbn() && isIsbnQuery(plan.queryText)) {
+                return "rerank_skipped_isbn";
+            }
+            int minQueryLength = rerankPolicy.getMinQueryLength();
+            if (minQueryLength > 0 && (plan.queryText == null || plan.queryText.trim().length() < minQueryLength)) {
+                return "rerank_skipped_short_query";
+            }
+            int minCandidates = rerankPolicy.getMinCandidates();
+            if (minCandidates > 0 && retrieval.fused.size() < minCandidates) {
+                return "rerank_skipped_min_candidates";
+            }
+        }
+        if (plan.timeBudgetMs != null && resolveRerankTimeoutMs(plan) <= 0) {
+            return "rerank_budget_exhausted";
+        }
+        return null;
+    }
+
     private RerankOutcome applyRerank(
         ExecutionPlan plan,
         RetrievalResult retrieval,
@@ -599,14 +646,16 @@ public class HybridSearchService {
         String requestId,
         String traceparent
     ) {
-        if (!plan.rerankEnabled || retrieval.fused.isEmpty() || plan.rerankTopK <= 0) {
+        String skipReason = shouldSkipRerank(plan, retrieval);
+        if (skipReason != null) {
             return new RerankOutcome(
                 buildHitsFromFused(retrieval.fused, from, size, retrieval.sources),
                 false,
                 false,
                 false,
                 0L,
-                null
+                null,
+                skipReason
             );
         }
 
@@ -618,7 +667,8 @@ public class HybridSearchService {
                 true,
                 false,
                 0L,
-                "rerank_circuit_open"
+                "rerank_circuit_open",
+                null
             );
         }
 
@@ -627,13 +677,24 @@ public class HybridSearchService {
         List<RerankRequest.Candidate> rerankCandidates = buildRerankCandidates(rerankSlice, retrieval.sources);
         Map<String, RrfFusion.Candidate> fusedById = toCandidateMap(retrieval.fused);
 
+        int timeoutMs = resolveRerankTimeoutMs(plan);
+        boolean rerankDebug = plan.debugEnabled || plan.explainEnabled;
+
         CompletableFuture<RerankResponse> future = CompletableFuture.supplyAsync(
-            () -> rankingGateway.rerank(plan.queryText, rerankCandidates, limit, traceId, requestId, traceparent),
+            () -> rankingGateway.rerank(
+                plan.queryText,
+                rerankCandidates,
+                limit,
+                timeoutMs,
+                rerankDebug,
+                traceId,
+                requestId,
+                traceparent
+            ),
             searchExecutor
         );
 
         long started = System.nanoTime();
-        int timeoutMs = resolveRerankTimeoutMs(plan);
         int hedgeDelayMs = Math.max(0, resilienceRegistry.getProperties().getRerankHedgeDelayMs());
 
         try {
@@ -655,6 +716,7 @@ public class HybridSearchService {
                     false,
                     false,
                     tookMs,
+                    null,
                     null
                 );
             }
@@ -665,7 +727,8 @@ public class HybridSearchService {
                 true,
                 false,
                 tookMs,
-                "rerank_empty"
+                "rerank_empty",
+                null
             );
         } catch (TimeoutException e) {
             future.cancel(true);
@@ -676,7 +739,8 @@ public class HybridSearchService {
                 true,
                 true,
                 0L,
-                "rerank_timeout"
+                "rerank_timeout",
+                null
             );
         } catch (ExecutionException e) {
             rerankBreaker.recordFailure();
@@ -686,7 +750,8 @@ public class HybridSearchService {
                 true,
                 false,
                 0L,
-                errorMessage(e)
+                errorMessage(e),
+                null
             );
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -697,7 +762,8 @@ public class HybridSearchService {
                 true,
                 false,
                 0L,
-                "rerank_interrupted"
+                "rerank_interrupted",
+                null
             );
         } catch (RankingUnavailableException e) {
             rerankBreaker.recordFailure();
@@ -707,7 +773,8 @@ public class HybridSearchService {
                 true,
                 false,
                 0L,
-                e.getMessage()
+                e.getMessage(),
+                null
             );
         }
     }
@@ -866,6 +933,7 @@ public class HybridSearchService {
         plan.vectorTopK = vecTopK;
         plan.rrfK = options.getRrfK() != null ? options.getRrfK() : DEFAULT_RRF_K;
         plan.rerankTopK = Math.min(DEFAULT_LEX_TOP_K, Math.max(DEFAULT_SIZE, topK));
+        applyRerankTopKGuardrail(plan);
         plan.boost = retrievalHints == null ? null : retrievalHints.getBoost();
         plan.filters = Collections.emptyList();
         plan.fallbackPolicy = Collections.emptyList();
@@ -877,13 +945,75 @@ public class HybridSearchService {
             timeBudgetMs = clamp(retrievalHints.getTimeBudgetMs(), MIN_TIME_BUDGET_MS, MAX_TIME_BUDGET_MS);
         }
         plan.timeBudgetMs = timeBudgetMs;
-        plan.lexicalBudgetMs = timeBudgetMs;
-        plan.vectorBudgetMs = timeBudgetMs;
-        plan.rerankBudgetMs = timeBudgetMs;
+        plan.lexicalBudgetMs = null;
+        plan.vectorBudgetMs = null;
+        plan.rerankBudgetMs = null;
+        applyBudgetSplit(plan);
 
         plan.debugEnabled = Boolean.TRUE.equals(options.getDebug());
         plan.explainEnabled = Boolean.TRUE.equals(options.getExplain());
         return plan;
+    }
+
+    private void applyRerankTopKGuardrail(ExecutionPlan plan) {
+        if (plan == null || rerankPolicy == null) {
+            return;
+        }
+        int maxTopK = rerankPolicy.getMaxTopK();
+        if (maxTopK > 0 && plan.rerankTopK > maxTopK) {
+            plan.rerankTopK = maxTopK;
+        }
+    }
+
+    private void applyBudgetSplit(ExecutionPlan plan) {
+        if (plan == null || plan.timeBudgetMs == null) {
+            return;
+        }
+        int total = plan.timeBudgetMs;
+        if (budgetProperties == null || !budgetProperties.isEnabled()) {
+            if (plan.lexicalBudgetMs == null) {
+                plan.lexicalBudgetMs = total;
+            }
+            if (plan.vectorBudgetMs == null) {
+                plan.vectorBudgetMs = total;
+            }
+            if (plan.rerankBudgetMs == null) {
+                plan.rerankBudgetMs = total;
+            }
+            return;
+        }
+
+        double lexShare = Math.max(0.0, budgetProperties.getLexicalShare());
+        double vecShare = Math.max(0.0, budgetProperties.getVectorShare());
+        double rerankShare = Math.max(0.0, budgetProperties.getRerankShare());
+        double sum = lexShare + vecShare + rerankShare;
+        if (sum <= 0.0) {
+            return;
+        }
+        lexShare /= sum;
+        vecShare /= sum;
+        rerankShare /= sum;
+
+        int minStageMs = Math.max(0, budgetProperties.getMinStageMs());
+        if (plan.lexicalBudgetMs == null) {
+            plan.lexicalBudgetMs = clampBudget(Math.round(total * (float) lexShare), minStageMs, total);
+        }
+        if (plan.vectorBudgetMs == null) {
+            plan.vectorBudgetMs = plan.vectorEnabled
+                ? clampBudget(Math.round(total * (float) vecShare), minStageMs, total)
+                : 0;
+        }
+        if (plan.rerankBudgetMs == null) {
+            plan.rerankBudgetMs = plan.rerankEnabled
+                ? clampBudget(Math.round(total * (float) rerankShare), minStageMs, total)
+                : 0;
+        }
+    }
+
+    private int clampBudget(int value, int min, int max) {
+        int lower = Math.max(0, min);
+        int upper = Math.max(lower, max);
+        return Math.min(Math.max(value, lower), upper);
     }
 
     private SearchResponse.Debug buildDebug(
@@ -971,7 +1101,7 @@ public class HybridSearchService {
         stage.setTookMs(rerankOutcome.tookMs);
         stage.setError(rerankOutcome.rerankError);
         stage.setTimedOut(rerankOutcome.rerankTimedOut);
-        stage.setErrorMessage(rerankOutcome.errorMessage);
+        stage.setErrorMessage(rerankOutcome.skipReason != null ? rerankOutcome.skipReason : rerankOutcome.errorMessage);
         return stage;
     }
 
@@ -987,12 +1117,19 @@ public class HybridSearchService {
             String reason = retrieval.vector.getErrorMessage();
             if (reason != null && reason.contains("vector_disabled")) {
                 // no warning for intentionally disabled vector retrieval
+            } else if (reason != null && !reason.isBlank()) {
+                warnings.add(reason);
             } else {
                 warnings.add("vector_skipped");
             }
         }
-        if (retrieval.vector.isError()) {
-            warnings.add("vector_error");
+        if (retrieval.vector.isError() && !retrieval.vector.isSkipped()) {
+            String reason = retrieval.vector.getErrorMessage();
+            if (reason != null && !reason.isBlank()) {
+                warnings.add(reason);
+            } else {
+                warnings.add("vector_error");
+            }
         }
         if (retrieval.vector.isTimedOut()) {
             warnings.add("vector_timeout");
@@ -1002,6 +1139,9 @@ public class HybridSearchService {
         }
         if (rerankOutcome.rerankError) {
             warnings.add("rerank_error");
+        }
+        if (rerankOutcome.skipReason != null && !rerankOutcome.skipReason.isBlank()) {
+            warnings.add(rerankOutcome.skipReason);
         }
         return warnings;
     }
@@ -1120,7 +1260,7 @@ public class HybridSearchService {
     }
 
     private RerankOutcome emptyRerankOutcome() {
-        return new RerankOutcome(List.of(), false, false, false, 0L, null);
+        return new RerankOutcome(List.of(), false, false, false, 0L, null, null);
     }
 
     private int resolveRerankTimeoutMs(ExecutionPlan plan) {
@@ -1218,6 +1358,7 @@ public class HybridSearchService {
         plan.rerankTopK = rerank != null && rerank.getTopKHint() != null
             ? clamp(rerank.getTopKHint(), QC_RERANK_TOP_K_MIN, QC_RERANK_TOP_K_MAX)
             : DEFAULT_QC_RERANK_TOP_K;
+        applyRerankTopKGuardrail(plan);
 
         plan.filters = buildFilters(hints);
         plan.fallbackPolicy = hints == null || hints.getFallbackPolicy() == null
@@ -1244,6 +1385,7 @@ public class HybridSearchService {
                 plan.rerankBudgetMs = clamp(budget.getRerank(), QC_TIMEOUT_MIN_MS, QC_TIMEOUT_MAX_MS);
             }
         }
+        applyBudgetSplit(plan);
 
         plan.debugEnabled = options != null && Boolean.TRUE.equals(options.getDebug());
         plan.explainEnabled = options != null && Boolean.TRUE.equals(options.getExplain());
@@ -1638,6 +1780,7 @@ public class HybridSearchService {
         private final boolean rerankTimedOut;
         private final long tookMs;
         private final String errorMessage;
+        private final String skipReason;
 
         private RerankOutcome(
             List<BookHit> hits,
@@ -1645,7 +1788,8 @@ public class HybridSearchService {
             boolean rerankError,
             boolean rerankTimedOut,
             long tookMs,
-            String errorMessage
+            String errorMessage,
+            String skipReason
         ) {
             this.hits = hits;
             this.rankingApplied = rankingApplied;
@@ -1653,6 +1797,7 @@ public class HybridSearchService {
             this.rerankTimedOut = rerankTimedOut;
             this.tookMs = tookMs;
             this.errorMessage = errorMessage;
+            this.skipReason = skipReason;
         }
     }
 
@@ -1742,5 +1887,56 @@ public class HybridSearchService {
             }
         }
         return editionLabels;
+    }
+
+    private String buildDocText(String docId, JsonNode source) {
+        if (source == null || source.isMissingNode()) {
+            return docId;
+        }
+        List<String> parts = new ArrayList<>();
+        String titleKo = source.path("title_ko").asText(null);
+        String titleEn = source.path("title_en").asText(null);
+        if (titleKo != null && !titleKo.isBlank()) {
+            parts.add(titleKo);
+        }
+        if (titleEn != null && !titleEn.isBlank() && !titleEn.equals(titleKo)) {
+            parts.add(titleEn);
+        }
+
+        List<String> authors = new ArrayList<>();
+        JsonNode authorsNode = source.path("authors");
+        if (authorsNode.isArray()) {
+            for (JsonNode authorNode : authorsNode) {
+                if (authorNode.isTextual()) {
+                    authors.add(authorNode.asText());
+                } else if (authorNode.isObject()) {
+                    String nameKo = authorNode.path("name_ko").asText(null);
+                    String nameEn = authorNode.path("name_en").asText(null);
+                    if (nameKo != null && !nameKo.isEmpty()) {
+                        authors.add(nameKo);
+                    } else if (nameEn != null && !nameEn.isEmpty()) {
+                        authors.add(nameEn);
+                    }
+                }
+            }
+        }
+        if (!authors.isEmpty()) {
+            parts.add(String.join(", ", authors));
+        }
+
+        String publisher = source.path("publisher_name").asText(null);
+        if (publisher != null && !publisher.isBlank()) {
+            parts.add(publisher);
+        }
+        String series = source.path("series_name").asText(null);
+        if (series != null && !series.isBlank()) {
+            parts.add(series);
+        }
+
+        if (parts.isEmpty()) {
+            return docId;
+        }
+        String text = String.join(" | ", parts);
+        return text.isBlank() ? docId : text;
     }
 }

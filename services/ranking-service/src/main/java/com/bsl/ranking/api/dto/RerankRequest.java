@@ -90,6 +90,8 @@ public class RerankRequest {
         @JsonProperty("doc_id")
         private String docId;
 
+        private String doc;
+
         private Features features;
 
         public String getDocId() {
@@ -98,6 +100,14 @@ public class RerankRequest {
 
         public void setDocId(String docId) {
             this.docId = docId;
+        }
+
+        public String getDoc() {
+            return doc;
+        }
+
+        public void setDoc(String doc) {
+            this.doc = doc;
         }
 
         public Features getFeatures() {

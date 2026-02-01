@@ -15,6 +15,8 @@ public class RetrievalStageContext {
     private final List<String> fieldsOverride;
     private final boolean debug;
     private final boolean explain;
+    private final String traceId;
+    private final String requestId;
 
     public RetrievalStageContext(
         String queryText,
@@ -26,7 +28,9 @@ public class RetrievalStageContext {
         List<Map<String, Object>> filters,
         List<String> fieldsOverride,
         boolean debug,
-        boolean explain
+        boolean explain,
+        String traceId,
+        String requestId
     ) {
         this.queryText = queryText;
         this.topK = topK;
@@ -38,6 +42,8 @@ public class RetrievalStageContext {
         this.fieldsOverride = fieldsOverride;
         this.debug = debug;
         this.explain = explain;
+        this.traceId = traceId;
+        this.requestId = requestId;
     }
 
     public String getQueryText() {
@@ -78,5 +84,13 @@ public class RetrievalStageContext {
 
     public boolean isExplain() {
         return explain;
+    }
+
+    public String getTraceId() {
+        return traceId;
+    }
+
+    public String getRequestId() {
+        return requestId;
     }
 }

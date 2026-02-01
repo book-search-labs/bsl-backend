@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[1/8] Contract validation (optional)"
+echo "[1/9] Contract validation (optional)"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN=""
 if command -v python >/dev/null 2>&1; then
@@ -20,9 +20,9 @@ else
   echo "  - python not found; skipping contract validation"
 fi
 
-echo "[2/8] Contract compatibility gate (optional)"
+echo "[2/9] Contract compatibility gate (optional)"
 
-echo "[3/8] Event schema compatibility check (optional)"
+echo "[3/9] Event schema compatibility check (optional)"
 if [ "${RUN_SCHEMA_CHECK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/kafka/schema_compat_check.py" || exit 1
@@ -38,7 +38,7 @@ else
   echo "  - python not found; skipping contract compatibility check"
 fi
 
-echo "[4/8] Feature spec validation (optional)"
+echo "[4/9] Feature spec validation (optional)"
 if [ -n "$PYTHON_BIN" ]; then
   if $PYTHON_BIN -c "import yaml" >/dev/null 2>&1; then
     $PYTHON_BIN "$ROOT_DIR/scripts/validate_feature_spec.py" || exit 1
@@ -49,7 +49,7 @@ else
   echo "  - python not found; skipping feature spec validation"
 fi
 
-echo "[5/8] Offline eval gate (optional)"
+echo "[5/9] Offline eval gate (optional)"
 if [ "${RUN_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     EVAL_RUN_PATH="${EVAL_RUN_PATH:-$ROOT_DIR/evaluation/runs/sample_run.jsonl}"
@@ -62,7 +62,19 @@ else
   echo "  - set RUN_EVAL=1 to enable"
 fi
 
-echo "[6/8] Canonical quality checks (optional)"
+echo "[6/9] Rerank eval gate (optional)"
+if [ "${RUN_RERANK_EVAL:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    RERANK_BASELINE_PATH="${RERANK_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/rerank_eval_sample.json}"
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/rerank_eval.py" --baseline-report "$RERANK_BASELINE_PATH" --gate || exit 1
+  else
+    echo "  - python not found; skipping rerank eval gate"
+  fi
+else
+  echo "  - set RUN_RERANK_EVAL=1 to enable"
+fi
+
+echo "[7/9] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -73,7 +85,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[7/8] E2E tests (optional)"
+echo "[8/9] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -84,4 +96,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[8/8] Done"
+echo "[9/9] Done"

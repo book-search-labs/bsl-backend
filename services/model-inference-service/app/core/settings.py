@@ -19,8 +19,16 @@ class Settings:
     default_task: str = os.getenv("MIS_DEFAULT_TASK", "rerank")
     default_model: str = os.getenv("MIS_DEFAULT_MODEL", "")
     default_embed_model: str = os.getenv("MIS_DEFAULT_EMBED_MODEL", "")
+    embed_backend: str = os.getenv("MIS_EMBED_BACKEND", "toy")
+    embed_model_id: str = os.getenv("MIS_EMBED_MODEL_ID", "embed_default")
+    embed_model_path: str = os.getenv("MIS_EMBED_MODEL_PATH", "")
+    embed_tokenizer_path: str = os.getenv("MIS_EMBED_TOKENIZER_PATH", "")
+    embed_output_name: str = os.getenv("MIS_EMBED_OUTPUT_NAME", "")
     embed_dim: int = int(os.getenv("MIS_EMBED_DIM", "768"))
     embed_normalize: bool = os.getenv("MIS_EMBED_NORMALIZE", "true").lower() in {"1", "true", "yes"}
+    embed_max_len: int = int(os.getenv("MIS_EMBED_MAX_LEN", "256"))
+    embed_batch_size: int = int(os.getenv("MIS_EMBED_BATCH_SIZE", "64"))
+    embed_device: str = os.getenv("MIS_EMBED_DEVICE", "cpu")
     onnx_providers: tuple[str, ...] = tuple(
         provider.strip()
         for provider in os.getenv("MIS_ONNX_PROVIDERS", "CPUExecutionProvider").split(",")

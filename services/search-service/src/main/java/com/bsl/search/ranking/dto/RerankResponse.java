@@ -1,8 +1,10 @@
 package com.bsl.search.ranking.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class RerankResponse {
     @JsonProperty("trace_id")
     private String traceId;
@@ -56,6 +58,7 @@ public class RerankResponse {
         this.hits = hits;
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Hit {
         @JsonProperty("doc_id")
         private String docId;
@@ -97,6 +100,7 @@ public class RerankResponse {
         }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Debug {
         @JsonProperty("lex_rank")
         private Integer lexRank;

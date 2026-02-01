@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from app.api.routes import router as api_router
 from app.core.settings import SETTINGS
-from app.core.state import batcher, model_manager, registry
+from app.core.state import batcher, embed_manager, model_manager, registry
 
 app = FastAPI(title="model-inference-service")
 app.include_router(api_router)
@@ -28,3 +28,7 @@ async def startup():
             except Exception:
                 # warmup is best-effort
                 pass
+        try:
+            embed_manager.get_model(SETTINGS.default_embed_model or None).embed(["warmup"], SETTINGS.embed_normalize)
+        except Exception:
+            pass

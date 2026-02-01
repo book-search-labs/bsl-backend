@@ -22,6 +22,7 @@ embedding:
   base-url: ${EMBEDDING_BASE_URL:http://localhost:8005}
   model: ${EMBEDDING_MODEL:}
   timeout-ms: ${EMBEDDING_TIMEOUT_MS:200}
+  retry-count: ${EMBEDDING_RETRY_COUNT:0}
   cache:
     enabled: ${EMBEDDING_CACHE_ENABLED:true}
     ttl-ms: ${EMBEDDING_CACHE_TTL_MS:60000}
@@ -41,6 +42,12 @@ search:
     exclude-quoted: ${SEARCH_EXPERIMENT_EXCLUDE_QUOTED:true}
   execution:
     pool-size: ${SEARCH_EXEC_POOL_SIZE:6}
+  budget:
+    enabled: ${SEARCH_BUDGET_ENABLED:true}
+    lexical-share: ${SEARCH_BUDGET_LEX_SHARE:0.5}
+    vector-share: ${SEARCH_BUDGET_VEC_SHARE:0.3}
+    rerank-share: ${SEARCH_BUDGET_RERANK_SHARE:0.2}
+    min-stage-ms: ${SEARCH_BUDGET_MIN_STAGE_MS:20}
   vector:
     mode: ${SEARCH_VECTOR_MODE:EMBEDDING}
     model-id: ${SEARCH_VECTOR_MODEL_ID:}
@@ -66,7 +73,15 @@ search:
     recover-penalty: ${SEARCH_GROUPING_RECOVER_PENALTY:0.15}
     set-penalty: ${SEARCH_GROUPING_SET_PENALTY:0.2}
     special-penalty: ${SEARCH_GROUPING_SPECIAL_PENALTY:0.1}
+  rerank:
+    enabled: ${SEARCH_RERANK_ENABLED:true}
+    max-top-k: ${SEARCH_RERANK_MAX_TOP_K:50}
+    min-candidates: ${SEARCH_RERANK_MIN_CANDIDATES:5}
+    min-query-length: ${SEARCH_RERANK_MIN_QUERY_LENGTH:2}
+    skip-isbn: ${SEARCH_RERANK_SKIP_ISBN:true}
   resilience:
+    embed-failure-threshold: ${SEARCH_EMBED_FAIL_THRESHOLD:3}
+    embed-open-ms: ${SEARCH_EMBED_OPEN_MS:30000}
     vector-failure-threshold: ${SEARCH_VECTOR_FAIL_THRESHOLD:3}
     vector-open-ms: ${SEARCH_VECTOR_OPEN_MS:30000}
     rerank-failure-threshold: ${SEARCH_RERANK_FAIL_THRESHOLD:3}

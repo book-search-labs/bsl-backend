@@ -64,7 +64,8 @@ public class EmbeddingCacheService {
         }
         String model = properties.getModel() == null ? "" : properties.getModel();
         String mode = properties.getMode() == null ? "" : properties.getMode().name();
+        String normFlag = properties.getCache() != null && properties.getCache().isNormalize() ? "norm1" : "norm0";
         String hash = CacheKeyUtil.sha256(normalized);
-        return "embed:" + mode + ":" + model + ":" + hash;
+        return "embed:" + mode + ":" + model + ":" + normFlag + ":" + hash;
     }
 }

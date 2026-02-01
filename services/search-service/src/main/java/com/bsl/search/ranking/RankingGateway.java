@@ -9,6 +9,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
@@ -31,6 +32,8 @@ public class RankingGateway {
         String queryText,
         List<RerankRequest.Candidate> candidates,
         int size,
+        Integer timeoutMs,
+        boolean debug,
         String traceId,
         String requestId,
         String traceparent
@@ -42,6 +45,8 @@ public class RankingGateway {
         request.setCandidates(candidates);
         RerankRequest.Options options = new RerankRequest.Options();
         options.setSize(size);
+        options.setTimeoutMs(timeoutMs);
+        options.setDebug(debug);
         request.setOptions(options);
 
         HttpHeaders headers = new HttpHeaders();
@@ -55,7 +60,8 @@ public class RankingGateway {
         HttpEntity<RerankRequest> entity = new HttpEntity<>(request, headers);
 
         try {
-            ResponseEntity<RerankResponse> response = restTemplate.exchange(
+            RestTemplate client = restTemplateFor(timeoutMs);
+            ResponseEntity<RerankResponse> response = client.exchange(
                 buildUrl("/rerank"),
                 HttpMethod.POST,
                 entity,
@@ -75,5 +81,15 @@ public class RankingGateway {
             base = base.substring(0, base.length() - 1);
         }
         return base + path;
+    }
+
+    private RestTemplate restTemplateFor(Integer timeBudgetMs) {
+        if (timeBudgetMs == null || timeBudgetMs <= 0) {
+            return restTemplate;
+        }
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(timeBudgetMs);
+        factory.setReadTimeout(timeBudgetMs);
+        return new RestTemplate(factory);
     }
 }

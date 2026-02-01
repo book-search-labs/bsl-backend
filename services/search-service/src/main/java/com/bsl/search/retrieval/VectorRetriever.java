@@ -79,7 +79,12 @@ public class VectorRetriever implements Retriever {
                     context.isExplain()
                 );
             } else {
-                List<Double> vector = embeddingProvider.embed(context.getQueryText(), context.getTimeBudgetMs());
+                List<Double> vector = embeddingProvider.embed(
+                    context.getQueryText(),
+                    context.getTimeBudgetMs(),
+                    context.getTraceId(),
+                    context.getRequestId()
+                );
                 if (properties.getMode() == VectorSearchMode.CHUNK) {
                     result = openSearchGateway.searchChunkVectorDetailed(
                         vector,
@@ -105,7 +110,7 @@ public class VectorRetriever implements Retriever {
             cacheService.put(context, mode, modelId, docIds, queryDsl);
             return RetrievalStageResult.success(docIds, queryDsl, tookMs);
         } catch (EmbeddingUnavailableException e) {
-            return RetrievalStageResult.error(e.getMessage());
+            return RetrievalStageResult.skipped(e.getMessage());
         } catch (OpenSearchUnavailableException | OpenSearchRequestException e) {
             return RetrievalStageResult.error(e.getMessage());
         } catch (RuntimeException e) {

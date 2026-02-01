@@ -49,6 +49,26 @@ class RerankControllerTest {
     }
 
     @Test
+    void rerankDebugIncludesReplay() throws Exception {
+        String body = "{"
+            + "\"query\":{\"text\":\"harry potter\"},"
+            + "\"candidates\":["
+            + "{\"doc_id\":\"b1\",\"features\":{\"rrf_score\":0.167,\"lex_rank\":1,\"vec_rank\":2,\"issued_year\":1999,\"volume\":1,\"edition_labels\":[\"recover\"]}}"
+            + "],"
+            + "\"options\":{\"size\":1,\"debug\":true}"
+            + "}";
+
+        mockMvc.perform(post("/rerank")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.debug.model_id").value("toy_rerank_v1"))
+            .andExpect(jsonPath("$.hits[0].debug.raw_features.lex_rank").value(1))
+            .andExpect(jsonPath("$.debug.replay.query.text").value("harry potter"))
+            .andExpect(jsonPath("$.debug.replay.candidates[0].doc_id").value("b1"));
+    }
+
+    @Test
     void rerankRejectsInvalidInput() throws Exception {
         mockMvc.perform(post("/rerank")
                 .contentType(MediaType.APPLICATION_JSON)

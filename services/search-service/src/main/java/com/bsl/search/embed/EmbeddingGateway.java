@@ -28,11 +28,15 @@ public class EmbeddingGateway {
     }
 
     public List<Double> embed(String text, Integer timeBudgetMs) {
+        return embed(text, timeBudgetMs, null, null);
+    }
+
+    public List<Double> embed(String text, Integer timeBudgetMs, String traceId, String requestId) {
         if (text == null || text.isBlank()) {
-            throw new EmbeddingUnavailableException("query text is empty");
+            throw new EmbeddingUnavailableException("embed_empty_text");
         }
         if (properties.getBaseUrl() == null || properties.getBaseUrl().isBlank()) {
-            throw new EmbeddingUnavailableException("embedding.base-url is not configured");
+            throw new EmbeddingUnavailableException("embed_base_url_missing");
         }
         EmbeddingRequest request = new EmbeddingRequest();
         request.setModel(properties.getModel());
@@ -41,30 +45,49 @@ public class EmbeddingGateway {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        if (traceId != null && !traceId.isBlank()) {
+            headers.add("x-trace-id", traceId);
+        }
+        if (requestId != null && !requestId.isBlank()) {
+            headers.add("x-request-id", requestId);
+        }
         HttpEntity<EmbeddingRequest> entity = new HttpEntity<>(request, headers);
 
-        try {
-            RestTemplate client = restTemplateFor(timeBudgetMs);
-            ResponseEntity<EmbeddingResponse> response = client.exchange(
-                buildUrl("/v1/embed"),
-                HttpMethod.POST,
-                entity,
-                EmbeddingResponse.class
-            );
-            EmbeddingResponse body = response.getBody();
-            if (body == null || body.getVectors() == null || body.getVectors().isEmpty()) {
-                throw new EmbeddingUnavailableException("embedding response is empty");
+        int retries = Math.max(0, properties.getRetryCount());
+        for (int attempt = 0; attempt <= retries; attempt++) {
+            try {
+                RestTemplate client = restTemplateFor(timeBudgetMs);
+                ResponseEntity<EmbeddingResponse> response = client.exchange(
+                    buildUrl("/v1/embed"),
+                    HttpMethod.POST,
+                    entity,
+                    EmbeddingResponse.class
+                );
+                EmbeddingResponse body = response.getBody();
+                if (body == null || body.getVectors() == null || body.getVectors().isEmpty()) {
+                    throw new EmbeddingUnavailableException("embed_empty_response");
+                }
+                List<Double> vector = body.getVectors().get(0);
+                if (vector == null || vector.isEmpty()) {
+                    throw new EmbeddingUnavailableException("embed_empty_vector");
+                }
+                return vector;
+            } catch (ResourceAccessException e) {
+                if (attempt >= retries) {
+                    String reason = "embed_unavailable";
+                    if (e.getCause() instanceof java.net.SocketTimeoutException) {
+                        reason = "embed_timeout";
+                    }
+                    throw new EmbeddingUnavailableException(reason, e);
+                }
+            } catch (HttpStatusCodeException e) {
+                if (attempt >= retries) {
+                    String reason = "embed_http_" + e.getStatusCode().value();
+                    throw new EmbeddingUnavailableException(reason, e);
+                }
             }
-            List<Double> vector = body.getVectors().get(0);
-            if (vector == null || vector.isEmpty()) {
-                throw new EmbeddingUnavailableException("embedding vector is empty");
-            }
-            return vector;
-        } catch (ResourceAccessException e) {
-            throw new EmbeddingUnavailableException("embedding service unavailable", e);
-        } catch (HttpStatusCodeException e) {
-            throw new EmbeddingUnavailableException("embedding service error: " + e.getStatusCode(), e);
         }
+        throw new EmbeddingUnavailableException("embed_unavailable");
     }
 
     private String buildUrl(String path) {

@@ -8,6 +8,7 @@ public class EmbeddingProperties {
     private String baseUrl;
     private String model;
     private int timeoutMs = 200;
+    private int retryCount = 0;
     private Cache cache = new Cache();
 
     public EmbeddingMode getMode() {
@@ -40,6 +41,14 @@ public class EmbeddingProperties {
 
     public void setTimeoutMs(int timeoutMs) {
         this.timeoutMs = timeoutMs;
+    }
+
+    public int getRetryCount() {
+        return retryCount;
+    }
+
+    public void setRetryCount(int retryCount) {
+        this.retryCount = retryCount;
     }
 
     public Cache getCache() {

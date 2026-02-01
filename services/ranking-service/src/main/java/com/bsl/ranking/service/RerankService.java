@@ -11,6 +11,7 @@ import com.bsl.ranking.mis.MisUnavailableException;
 import com.bsl.ranking.mis.dto.MisScoreResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -146,7 +147,7 @@ public class RerankService {
         response.setModel(modelId);
         response.setHits(hits);
         if (debugEnabled) {
-            response.setDebug(buildResponseDebug(modelId, reasonCodes, candidatesIn, candidatesUsed, timeoutMs, rerankApplied));
+            response.setDebug(buildResponseDebug(modelId, reasonCodes, candidatesIn, candidatesUsed, timeoutMs, rerankApplied, request));
         }
         return response;
     }
@@ -241,6 +242,9 @@ public class RerankService {
         for (EnrichedCandidate candidate : candidates) {
             RerankRequest.Candidate rerankCandidate = new RerankRequest.Candidate();
             rerankCandidate.setDocId(candidate.getDocId());
+            if (candidate.getSource() != null) {
+                rerankCandidate.setDoc(candidate.getSource().getDoc());
+            }
             RerankRequest.Features features = new RerankRequest.Features();
             Map<String, Object> raw = candidate.getRawFeatures();
             features.setLexRank(toInt(raw.get("lex_rank")));
@@ -269,8 +273,9 @@ public class RerankService {
         }
         if (enriched != null) {
             debug.setFeatures(enriched.getFeatures());
+            debug.setRawFeatures(enriched.getRawFeatures());
         }
-        debug.setReasonCodes(reasonCodes);
+        debug.setReasonCodes(mergeReasons(reasonCodes, enriched == null ? null : enriched.getReasonCodes()));
         return debug;
     }
 
@@ -280,7 +285,8 @@ public class RerankService {
         int candidatesIn,
         int candidatesUsed,
         int timeoutMs,
-        boolean rerankApplied
+        boolean rerankApplied,
+        RerankRequest request
     ) {
         FeatureSpec spec = featureSpecService.getSpec();
         RerankResponse.DebugInfo info = new RerankResponse.DebugInfo();
@@ -291,7 +297,69 @@ public class RerankService {
         info.setTimeoutMs(timeoutMs);
         info.setRerankApplied(rerankApplied);
         info.setReasonCodes(reasonCodes);
+        info.setReplay(buildReplay(request));
         return info;
+    }
+
+    private List<String> mergeReasons(List<String> base, List<String> extra) {
+        if ((base == null || base.isEmpty()) && (extra == null || extra.isEmpty())) {
+            return base;
+        }
+        List<String> merged = new ArrayList<>();
+        if (base != null) {
+            for (String reason : base) {
+                if (reason != null && !merged.contains(reason)) {
+                    merged.add(reason);
+                }
+            }
+        }
+        if (extra != null) {
+            for (String reason : extra) {
+                if (reason != null && !merged.contains(reason)) {
+                    merged.add(reason);
+                }
+            }
+        }
+        return merged;
+    }
+
+    private Map<String, Object> buildReplay(RerankRequest request) {
+        if (request == null) {
+            return null;
+        }
+        Map<String, Object> replay = new LinkedHashMap<>();
+        if (request.getQuery() != null) {
+            Map<String, Object> query = new LinkedHashMap<>();
+            query.put("text", request.getQuery().getText());
+            replay.put("query", query);
+        }
+        if (request.getCandidates() != null) {
+            List<Map<String, Object>> candidates = new ArrayList<>();
+            for (RerankRequest.Candidate candidate : request.getCandidates()) {
+                if (candidate == null) {
+                    continue;
+                }
+                Map<String, Object> entry = new LinkedHashMap<>();
+                entry.put("doc_id", candidate.getDocId());
+                if (candidate.getDoc() != null) {
+                    entry.put("doc", candidate.getDoc());
+                }
+                if (candidate.getFeatures() != null) {
+                    entry.put("features", candidate.getFeatures());
+                }
+                candidates.add(entry);
+            }
+            replay.put("candidates", candidates);
+        }
+        if (request.getOptions() != null) {
+            Map<String, Object> options = new LinkedHashMap<>();
+            options.put("size", request.getOptions().getSize());
+            options.put("timeout_ms", request.getOptions().getTimeoutMs());
+            options.put("rerank", request.getOptions().getRerank());
+            options.put("debug", request.getOptions().getDebug());
+            replay.put("options", options);
+        }
+        return replay;
     }
 
     private int nullSafeRank(Integer rank) {

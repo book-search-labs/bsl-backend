@@ -40,6 +40,12 @@ public class FeatureFetcher {
             Map<String, Object> kv = storeValues.get(candidate.getDocId());
             for (FeatureDefinition def : spec.getFeatures()) {
                 Object rawValue = resolveRaw(def, candidate, queryText, kv);
+                if (rawValue == null) {
+                    String reason = "feature_missing:" + def.getName();
+                    if (!reasons.contains(reason)) {
+                        reasons.add(reason);
+                    }
+                }
                 raw.put(def.getName(), rawValue);
                 transformed.put(def.getName(), applyTransform(def, rawValue));
             }

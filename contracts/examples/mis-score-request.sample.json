@@ -8,6 +8,7 @@
     {
       "pair_id": "p1",
       "query": "harry potter",
+      "doc": "TITLE: Harry Potter and the Philosopher's Stone",
       "doc_id": "b1",
       "features": {
         "lex_rank": 1,
