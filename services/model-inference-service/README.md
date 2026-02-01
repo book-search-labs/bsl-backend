@@ -9,6 +9,7 @@ Stateless inference endpoints for rerank/embedding with concurrency limits, queu
 - `GET /v1/models` — list model registry state
 - `POST /v1/score` — score query-document pairs
 - `POST /v1/embed` — embedding vectors (batch)
+- `POST /v1/spell` — spell correction (single text)
 - `POST /embed` — legacy embed alias (dev fallback)
 
 ### /v1/score request (contract)
@@ -25,6 +26,12 @@ Stateless inference endpoints for rerank/embedding with concurrency limits, queu
 
 ### /v1/embed response (contract)
 - `contracts/mis-embed-response.schema.json`
+
+### /v1/spell request (contract)
+- `contracts/mis-spell-request.schema.json`
+
+### /v1/spell response (contract)
+- `contracts/mis-spell-response.schema.json`
 
 ## Configuration (env)
 
@@ -52,6 +59,17 @@ Stateless inference endpoints for rerank/embedding with concurrency limits, queu
 - `MIS_EMBED_BATCH_SIZE` (default: 64)
 - `MIS_EMBED_NORMALIZE` (default: true)
 - `MIS_ONNX_PROVIDERS` (default: `CPUExecutionProvider`)
+- `MIS_SPELL_ENABLE` (default: true)
+- `MIS_SPELL_MODEL_ID` (default: `spell_default`)
+- `MIS_SPELL_BACKEND` (default: `toy`)
+- `MIS_SPELL_MODEL_PATH` (onnx path)
+- `MIS_SPELL_TOKENIZER_PATH` (tokenizer.json path)
+- `MIS_SPELL_OUTPUT_NAME` (optional output name override)
+- `MIS_SPELL_MAX_LEN` (default: 64)
+- `MIS_SPELL_TIMEOUT_MS` (default: 80)
+- `MIS_SPELL_BATCH_SIZE` (default: 16)
+- `MIS_SPELL_DECODER_START_ID` (default: 0)
+- `MIS_SPELL_FALLBACK` (default: `toy`)
 
 ## Model Registry & Artifacts
 

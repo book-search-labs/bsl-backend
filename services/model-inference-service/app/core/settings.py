@@ -29,6 +29,17 @@ class Settings:
     embed_max_len: int = int(os.getenv("MIS_EMBED_MAX_LEN", "256"))
     embed_batch_size: int = int(os.getenv("MIS_EMBED_BATCH_SIZE", "64"))
     embed_device: str = os.getenv("MIS_EMBED_DEVICE", "cpu")
+    spell_enable: bool = os.getenv("MIS_SPELL_ENABLE", "true").lower() in {"1", "true", "yes"}
+    spell_model_id: str = os.getenv("MIS_SPELL_MODEL_ID", "spell_default")
+    spell_backend: str = os.getenv("MIS_SPELL_BACKEND", "toy")
+    spell_model_path: str = os.getenv("MIS_SPELL_MODEL_PATH", "")
+    spell_tokenizer_path: str = os.getenv("MIS_SPELL_TOKENIZER_PATH", "")
+    spell_output_name: str = os.getenv("MIS_SPELL_OUTPUT_NAME", "")
+    spell_max_len: int = int(os.getenv("MIS_SPELL_MAX_LEN", "64"))
+    spell_timeout_ms: int = int(os.getenv("MIS_SPELL_TIMEOUT_MS", "80"))
+    spell_batch_size: int = int(os.getenv("MIS_SPELL_BATCH_SIZE", "16"))
+    spell_decoder_start_id: int = int(os.getenv("MIS_SPELL_DECODER_START_ID", "0"))
+    spell_fallback: str = os.getenv("MIS_SPELL_FALLBACK", "toy")
     onnx_providers: tuple[str, ...] = tuple(
         provider.strip()
         for provider in os.getenv("MIS_ONNX_PROVIDERS", "CPUExecutionProvider").split(",")

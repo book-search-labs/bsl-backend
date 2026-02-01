@@ -119,7 +119,10 @@ def _detect_series(norm: str) -> str | None:
 
 
 def _is_mixed(text: str) -> bool:
-    return bool(_HANGUL_SYLLABLE.search(text)) and bool(_LATIN.search(text))
+    if not text:
+        return False
+    cleaned = re.sub(r"\b\d+\s*권\b", "", text)
+    return bool(_HANGUL_SYLLABLE.search(cleaned)) and bool(_LATIN.search(cleaned))
 
 
 def _is_chosung(text: str) -> bool:

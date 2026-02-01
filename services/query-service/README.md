@@ -37,6 +37,27 @@ CORS_ALLOW_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:
 
 # Rewrite log storage (SQLite path by default)
 # QS_REWRITE_DB_PATH=/tmp/qs_rewrite.db
+
+# Spell provider (MIS recommended)
+# QS_SPELL_PROVIDER=http
+# QS_SPELL_URL=http://localhost:8005
+# QS_SPELL_PATH=/v1/spell
+# QS_SPELL_MODEL=t5-typo-ko-v1
+# QS_SPELL_TIMEOUT_SEC=2.0
+
+# Spell candidate generator + dictionary
+# QS_SPELL_CANDIDATE_ENABLE=1
+# QS_SPELL_CANDIDATE_MAX=50
+# QS_SPELL_CANDIDATE_TOPK=5
+# QS_SPELL_CANDIDATE_MIN_SCORE=0.0
+# QS_SPELL_EDIT_DISTANCE_MAX=2
+# QS_SPELL_KEYBOARD_LOCALE=ko|en|both
+# QS_SPELL_CANDIDATE_MODE=hint|prefill
+# QS_SPELL_DICT_BACKEND=file
+# QS_SPELL_DICT_PATH=data/dict/spell_aliases.jsonl
+# QS_SPELL_DICT_REDIS_URL=redis://localhost:6379/1
+# QS_SPELL_DICT_REDIS_KEY=qs:spell:dict
+# QS_ENHANCE_DEBUG=1
 ```
 
 ## Endpoints

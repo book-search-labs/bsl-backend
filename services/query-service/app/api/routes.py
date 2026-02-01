@@ -162,6 +162,7 @@ async def query_enhance(request: Request):
         if cached:
             cache_hit = True
             metrics.inc("qs_enh_cache_hit_total")
+            debug_payload = cached.get("debug") if _debug_enabled(body) else None
             response = _build_enhance_response(
                 trace_id,
                 request_id,
@@ -173,6 +174,7 @@ async def query_enhance(request: Request):
                 final=cached.get("final"),
                 hints=cached.get("hints"),
                 rag=cached.get("rag"),
+                debug=debug_payload,
                 cache_flags={"enhance_hit": True, "deny_hit": False},
             )
             _log_enhance(body, response, canonical_key)
@@ -207,6 +209,7 @@ async def query_enhance(request: Request):
 
     final_text, final_source = _select_final(q_norm, spell, rewrite)
 
+    debug_payload = _build_debug_payload(body, spell_meta, rewrite_meta, rag_info)
     response = _build_enhance_response(
         trace_id,
         request_id,
@@ -218,6 +221,7 @@ async def query_enhance(request: Request):
         final={"text": final_text, "source": final_source},
         hints=hints,
         rag=rag_info,
+        debug=debug_payload,
         cache_flags={"enhance_hit": cache_hit, "deny_hit": False},
     )
     CACHE.set_json(
@@ -230,6 +234,7 @@ async def query_enhance(request: Request):
             "final": {"text": final_text, "source": final_source},
             "hints": hints,
             "rag": rag_info,
+            "debug": debug_payload,
         },
         ttl=_enhance_cache_ttl(),
     )
@@ -683,6 +688,45 @@ def _build_acceptance_hints(reason: str | None, strategy: str) -> dict | None:
     }
 
 
+def _debug_enabled(body: dict) -> bool:
+    if isinstance(body.get("debug"), bool):
+        return body.get("debug")
+    return os.getenv("QS_ENHANCE_DEBUG", "false").lower() in {"1", "true", "yes"}
+
+
+def _build_debug_payload(
+    body: dict,
+    spell_meta: dict | None,
+    rewrite_meta: dict | None,
+    rag_meta: dict | None,
+) -> dict | None:
+    if not _debug_enabled(body):
+        return None
+    debug: dict[str, Any] = {}
+    if spell_meta:
+        spell_debug = {
+            "provider": spell_meta.get("provider"),
+            "candidate_mode": spell_meta.get("candidate_mode"),
+            "candidate_input": spell_meta.get("candidate_input"),
+            "candidates": spell_meta.get("candidates"),
+            "provider_latency_ms": spell_meta.get("provider_latency_ms"),
+            "provider_model": spell_meta.get("provider_model"),
+            "error_code": spell_meta.get("error_code"),
+            "reject_reason": spell_meta.get("reject_reason"),
+        }
+        debug["spell"] = {k: v for k, v in spell_debug.items() if v is not None}
+    if rewrite_meta:
+        rewrite_debug = {
+            "provider": rewrite_meta.get("provider"),
+            "error_code": rewrite_meta.get("error_code"),
+            "reject_reason": rewrite_meta.get("reject_reason"),
+        }
+        debug["rewrite"] = {k: v for k, v in rewrite_debug.items() if v is not None}
+    if rag_meta:
+        debug["rag"] = rag_meta
+    return debug or None
+
+
 def _build_enhance_response(
     trace_id: str,
     request_id: str,
@@ -694,6 +738,7 @@ def _build_enhance_response(
     final: dict | None = None,
     hints: dict | None = None,
     rag: dict | None = None,
+    debug: dict | None = None,
     cache_flags: dict | None = None,
 ) -> dict:
     response = {
@@ -715,6 +760,8 @@ def _build_enhance_response(
         response["hints"] = hints
     if rag:
         response["rag"] = rag
+    if debug:
+        response["debug"] = debug
     return response
 
 

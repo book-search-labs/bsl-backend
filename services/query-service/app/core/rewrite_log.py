@@ -6,12 +6,9 @@ import sqlite3
 import time
 from typing import Any
 
-DEFAULT_DB_PATH = os.getenv("QS_REWRITE_DB_PATH", "/tmp/qs_rewrite.db")
-
-
 class RewriteLog:
     def __init__(self, db_path: str | None = None) -> None:
-        self._db_path = db_path or DEFAULT_DB_PATH
+        self._db_path = db_path or os.getenv("QS_REWRITE_DB_PATH", "/tmp/qs_rewrite.db")
         self._ensure_table()
 
     def _connect(self) -> sqlite3.Connection:
@@ -93,15 +90,19 @@ class RewriteLog:
             conn.commit()
 
     def list_failures(self, since: str | None = None, limit: int = 50, reason: str | None = None) -> list[dict[str, Any]]:
-        query = \"SELECT id, request_id, trace_id, q_raw, q_norm, canonical_key, reason, decision, strategy, failure_tag, error_code, error_message, replay_payload, created_at FROM query_rewrite_log WHERE failure_tag IS NOT NULL\"
+        query = (
+            "SELECT id, request_id, trace_id, q_raw, q_norm, canonical_key, reason, decision, strategy, "
+            "failure_tag, error_code, error_message, replay_payload, created_at "
+            "FROM query_rewrite_log WHERE failure_tag IS NOT NULL"
+        )
         params: list[Any] = []
         if reason:
-            query += \" AND reason = ?\"
+            query += " AND reason = ?"
             params.append(reason)
         if since:
             normalized = _normalize_since(since)
             if normalized:
-                query += \" AND created_at >= ?\"
+                query += " AND created_at >= ?"
                 params.append(normalized)
         query += " ORDER BY id DESC LIMIT ?"
         params.append(limit)

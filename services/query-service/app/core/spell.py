@@ -7,6 +7,7 @@ from typing import Any, Tuple
 import httpx
 
 from app.core.metrics import metrics
+from app.core.spell_candidates import get_generator
 
 
 def _provider() -> str:
@@ -80,8 +81,19 @@ def _extract_numeric_tokens(text: str) -> list[str]:
 def _volume_numbers(text: str) -> set[str]:
     if not text:
         return set()
-    matches = re.findall(r"(\d+)\s*(권|권차|vol(?:ume)?|v\.?)(?!\w)", text, flags=re.IGNORECASE)
-    return {match[0] for match in matches if match and match[0]}
+    numbers: set[str] = set()
+    for match in re.finditer(r"\b(?:vol(?:ume)?|v)\.?\s*0*(\d+)\b", text, flags=re.IGNORECASE):
+        if match.group(1):
+            numbers.add(match.group(1))
+    for match in re.finditer(r"\b0*(\d+)\s*(권|권차|vol(?:ume)?|v\.?)(?!\w)", text, flags=re.IGNORECASE):
+        if match.group(1):
+            numbers.add(match.group(1))
+    return numbers
+
+
+def _token_bag(text: str) -> list[str]:
+    tokens = [token for token in re.split(r"\s+", text.lower().strip()) if token]
+    return sorted(tokens)
 
 
 def accept_spell_candidate(original: str, candidate: str) -> tuple[bool, str | None]:
@@ -109,10 +121,6 @@ def accept_spell_candidate(original: str, candidate: str) -> tuple[bool, str | N
     if ratio < min_ratio or ratio > max_ratio:
         return False, "length_ratio"
 
-    distance = _edit_distance(normalized_original, normalized_candidate)
-    if distance / max(len(normalized_original), 1) > _edit_distance_ratio_max():
-        return False, "edit_distance"
-
     numeric_tokens = _extract_numeric_tokens(original)
     if numeric_tokens:
         candidate_digits = re.sub(r"[^0-9]", "", candidate)
@@ -125,6 +133,13 @@ def accept_spell_candidate(original: str, candidate: str) -> tuple[bool, str | N
         candidate_volumes = _volume_numbers(candidate)
         if not original_volumes.issubset(candidate_volumes):
             return False, "volume_mismatch"
+
+    if _token_bag(original) == _token_bag(candidate):
+        return True, None
+
+    distance = _edit_distance(normalized_original, normalized_candidate)
+    if distance / max(len(normalized_original), 1) > _edit_distance_ratio_max():
+        return False, "edit_distance"
 
     return True, None
 
@@ -148,7 +163,12 @@ def _rule_spell(text: str) -> tuple[str, float, str]:
     return text, 0.0, "rule"
 
 
-async def _call_spell_http(text: str, trace_id: str, request_id: str, locale: str) -> tuple[str, float, str]:
+async def _call_spell_http(
+    text: str,
+    trace_id: str,
+    request_id: str,
+    locale: str,
+) -> tuple[str, float, str, dict[str, Any]]:
     payload = {
         "version": "v1",
         "trace_id": trace_id,
@@ -171,8 +191,11 @@ async def _call_spell_http(text: str, trace_id: str, request_id: str, locale: st
         or ""
     )
     confidence = float(data.get("confidence") or data.get("score") or 0.0)
+    latency_ms = data.get("latency_ms")
     method = str(data.get("method") or data.get("model") or "http")
-    return str(candidate), confidence, method
+    model = data.get("model")
+    meta = {"latency_ms": latency_ms, "model": model}
+    return str(candidate), confidence, method, meta
 
 
 def _default_payload(text: str) -> dict[str, Any]:
@@ -188,20 +211,46 @@ def _default_payload(text: str) -> dict[str, Any]:
 async def run_spell(text: str, trace_id: str, request_id: str, locale: str) -> tuple[dict[str, Any], dict[str, Any]]:
     provider = _provider()
     payload = _default_payload(text)
-    meta: dict[str, Any] = {"provider": provider, "error_code": None, "error_message": None, "reject_reason": None}
+    meta: dict[str, Any] = {
+        "provider": provider,
+        "error_code": None,
+        "error_message": None,
+        "reject_reason": None,
+        "candidates": None,
+        "candidate_mode": None,
+        "candidate_input": None,
+        "provider_latency_ms": None,
+        "provider_model": None,
+    }
 
     if provider in {"off", "none"}:
         return payload, meta
+
+    generator = get_generator()
+    candidates = generator.generate(text) if generator else []
+    if candidates:
+        meta["candidates"] = [candidate.to_debug() for candidate in candidates]
+        metrics.inc("qs_spell_candidate_total", value=len(candidates))
+    candidate_mode = os.getenv("QS_SPELL_CANDIDATE_MODE", "hint").lower()
+    meta["candidate_mode"] = candidate_mode
+    request_text = text
+    if candidate_mode in {"prefill", "best"} and candidates and provider in {"http", "rule", "mock"}:
+        request_text = candidates[0].text
+        meta["candidate_input"] = request_text
 
     metrics.inc("qs_spell_attempt_total", {"provider": provider})
 
     try:
         if provider == "mock":
-            candidate, confidence, method = _mock_spell(text)
+            candidate, confidence, method = _mock_spell(request_text)
         elif provider == "rule":
-            candidate, confidence, method = _rule_spell(text)
+            candidate, confidence, method = _rule_spell(request_text)
         else:
-            candidate, confidence, method = await _call_spell_http(text, trace_id, request_id, locale)
+            candidate, confidence, method, extra = await _call_spell_http(
+                request_text, trace_id, request_id, locale
+            )
+            meta["provider_latency_ms"] = extra.get("latency_ms")
+            meta["provider_model"] = extra.get("model")
     except httpx.TimeoutException as exc:
         meta["error_code"] = "timeout"
         meta["error_message"] = str(exc)

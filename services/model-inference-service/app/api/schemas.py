@@ -61,6 +61,25 @@ class EmbedResponse(BaseModel):
     vectors: List[List[float]]
 
 
+class SpellRequest(BaseModel):
+    version: str
+    trace_id: str
+    request_id: str
+    text: str = Field(min_length=1)
+    locale: Optional[str] = None
+    model: Optional[str] = None
+
+
+class SpellResponse(BaseModel):
+    version: str
+    trace_id: str
+    request_id: str
+    model: str
+    corrected: str
+    confidence: float
+    latency_ms: int = Field(default=0, alias="latency_ms")
+
+
 class ModelInfo(BaseModel):
     id: str
     task: str

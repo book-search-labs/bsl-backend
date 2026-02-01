@@ -1,0 +1,30 @@
+{"q_raw": "isbn 978-89-123-4567-8", "expected": "isbn 978-89-123-4567-8", "tags": ["isbn", "numeric"]}
+{"q_raw": "ISBN9788912345678", "expected": "ISBN9788912345678", "tags": ["isbn", "numeric"]}
+{"q_raw": "9788912345678 해리포터", "expected": "9788912345678 해리포터", "tags": ["isbn", "mixed"]}
+{"q_raw": "vol 2 해리포터", "expected": "vol 2 해리포터", "tags": ["volume", "mixed"]}
+{"q_raw": "해리포터 vol2", "expected": "해리포터 vol 2", "tags": ["volume", "spacing"]}
+{"q_raw": "해리포터 v.2", "expected": "해리포터 v.2", "tags": ["volume"]}
+{"q_raw": "원피스 3권 세트", "expected": "원피스 3권 세트", "tags": ["volume", "set"]}
+{"q_raw": "원피스3권세트", "expected": "원피스 3권 세트", "tags": ["volume", "spacing"]}
+{"q_raw": "ㄷㅐㅎㅏㄴㅁㅣㄴㄱㅜㄱ", "expected": "ㄷㅐㅎㅏㄴㅁㅣㄴㄱㅜㄱ", "tags": ["chosung"]}
+{"q_raw": "ㄱㅁㅅ", "expected": "ㄱㅁㅅ", "tags": ["chosung"]}
+{"q_raw": "AI@2024", "expected": "AI@2024", "tags": ["punctuation", "numeric"]}
+{"q_raw": "C# 8.0 in depth", "expected": "C# 8.0 in depth", "tags": ["mixed", "numeric"]}
+{"q_raw": "C++11", "expected": "C++ 11", "tags": ["mixed", "spacing", "numeric"]}
+{"q_raw": "python-101", "expected": "python-101", "tags": ["punctuation", "numeric"]}
+{"q_raw": "이펙티브 자바 3rd edition", "expected": "이펙티브 자바 3rd edition", "tags": ["mixed", "numeric"]}
+{"q_raw": "자바 3rd edtion", "expected": "자바 3rd edition", "tags": ["mixed", "numeric", "typo"]}
+{"q_raw": "테스트1234판", "expected": "테스트 1234판", "tags": ["numeric", "spacing"]}
+{"q_raw": "1Q84 1권", "expected": "1Q84 1권", "tags": ["numeric", "volume"]}
+{"q_raw": "1984(완전판)", "expected": "1984(완전판)", "tags": ["numeric", "punctuation"]}
+{"q_raw": "미움받을 용기 2", "expected": "미움받을 용기 2", "tags": ["numeric"]}
+{"q_raw": "해리 포터와    비밀의 방", "expected": "해리포터와 비밀의 방", "tags": ["spacing"]}
+{"q_raw": "나미야 잡화점의 기적 (양장)", "expected": "나미야 잡화점의 기적 (양장)", "tags": ["punctuation"]}
+{"q_raw": "정약 용-자서전", "expected": "정약용 자서전", "tags": ["spacing", "punctuation"]}
+{"q_raw": "스즈메의문단속", "expected": "스즈메의 문단속", "tags": ["spacing"]}
+{"q_raw": "셜록홈즈전집 10권", "expected": "셜록 홈즈 전집 10권", "tags": ["spacing", "volume"]}
+{"q_raw": "마법사 (1)", "expected": "마법사 (1)", "tags": ["numeric", "punctuation"]}
+{"q_raw": "토지1부2권", "expected": "토지 1부 2권", "tags": ["spacing", "volume"]}
+{"q_raw": "HP 1", "expected": "HP 1", "tags": ["en", "numeric"]}
+{"q_raw": "헤리포터", "expected": "해리포터", "tags": ["ko", "typo"]}
+{"q_raw": "민음사세계문학전집", "expected": "민음사 세계문학전집", "tags": ["spacing", "publisher"]}

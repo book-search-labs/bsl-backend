@@ -6,6 +6,7 @@ import unicodedata
 CONTROL_WHITESPACE = {"\t", "\n", "\r", "\v", "\f"}
 _RULES_LOADED = False
 _REPLACEMENTS: list[tuple[object, str, bool]] = []
+_JAMO_TO_COMPAT: dict[str, str] = {}
 
 try:  # optional ICU normalization
     from icu import Normalizer2  # type: ignore
@@ -14,7 +15,13 @@ try:  # optional ICU normalization
 except Exception:  # pragma: no cover - optional dependency
     _ICU_NFKC = None
 
-_PUNCTUATION_TO_SPACE = re.compile(r"[·•∙・ㆍ:_\\-–—−/|,;]+")
+for codepoint in range(0x3130, 0x318F + 1):
+    ch = chr(codepoint)
+    decomposed = unicodedata.normalize("NFKD", ch)
+    if len(decomposed) == 1 and decomposed != ch:
+        _JAMO_TO_COMPAT[decomposed] = ch
+
+_PUNCTUATION_TO_SPACE = re.compile(r"[·•∙・ㆍ:_/|,;–—−\\-]+")
 
 
 def normalize_query(raw: str) -> str:
@@ -50,6 +57,7 @@ def normalize_query_details(raw: str) -> dict:
     cleaned = _apply_replacements(cleaned)
     if cleaned != before:
         rules.append("replace_rules")
+    cleaned = cleaned.strip()
     if cleaned == "":
         raise ValueError("empty_query")
     return {"nfkc": nfkc, "norm": cleaned, "rules": rules}
@@ -74,10 +82,19 @@ def _strip_control_chars(value: str) -> str:
 def _nfkc(value: str) -> str:
     if _ICU_NFKC is not None:
         try:
-            return _ICU_NFKC.normalize(value)
+            normalized = _ICU_NFKC.normalize(value)
+            if _JAMO_TO_COMPAT:
+                normalized = "".join(_JAMO_TO_COMPAT.get(ch, ch) for ch in normalized)
+            return normalized
         except Exception:
-            return unicodedata.normalize("NFKC", value)
-    return unicodedata.normalize("NFKC", value)
+            normalized = unicodedata.normalize("NFKC", value)
+            if _JAMO_TO_COMPAT:
+                normalized = "".join(_JAMO_TO_COMPAT.get(ch, ch) for ch in normalized)
+            return normalized
+    normalized = unicodedata.normalize("NFKC", value)
+    if _JAMO_TO_COMPAT:
+        normalized = "".join(_JAMO_TO_COMPAT.get(ch, ch) for ch in normalized)
+    return normalized
 
 
 def _normalize_punctuation(value: str) -> str:
@@ -86,7 +103,7 @@ def _normalize_punctuation(value: str) -> str:
 
 def _normalize_volume_tokens(value: str) -> str:
     normalized = value
-    normalized = re.sub(r"\b제?\s*0*(\d+)\s*권\b", r"\1권", normalized)
+    normalized = re.sub(r"(?<!\S)제?\s*0*(\d+)\s*권\b", r"\1권", normalized)
     normalized = re.sub(r"\b0*(\d+)\s*(권|편|부|화)\b", lambda m: f"{int(m.group(1))}권", normalized)
 
     def _replace_vol(match: re.Match) -> str:

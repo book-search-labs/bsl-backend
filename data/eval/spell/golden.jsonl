@@ -1,0 +1,60 @@
+{"q_raw": "harry pottre", "expected": "harry potter", "tags": ["en", "typo"]}
+{"q_raw": "haarry potter", "expected": "harry potter", "tags": ["en", "typo"]}
+{"q_raw": "the hobbitt", "expected": "the hobbit", "tags": ["en", "typo"]}
+{"q_raw": "lord of the ring", "expected": "lord of the rings", "tags": ["en", "typo"]}
+{"q_raw": "game of throns", "expected": "game of thrones", "tags": ["en", "typo"]}
+{"q_raw": "hunger games 2", "expected": "hunger games 2", "tags": ["en", "numeric"]}
+{"q_raw": "c++ primer 5th edtion", "expected": "c++ primer 5th edition", "tags": ["en", "numeric", "typo"]}
+{"q_raw": "data strutures", "expected": "data structures", "tags": ["en", "typo"]}
+{"q_raw": "prgramming in go", "expected": "programming in go", "tags": ["en", "typo"]}
+{"q_raw": "clean cod", "expected": "clean code", "tags": ["en", "typo"]}
+{"q_raw": "test driven devlopment", "expected": "test driven development", "tags": ["en", "typo"]}
+{"q_raw": "harry potter 1", "expected": "harry potter 1", "tags": ["en", "numeric"]}
+{"q_raw": "harry  potter", "expected": "harry potter", "tags": ["en", "spacing"]}
+{"q_raw": "harrypotter", "expected": "harry potter", "tags": ["en", "spacing"]}
+{"q_raw": "the alchmist", "expected": "the alchemist", "tags": ["en", "typo"]}
+{"q_raw": "thinking fast and slo", "expected": "thinking fast and slow", "tags": ["en", "typo"]}
+{"q_raw": "atomic habbits", "expected": "atomic habits", "tags": ["en", "typo"]}
+{"q_raw": "deep lerning", "expected": "deep learning", "tags": ["en", "typo"]}
+{"q_raw": "the martan", "expected": "the martian", "tags": ["en", "typo"]}
+{"q_raw": "그림 형제 동화", "expected": "그림 형제 동화", "tags": ["ko"]}
+{"q_raw": "해리 포터", "expected": "해리포터", "tags": ["ko", "spacing"]}
+{"q_raw": "해리 포터 1 권", "expected": "해리포터 1권", "tags": ["ko", "spacing", "volume"]}
+{"q_raw": "해리포터 1 권", "expected": "해리포터 1권", "tags": ["ko", "spacing", "volume"]}
+{"q_raw": "원 피스 3권", "expected": "원피스 3권", "tags": ["ko", "spacing", "volume"]}
+{"q_raw": "원피스3권", "expected": "원피스 3권", "tags": ["ko", "spacing", "volume"]}
+{"q_raw": "정약 용 자서전 01권", "expected": "정약용 자서전 1권", "tags": ["ko", "spacing", "volume"]}
+{"q_raw": "나미야잡화점의기적", "expected": "나미야 잡화점의 기적", "tags": ["ko", "spacing"]}
+{"q_raw": "어린왕자", "expected": "어린 왕자", "tags": ["ko", "spacing"]}
+{"q_raw": "미움받을용기", "expected": "미움받을 용기", "tags": ["ko", "spacing"]}
+{"q_raw": "달러구트 꿈 백화점", "expected": "달러구트 꿈 백화점", "tags": ["ko"]}
+{"q_raw": "프로그래밍 수업", "expected": "프로그래밍 수업", "tags": ["ko"]}
+{"q_raw": "민 음사 세계문학전집", "expected": "민음사 세계문학전집", "tags": ["ko", "publisher", "spacing"]}
+{"q_raw": "백설 공주", "expected": "백설공주", "tags": ["ko", "spacing"]}
+{"q_raw": "삼국지 10권", "expected": "삼국지 10권", "tags": ["ko", "volume"]}
+{"q_raw": "삼국지10권", "expected": "삼국지 10권", "tags": ["ko", "spacing", "volume"]}
+{"q_raw": "토지 1부 2권", "expected": "토지 1부 2권", "tags": ["ko", "volume"]}
+{"q_raw": "토지 1부2권", "expected": "토지 1부 2권", "tags": ["ko", "spacing", "volume"]}
+{"q_raw": "오만과 편견", "expected": "오만과 편견", "tags": ["ko"]}
+{"q_raw": "노르웨이 숲", "expected": "노르웨이 숲", "tags": ["ko"]}
+{"q_raw": "총균쇠", "expected": "총 균 쇠", "tags": ["ko", "spacing"]}
+{"q_raw": "왜 세계의 절반은 굶주리는가", "expected": "왜 세계의 절반은 굶주리는가", "tags": ["ko"]}
+{"q_raw": "해리포터와 마법사의 돌", "expected": "해리포터와 마법사의 돌", "tags": ["ko"]}
+{"q_raw": "드래곤 라자", "expected": "드래곤라자", "tags": ["ko", "spacing"]}
+{"q_raw": "헝거게임", "expected": "헝거 게임", "tags": ["ko", "spacing", "typo"]}
+{"q_raw": "스즈메의 문단속", "expected": "스즈메의 문단속", "tags": ["ko"]}
+{"q_raw": "데미안", "expected": "데미안", "tags": ["ko"]}
+{"q_raw": "파우스트 1", "expected": "파우스트 1", "tags": ["ko", "numeric"]}
+{"q_raw": "모모", "expected": "모모", "tags": ["ko"]}
+{"q_raw": "1984 조지 오웰", "expected": "1984 조지 오웰", "tags": ["ko", "numeric"]}
+{"q_raw": "소년이 온다", "expected": "소년이 온다", "tags": ["ko"]}
+{"q_raw": "클린 코드", "expected": "클린 코드", "tags": ["ko"]}
+{"q_raw": "시골의사 이야기", "expected": "시골 의사 이야기", "tags": ["ko", "spacing"]}
+{"q_raw": "자기앞의 생", "expected": "자기 앞의 생", "tags": ["ko", "spacing"]}
+{"q_raw": "언어의 온도", "expected": "언어의 온도", "tags": ["ko"]}
+{"q_raw": "죽음에 관하여", "expected": "죽음에 관하여", "tags": ["ko"]}
+{"q_raw": "해리포터 2 권", "expected": "해리포터 2권", "tags": ["ko", "spacing", "volume"]}
+{"q_raw": "세이노의 가르침", "expected": "세이노의 가르침", "tags": ["ko"]}
+{"q_raw": "랭체인 핸드북", "expected": "랭체인 핸드북", "tags": ["ko", "en"]}
+{"q_raw": "open ai cookbook", "expected": "openai cookbook", "tags": ["en", "spacing"]}
+{"q_raw": "openai cookbook", "expected": "openai cookbook", "tags": ["en"]}

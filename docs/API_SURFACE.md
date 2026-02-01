@@ -604,6 +604,17 @@ If supported, the server should treat it as:
 - Contract: `contracts/mis-score-response.schema.json`
 - Example: `contracts/examples/mis-score-response.sample.json`
 
+## POST `/v1/spell`
+**Purpose**: Spell correction for a single query text.
+
+### Request
+- Contract: `contracts/mis-spell-request.schema.json`
+- Example: `contracts/examples/mis-spell-request.sample.json`
+
+### Response
+- Contract: `contracts/mis-spell-response.schema.json`
+- Example: `contracts/examples/mis-spell-response.sample.json`
+
 ## POST `/embed`
 **Purpose**: Generate embeddings for input texts (dev fallback).
 

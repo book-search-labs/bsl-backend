@@ -10,11 +10,14 @@ from app.api.schemas import (
     EmbedResponse,
     ModelsResponse,
     ReadyResponse,
+    SpellRequest,
+    SpellResponse,
     ScoreRequest,
     ScoreResponse,
 )
 from app.core.settings import SETTINGS
 from app.core.state import batcher, embed_manager, model_manager, registry, request_limiter
+from app.core import state as app_state
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -130,6 +133,54 @@ async def embed_v1(
     return await embed_handler(payload, trace_id, request_id)
 
 
+@router.post("/v1/spell", response_model=SpellResponse)
+async def spell_v1(
+    payload: SpellRequest,
+    trace_id: Optional[str] = Header(default=None, alias="x-trace-id"),
+    request_id: Optional[str] = Header(default=None, alias="x-request-id"),
+):
+    resolved_trace = payload.trace_id or trace_id or str(uuid.uuid4())
+    resolved_request = payload.request_id or request_id or str(uuid.uuid4())
+
+    if not SETTINGS.spell_enable:
+        raise HTTPException(status_code=503, detail={"code": "spell_disabled", "message": "spell disabled"})
+
+    text = (payload.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail={"code": "empty_text", "message": "text is empty"})
+    if len(text) > SETTINGS.spell_max_len:
+        raise HTTPException(
+            status_code=413,
+            detail={"code": "text_too_long", "message": "spell input too long"},
+        )
+
+    model_id = payload.model or SETTINGS.spell_model_id or app_state.spell_manager.model_id()
+    timeout_ms = SETTINGS.spell_timeout_ms or SETTINGS.timeout_ms
+
+    async with request_limiter.limit(timeout_ms):
+        started = asyncio.get_running_loop().time()
+        try:
+            result = await asyncio.wait_for(
+                asyncio.to_thread(spell_text, text, model_id),
+                timeout=timeout_ms / 1000.0,
+            )
+        except asyncio.TimeoutError as exc:
+            raise HTTPException(status_code=504, detail={"code": "timeout", "message": "spell timeout"}) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail={"code": "spell_error", "message": str(exc)}) from exc
+
+        took_ms = int((asyncio.get_running_loop().time() - started) * 1000)
+        return SpellResponse(
+            version="v1",
+            trace_id=resolved_trace,
+            request_id=resolved_request,
+            model=model_id,
+            corrected=result.corrected,
+            confidence=float(result.confidence or 0.0),
+            latency_ms=took_ms,
+        )
+
+
 @router.post("/embed", response_model=EmbedResponse)
 async def embed_legacy(
     payload: dict,
@@ -198,3 +249,11 @@ async def embed_handler(
 def embed_texts(texts: list, normalize: bool, model_id: str) -> list:
     model = embed_manager.get_model(model_id)
     return model.embed(texts, normalize)
+
+
+def spell_text(text: str, model_id: str):
+    model = app_state.spell_manager.get_model(model_id)
+    results = model.correct([text])
+    if not results:
+        raise RuntimeError("spell_empty_result")
+    return results[0]

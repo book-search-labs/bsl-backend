@@ -1,4 +1,5 @@
 import os
+import re
 from dataclasses import dataclass
 from typing import Iterable, List, Optional
 
@@ -44,6 +45,17 @@ class BaseModel:
 
 class BaseEmbedModel:
     def embed(self, texts: List[str], normalize: bool) -> List[List[float]]:
+        raise NotImplementedError
+
+
+@dataclass
+class SpellResult:
+    corrected: str
+    confidence: float
+
+
+class BaseSpellModel:
+    def correct(self, texts: List[str]) -> List[SpellResult]:
         raise NotImplementedError
 
 
@@ -302,3 +314,90 @@ class OnnxCrossEncoderModel(BaseModel):
             idx = max(0, min(idx, outputs.shape[1] - 1))
             return outputs[:, idx]
         return outputs.reshape(outputs.shape[0], -1)[:, 0]
+
+
+class ToySpellModel(BaseSpellModel):
+    def __init__(self) -> None:
+        self._mapping = {
+            "harry pottre": "harry potter",
+            "haarry potter": "harry potter",
+            "해리 포터": "해리포터",
+            "정약    용  자서전 01권": "정약용 자서전 1권",
+        }
+
+    def correct(self, texts: List[str]) -> List[SpellResult]:
+        results = []
+        for text in texts:
+            normalized = re.sub(r"\s+", " ", text or "").strip()
+            candidate = self._mapping.get((text or "").lower()) or self._mapping.get(normalized.lower())
+            corrected = candidate or normalized or text
+            confidence = 0.7 if corrected and corrected != text else 0.1
+            results.append(SpellResult(corrected=corrected, confidence=confidence))
+        return results
+
+
+class OnnxSpellModel(BaseSpellModel):
+    def __init__(
+        self,
+        model_path: str,
+        tokenizer_path: str,
+        max_len: int,
+        output_name: Optional[str],
+        decoder_start_id: int,
+        providers: Optional[Iterable[str]] = None,
+    ):
+        if onnxruntime is None or np is None:
+            raise RuntimeError("onnxruntime not available")
+        if Tokenizer is None:
+            raise RuntimeError("tokenizers not available")
+        if not os.path.exists(model_path):
+            raise RuntimeError(f"onnx spell model missing: {model_path}")
+        if not os.path.exists(tokenizer_path):
+            raise RuntimeError(f"tokenizer missing: {tokenizer_path}")
+        provider_list = list(providers) if providers else ["CPUExecutionProvider"]
+        self._session = onnxruntime.InferenceSession(model_path, providers=provider_list)
+        self._tokenizer = Tokenizer.from_file(tokenizer_path)
+        self._max_len = max(4, max_len)
+        self._output_name = output_name or self._session.get_outputs()[0].name
+        self._input_names = [item.name for item in self._session.get_inputs()]
+        self._decoder_start_id = decoder_start_id
+        self._tokenizer.enable_truncation(max_length=self._max_len)
+        self._tokenizer.enable_padding(length=self._max_len)
+
+    def correct(self, texts: List[str]) -> List[SpellResult]:
+        if not texts:
+            return []
+        encodings = self._tokenizer.encode_batch(texts)
+        inputs = {
+            "input_ids": np.asarray([enc.ids for enc in encodings], dtype=np.int64),
+            "attention_mask": np.asarray([enc.attention_mask for enc in encodings], dtype=np.int64),
+        }
+        if "token_type_ids" in self._input_names:
+            inputs["token_type_ids"] = np.asarray([enc.type_ids for enc in encodings], dtype=np.int64)
+        if "decoder_input_ids" in self._input_names:
+            batch = len(texts)
+            inputs["decoder_input_ids"] = np.full((batch, 1), self._decoder_start_id, dtype=np.int64)
+        if "decoder_attention_mask" in self._input_names and "decoder_input_ids" in inputs:
+            inputs["decoder_attention_mask"] = np.ones_like(inputs["decoder_input_ids"], dtype=np.int64)
+        payload = {name: inputs[name] for name in self._input_names if name in inputs}
+        outputs = self._session.run([self._output_name], payload)[0]
+        return self._decode_outputs(outputs, texts)
+
+    def _decode_outputs(self, outputs, texts: List[str]) -> List[SpellResult]:
+        if outputs is None:
+            return [SpellResult(corrected=text, confidence=0.0) for text in texts]
+        if outputs.ndim == 1:
+            outputs = outputs.reshape(1, -1)
+        if outputs.ndim == 2:
+            token_ids = outputs
+        else:
+            token_ids = np.argmax(outputs, axis=-1)
+        results = []
+        for idx, ids in enumerate(token_ids):
+            id_list = [int(val) for val in ids if int(val) >= 0]
+            corrected = self._tokenizer.decode(id_list, skip_special_tokens=True).strip()
+            if not corrected:
+                corrected = texts[idx]
+            confidence = 0.7 if corrected != texts[idx] else 0.2
+            results.append(SpellResult(corrected=corrected, confidence=confidence))
+        return results
