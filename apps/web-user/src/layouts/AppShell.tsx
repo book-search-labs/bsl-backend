@@ -21,12 +21,12 @@ const AUTOCOMPLETE_LISTBOX_ID = 'global-search-suggestions'
 const RECENT_STORAGE_KEY = 'bsl.recentSearches'
 const MAX_RECENT = 6
 const DEFAULT_RECOMMENDED = [
+  '베스트셀러',
+  '신간',
+  '에세이',
+  '자기계발',
   '해리포터',
-  '클린 코드',
-  '도메인 주도 설계',
-  '엘라스틱서치',
-  '판타지 소설',
-  '소프트웨어 아키텍처',
+  '어린이',
 ]
 
 type SelectableItem = {
@@ -81,6 +81,18 @@ export default function AppShell() {
   const shouldSuggestRef = useRef(false)
   const debouncedQuery = useDebouncedValue(query, AUTOCOMPLETE_DEBOUNCE_MS)
   const recommendedQueries = useMemo(() => resolveRecommendedQueries(), [])
+  const categoryLinks = useMemo(
+    () => [
+      { label: '베스트셀러', to: '/search?q=베스트셀러' },
+      { label: '신간', to: '/search?q=신간' },
+      { label: '문학', to: '/search?q=문학' },
+      { label: '자기계발', to: '/search?q=자기계발' },
+      { label: '경제/경영', to: '/search?q=경제 경영' },
+      { label: '어린이', to: '/search?q=어린이' },
+      { label: '외국어', to: '/search?q=외국어' },
+    ],
+    [],
+  )
 
   useEffect(() => {
     if (location.pathname.startsWith('/search')) {
@@ -164,7 +176,7 @@ export default function AppShell() {
         }
         setSuggestions([])
         setHasFetched(true)
-        setErrorMessage('Autocomplete is unavailable right now.')
+        setErrorMessage('추천 검색어 서비스를 사용할 수 없습니다.')
         setIsOpen(true)
       })
       .finally(() => {
@@ -230,6 +242,18 @@ export default function AppShell() {
       navigate(`/search?q=${encodeURIComponent(text)}`)
     },
     [addRecentQuery, navigate, query, suppressSuggestions],
+  )
+
+  const handleQuickSearch = useCallback(
+    (text: string) => {
+      const trimmed = text.trim()
+      if (!trimmed) return
+      setQuery(trimmed)
+      addRecentQuery(trimmed)
+      suppressSuggestions()
+      navigate(`/search?q=${encodeURIComponent(trimmed)}`)
+    },
+    [addRecentQuery, navigate, suppressSuggestions],
   )
 
   const hasQuery = debouncedQuery.trim().length >= MIN_QUERY_LENGTH
@@ -304,176 +328,236 @@ export default function AppShell() {
 
   const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
     `nav-link ${isActive ? 'active' : ''}`
+  const utilityLinkClassName = ({ isActive }: { isActive: boolean }) =>
+    `utility-link ${isActive ? 'active' : ''}`
 
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="container py-3 py-lg-4">
-          <div className="d-flex flex-column gap-3 gap-lg-4">
-            <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+        <div className="top-strip">
+          <div className="container">
+            <div className="top-strip-inner">
+              <div className="top-strip-left">
+                <span className="top-pill">무료배송</span>
+                <span className="top-note">2만원 이상 주문 시</span>
+              </div>
+              <div className="top-strip-links">
+                <span className="top-note">밤 11시 전 주문 시 내일 도착</span>
+                <span className="top-divider" />
+                <Link to="/about">고객센터</Link>
+                <span className="top-divider" />
+                <Link to="/orders">주문/배송</Link>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="main-header">
+          <div className="container">
+            <div className="brand-row">
               <Link to="/" className="brand d-inline-flex align-items-center gap-3">
                 <span className="brand-mark">BSL</span>
                 <span className="brand-text">
                   <span className="brand-title">BSL Books</span>
-                  <span className="brand-subtitle">Book Search Labs</span>
+                  <span className="brand-subtitle">책 쇼핑 · 검색 · 큐레이션</span>
                 </span>
               </Link>
-              <nav className="app-nav nav nav-pills gap-1">
-                <NavLink to="/" end className={navLinkClassName}>
-                  Home
-                </NavLink>
-                <NavLink to="/search" className={navLinkClassName}>
-                  Search
-                </NavLink>
-                <NavLink to="/cart" className={navLinkClassName}>
-                  Cart
-                </NavLink>
-                <NavLink to="/orders" className={navLinkClassName}>
-                  Orders
-                </NavLink>
-                <NavLink to="/chat" className={navLinkClassName}>
-                  Chat
-                </NavLink>
-                <NavLink to="/about" className={navLinkClassName}>
-                  About
-                </NavLink>
-              </nav>
-            </div>
-            <form
-              ref={formRef}
-              className="search-form d-flex flex-column flex-lg-row gap-2"
-              onSubmit={handleSubmit}
-            >
-              <label className="visually-hidden" htmlFor="global-search">
-                Search books
-              </label>
-              <div className="typeahead-wrapper">
-                <input
-                  id="global-search"
-                  className="form-control form-control-lg"
-                  type="search"
-                  placeholder="Search titles, authors, ISBN, or series"
-                  value={query}
-                  onChange={handleInputChange}
-                  onKeyDown={handleKeyDown}
-                  onFocus={() => {
-                    if (listItems.length > 0 || showEmpty || errorMessage) {
-                      shouldSuggestRef.current = true
-                      setIsOpen(true)
-                    }
-                  }}
-                  aria-autocomplete="list"
-                  aria-controls={AUTOCOMPLETE_LISTBOX_ID}
-                  aria-expanded={showDropdown}
-                  aria-activedescendant={activeDescendant}
-                />
-                {showDropdown ? (
-                  <div
-                    id={AUTOCOMPLETE_LISTBOX_ID}
-                    className="search-suggestions list-group"
-                    role="listbox"
-                  >
-                    {isLoading ? (
-                      <div className="list-group-item d-flex align-items-center gap-2">
-                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
-                        <span>Loading suggestions...</span>
-                      </div>
-                    ) : null}
-                    {!isLoading && errorMessage ? (
-                      <div className="list-group-item text-muted small">{errorMessage}</div>
-                    ) : null}
-                    {!isLoading && !errorMessage && listItems.length > 0 ? (
-                      <div className="search-suggestion-group">
-                        {!hasQuery && recentItems.length > 0 ? (
-                          <>
-                            <div className="search-suggestion-header">Recent searches</div>
-                            {recentItems.map((item, index) => {
-                              const globalIndex = index
-                              const isActive = globalIndex === activeIndex
-                              const itemId = `global-search-option-${globalIndex}`
-                              return (
-                                <button
-                                  key={`recent-${item.text}-${index}`}
-                                  id={itemId}
-                                  type="button"
-                                  role="option"
-                                  aria-selected={isActive}
-                                  className={`list-group-item list-group-item-action search-suggestion${
-                                    isActive ? ' active' : ''
-                                  }`}
-                                  onClick={() => handleSelectSuggestion(item)}
-                                >
-                                  <span className="search-suggestion-text">{item.text}</span>
-                                  <span className="search-suggestion-meta">Recent</span>
-                                </button>
-                              )
-                            })}
-                          </>
+              <div className="search-shell">
+                <form ref={formRef} className="search-form search-form--header" onSubmit={handleSubmit}>
+                  <label className="visually-hidden" htmlFor="global-search">
+                    Search books
+                  </label>
+                  <div className="typeahead-wrapper">
+                    <input
+                      id="global-search"
+                      className="form-control form-control-lg"
+                      type="search"
+                      placeholder="도서, 저자, 시리즈, ISBN을 검색하세요"
+                      value={query}
+                      onChange={handleInputChange}
+                      onKeyDown={handleKeyDown}
+                      onFocus={() => {
+                        if (listItems.length > 0 || showEmpty || errorMessage) {
+                          shouldSuggestRef.current = true
+                          setIsOpen(true)
+                        }
+                      }}
+                      aria-autocomplete="list"
+                      aria-controls={AUTOCOMPLETE_LISTBOX_ID}
+                      aria-expanded={showDropdown}
+                      aria-activedescendant={activeDescendant}
+                    />
+                    {showDropdown ? (
+                      <div
+                        id={AUTOCOMPLETE_LISTBOX_ID}
+                        className="search-suggestions list-group"
+                        role="listbox"
+                      >
+                        {isLoading ? (
+                          <div className="list-group-item d-flex align-items-center gap-2">
+                            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                            <span>추천 검색어를 불러오는 중...</span>
+                          </div>
                         ) : null}
-                        {!hasQuery && recommendedItems.length > 0 ? (
-                          <>
-                            <div className="search-suggestion-header">Recommended</div>
-                            {recommendedItems.map((item, index) => {
-                              const offset = recentItems.length
-                              const globalIndex = offset + index
-                              const isActive = globalIndex === activeIndex
-                              const itemId = `global-search-option-${globalIndex}`
-                              return (
-                                <button
-                                  key={`recommended-${item.text}-${index}`}
-                                  id={itemId}
-                                  type="button"
-                                  role="option"
-                                  aria-selected={isActive}
-                                  className={`list-group-item list-group-item-action search-suggestion${
-                                    isActive ? ' active' : ''
-                                  }`}
-                                  onClick={() => handleSelectSuggestion(item)}
-                                >
-                                  <span className="search-suggestion-text">{item.text}</span>
-                                  <span className="search-suggestion-meta">Recommended</span>
-                                </button>
-                              )
-                            })}
-                          </>
+                        {!isLoading && errorMessage ? (
+                          <div className="list-group-item text-muted small">{errorMessage}</div>
                         ) : null}
-                        {hasQuery
-                          ? suggestionItems.map((item, index) => {
-                              const isActive = index === activeIndex
-                              const itemId = `global-search-option-${index}`
+                        {!isLoading && !errorMessage && listItems.length > 0 ? (
+                          <div className="search-suggestion-group">
+                            {!hasQuery && recentItems.length > 0 ? (
+                              <>
+                                <div className="search-suggestion-header">최근 검색어</div>
+                                {recentItems.map((item, index) => {
+                                  const globalIndex = index
+                                  const isActive = globalIndex === activeIndex
+                                  const itemId = `global-search-option-${globalIndex}`
+                                  return (
+                                    <button
+                                      key={`recent-${item.text}-${index}`}
+                                      id={itemId}
+                                      type="button"
+                                      role="option"
+                                      aria-selected={isActive}
+                                      className={`list-group-item list-group-item-action search-suggestion${
+                                        isActive ? ' active' : ''
+                                      }`}
+                                      onClick={() => handleSelectSuggestion(item)}
+                                    >
+                                      <span className="search-suggestion-text">{item.text}</span>
+                                      <span className="search-suggestion-meta">최근</span>
+                                    </button>
+                                  )
+                                })}
+                              </>
+                            ) : null}
+                            {!hasQuery && recommendedItems.length > 0 ? (
+                              <>
+                                <div className="search-suggestion-header">추천 검색어</div>
+                                {recommendedItems.map((item, index) => {
+                                  const offset = recentItems.length
+                                  const globalIndex = offset + index
+                                  const isActive = globalIndex === activeIndex
+                                  const itemId = `global-search-option-${globalIndex}`
+                                  return (
+                                    <button
+                                      key={`recommended-${item.text}-${index}`}
+                                      id={itemId}
+                                      type="button"
+                                      role="option"
+                                      aria-selected={isActive}
+                                      className={`list-group-item list-group-item-action search-suggestion${
+                                        isActive ? ' active' : ''
+                                      }`}
+                                      onClick={() => handleSelectSuggestion(item)}
+                                    >
+                                      <span className="search-suggestion-text">{item.text}</span>
+                                      <span className="search-suggestion-meta">추천</span>
+                                    </button>
+                                  )
+                                })}
+                              </>
+                            ) : null}
+                            {hasQuery
+                              ? suggestionItems.map((item, index) => {
+                                  const isActive = index === activeIndex
+                                  const itemId = `global-search-option-${index}`
 
-                              return (
-                                <button
-                                  key={`${item.text}-${index}`}
-                                  id={itemId}
-                                  type="button"
-                                  role="option"
-                                  aria-selected={isActive}
-                                  className={`list-group-item list-group-item-action search-suggestion${
-                                    isActive ? ' active' : ''
-                                  }`}
-                                  onClick={() => handleSelectSuggestion(item)}
-                                >
-                                  <span className="search-suggestion-text">{item.text}</span>
-                                  {item.suggestion?.type ? (
-                                    <span className="search-suggestion-meta">{item.suggestion.type}</span>
-                                  ) : null}
-                                </button>
-                              )
-                            })
-                          : null}
+                                  return (
+                                    <button
+                                      key={`${item.text}-${index}`}
+                                      id={itemId}
+                                      type="button"
+                                      role="option"
+                                      aria-selected={isActive}
+                                      className={`list-group-item list-group-item-action search-suggestion${
+                                        isActive ? ' active' : ''
+                                      }`}
+                                      onClick={() => handleSelectSuggestion(item)}
+                                    >
+                                      <span className="search-suggestion-text">{item.text}</span>
+                                      {item.suggestion?.type ? (
+                                        <span className="search-suggestion-meta">{item.suggestion.type}</span>
+                                      ) : null}
+                                    </button>
+                                  )
+                                })
+                              : null}
+                          </div>
+                        ) : null}
+                        {showEmpty ? (
+                          <div className="list-group-item text-muted small">추천 결과가 없습니다.</div>
+                        ) : null}
                       </div>
-                    ) : null}
-                    {showEmpty ? (
-                      <div className="list-group-item text-muted small">No suggestions yet.</div>
                     ) : null}
                   </div>
-                ) : null}
+                  <button className="btn btn-primary btn-lg search-button" type="submit">
+                    검색
+                  </button>
+                </form>
+                <div className="search-meta">
+                  <span className="search-meta-label">추천 검색어</span>
+                  <div className="search-meta-chips">
+                    {recommendedQueries.slice(0, 4).map((text) => (
+                      <button
+                        key={`quick-${text}`}
+                        type="button"
+                        className="search-chip"
+                        onClick={() => handleQuickSearch(text)}
+                      >
+                        {text}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <button className="btn btn-primary btn-lg" type="submit">
-                Search
+              <div className="utility-links">
+                <NavLink to="/about" className={utilityLinkClassName}>
+                  <span className="utility-icon">HELP</span>
+                  고객센터
+                </NavLink>
+                <NavLink to="/cart" className={utilityLinkClassName}>
+                  <span className="utility-icon">CART</span>
+                  장바구니
+                </NavLink>
+                <NavLink to="/orders" className={utilityLinkClassName}>
+                  <span className="utility-icon">MY</span>
+                  주문/배송
+                </NavLink>
+                <NavLink to="/chat" className={utilityLinkClassName}>
+                  <span className="utility-icon">BOT</span>
+                  책봇
+                </NavLink>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="nav-strip">
+          <div className="container">
+            <div className="nav-strip-inner">
+              <button type="button" className="category-button">
+                전체 카테고리
               </button>
-            </form>
+              <nav className="category-links">
+                {categoryLinks.map((item) => (
+                  <Link key={item.label} className="category-link" to={item.to}>
+                    {item.label}
+                  </Link>
+                ))}
+                <NavLink to="/search" className={navLinkClassName}>
+                  통합검색
+                </NavLink>
+              </nav>
+              <div className="nav-extra">
+                <Link to="/search?q=할인" className="nav-extra-link">
+                  오늘의 혜택
+                </Link>
+                <Link to="/search?q=예약" className="nav-extra-link">
+                  예약판매
+                </Link>
+                <Link to="/about" className="nav-extra-link">
+                  이용안내
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </header>

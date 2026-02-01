@@ -1,28 +1,33 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Code+Pro:wght@400;600&family=Source+Sans+3:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap');
 
 :root {
-  font-family: 'Source Sans 3', sans-serif;
-  line-height: 1.5;
+  font-family: var(--font-sans);
+  line-height: 1.6;
   font-weight: 400;
-  color: #1f1a16;
-  background-color: #f7f1e7;
+  color: var(--ink);
+  background-color: var(--paper);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --font-serif: 'Cormorant Garamond', serif;
-  --font-sans: 'Source Sans 3', sans-serif;
-  --font-mono: 'Source Code Pro', ui-monospace, 'SFMono-Regular', 'Cascadia Mono', monospace;
-  --ink: #1f1a16;
-  --ink-muted: #62564c;
-  --paper: #f7f1e7;
-  --paper-deep: #efe3d2;
-  --accent: #b44d2a;
-  --accent-strong: #8f3c1f;
-  --sage: #2f6f6d;
-  --border: rgba(31, 26, 22, 0.15);
-  --shadow: 0 28px 70px rgba(31, 26, 22, 0.18);
+  --font-display: 'Noto Serif KR', serif;
+  --font-sans: 'Noto Sans KR', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
+  --ink: #1b2430;
+  --ink-muted: #5a6470;
+  --paper: #f7f3ee;
+  --paper-deep: #efe7db;
+  --brand: #0b4f6c;
+  --brand-strong: #07384d;
+  --brand-soft: #dceaf1;
+  --accent: #ff8a34;
+  --accent-strong: #e3701c;
+  --accent-soft: #ffeddc;
+  --gold: #f5c06a;
+  --border: rgba(27, 36, 48, 0.14);
+  --shadow: 0 24px 60px rgba(18, 28, 38, 0.16);
+  --shadow-soft: 0 12px 30px rgba(18, 28, 38, 0.1);
   --bs-primary: var(--accent);
-  --bs-primary-rgb: 180, 77, 42;
+  --bs-primary-rgb: 255, 138, 52;
   --bs-body-font-family: var(--font-sans);
   --bs-body-color: var(--ink);
 }
@@ -38,26 +43,26 @@ body {
   color: var(--ink);
   background-color: var(--paper);
   background-image:
-    radial-gradient(circle at 15% 12%, rgba(180, 77, 42, 0.16), transparent 45%),
-    radial-gradient(circle at 85% 18%, rgba(47, 111, 109, 0.14), transparent 42%),
-    linear-gradient(140deg, rgba(255, 255, 255, 0.7), rgba(243, 234, 219, 0.85));
+    radial-gradient(circle at 12% 18%, rgba(255, 138, 52, 0.16), transparent 48%),
+    radial-gradient(circle at 86% 8%, rgba(11, 79, 108, 0.18), transparent 45%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(239, 231, 219, 0.92));
   background-attachment: fixed;
 }
 
 a {
-  color: var(--accent);
+  color: var(--brand);
   text-decoration: none;
 }
 
 a:hover {
-  color: var(--accent-strong);
+  color: var(--brand-strong);
 }
 
 h1,
 h2,
 h3,
 h4 {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   color: var(--ink);
   letter-spacing: 0.01em;
 }

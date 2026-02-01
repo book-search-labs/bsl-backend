@@ -9,7 +9,9 @@ import type { BookHit, SearchResponse } from '../types/search'
 const DEFAULT_SIZE = 10
 const SIZE_MIN = 1
 const SIZE_MAX = 50
-const EXAMPLE_QUERIES = ['harry potter', 'sci-fi classics', 'korean fiction', 'history essays']
+const EXAMPLE_QUERIES = ['베스트셀러', '에세이', '자기계발', '한강', '어린이 그림책']
+const REFINE_TAGS = ['세트', '양장본', '에디션', '개정판', '작가 인터뷰']
+const CATEGORY_QUICK = ['문학', '경제 경영', '자기계발', '어린이', '외국어', '취미']
 
 type ViewMode = 'card' | 'compact'
 
@@ -249,6 +251,12 @@ export default function SearchPage() {
     updateParams({ q: value, size: sizeValue, vector: vectorEnabled })
   }
 
+  const handleRefine = (value: string) => {
+    const base = trimmedQuery || searchInput.trim()
+    const next = base ? `${base} ${value}` : value
+    updateParams({ q: next, size: sizeValue, vector: vectorEnabled })
+  }
+
   const handleSelectHit = useCallback(
     (hit: BookHit, position: number) => {
       if (!hit.doc_id) return
@@ -300,34 +308,41 @@ export default function SearchPage() {
   const traceId = response?.trace_id ?? '-'
   const requestId = response?.request_id ?? '-'
 
-  const viewLabel = viewMode === 'card' ? 'Card view' : 'Compact view'
+  const viewLabel = viewMode === 'card' ? 'Grid view' : 'List view'
+  const totalCount = response?.total ?? hits.length
 
   return (
     <section className="page-section">
-      <div className="container py-5">
-        <div className="search-panel">
+      <div className="container py-5 search-page">
+        <div className="search-hero">
           <div>
-            <h1 className="page-title">Search</h1>
-            <p className="page-lead">Find books, editions, and authors across the catalog.</p>
+            <h1 className="page-title">도서 검색</h1>
+            <p className="page-lead">검색 결과와 추천을 한 번에 확인하세요.</p>
           </div>
-          <form className="search-form-inline" onSubmit={handleSubmit}>
-            <input
-              className="form-control form-control-lg search-input"
-              type="search"
-              placeholder="Search titles, authors, or series"
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-            />
-            <button className="btn btn-primary btn-lg" type="submit">
-              Search
-            </button>
-          </form>
+          <div className="search-hero-actions">
+            <Link to="/chat" className="btn btn-outline-secondary btn-sm">
+              책봇에 문의
+            </Link>
+          </div>
         </div>
+
+        <form className="search-form-inline search-form--page" onSubmit={handleSubmit}>
+          <input
+            className="form-control form-control-lg search-input"
+            type="search"
+            placeholder="도서, 저자, 키워드를 입력하세요"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+          />
+          <button className="btn btn-primary btn-lg" type="submit">
+            검색
+          </button>
+        </form>
 
         {!trimmedQuery ? (
           <div className="placeholder-card empty-state mt-4">
-            <div className="empty-title">Start with a query</div>
-            <div className="empty-copy">Try one of these suggestions.</div>
+            <div className="empty-title">검색어를 입력해주세요</div>
+            <div className="empty-copy">아래 추천 검색어로 시작해보세요.</div>
             <div className="example-list">
               {EXAMPLE_QUERIES.map((example) => (
                 <button
@@ -342,255 +357,316 @@ export default function SearchPage() {
             </div>
           </div>
         ) : (
-          <div className="results-shell">
-            <div className="results-header">
-              <div>
-                <h2 className="section-title">Results for "{trimmedQuery}"</h2>
-                <div className="text-muted small">Size {sizeValue} | Vector {String(vectorEnabled)}</div>
-              </div>
-              <div className="results-toolbar">
-                <div className="form-check form-switch m-0">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    role="switch"
-                    id="vectorToggle"
-                    checked={vectorEnabled}
-                    onChange={handleVectorToggle}
-                    disabled={loading}
-                  />
-                  <label className="form-check-label" htmlFor="vectorToggle">
-                    Vector
-                  </label>
-                </div>
-                <div className="form-check form-switch m-0">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    role="switch"
-                    id="debugToggle"
-                    checked={debugEnabled}
-                    onChange={(event) => setDebugEnabled(event.currentTarget.checked)}
-                    disabled={loading}
-                  />
-                  <label className="form-check-label" htmlFor="debugToggle">
-                    Debug
-                  </label>
-                </div>
-                <div className="size-control">
-                  <label htmlFor="sizeInput" className="small text-uppercase">
-                    Size
-                  </label>
-                  <input
-                    id="sizeInput"
-                    className="form-control form-control-sm"
-                    type="number"
-                    min={SIZE_MIN}
-                    max={SIZE_MAX}
-                    value={sizeValue}
-                    onChange={handleSizeChange}
-                    disabled={loading}
-                  />
-                </div>
-                <div className="btn-group view-toggle" role="group" aria-label="Result view">
-                  <button
-                    type="button"
-                    className={`btn btn-outline-dark btn-sm ${viewMode === 'card' ? 'active' : ''}`}
-                    onClick={() => setViewMode('card')}
-                  >
-                    Cards
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn btn-outline-dark btn-sm ${viewMode === 'compact' ? 'active' : ''}`}
-                    onClick={() => setViewMode('compact')}
-                  >
-                    Compact
-                  </button>
-                </div>
-                <button
-                  className="btn btn-outline-secondary btn-sm"
-                  type="button"
-                  onClick={executeSearch}
-                  disabled={loading}
-                >
-                  {loading ? 'Running...' : 'Run'}
-                </button>
-              </div>
-            </div>
-
-            {debugEnabled && response ? (
-              <div className="placeholder-card debug-summary">
-                <div className="debug-title">Debug summary</div>
-                <div className="debug-grid">
-                  <div>
-                    <div className="debug-label">strategy</div>
-                    <div className="debug-value">{response.strategy ?? '-'}</div>
-                  </div>
-                  <div>
-                    <div className="debug-label">took_ms</div>
-                    <div className="debug-value">{response.took_ms ?? '-'}</div>
-                  </div>
-                  <div>
-                    <div className="debug-label">trace_id</div>
-                    <div className="debug-value">{traceId}</div>
-                  </div>
-                  <div>
-                    <div className="debug-label">request_id</div>
-                    <div className="debug-value">{requestId}</div>
-                  </div>
-                  <div>
-                    <div className="debug-label">ranking_applied</div>
-                    <div className="debug-value">{String(response.ranking_applied ?? '-')}</div>
-                  </div>
-                  <div>
-                    <div className="debug-label">debug.stages</div>
-                    <div className="debug-value">
-                      {debugSummary?.stages
-                        ? `lexical=${String(debugSummary.stages.lexical)} | vector=${String(
-                            debugSummary.stages.vector,
-                          )} | rerank=${String(debugSummary.stages.rerank)}`
-                        : '-'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="debug-label">debug.applied_fallback_id</div>
-                    <div className="debug-value">{debugSummary?.applied_fallback_id ?? '-'}</div>
-                  </div>
-                  <div>
-                    <div className="debug-label">debug.query_text_source_used</div>
-                    <div className="debug-value">{debugSummary?.query_text_source_used ?? '-'}</div>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            {error ? (
-              <div className="alert alert-danger error-banner" role="alert">
-                <div className="d-flex flex-column gap-2">
-                  <div>
-                    <div className="fw-semibold">Search request failed</div>
-                    <div className="small">
-                      {error.stage ? `${error.stage} | ` : ''}
-                      {error.statusLine}
-                      {error.code ? ` | ${error.code}` : ''}
-                    </div>
-                    {error.detail ? <pre className="error-body">{error.detail}</pre> : null}
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn-outline-light btn-sm align-self-start"
-                    onClick={executeSearch}
-                    disabled={loading}
-                  >
-                    Retry
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            {loading ? (
-              <div className="placeholder-card loading-state">
-                <div className="spinner-border text-primary" role="status" aria-label="Loading">
-                  <span className="visually-hidden">Loading</span>
-                </div>
-                <div>Searching for matching books...</div>
-              </div>
-            ) : null}
-
-            {!loading && !error && hasSearched && hits.length === 0 ? (
-              <div className="placeholder-card empty-state">
-                <div className="empty-title">No results found</div>
-                <div className="empty-copy">
-                  Try simplifying the query or check spelling for better matches.
-                </div>
-                <div className="example-list">
-                  {EXAMPLE_QUERIES.map((example) => (
+          <div className="search-layout">
+            <aside className="search-sidebar">
+              <div className="filter-card">
+                <div className="filter-title">카테고리</div>
+                <div className="filter-links">
+                  {CATEGORY_QUICK.map((category) => (
                     <button
-                      key={example}
+                      key={category}
                       type="button"
-                      className="btn btn-outline-secondary btn-sm"
-                      onClick={() => handleExampleClick(example)}
+                      className="filter-chip"
+                      onClick={() => handleExampleClick(category)}
                     >
-                      {example}
+                      {category}
                     </button>
                   ))}
                 </div>
               </div>
-            ) : null}
-
-            {!loading && !error && hits.length > 0 ? (
-              <div className={`results-list ${viewMode}-view`} aria-label={viewLabel}>
-                {hits.map((hit, index) => {
-                  const source = hit.source ?? {}
-                  const title = source.title_ko ?? 'Untitled'
-                  const authors = Array.isArray(source.authors) ? source.authors.join(', ') : '-'
-                  const publisher = source.publisher_name ?? '-'
-                  const issuedYear = source.issued_year ?? '-'
-                  const volume = source.volume ?? '-'
-                  const editions = Array.isArray(source.edition_labels)
-                    ? source.edition_labels.join(', ')
-                    : '-'
-                  const score = typeof hit.score === 'number' ? hit.score : null
-                  const docId = hit.doc_id
-                  const docLink = docId ? `/book/${encodeURIComponent(docId)}?from=search` : null
-                  const debug = getHitDebug(hit)
-                  const debugEntries = Object.entries(debug).filter(([, value]) => value !== undefined)
-
-                  return (
-                    <div
-                      key={docId ?? `${title}-${index}`}
-                      className={viewMode === 'card' ? 'result-card' : 'result-row'}
-                    >
-                      <div className="result-header">
-                        {docLink ? (
-                          <Link
-                            className="result-title"
-                            to={docLink}
-                            onClick={() => handleSelectHit(hit, index + 1)}
-                          >
-                            {title}
-                          </Link>
-                        ) : (
-                          <span className="result-title">{title}</span>
-                        )}
-                        <div className="result-badges">
-                          <span className="score-badge">Score {score?.toFixed(3) ?? '-'}</span>
-                          <span className="result-rank">#{hit.rank ?? index + 1}</span>
-                        </div>
-                      </div>
-                      <div className="result-meta">
-                        {authors} | {publisher}
-                      </div>
-                      <div className="result-meta">
-                        Year {issuedYear} | Volume {volume}
-                      </div>
-                      <div className="result-meta">Editions: {editions}</div>
-                      {debugEnabled && debugEntries.length > 0 ? (
-                        <div className="result-debug">
-                          {debugEntries.map(([key, value]) => (
-                            <span key={key}>
-                              {key}: {String(value)}
-                            </span>
-                          ))}
-                        </div>
-                      ) : null}
-                      {docLink ? (
-                        <div className="result-actions">
-                          <Link
-                            to={docLink}
-                            className="btn btn-outline-dark btn-sm"
-                            onClick={() => handleSelectHit(hit, index + 1)}
-                          >
-                            View detail
-                          </Link>
-                        </div>
-                      ) : null}
-                    </div>
-                  )
-                })}
+              <div className="filter-card">
+                <div className="filter-title">검색 확장</div>
+                <p className="filter-note">현재 검색어에 아래 키워드를 더해보세요.</p>
+                <div className="filter-links">
+                  {REFINE_TAGS.map((tag) => (
+                    <button key={tag} type="button" className="filter-chip" onClick={() => handleRefine(tag)}>
+                      {tag}
+                    </button>
+                  ))}
+                </div>
               </div>
-            ) : null}
+              <div className="filter-card">
+                <div className="filter-title">혜택 안내</div>
+                <ul className="filter-list">
+                  <li>2만원 이상 주문 시 무료배송</li>
+                  <li>밤 11시 이전 주문 시 내일 도착</li>
+                  <li>7일 무료 반품</li>
+                </ul>
+              </div>
+            </aside>
+
+            <div className="search-main">
+              <div className="results-header">
+                <div>
+                  <h2 className="section-title">"{trimmedQuery}" 검색 결과</h2>
+                  <div className="text-muted small">
+                    {totalCount.toLocaleString()}개 결과 · 정확도순
+                  </div>
+                </div>
+                <div className="results-toolbar">
+                  <div className="btn-group view-toggle" role="group" aria-label="Result view">
+                    <button
+                      type="button"
+                      className={`btn btn-outline-dark btn-sm ${viewMode === 'card' ? 'active' : ''}`}
+                      onClick={() => setViewMode('card')}
+                    >
+                      그리드
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-outline-dark btn-sm ${viewMode === 'compact' ? 'active' : ''}`}
+                      onClick={() => setViewMode('compact')}
+                    >
+                      리스트
+                    </button>
+                  </div>
+                  <button
+                    className="btn btn-outline-secondary btn-sm"
+                    type="button"
+                    onClick={executeSearch}
+                    disabled={loading}
+                  >
+                    {loading ? '검색 중...' : '다시 검색'}
+                  </button>
+                </div>
+              </div>
+
+              <details className="advanced-panel">
+                <summary>고급 검색 옵션</summary>
+                <div className="advanced-content">
+                  <div className="form-check form-switch m-0">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      role="switch"
+                      id="vectorToggle"
+                      checked={vectorEnabled}
+                      onChange={handleVectorToggle}
+                      disabled={loading}
+                    />
+                    <label className="form-check-label" htmlFor="vectorToggle">
+                      Vector 검색
+                    </label>
+                  </div>
+                  <div className="form-check form-switch m-0">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      role="switch"
+                      id="debugToggle"
+                      checked={debugEnabled}
+                      onChange={(event) => setDebugEnabled(event.currentTarget.checked)}
+                      disabled={loading}
+                    />
+                    <label className="form-check-label" htmlFor="debugToggle">
+                      Debug
+                    </label>
+                  </div>
+                  <div className="size-control">
+                    <label htmlFor="sizeInput" className="small text-uppercase">
+                      Size
+                    </label>
+                    <input
+                      id="sizeInput"
+                      className="form-control form-control-sm"
+                      type="number"
+                      min={SIZE_MIN}
+                      max={SIZE_MAX}
+                      value={sizeValue}
+                      onChange={handleSizeChange}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+              </details>
+
+              {debugEnabled && response ? (
+                <div className="placeholder-card debug-summary">
+                  <div className="debug-title">Debug summary</div>
+                  <div className="debug-grid">
+                    <div>
+                      <div className="debug-label">strategy</div>
+                      <div className="debug-value">{response.strategy ?? '-'}</div>
+                    </div>
+                    <div>
+                      <div className="debug-label">took_ms</div>
+                      <div className="debug-value">{response.took_ms ?? '-'}</div>
+                    </div>
+                    <div>
+                      <div className="debug-label">trace_id</div>
+                      <div className="debug-value">{traceId}</div>
+                    </div>
+                    <div>
+                      <div className="debug-label">request_id</div>
+                      <div className="debug-value">{requestId}</div>
+                    </div>
+                    <div>
+                      <div className="debug-label">ranking_applied</div>
+                      <div className="debug-value">{String(response.ranking_applied ?? '-')}</div>
+                    </div>
+                    <div>
+                      <div className="debug-label">debug.stages</div>
+                      <div className="debug-value">
+                        {debugSummary?.stages
+                          ? `lexical=${String(debugSummary.stages.lexical)} | vector=${String(
+                              debugSummary.stages.vector,
+                            )} | rerank=${String(debugSummary.stages.rerank)}`
+                          : '-'}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="debug-label">debug.applied_fallback_id</div>
+                      <div className="debug-value">{debugSummary?.applied_fallback_id ?? '-'}</div>
+                    </div>
+                    <div>
+                      <div className="debug-label">debug.query_text_source_used</div>
+                      <div className="debug-value">{debugSummary?.query_text_source_used ?? '-'}</div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {error ? (
+                <div className="alert alert-danger error-banner" role="alert">
+                  <div className="d-flex flex-column gap-2">
+                    <div>
+                      <div className="fw-semibold">검색 요청에 실패했습니다</div>
+                      <div className="small">
+                        {error.stage ? `${error.stage} | ` : ''}
+                        {error.statusLine}
+                        {error.code ? ` | ${error.code}` : ''}
+                      </div>
+                      {error.detail ? <pre className="error-body">{error.detail}</pre> : null}
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-outline-light btn-sm align-self-start"
+                      onClick={executeSearch}
+                      disabled={loading}
+                    >
+                      다시 시도
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {loading ? (
+                <div className="placeholder-card loading-state">
+                  <div className="spinner-border text-primary" role="status" aria-label="Loading">
+                    <span className="visually-hidden">Loading</span>
+                  </div>
+                  <div>도서를 찾는 중...</div>
+                </div>
+              ) : null}
+
+              {!loading && !error && hasSearched && hits.length === 0 ? (
+                <div className="placeholder-card empty-state">
+                  <div className="empty-title">검색 결과가 없습니다</div>
+                  <div className="empty-copy">다른 키워드로 다시 검색해보세요.</div>
+                  <div className="example-list">
+                    {EXAMPLE_QUERIES.map((example) => (
+                      <button
+                        key={example}
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm"
+                        onClick={() => handleExampleClick(example)}
+                      >
+                        {example}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {!loading && !error && hits.length > 0 ? (
+                <div className={`results-list ${viewMode}-view`} aria-label={viewLabel}>
+                  {hits.map((hit, index) => {
+                    const source = hit.source ?? {}
+                    const title = source.title_ko ?? 'Untitled'
+                    const authors = Array.isArray(source.authors) ? source.authors.join(', ') : '-'
+                    const publisher = source.publisher_name ?? '-'
+                    const issuedYear = source.issued_year ?? '-'
+                    const editions = Array.isArray(source.edition_labels)
+                      ? source.edition_labels.slice(0, 3)
+                      : []
+                    const score = typeof hit.score === 'number' ? hit.score : null
+                    const docId = hit.doc_id
+                    const docLink = docId ? `/book/${encodeURIComponent(docId)}?from=search` : null
+                    const searchLink = `/search?q=${encodeURIComponent(title)}`
+                    const debug = getHitDebug(hit)
+                    const debugEntries = Object.entries(debug).filter(([, value]) => value !== undefined)
+
+                    return (
+                      <article
+                        key={docId ?? `${title}-${index}`}
+                        className={viewMode === 'card' ? 'result-tile' : 'result-tile compact'}
+                      >
+                        <div className="result-cover">
+                          <span className="result-rank">#{hit.rank ?? index + 1}</span>
+                          <span className="result-cover-title">{title}</span>
+                        </div>
+                        <div className="result-content">
+                          <div className="result-header">
+                            {docLink ? (
+                              <Link
+                                className="result-title"
+                                to={docLink}
+                                onClick={() => handleSelectHit(hit, index + 1)}
+                              >
+                                {title}
+                              </Link>
+                            ) : (
+                              <span className="result-title">{title}</span>
+                            )}
+                            {debugEnabled && score !== null ? (
+                              <span className="score-badge">Score {score.toFixed(3)}</span>
+                            ) : null}
+                          </div>
+                          <div className="result-meta">{authors}</div>
+                          <div className="result-meta">
+                            {publisher} · {issuedYear}
+                          </div>
+                          <div className="result-tags">
+                            {editions.length > 0 ? (
+                              editions.map((edition) => (
+                                <span key={edition} className="tag-chip">
+                                  {edition}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="tag-chip muted">판형 정보 없음</span>
+                            )}
+                          </div>
+                          {debugEnabled && debugEntries.length > 0 ? (
+                            <div className="result-debug">
+                              {debugEntries.map(([key, value]) => (
+                                <span key={key}>
+                                  {key}: {String(value)}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                          <div className="result-actions">
+                            {docLink ? (
+                              <Link
+                                to={docLink}
+                                className="btn btn-outline-dark btn-sm"
+                                onClick={() => handleSelectHit(hit, index + 1)}
+                              >
+                                상세보기
+                              </Link>
+                            ) : null}
+                            <Link to={searchLink} className="btn btn-outline-secondary btn-sm">
+                              비슷한 책
+                            </Link>
+                          </div>
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
+              ) : null}
+            </div>
           </div>
         )}
       </div>
