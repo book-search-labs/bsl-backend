@@ -80,13 +80,23 @@ public class VectorRetriever implements Retriever {
                 );
             } else {
                 List<Double> vector = embeddingProvider.embed(context.getQueryText(), context.getTimeBudgetMs());
-                result = openSearchGateway.searchVectorDetailed(
-                    vector,
-                    context.getTopK(),
-                    context.getTimeBudgetMs(),
-                    context.getFilters(),
-                    context.isExplain()
-                );
+                if (properties.getMode() == VectorSearchMode.CHUNK) {
+                    result = openSearchGateway.searchChunkVectorDetailed(
+                        vector,
+                        context.getTopK(),
+                        context.getTimeBudgetMs(),
+                        context.getFilters(),
+                        context.isExplain()
+                    );
+                } else {
+                    result = openSearchGateway.searchVectorDetailed(
+                        vector,
+                        context.getTopK(),
+                        context.getTimeBudgetMs(),
+                        context.getFilters(),
+                        context.isExplain()
+                    );
+                }
             }
 
             List<String> docIds = result == null ? List.of() : docPromoter.promote(result.getDocIds());

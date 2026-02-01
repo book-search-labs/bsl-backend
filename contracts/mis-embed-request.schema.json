@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mis-embed-request.schema.json",
+  "title": "MisEmbedRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["texts"],
+  "properties": {
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "model": { "type": "string", "minLength": 1 },
+    "texts": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "normalize": { "type": "boolean" }
+  }
+}

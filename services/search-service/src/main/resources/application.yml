@@ -9,6 +9,7 @@ opensearch:
   base-url: ${OPENSEARCH_URL:http://localhost:9200}
   doc-index: ${OPENSEARCH_DOC_INDEX:books_doc_read}
   vec-index: ${OPENSEARCH_VEC_INDEX:books_vec_read}
+  chunk-index: ${OPENSEARCH_CHUNK_INDEX:book_chunks_v1}
   connect-timeout-ms: ${OPENSEARCH_CONNECT_TIMEOUT_MS:200}
   read-timeout-ms: ${OPENSEARCH_READ_TIMEOUT_MS:200}
 

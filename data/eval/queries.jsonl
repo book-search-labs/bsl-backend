@@ -1,0 +1,5 @@
+{"qid":"q1","query":"harry potter philosopher stone","relevant_doc_ids":["b1"]}
+{"qid":"q2","query":"chamber of secrets","relevant_doc_ids":["b2"]}
+{"qid":"q3","query":"clean code robert martin","relevant_doc_ids":["b3"]}
+{"qid":"q4","query":"domain driven design","relevant_doc_ids":["b4"]}
+{"qid":"q5","query":"elasticsearch practice","relevant_doc_ids":["b5"]}

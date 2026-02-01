@@ -5,7 +5,14 @@ from typing import Optional
 
 from fastapi import APIRouter, Header, HTTPException
 
-from app.api.schemas import ModelsResponse, ReadyResponse, ScoreRequest, ScoreResponse
+from app.api.schemas import (
+    EmbedRequest,
+    EmbedResponse,
+    ModelsResponse,
+    ReadyResponse,
+    ScoreRequest,
+    ScoreResponse,
+)
 from app.core.settings import SETTINGS
 from app.core.state import batcher, model_manager, registry, request_limiter
 
@@ -111,27 +118,73 @@ async def score(
         )
 
 
-@router.post("/embed")
-async def embed(
+@router.post("/v1/embed", response_model=EmbedResponse)
+async def embed_v1(
+    payload: EmbedRequest,
+    trace_id: Optional[str] = Header(default=None, alias="x-trace-id"),
+    request_id: Optional[str] = Header(default=None, alias="x-request-id"),
+):
+    return await embed_handler(payload, trace_id, request_id)
+
+
+@router.post("/embed", response_model=EmbedResponse)
+async def embed_legacy(
     payload: dict,
     trace_id: Optional[str] = Header(default=None, alias="x-trace-id"),
     request_id: Optional[str] = Header(default=None, alias="x-request-id"),
 ):
-    resolved_trace = payload.get("trace_id") or trace_id or str(uuid.uuid4())
-    resolved_request = payload.get("request_id") or request_id or str(uuid.uuid4())
-    texts = payload.get("texts") or []
-    model = payload.get("model") or "toy_embed_v1"
-    vectors = [toy_embed(text or "") for text in texts]
-    return {
-        "version": "v1",
-        "trace_id": resolved_trace,
-        "request_id": resolved_request,
-        "model": model,
-        "vectors": vectors,
-    }
+    request = EmbedRequest(
+        model=payload.get("model"),
+        texts=payload.get("texts") or [],
+        normalize=payload.get("normalize", None),
+        trace_id=payload.get("trace_id"),
+        request_id=payload.get("request_id"),
+    )
+    return await embed_handler(request, trace_id, request_id)
 
 
-def toy_embed(text: str, dim: int = 1024) -> list:
+async def embed_handler(
+    payload: EmbedRequest,
+    trace_id: Optional[str],
+    request_id: Optional[str],
+) -> EmbedResponse:
+    resolved_trace = payload.trace_id or trace_id or str(uuid.uuid4())
+    resolved_request = payload.request_id or request_id or str(uuid.uuid4())
+    model = payload.model or SETTINGS.default_embed_model or "toy_embed_v1"
+    normalize = SETTINGS.embed_normalize if payload.normalize is None else payload.normalize
+    timeout_ms = SETTINGS.timeout_ms
+
+    if not payload.texts:
+        raise HTTPException(status_code=400, detail={"code": "empty_texts", "message": "texts is empty"})
+
+    async with request_limiter.limit(timeout_ms):
+        started = asyncio.get_running_loop().time()
+        try:
+            vectors = await asyncio.wait_for(
+                asyncio.to_thread(embed_texts, payload.texts, SETTINGS.embed_dim, normalize),
+                timeout=timeout_ms / 1000.0,
+            )
+        except asyncio.TimeoutError as exc:
+            raise HTTPException(status_code=504, detail={"code": "timeout", "message": "embed timeout"}) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail={"code": "embed_error", "message": str(exc)}) from exc
+
+        dim = len(vectors[0]) if vectors else SETTINGS.embed_dim
+        return EmbedResponse(
+            version="v1",
+            trace_id=resolved_trace,
+            request_id=resolved_request,
+            model=model,
+            dim=dim,
+            vectors=vectors,
+        )
+
+
+def embed_texts(texts: list, dim: int, normalize: bool) -> list:
+    return [toy_embed(text or "", dim, normalize) for text in texts]
+
+
+def toy_embed(text: str, dim: int, normalize: bool) -> list:
     import hashlib
     import random
 
@@ -139,5 +192,7 @@ def toy_embed(text: str, dim: int = 1024) -> list:
     seed = int.from_bytes(seed_bytes, "big", signed=False)
     rng = random.Random(seed)
     values = [rng.random() for _ in range(dim)]
+    if not normalize:
+        return values
     norm = math.sqrt(sum(v * v for v in values)) or 1.0
     return [v / norm for v in values]

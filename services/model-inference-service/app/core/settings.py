@@ -18,6 +18,9 @@ class Settings:
     model_dir: str = os.getenv("MIS_MODEL_DIR", "models")
     default_task: str = os.getenv("MIS_DEFAULT_TASK", "rerank")
     default_model: str = os.getenv("MIS_DEFAULT_MODEL", "")
+    default_embed_model: str = os.getenv("MIS_DEFAULT_EMBED_MODEL", "")
+    embed_dim: int = int(os.getenv("MIS_EMBED_DIM", "768"))
+    embed_normalize: bool = os.getenv("MIS_EMBED_NORMALIZE", "true").lower() in {"1", "true", "yes"}
     onnx_providers: tuple[str, ...] = tuple(
         provider.strip()
         for provider in os.getenv("MIS_ONNX_PROVIDERS", "CPUExecutionProvider").split(",")

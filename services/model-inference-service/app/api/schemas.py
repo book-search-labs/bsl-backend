@@ -44,6 +44,23 @@ class ScoreResponse(BaseModel):
     debug: Optional[dict] = None
 
 
+class EmbedRequest(BaseModel):
+    model: Optional[str] = None
+    texts: List[str] = Field(min_items=1)
+    normalize: Optional[bool] = True
+    trace_id: Optional[str] = None
+    request_id: Optional[str] = None
+
+
+class EmbedResponse(BaseModel):
+    version: str
+    trace_id: str
+    request_id: str
+    model: str
+    dim: int
+    vectors: List[List[float]]
+
+
 class ModelInfo(BaseModel):
     id: str
     task: str

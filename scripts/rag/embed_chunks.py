@@ -49,8 +49,9 @@ def main() -> int:
                 "request_id": f"rag-embed-{start}",
                 "model": args.model,
                 "texts": [item.get("content", "") for item in batch],
+                "normalize": True,
             }
-            response = client.post(f"{args.mis_url.rstrip('/')}/embed", json=payload)
+            response = client.post(f"{args.mis_url.rstrip('/')}/v1/embed", json=payload)
             response.raise_for_status()
             data = response.json()
             vectors = data.get("vectors", [])

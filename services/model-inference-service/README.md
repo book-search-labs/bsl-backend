@@ -8,7 +8,8 @@ Stateless inference endpoints for rerank/embedding with concurrency limits, queu
 - `GET /ready` — readiness summary
 - `GET /v1/models` — list model registry state
 - `POST /v1/score` — score query-document pairs
-- `POST /embed` — toy embeddings (dev fallback)
+- `POST /v1/embed` — embedding vectors (batch)
+- `POST /embed` — legacy embed alias (dev fallback)
 
 ### /v1/score request (contract)
 - `contracts/mis-score-request.schema.json`
@@ -18,6 +19,12 @@ Stateless inference endpoints for rerank/embedding with concurrency limits, queu
 
 ### /v1/models response (contract)
 - `contracts/mis-models-response.schema.json`
+
+### /v1/embed request (contract)
+- `contracts/mis-embed-request.schema.json`
+
+### /v1/embed response (contract)
+- `contracts/mis-embed-response.schema.json`
 
 ## Configuration (env)
 
@@ -34,6 +41,9 @@ Stateless inference endpoints for rerank/embedding with concurrency limits, queu
 - `MIS_MODEL_DIR` (default: `models`)
 - `MIS_DEFAULT_TASK` (default: `rerank`)
 - `MIS_DEFAULT_MODEL` (default: empty; uses registry active)
+- `MIS_DEFAULT_EMBED_MODEL` (default: empty; uses request model or fallback)
+- `MIS_EMBED_DIM` (default: 768)
+- `MIS_EMBED_NORMALIZE` (default: true)
 - `MIS_ONNX_PROVIDERS` (default: `CPUExecutionProvider`)
 
 ## Model Registry & Artifacts

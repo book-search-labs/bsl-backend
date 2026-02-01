@@ -6,7 +6,8 @@ import PlaygroundPage from "./pages/PlaygroundPage";
 import RerankPlaygroundPage from "./pages/RerankPlaygroundPage";
 import ComparePage from "./pages/ComparePage";
 import SettingsPage from "./pages/SettingsPage";
-import PlaceholderPage from "./pages/PlaceholderPage";
+import IndexOpsPage from "./pages/IndexOpsPage";
+import DocLookupPage from "./pages/DocLookupPage";
 import OpsJobsPage from "./pages/OpsJobsPage";
 import OpsAutocompletePage from "./pages/OpsAutocompletePage";
 import ModelOpsPage from "./pages/ModelOpsPage";
@@ -34,8 +35,8 @@ export default function App() {
         </Route>
         <Route path="ops">
           <Route path="index">
-            <Route path="indices" element={<PlaceholderPage title="Indices" />} />
-            <Route path="doc-lookup" element={<PlaceholderPage title="Doc Lookup" />} />
+            <Route path="indices" element={<IndexOpsPage />} />
+            <Route path="doc-lookup" element={<DocLookupPage />} />
           </Route>
           <Route path="jobs" element={<OpsJobsPage />} />
           <Route path="autocomplete" element={<OpsAutocompletePage />} />

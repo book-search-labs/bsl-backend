@@ -1,5 +1,6 @@
 package com.bsl.search.embed;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
@@ -36,6 +37,7 @@ public class EmbeddingGateway {
         EmbeddingRequest request = new EmbeddingRequest();
         request.setModel(properties.getModel());
         request.setTexts(List.of(text));
+        request.setNormalize(true);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -44,7 +46,7 @@ public class EmbeddingGateway {
         try {
             RestTemplate client = restTemplateFor(timeBudgetMs);
             ResponseEntity<EmbeddingResponse> response = client.exchange(
-                buildUrl("/embed"),
+                buildUrl("/v1/embed"),
                 HttpMethod.POST,
                 entity,
                 EmbeddingResponse.class
@@ -83,9 +85,11 @@ public class EmbeddingGateway {
         return new RestTemplate(factory);
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class EmbeddingRequest {
         private String model;
         private List<String> texts;
+        private Boolean normalize;
 
         public String getModel() {
             return model;
@@ -102,8 +106,17 @@ public class EmbeddingGateway {
         public void setTexts(List<String> texts) {
             this.texts = texts;
         }
+
+        public Boolean getNormalize() {
+            return normalize;
+        }
+
+        public void setNormalize(Boolean normalize) {
+            this.normalize = normalize;
+        }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class EmbeddingResponse {
         private String model;
         private List<List<Double>> vectors;

@@ -133,6 +133,31 @@ public class OpenSearchGateway {
         List<Map<String, Object>> filters,
         boolean explain
     ) {
+        return searchVectorDetailedOnIndex(vector, topK, properties.getVecIndex(), timeBudgetMs, filters, explain);
+    }
+
+    public OpenSearchQueryResult searchChunkVectorDetailed(
+        List<Double> vector,
+        int topK,
+        Integer timeBudgetMs,
+        List<Map<String, Object>> filters,
+        boolean explain
+    ) {
+        String indexName = properties.getChunkIndex();
+        if (indexName == null || indexName.isBlank()) {
+            throw new OpenSearchRequestException("chunk index is not configured", null);
+        }
+        return searchVectorDetailedOnIndex(vector, topK, indexName, timeBudgetMs, filters, explain);
+    }
+
+    private OpenSearchQueryResult searchVectorDetailedOnIndex(
+        List<Double> vector,
+        int topK,
+        String indexName,
+        Integer timeBudgetMs,
+        List<Map<String, Object>> filters,
+        boolean explain
+    ) {
         Map<String, Object> embedding = new LinkedHashMap<>();
         embedding.put("vector", vector);
         embedding.put("k", topK);
@@ -150,7 +175,7 @@ public class OpenSearchGateway {
             body.put("explain", true);
         }
 
-        JsonNode response = postJson("/" + properties.getVecIndex() + "/_search", body, timeBudgetMs);
+        JsonNode response = postJson("/" + indexName + "/_search", body, timeBudgetMs);
         return new OpenSearchQueryResult(extractDocIds(response), body);
     }
 

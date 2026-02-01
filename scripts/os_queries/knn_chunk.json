@@ -1,0 +1,11 @@
+{
+  "size": 5,
+  "query": {
+    "knn": {
+      "embedding": {
+        "vector": [0.1, 0.2],
+        "k": 5
+      }
+    }
+  }
+}

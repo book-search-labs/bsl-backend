@@ -7,6 +7,7 @@ public class OpenSearchProperties {
     private String baseUrl;
     private String docIndex;
     private String vecIndex;
+    private String chunkIndex;
     private int connectTimeoutMs = 200;
     private int readTimeoutMs = 200;
 
@@ -32,6 +33,14 @@ public class OpenSearchProperties {
 
     public void setVecIndex(String vecIndex) {
         this.vecIndex = vecIndex;
+    }
+
+    public String getChunkIndex() {
+        return chunkIndex;
+    }
+
+    public void setChunkIndex(String chunkIndex) {
+        this.chunkIndex = chunkIndex;
     }
 
     public int getConnectTimeoutMs() {
