@@ -88,7 +88,7 @@ public class ChatController {
         payload.put("flag_insufficient", request.getFlagInsufficient());
         String aggregateId = request.getMessageId();
         if (aggregateId == null || aggregateId.isBlank()) {
-            aggregateId = request.getSessionId() + ":" + (context == null ? \"\" : context.getRequestId());
+            aggregateId = request.getSessionId() + ":" + (context == null ? "" : context.getRequestId());
         }
         outboxService.record("chat_feedback_v1", "chat_message", aggregateId, payload);
         return ack(context);

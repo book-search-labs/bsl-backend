@@ -31,7 +31,13 @@ public class VectorResultCacheService {
         return cache.get(key).map(entry -> entry.getValue());
     }
 
-    public void put(RetrievalStageContext context, String mode, String modelId, List<String> docIds, Object queryDsl) {
+    public void put(
+        RetrievalStageContext context,
+        String mode,
+        String modelId,
+        List<String> docIds,
+        Map<String, Object> queryDsl
+    ) {
         String key = buildKey(context, mode, modelId);
         if (key == null || docIds == null) {
             return;
@@ -96,9 +102,9 @@ public class VectorResultCacheService {
 
     public static class Entry {
         private final List<String> docIds;
-        private final Object queryDsl;
+        private final Map<String, Object> queryDsl;
 
-        public Entry(List<String> docIds, Object queryDsl) {
+        public Entry(List<String> docIds, Map<String, Object> queryDsl) {
             this.docIds = docIds;
             this.queryDsl = queryDsl;
         }
@@ -107,7 +113,7 @@ public class VectorResultCacheService {
             return docIds;
         }
 
-        public Object getQueryDsl() {
+        public Map<String, Object> getQueryDsl() {
             return queryDsl;
         }
     }

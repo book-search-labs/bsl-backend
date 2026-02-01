@@ -180,7 +180,7 @@ public class MaterialGroupingService {
                 penalty += props.getSetPenalty();
             }
             if (containsAny(labels, defaultTokens(props.getSpecialTokens(), defaultSpecialTokens()))
-                || containsAny(title, defaultTokens(props.getSpecialTokens(), defaultSpecialTokens())))) {
+                || containsAny(title, defaultTokens(props.getSpecialTokens(), defaultSpecialTokens()))) {
                 penalty += props.getSpecialPenalty();
             }
             return entry.score() - penalty;

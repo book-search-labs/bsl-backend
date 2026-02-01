@@ -14,8 +14,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
-public class RequestContextFilter extends OncePerRequestFilter {
-    private static final Logger logger = LoggerFactory.getLogger(RequestContextFilter.class);
+public class CommerceRequestContextFilter extends OncePerRequestFilter {
+    private static final Logger logger = LoggerFactory.getLogger(CommerceRequestContextFilter.class);
 
     @Override
     protected void doFilterInternal(

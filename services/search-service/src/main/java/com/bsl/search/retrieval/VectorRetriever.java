@@ -60,7 +60,7 @@ public class VectorRetriever implements Retriever {
             var cached = cacheService.get(context, mode, modelId);
             if (cached.isPresent()) {
                 List<String> cachedDocIds = cached.get().getDocIds();
-                Object cachedDsl = context.isDebug() ? cached.get().getQueryDsl() : null;
+                Map<String, Object> cachedDsl = context.isDebug() ? cached.get().getQueryDsl() : null;
                 long tookMs = (System.nanoTime() - started) / 1_000_000L;
                 return RetrievalStageResult.success(cachedDocIds, cachedDsl, tookMs);
             }

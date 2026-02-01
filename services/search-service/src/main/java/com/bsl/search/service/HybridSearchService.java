@@ -843,7 +843,7 @@ public class HybridSearchService {
     }
 
     private ExecutionPlan buildLegacyPlan(SearchRequest request, Options options) {
-        ExecutionPlan plan = new ExecutionPlan(null);
+        ExecutionPlan plan = new ExecutionPlan((QueryContextV1_1) null);
         QueryContext queryContext = request.getQueryContext();
         QueryContext.RetrievalHints retrievalHints = queryContext == null ? null : queryContext.getRetrievalHints();
 
