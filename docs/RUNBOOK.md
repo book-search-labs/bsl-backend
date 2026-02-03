@@ -41,6 +41,20 @@ curl http://localhost:9200
 curl -s http://localhost:9200/_cat/aliases?v
 ```
 
+### If bootstrap alias update returns 404
+The alias cleanup in `scripts/os_bootstrap_indices_v1_1.sh` removes aliases by index pattern
+(`books_doc_v1_*`, `books_vec_v*`, etc.). If an alias currently points to an index outside those
+patterns, OpenSearch returns 404.
+
+Fix by inspecting aliases and removing the offending alias with the **actual index name**, then rerun:
+```bash
+curl -s http://localhost:9200/_cat/aliases?v
+curl -XPOST http://localhost:9200/_aliases -H 'Content-Type: application/json' -d '{
+  "actions":[{"remove":{"index":"<actual_index_name>","alias":"books_doc_read"}}]
+}'
+OS_URL=http://localhost:9200 scripts/os_bootstrap_indices_v1_1.sh
+```
+
 ### Smoke checks
 ```bash
 curl -s -XPOST http://localhost:9200/ac_read/_search -H 'Content-Type: application/json' -d '{"query":{"match":{"text":"해"}},"size":5}'
@@ -98,6 +112,20 @@ python3 -m pip install -r scripts/ingest/requirements.txt
 ./scripts/ingest/run_ingest.sh
 ./scripts/ingest/run_ingest_mysql.sh
 ./scripts/ingest/run_ingest_opensearch.sh
+```
+
+OpenSearch ingest defaults to `EMBED_PROVIDER=mis` and **requires** `MIS_URL`:
+```bash
+EMBED_PROVIDER=mis MIS_URL=http://localhost:8005 \
+  ./scripts/ingest/run_ingest_opensearch.sh
+```
+If you don’t want embeddings:
+```bash
+ENABLE_VECTOR_INDEX=0 ./scripts/ingest/run_ingest_opensearch.sh
+```
+Or use toy embeddings without MIS:
+```bash
+EMBED_PROVIDER=toy ./scripts/ingest/run_ingest_opensearch.sh
 ```
 
 OpenSearch ingest now writes:

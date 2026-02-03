@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from lib.checkpoints import CheckpointStore
 from lib.extract import (
     extract_contributors,
+    extract_concept_ids,
     extract_edition_labels,
     extract_identifiers,
     extract_issued_year,
@@ -155,6 +156,7 @@ def build_book_doc(record_id: str, node: Dict[str, Any]) -> Optional[Dict[str, A
         "issued_year": extract_issued_year(node),
         "volume": extract_volume(node),
         "edition_labels": extract_edition_labels(node) or None,
+        "concept_ids": extract_concept_ids(node) or None,
         "updated_at": format_updated_at(updated_raw, updated_at),
     }
 

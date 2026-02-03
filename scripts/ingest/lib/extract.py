@@ -137,6 +137,40 @@ def extract_contributors(node: Dict[str, Any]) -> List[Dict[str, Any]]:
     return contributors
 
 
+def extract_concept_ids(node: Dict[str, Any]) -> List[str]:
+    values: List[Any] = []
+    for key in ("subject", "subjects", "topic", "topics", "concept", "concepts"):
+        values.extend(normalize_list(node.get(key)))
+
+    seen = set()
+    concept_ids: List[str] = []
+
+    def add(value: Any) -> None:
+        if isinstance(value, str):
+            candidate = value.strip()
+            if candidate.startswith("nlk:") and candidate not in seen:
+                seen.add(candidate)
+                concept_ids.append(candidate)
+            return
+        if isinstance(value, dict):
+            for key in ("@id", "id", "identifier", "concept_id", "conceptId"):
+                entry = value.get(key)
+                if isinstance(entry, list):
+                    for item in entry:
+                        add(item)
+                else:
+                    add(entry)
+            return
+        if isinstance(value, list):
+            for item in value:
+                add(item)
+
+    for value in values:
+        add(value)
+
+    return concept_ids
+
+
 def normalize_contributor(entry: Any, source_key: str) -> Optional[Dict[str, Any]]:
     role = "AUTHOR" if source_key in ("author", "authors", "creator") else "CONTRIBUTOR"
     if isinstance(entry, str):
