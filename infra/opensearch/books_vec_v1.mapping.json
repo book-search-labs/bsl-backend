@@ -13,6 +13,7 @@
       "doc_id": { "type": "keyword" },
       "language_code": { "type": "keyword" },
       "category_paths": { "type": "keyword" },
+      "kdc_node_id": { "type": "long" },
       "concept_ids": { "type": "keyword" },
       "embedding": {
         "type": "knn_vector",

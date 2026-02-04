@@ -27,6 +27,49 @@ curl -s "http://localhost:8081/autocomplete?q=해리&size=5"
 
 For full data ingestion, see **NLK Ingestion (Local)** below.
 
+## Database Migrations (Flyway)
+
+Start MySQL (if not already running):
+```bash
+docker compose -f compose.yaml up -d mysql
+```
+
+Run Flyway (CLI installed):
+```bash
+flyway -url=jdbc:mysql://localhost:3306/bsl -user=bsl -password=bsl \
+  -locations=filesystem:db/migration info
+
+flyway -url=jdbc:mysql://localhost:3306/bsl -user=bsl -password=bsl \
+  -locations=filesystem:db/migration migrate
+```
+
+Or use the Flyway Docker image:
+```bash
+docker run --rm \
+  -v "$PWD/db/migration:/flyway/sql:ro" \
+  flyway/flyway:10 \
+  -url=jdbc:mysql://host.docker.internal:3306/bsl \
+  -user=bsl -password=bsl \
+  info
+
+docker run --rm \
+  -v "$PWD/db/migration:/flyway/sql:ro" \
+  flyway/flyway:10 \
+  -url=jdbc:mysql://host.docker.internal:3306/bsl \
+  -user=bsl -password=bsl \
+  migrate
+```
+
+If the DB already has tables (not managed by Flyway), baseline once before migrate:
+```bash
+flyway -url=jdbc:mysql://localhost:3306/bsl -user=bsl -password=bsl \
+  -locations=filesystem:db/migration baseline -baselineVersion=<latest_version>
+```
+
+Notes:
+- `latest_version` is the highest `V*.sql` file in `db/migration`.
+- On Linux, replace `host.docker.internal` with your host IP or use `--network host`.
+
 ## Local OpenSearch v1.1 (Full Set)
 
 ### Start / Stop

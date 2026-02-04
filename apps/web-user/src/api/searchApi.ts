@@ -4,8 +4,22 @@ import { postQueryContext } from './queryService'
 import { getBookByDocId, type BookDetailResponse, postSearchWithQc, type SearchOptions } from './searchService'
 import type { Book, BookHit, SearchResponse } from '../types/search'
 
+export type SearchConstraint = {
+  scope?: string
+  logicalField: string
+  op?: string
+  value: unknown
+  strict?: boolean
+  reason?: string
+}
+
+export type SearchFilter = {
+  and: SearchConstraint[]
+}
+
 type SearchRequestOptions = Partial<SearchOptions> & {
   vector?: boolean
+  filters?: SearchFilter[]
 }
 
 type BffSearchHit = {
@@ -159,8 +173,80 @@ async function searchViaBff(
   return mapBffSearchResponse(response)
 }
 
+function buildQcV11(
+  query: string,
+  filters: SearchFilter[],
+  vectorEnabled: boolean,
+  requestContext: ReturnType<typeof createRequestContext>,
+) {
+  const trimmed = query.trim()
+  const hasQuery = trimmed.length > 0
+  const queryValue = hasQuery ? trimmed : ''
+
+  return {
+    meta: {
+      schemaVersion: 'qc.v1.1',
+      traceId: requestContext.traceId,
+      requestId: requestContext.requestId,
+    },
+    query: {
+      raw: queryValue,
+      norm: queryValue,
+      final: queryValue,
+    },
+    retrievalHints: {
+      queryTextSource: hasQuery ? 'query.final' : 'query.raw',
+      lexical: { enabled: true },
+      vector: { enabled: hasQuery ? vectorEnabled : false },
+      rerank: { enabled: hasQuery },
+      filters,
+    },
+  }
+}
+
+async function searchViaBffWithQc(
+  qc: unknown,
+  options: SearchRequestOptions,
+  headers: HeadersInit,
+): Promise<SearchResponse> {
+  const size = options.size ?? 10
+  const from = options.from ?? 0
+  const vectorEnabled = options.vector ?? true
+
+  const payload = {
+    query_context_v1_1: qc,
+    options: { size, from, enableVector: vectorEnabled },
+  }
+
+  const response = await fetchJson<BffSearchResponse>(joinUrl(resolveBffBaseUrl(), '/search'), {
+    method: 'POST',
+    headers,
+    body: payload,
+  })
+
+  return mapBffSearchResponse(response)
+}
+
 export async function search(query: string, options: SearchRequestOptions = {}): Promise<SearchResponse> {
   const requestContext = createRequestContext()
+  const filters = Array.isArray(options.filters) ? options.filters : []
+  const useQc = filters.length > 0
+
+  if (useQc) {
+    const qc = buildQcV11(query, filters, options.vector ?? true, requestContext)
+    return routeRequest({
+      route: 'search',
+      mode: resolveApiMode(),
+      requestContext,
+      bff: (context) => searchViaBffWithQc(qc, options, context.headers),
+      direct: (context) =>
+        postSearchWithQc(
+          qc,
+          { size: options.size ?? 10, from: options.from ?? 0, debug: options.debug },
+          context.headers,
+        ),
+    })
+  }
   return routeRequest({
     route: 'search',
     mode: resolveApiMode(),

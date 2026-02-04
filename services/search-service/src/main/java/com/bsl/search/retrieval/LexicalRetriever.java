@@ -23,25 +23,37 @@ public class LexicalRetriever implements Retriever {
 
     @Override
     public RetrievalStageResult retrieve(RetrievalStageContext context) {
-        if (context == null || context.getQueryText() == null || context.getQueryText().isBlank()) {
+        if (context == null) {
             return RetrievalStageResult.empty();
         }
         if (context.getTopK() <= 0) {
             return RetrievalStageResult.empty();
         }
+        boolean hasQuery = context.getQueryText() != null && !context.getQueryText().isBlank();
+        boolean hasFilters = context.getFilters() != null && !context.getFilters().isEmpty();
+        if (!hasQuery && !hasFilters) {
+            return RetrievalStageResult.empty();
+        }
         long started = System.nanoTime();
         try {
-            OpenSearchQueryResult result = openSearchGateway.searchLexicalDetailed(
-                context.getQueryText(),
-                context.getTopK(),
-                context.getBoost(),
-                context.getTimeBudgetMs(),
-                context.getOperator(),
-                context.getMinimumShouldMatch(),
-                context.getFilters(),
-                context.getFieldsOverride(),
-                context.isExplain()
-            );
+            OpenSearchQueryResult result = hasQuery
+                ? openSearchGateway.searchLexicalDetailed(
+                    context.getQueryText(),
+                    context.getTopK(),
+                    context.getBoost(),
+                    context.getTimeBudgetMs(),
+                    context.getOperator(),
+                    context.getMinimumShouldMatch(),
+                    context.getFilters(),
+                    context.getFieldsOverride(),
+                    context.isExplain()
+                )
+                : openSearchGateway.searchMatchAllDetailed(
+                    context.getTopK(),
+                    context.getTimeBudgetMs(),
+                    context.getFilters(),
+                    context.isExplain()
+                );
             List<String> docIds = result == null ? List.of() : result.getDocIds();
             Map<String, Object> queryDsl = context.isDebug() ? (result == null ? null : result.getQueryDsl()) : null;
             long tookMs = (System.nanoTime() - started) / 1_000_000L;

@@ -3,6 +3,7 @@ package com.bsl.search;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -114,6 +115,71 @@ class SearchControllerQcV11Test {
         boolean hasVolume = filtersCaptor.getValue().stream()
             .anyMatch(entry -> entry.containsKey("term") && ((Map<String, Object>) entry.get("term")).containsKey("volume"));
         org.junit.jupiter.api.Assertions.assertTrue(hasVolume);
+    }
+
+    @Test
+    void allowsQuerylessSearchWithFilters() throws Exception {
+        when(openSearchGateway.searchMatchAllDetailed(anyInt(), any(), any(), anyBoolean()))
+            .thenReturn(new com.bsl.search.opensearch.OpenSearchQueryResult(List.of("b1"), Map.of()));
+        when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
+
+        Map<String, Object> payload = qcV11Payload(
+            Map.of("raw", "", "norm", "", "final", ""),
+            Map.of(
+                "queryTextSource", "query.final",
+                "lexical", Map.of("enabled", true),
+                "vector", Map.of("enabled", false),
+                "filters", List.of(
+                    Map.of(
+                        "and", List.of(
+                            Map.of("scope", "CATALOG", "logicalField", "kdc_node_id", "op", "eq", "value", List.of(1, 2))
+                        )
+                    )
+                )
+            )
+        );
+
+        mockMvc.perform(post("/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(payload)))
+            .andExpect(status().isOk());
+
+        verify(openSearchGateway).searchMatchAllDetailed(anyInt(), any(), any(), anyBoolean());
+    }
+
+    @Test
+    void mapsKdcNodeFilterIntoLexicalQuery() throws Exception {
+        when(openSearchGateway.searchLexical(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any()))
+            .thenReturn(List.of("b1"));
+        when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
+
+        Map<String, Object> payload = qcV11Payload(
+            Map.of("raw", "harry", "norm", "harry", "final", "harry"),
+            Map.of(
+                "queryTextSource", "query.final",
+                "lexical", Map.of("enabled", true, "topKHint", 50),
+                "vector", Map.of("enabled", false),
+                "filters", List.of(
+                    Map.of(
+                        "and", List.of(
+                            Map.of("scope", "CATALOG", "logicalField", "kdc_node_id", "op", "eq", "value", List.of(101, 102))
+                        )
+                    )
+                )
+            )
+        );
+
+        mockMvc.perform(post("/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(payload)))
+            .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<Map<String, Object>>> filtersCaptor = ArgumentCaptor.forClass(List.class);
+        verify(openSearchGateway).searchLexical(eq("harry"), anyInt(), any(), any(), any(), any(), filtersCaptor.capture(), any());
+        boolean hasKdc = filtersCaptor.getValue().stream()
+            .anyMatch(entry -> entry.containsKey("terms") && ((Map<String, Object>) entry.get("terms")).containsKey("kdc_node_id"));
+        org.junit.jupiter.api.Assertions.assertTrue(hasKdc);
     }
 
     @Test

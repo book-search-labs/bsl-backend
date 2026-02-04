@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useOutletContext, useSearchParams } from 'react-router-dom'
 
 import { postSearchClick, search } from '../api/searchApi'
 import { HttpError } from '../api/http'
+import type { KdcCategoryNode } from '../api/categories'
 import type { BookHit, SearchResponse } from '../types/search'
+import { collectKdcDescendantIds, flattenKdcCategories, getTopLevelKdc } from '../utils/kdc'
 
 const DEFAULT_SIZE = 10
 const SIZE_MIN = 1
@@ -20,6 +22,10 @@ type ErrorMessage = {
   statusLine: string
   detail?: string
   code?: string
+}
+
+type AppShellContext = {
+  kdcCategories: KdcCategoryNode[]
 }
 
 function clampSize(value: number) {
@@ -104,7 +110,9 @@ function getHitDebug(hit: BookHit) {
 
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const { kdcCategories } = useOutletContext<AppShellContext>()
   const query = searchParams.get('q') ?? ''
+  const kdcCode = (searchParams.get('kdc') ?? '').trim()
   const trimmedQuery = query.trim()
 
   const sizeValue = parseSizeParam(searchParams.get('size'))
@@ -118,6 +126,20 @@ export default function SearchPage() {
   const [response, setResponse] = useState<SearchResponse | null>(null)
   const [hasSearched, setHasSearched] = useState(false)
   const requestCounter = useRef(0)
+
+  const topCategories = useMemo(() => getTopLevelKdc(kdcCategories), [kdcCategories])
+  const categoryIndex = useMemo(() => flattenKdcCategories(kdcCategories), [kdcCategories])
+  const selectedCategory = kdcCode ? categoryIndex.get(kdcCode) : undefined
+  const selectedCategoryIds = useMemo(
+    () => collectKdcDescendantIds(selectedCategory),
+    [selectedCategory],
+  )
+  const categoryQuick = useMemo(() => {
+    if (topCategories.length > 0) {
+      return topCategories.map((node) => ({ label: node.name, code: node.code }))
+    }
+    return CATEGORY_QUICK.map((label) => ({ label, query: label }))
+  }, [topCategories])
 
   const hits = useMemo<BookHit[]>(() => {
     return Array.isArray(response?.hits) ? response?.hits : []
@@ -156,12 +178,35 @@ export default function SearchPage() {
   }, [searchParams, setSearchParams, sizeValue, trimmedQuery, vectorEnabled])
 
   const executeSearch = useCallback(async () => {
-    if (!trimmedQuery) {
+    const hasCategoryFilter = selectedCategoryIds.length > 0
+    const shouldSearch = trimmedQuery.length > 0 || kdcCode.length > 0
+
+    if (!shouldSearch) {
       requestCounter.current += 1
       setLoading(false)
       setError(null)
       setResponse(null)
       setHasSearched(false)
+      return
+    }
+
+    if (kdcCode && kdcCategories.length === 0) {
+      setLoading(true)
+      setHasSearched(true)
+      setError(null)
+      setResponse(null)
+      return
+    }
+
+    if (kdcCode && kdcCategories.length > 0 && !selectedCategory) {
+      requestCounter.current += 1
+      setLoading(false)
+      setHasSearched(false)
+      setError({
+        stage: 'category',
+        statusLine: 'Invalid category',
+        detail: '선택한 카테고리를 찾을 수 없습니다.',
+      })
       return
     }
 
@@ -178,7 +223,21 @@ export default function SearchPage() {
         size: sizeValue,
         from: 0,
         debug: debugEnabled,
-        vector: vectorEnabled,
+        vector: trimmedQuery.length > 0 ? vectorEnabled : false,
+        filters: hasCategoryFilter
+          ? [
+              {
+                and: [
+                  {
+                    scope: 'CATALOG',
+                    logicalField: 'kdc_node_id',
+                    op: 'eq',
+                    value: selectedCategoryIds,
+                  },
+                ],
+              },
+            ]
+          : undefined,
       })
 
       if (requestId !== requestCounter.current) return
@@ -195,14 +254,23 @@ export default function SearchPage() {
         setLoading(false)
       }
     }
-  }, [debugEnabled, sizeValue, trimmedQuery, vectorEnabled])
+  }, [
+    debugEnabled,
+    kdcCategories.length,
+    kdcCode,
+    selectedCategory,
+    selectedCategoryIds,
+    sizeValue,
+    trimmedQuery,
+    vectorEnabled,
+  ])
 
   useEffect(() => {
     executeSearch()
   }, [executeSearch])
 
   const updateParams = useCallback(
-    (updates: { q?: string; size?: number; vector?: boolean }) => {
+    (updates: { q?: string; size?: number; vector?: boolean; kdc?: string }) => {
       const params = new URLSearchParams(searchParams)
 
       if (updates.q !== undefined) {
@@ -219,6 +287,14 @@ export default function SearchPage() {
 
       if (updates.vector !== undefined) {
         params.set('vector', updates.vector ? 'true' : 'false')
+      }
+
+      if (updates.kdc !== undefined) {
+        if (updates.kdc) {
+          params.set('kdc', updates.kdc)
+        } else {
+          params.delete('kdc')
+        }
       }
 
       setSearchParams(params)
@@ -248,13 +324,18 @@ export default function SearchPage() {
   }
 
   const handleExampleClick = (value: string) => {
-    updateParams({ q: value, size: sizeValue, vector: vectorEnabled })
+    updateParams({ q: value, size: sizeValue, vector: vectorEnabled, kdc: '' })
   }
 
   const handleRefine = (value: string) => {
     const base = trimmedQuery || searchInput.trim()
     const next = base ? `${base} ${value}` : value
     updateParams({ q: next, size: sizeValue, vector: vectorEnabled })
+  }
+
+  const handleCategoryClick = (code?: string) => {
+    if (!code) return
+    updateParams({ kdc: code, q: '', size: sizeValue, vector: vectorEnabled })
   }
 
   const handleSelectHit = useCallback(
@@ -310,6 +391,11 @@ export default function SearchPage() {
 
   const viewLabel = viewMode === 'card' ? 'Grid view' : 'List view'
   const totalCount = response?.total ?? hits.length
+  const resultsTitle = trimmedQuery
+    ? `"${trimmedQuery}" 검색 결과`
+    : selectedCategory
+      ? `${selectedCategory.name} 카테고리`
+      : '검색 결과'
 
   return (
     <section className="page-section">
@@ -339,7 +425,7 @@ export default function SearchPage() {
           </button>
         </form>
 
-        {!trimmedQuery ? (
+        {!trimmedQuery && !kdcCode ? (
           <div className="placeholder-card empty-state mt-4">
             <div className="empty-title">검색어를 입력해주세요</div>
             <div className="empty-copy">아래 추천 검색어로 시작해보세요.</div>
@@ -362,14 +448,16 @@ export default function SearchPage() {
               <div className="filter-card">
                 <div className="filter-title">카테고리</div>
                 <div className="filter-links">
-                  {CATEGORY_QUICK.map((category) => (
+                  {categoryQuick.map((category) => (
                     <button
-                      key={category}
+                      key={'code' in category ? category.code : category.label}
                       type="button"
                       className="filter-chip"
-                      onClick={() => handleExampleClick(category)}
+                      onClick={() =>
+                        'code' in category ? handleCategoryClick(category.code) : handleExampleClick(category.query)
+                      }
                     >
-                      {category}
+                      {category.label}
                     </button>
                   ))}
                 </div>
@@ -398,7 +486,7 @@ export default function SearchPage() {
             <div className="search-main">
               <div className="results-header">
                 <div>
-                  <h2 className="section-title">"{trimmedQuery}" 검색 결과</h2>
+                  <h2 className="section-title">{resultsTitle}</h2>
                   <div className="text-muted small">
                     {totalCount.toLocaleString()}개 결과 · 정확도순
                   </div>

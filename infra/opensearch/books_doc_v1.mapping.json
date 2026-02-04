@@ -110,6 +110,7 @@
       "issued_year": { "type": "short" },
       "volume": { "type": "short" },
       "edition_labels": { "type": "keyword" },
+      "kdc_node_id": { "type": "long" },
       "category_paths": { "type": "keyword" },
       "concept_ids": { "type": "keyword" },
       "is_hidden": { "type": "boolean" },

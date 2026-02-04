@@ -172,6 +172,13 @@ All structured responses that follow `contracts/*` must include:
 }
 ```
 
+## GET `/categories/kdc`
+**Purpose**: return KDC category tree (depth 0-2).
+
+### Response
+- Contract: `contracts/kdc-category-response.schema.json`
+- Example: `contracts/examples/kdc-category-response.sample.json`
+
 ## POST `/autocomplete/select`
 **Purpose**: record a suggestion selection event.
 

@@ -11,8 +11,10 @@ import {
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { fetchAutocomplete, postAutocompleteSelect, type AutocompleteSuggestion } from '../api/autocomplete'
+import { fetchKdcCategories, type KdcCategoryNode } from '../api/categories'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { useOutsideClick } from '../hooks/useOutsideClick'
+import { getTopLevelKdc } from '../utils/kdc'
 
 const AUTOCOMPLETE_SIZE = 8
 const AUTOCOMPLETE_DEBOUNCE_MS = 250
@@ -77,12 +79,22 @@ export default function AppShell() {
   const [activeIndex, setActiveIndex] = useState(-1)
   const [hasFetched, setHasFetched] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [kdcCategories, setKdcCategories] = useState<KdcCategoryNode[]>([])
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false)
+  const [activeTopCode, setActiveTopCode] = useState<string | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const shouldSuggestRef = useRef(false)
   const debouncedQuery = useDebouncedValue(query, AUTOCOMPLETE_DEBOUNCE_MS)
   const recommendedQueries = useMemo(() => resolveRecommendedQueries(), [])
-  const categoryLinks = useMemo(
-    () => [
+  const topCategories = useMemo(() => getTopLevelKdc(kdcCategories), [kdcCategories])
+  const categoryLinks = useMemo(() => {
+    if (topCategories.length > 0) {
+      return topCategories.map((node) => ({
+        label: node.name,
+        to: `/search?kdc=${encodeURIComponent(node.code)}`,
+      }))
+    }
+    return [
       { label: '베스트셀러', to: '/search?q=베스트셀러' },
       { label: '신간', to: '/search?q=신간' },
       { label: '문학', to: '/search?q=문학' },
@@ -90,9 +102,8 @@ export default function AppShell() {
       { label: '경제/경영', to: '/search?q=경제 경영' },
       { label: '어린이', to: '/search?q=어린이' },
       { label: '외국어', to: '/search?q=외국어' },
-    ],
-    [],
-  )
+    ]
+  }, [topCategories])
 
   useEffect(() => {
     if (location.pathname.startsWith('/search')) {
@@ -102,10 +113,34 @@ export default function AppShell() {
     }
   }, [location.pathname, location.search, searchParams])
 
+  useEffect(() => {
+    setIsCategoryOpen(false)
+  }, [location.pathname])
+
   const closeSuggestions = useCallback(() => {
     setIsOpen(false)
     setActiveIndex(-1)
   }, [])
+
+  const closeCategoryDrawer = useCallback(() => {
+    setIsCategoryOpen(false)
+  }, [])
+
+  const openCategoryDrawer = useCallback(() => {
+    setIsCategoryOpen(true)
+  }, [])
+
+  const activeTopCategory =
+    topCategories.find((node) => node.code === activeTopCode) ?? topCategories[0] ?? null
+
+  const handleCategoryNavigate = useCallback(
+    (code: string) => {
+      if (!code) return
+      setIsCategoryOpen(false)
+      navigate(`/search?kdc=${encodeURIComponent(code)}`)
+    },
+    [navigate],
+  )
 
   const suppressSuggestions = useCallback(() => {
     shouldSuggestRef.current = false
@@ -243,6 +278,34 @@ export default function AppShell() {
     },
     [addRecentQuery, navigate, query, suppressSuggestions],
   )
+
+  useEffect(() => {
+    let active = true
+    fetchKdcCategories()
+      .then((categories) => {
+        if (!active) return
+        setKdcCategories(categories)
+        if (categories.length > 0) {
+          setActiveTopCode(categories[0].code)
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setKdcCategories([])
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (topCategories.length === 0) return
+    if (!activeTopCode || !topCategories.some((node) => node.code === activeTopCode)) {
+      setActiveTopCode(topCategories[0].code)
+    }
+  }, [activeTopCode, topCategories])
 
   const handleQuickSearch = useCallback(
     (text: string) => {
@@ -533,7 +596,8 @@ export default function AppShell() {
         <div className="nav-strip">
           <div className="container">
             <div className="nav-strip-inner">
-              <button type="button" className="category-button">
+              <button type="button" className="category-button" onClick={openCategoryDrawer}>
+                <span className="category-button-icon">|||</span>
                 전체 카테고리
               </button>
               <nav className="category-links">
@@ -562,8 +626,80 @@ export default function AppShell() {
         </div>
       </header>
 
+      <div className={`category-drawer ${isCategoryOpen ? 'is-open' : ''}`} aria-hidden={!isCategoryOpen}>
+        <div className="category-drawer-backdrop" onClick={closeCategoryDrawer} />
+        <div className="category-drawer-panel" role="dialog" aria-modal="true">
+          <div className="category-drawer-header">
+            <div className="category-drawer-title">카테고리</div>
+            <button type="button" className="category-drawer-close" onClick={closeCategoryDrawer}>
+              닫기
+            </button>
+          </div>
+          <div className="category-drawer-body">
+            <div className="category-column category-column--parents">
+              {topCategories.length === 0 ? (
+                <div className="category-empty">카테고리를 불러오는 중...</div>
+              ) : (
+                topCategories.map((node) => (
+                  <button
+                    key={node.code}
+                    type="button"
+                    className={`category-parent ${activeTopCategory?.code === node.code ? 'is-active' : ''}`}
+                    onClick={() => setActiveTopCode(node.code)}
+                  >
+                    {node.name}
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="category-column category-column--children">
+              {activeTopCategory ? (
+                <>
+                  <button
+                    type="button"
+                    className="category-all"
+                    onClick={() => handleCategoryNavigate(activeTopCategory.code)}
+                  >
+                    {activeTopCategory.name} 전체보기
+                  </button>
+                  <div className="category-children">
+                    {(activeTopCategory.children ?? []).map((child) => (
+                      <div key={child.code} className="category-child-group">
+                        <button
+                          type="button"
+                          className="category-child"
+                          onClick={() => handleCategoryNavigate(child.code)}
+                        >
+                          {child.name}
+                        </button>
+                        {Array.isArray(child.children) && child.children.length > 0 ? (
+                          <div className="category-grandchildren">
+                            {child.children.map((grand) => (
+                              <button
+                                key={grand.code}
+                                type="button"
+                                className="category-grandchild"
+                                onClick={() => handleCategoryNavigate(grand.code)}
+                              >
+                                {grand.name}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="category-empty">카테고리를 불러오는 중...</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <main className="app-main">
-        <Outlet />
+        <Outlet context={{ kdcCategories }} />
       </main>
 
       <footer className="app-footer mt-auto">

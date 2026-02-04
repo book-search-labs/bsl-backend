@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useOutletContext } from 'react-router-dom'
 
 import { search } from '../api/searchApi'
+import type { KdcCategoryNode } from '../api/categories'
 import type { BookHit } from '../types/search'
 import { clearRecentViews, getRecentViews } from '../utils/recentViews'
 import type { RecentView } from '../utils/recentViews'
+import { getTopLevelKdc } from '../utils/kdc'
 
 const HERO_STATS = [
   { label: '빠른 배송', value: '내일 도착' },
@@ -12,7 +14,7 @@ const HERO_STATS = [
   { label: '고객 만족', value: '4.8/5' },
 ]
 
-const CATEGORY_TILES = [
+const FALLBACK_CATEGORY_TILES = [
   { label: '베스트셀러', description: '이번 주 인기 도서', query: '베스트셀러' },
   { label: '신간', description: '따끈한 신간 모음', query: '신간' },
   { label: '문학', description: '소설 · 에세이 · 시', query: '문학' },
@@ -55,6 +57,10 @@ type SectionState = {
   error?: string
 }
 
+type AppShellContext = {
+  kdcCategories: KdcCategoryNode[]
+}
+
 function buildInitialSectionState() {
   return HOME_SECTIONS.reduce((acc, section) => {
     acc[section.key] = { hits: [], isLoading: true }
@@ -69,6 +75,19 @@ function formatAuthors(authors: string[]) {
 export default function HomePage() {
   const sampleQuery = '베스트셀러'
   const sampleLink = `/search?q=${encodeURIComponent(sampleQuery)}`
+  const { kdcCategories } = useOutletContext<AppShellContext>()
+  const topCategories = useMemo(() => getTopLevelKdc(kdcCategories), [kdcCategories])
+  const categoryTiles =
+    topCategories.length > 0
+      ? topCategories.map((node) => ({
+          label: node.name,
+          description: `KDC ${node.code}`,
+          to: `/search?kdc=${encodeURIComponent(node.code)}`,
+        }))
+      : FALLBACK_CATEGORY_TILES.map((tile) => ({
+          ...tile,
+          to: `/search?q=${encodeURIComponent(tile.query)}`,
+        }))
   const [recentViews, setRecentViews] = useState<RecentView[]>([])
   const [sectionState, setSectionState] = useState<Record<string, SectionState>>(() =>
     buildInitialSectionState(),
@@ -202,10 +221,10 @@ export default function HomePage() {
       <div className="home-category-strip">
         <div className="container">
           <div className="category-grid">
-            {CATEGORY_TILES.map((category) => (
+            {categoryTiles.map((category) => (
               <Link
                 key={category.label}
-                to={`/search?q=${encodeURIComponent(category.query)}`}
+                to={category.to}
                 className="category-card"
               >
                 <span className="category-card-title">{category.label}</span>

@@ -262,7 +262,7 @@ public class HybridSearchService {
         int from = options.getFrom() != null ? Math.max(options.getFrom(), 0) : DEFAULT_FROM;
 
         ExecutionPlan plan = buildPlanFromQcV11(qc, options);
-        if (isBlank(plan.queryText)) {
+        if (isBlank(plan.queryText) && (plan.filters == null || plan.filters.isEmpty())) {
             throw new InvalidSearchRequestException("query text is required");
         }
         assignExperimentBucket(plan, requestId);
@@ -1515,6 +1515,12 @@ public class HybridSearchService {
         }
         if ("language_code".equals(normalized)) {
             return Map.of("term", Map.of("language_code", value));
+        }
+        if ("kdc_node_id".equals(normalized) || "kdc_node_ids".equals(normalized)) {
+            if (value instanceof List<?> values) {
+                return Map.of("terms", Map.of("kdc_node_id", values));
+            }
+            return Map.of("term", Map.of("kdc_node_id", value));
         }
         return null;
     }

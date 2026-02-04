@@ -108,6 +108,30 @@ public class OpenSearchGateway {
         return new OpenSearchQueryResult(extractDocIds(response), body);
     }
 
+    public OpenSearchQueryResult searchMatchAllDetailed(
+        int topK,
+        Integer timeBudgetMs,
+        List<Map<String, Object>> filters,
+        boolean explain
+    ) {
+        Map<String, Object> boolQuery = new LinkedHashMap<>();
+        boolQuery.put("must", List.of(Map.of("match_all", Map.of())));
+        boolQuery.put("must_not", List.of(Map.of("term", Map.of("is_hidden", true))));
+        if (filters != null && !filters.isEmpty()) {
+            boolQuery.put("filter", filters);
+        }
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("size", topK);
+        body.put("query", Map.of("bool", boolQuery));
+        if (explain) {
+            body.put("explain", true);
+        }
+
+        JsonNode response = postJson("/" + properties.getDocIndex() + "/_search", body, timeBudgetMs);
+        return new OpenSearchQueryResult(extractDocIds(response), body);
+    }
+
     public List<String> searchVector(List<Double> vector, int topK) {
         return searchVector(vector, topK, null, null);
     }

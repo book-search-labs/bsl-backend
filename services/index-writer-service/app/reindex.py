@@ -198,6 +198,7 @@ def build_document(
 
     edition_labels = normalize_list(extras.get("edition_labels") or extras.get("editionLabels"))
     volume = coerce_int(extras.get("volume"))
+    kdc_node_id = coerce_int(material.get("kdc_node_id"))
 
     isbn13 = choose_isbn13(identifiers.get(material_id, []), extras)
     authors = build_authors(agents.get(material_id, []))
@@ -230,6 +231,8 @@ def build_document(
         doc["volume"] = volume
     if edition_labels:
         doc["edition_labels"] = edition_labels
+    if kdc_node_id is not None:
+        doc["kdc_node_id"] = kdc_node_id
     if category_paths:
         doc["category_paths"] = category_paths
     if concept_ids:
@@ -541,6 +544,7 @@ def bulk_load(
             "language",
             "issued_year",
             "extras_json",
+            "kdc_node_id",
             "updated_at",
         ],
     )
