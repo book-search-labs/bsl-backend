@@ -105,7 +105,7 @@ public class OpenSearchGateway {
         }
 
         JsonNode response = postJson("/" + properties.getDocIndex() + "/_search", body, timeBudgetMs);
-        return new OpenSearchQueryResult(extractDocIds(response), body);
+        return new OpenSearchQueryResult(extractDocIds(response), body, extractScoresByDocId(response));
     }
 
     public OpenSearchQueryResult searchLexicalByDslDetailed(
@@ -123,7 +123,7 @@ public class OpenSearchGateway {
         }
 
         JsonNode response = postJson("/" + properties.getDocIndex() + "/_search", body, timeBudgetMs);
-        return new OpenSearchQueryResult(extractDocIds(response), body);
+        return new OpenSearchQueryResult(extractDocIds(response), body, extractScoresByDocId(response));
     }
 
     public OpenSearchQueryResult searchMatchAllDetailed(
@@ -147,7 +147,7 @@ public class OpenSearchGateway {
         }
 
         JsonNode response = postJson("/" + properties.getDocIndex() + "/_search", body, timeBudgetMs);
-        return new OpenSearchQueryResult(extractDocIds(response), body);
+        return new OpenSearchQueryResult(extractDocIds(response), body, extractScoresByDocId(response));
     }
 
     private Map<String, Object> applyGlobalConstraints(
@@ -273,7 +273,7 @@ public class OpenSearchGateway {
         }
 
         JsonNode response = postJson("/" + indexName + "/_search", body, timeBudgetMs);
-        return new OpenSearchQueryResult(extractDocIds(response), body);
+        return new OpenSearchQueryResult(extractDocIds(response), body, extractScoresByDocId(response));
     }
 
     public OpenSearchQueryResult searchVectorByTextDetailed(
@@ -302,7 +302,7 @@ public class OpenSearchGateway {
         }
 
         JsonNode response = postJson("/" + properties.getVecIndex() + "/_search", body, timeBudgetMs);
-        return new OpenSearchQueryResult(extractDocIds(response), body);
+        return new OpenSearchQueryResult(extractDocIds(response), body, extractScoresByDocId(response));
     }
 
     public Map<String, JsonNode> mgetSources(List<String> docIds) {
@@ -418,6 +418,24 @@ public class OpenSearchGateway {
             }
         }
         return docIds;
+    }
+
+    private Map<String, Double> extractScoresByDocId(JsonNode response) {
+        Map<String, Double> scores = new LinkedHashMap<>();
+        for (JsonNode hit : response.path("hits").path("hits")) {
+            String docId = hit.path("_source").path("doc_id").asText(null);
+            if (docId == null || docId.isEmpty()) {
+                docId = hit.path("_id").asText(null);
+            }
+            if (docId == null || docId.isBlank()) {
+                continue;
+            }
+            JsonNode scoreNode = hit.get("_score");
+            if (scoreNode != null && scoreNode.isNumber()) {
+                scores.put(docId, scoreNode.asDouble());
+            }
+        }
+        return scores;
     }
 
     private List<String> buildFields(Map<String, Double> boost, List<String> fieldsOverride) {

@@ -67,9 +67,10 @@ public class LexicalRetriever implements Retriever {
                     );
             }
             List<String> docIds = result == null ? List.of() : result.getDocIds();
+            Map<String, Double> scoresByDocId = result == null ? Map.of() : result.getScoresByDocId();
             Map<String, Object> queryDsl = context.isDebug() ? (result == null ? null : result.getQueryDsl()) : null;
             long tookMs = (System.nanoTime() - started) / 1_000_000L;
-            return RetrievalStageResult.success(docIds, queryDsl, tookMs);
+            return RetrievalStageResult.success(docIds, scoresByDocId, queryDsl, tookMs);
         } catch (OpenSearchUnavailableException | OpenSearchRequestException e) {
             return RetrievalStageResult.error(e.getMessage());
         }

@@ -64,6 +64,7 @@ The job:
 - drops existing partitions (idempotent)
 - inserts labels 0–4 using click/dwell/cart/purchase rules
 - prints basic data quality checks (label distribution, bucket counts)
+- uses `query_hash` as join key (raw query text is not required for training joins)
 
 ## Point-in-time correctness (B-0293)
 Snapshots live in `feat_doc_daily` / `feat_qd_daily`. Join training examples on

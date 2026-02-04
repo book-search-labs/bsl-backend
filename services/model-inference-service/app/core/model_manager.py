@@ -1,6 +1,12 @@
 from typing import Dict, Optional, Tuple
 
-from app.core.models import BaseModel, OnnxCrossEncoderModel, OnnxRerankModel, ToyRerankModel
+from app.core.models import (
+    BaseModel,
+    BaselineLtrModel,
+    OnnxCrossEncoderModel,
+    OnnxRerankModel,
+    ToyRerankModel,
+)
 from app.core.registry import ModelRegistry, ModelSpec
 from app.core.settings import SETTINGS
 
@@ -56,6 +62,11 @@ class ModelManager:
             except Exception:
                 self._model_status[spec.model_id] = "error"
                 return None
+        if spec.backend == "baseline_ltr":
+            model = BaselineLtrModel()
+            self._models[spec.model_id] = model
+            self._model_status[spec.model_id] = "ready"
+            return model
         model = ToyRerankModel()
         self._models[spec.model_id] = model
         self._model_status[spec.model_id] = "ready"

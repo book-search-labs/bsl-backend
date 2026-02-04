@@ -30,11 +30,22 @@ public class MisClient {
         return properties.isEnabled();
     }
 
+    public String resolveModelId(String modelOverride) {
+        if (modelOverride != null && !modelOverride.isBlank()) {
+            return modelOverride;
+        }
+        if (properties.getModelId() != null && !properties.getModelId().isBlank()) {
+            return properties.getModelId();
+        }
+        return "mis";
+    }
+
     public MisScoreResponse score(
         String queryText,
         List<RerankRequest.Candidate> candidates,
         int timeoutMs,
         boolean returnDebug,
+        String modelOverride,
         String traceId,
         String requestId,
         String traceparent
@@ -50,7 +61,11 @@ public class MisClient {
         scoreRequest.setVersion("v1");
         scoreRequest.setTraceId(traceId);
         scoreRequest.setRequestId(requestId);
-        scoreRequest.setModel(properties.getModelId());
+        if (modelOverride != null && !modelOverride.isBlank()) {
+            scoreRequest.setModel(modelOverride);
+        } else {
+            scoreRequest.setModel(properties.getModelId());
+        }
         scoreRequest.setTask(properties.getTask());
 
         MisScoreRequest.Options options = new MisScoreRequest.Options();

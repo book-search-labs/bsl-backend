@@ -17,6 +17,18 @@ public final class WeightedFusion {
         double lexWeight,
         double vecWeight
     ) {
+        return fuse(lexRanks, vecRanks, k, lexWeight, vecWeight, Map.of(), Map.of());
+    }
+
+    public static List<RrfFusion.Candidate> fuse(
+        Map<String, Integer> lexRanks,
+        Map<String, Integer> vecRanks,
+        int k,
+        double lexWeight,
+        double vecWeight,
+        Map<String, Double> lexScores,
+        Map<String, Double> vecScores
+    ) {
         Map<String, MutableCandidate> candidates = new HashMap<>();
 
         for (Map.Entry<String, Integer> entry : lexRanks.entrySet()) {
@@ -24,6 +36,7 @@ public final class WeightedFusion {
             int rank = entry.getValue();
             candidate.lexRank = rank;
             candidate.score += lexWeight * (1.0 / (k + rank));
+            candidate.bm25Score = lexScores == null ? null : lexScores.get(entry.getKey());
         }
 
         for (Map.Entry<String, Integer> entry : vecRanks.entrySet()) {
@@ -31,6 +44,7 @@ public final class WeightedFusion {
             int rank = entry.getValue();
             candidate.vecRank = rank;
             candidate.score += vecWeight * (1.0 / (k + rank));
+            candidate.vecScore = vecScores == null ? null : vecScores.get(entry.getKey());
         }
 
         List<MutableCandidate> mutable = new ArrayList<>(candidates.values());
@@ -40,8 +54,19 @@ public final class WeightedFusion {
         );
 
         List<RrfFusion.Candidate> fused = new ArrayList<>(mutable.size());
-        for (MutableCandidate candidate : mutable) {
-            fused.add(new RrfFusion.Candidate(candidate.docId, candidate.score, candidate.lexRank, candidate.vecRank));
+        for (int i = 0; i < mutable.size(); i++) {
+            MutableCandidate candidate = mutable.get(i);
+            fused.add(
+                new RrfFusion.Candidate(
+                    candidate.docId,
+                    candidate.score,
+                    candidate.lexRank,
+                    candidate.vecRank,
+                    i + 1,
+                    candidate.bm25Score,
+                    candidate.vecScore
+                )
+            );
         }
         return fused;
     }
@@ -51,6 +76,8 @@ public final class WeightedFusion {
         private double score;
         private Integer lexRank;
         private Integer vecRank;
+        private Double bm25Score;
+        private Double vecScore;
 
         private MutableCandidate(String docId) {
             this.docId = docId;

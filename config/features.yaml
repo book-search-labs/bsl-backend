@@ -1,5 +1,5 @@
 version: v1
-feature_set_version: fs_v1
+feature_set_version: rs.fs.v1
 features:
   - name: rrf_score
     type: float
@@ -10,6 +10,12 @@ features:
       clip:
         min: 0.0
         max: 1.0
+  - name: fused_rank
+    type: int
+    key_type: query_doc
+    source: request
+    transform:
+      default: 9999
   - name: lex_rank
     type: int
     key_type: query_doc
@@ -22,6 +28,18 @@ features:
     source: request
     transform:
       default: 9999
+  - name: bm25_score
+    type: float
+    key_type: query_doc
+    source: request
+    transform:
+      default: 0.0
+  - name: vec_score
+    type: float
+    key_type: query_doc
+    source: request
+    transform:
+      default: 0.0
   - name: issued_year
     type: int
     key_type: doc
@@ -77,3 +95,48 @@ features:
     source: derived
     transform:
       default: 0
+  - name: has_number_token
+    type: bool
+    key_type: query
+    source: derived
+    transform:
+      default: false
+  - name: is_isbn_like
+    type: bool
+    key_type: query
+    source: derived
+    transform:
+      default: false
+  - name: has_volume_like
+    type: bool
+    key_type: query
+    source: derived
+    transform:
+      default: false
+  - name: title_exact_match
+    type: bool
+    key_type: query_doc
+    source: derived
+    transform:
+      default: false
+  - name: author_exact_match
+    type: bool
+    key_type: query_doc
+    source: derived
+    transform:
+      default: false
+  - name: series_exact_match
+    type: bool
+    key_type: query_doc
+    source: derived
+    transform:
+      default: false
+  - name: metadata_completeness
+    type: float
+    key_type: doc
+    source: derived
+    transform:
+      default: 0.0
+      clip:
+        min: 0.0
+        max: 1.0

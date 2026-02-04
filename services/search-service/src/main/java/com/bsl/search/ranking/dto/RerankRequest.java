@@ -81,6 +81,10 @@ public class RerankRequest {
         private String docId;
 
         private String doc;
+        private String title;
+        private List<String> authors;
+        private String series;
+        private String publisher;
 
         private Features features;
 
@@ -98,6 +102,38 @@ public class RerankRequest {
 
         public void setDoc(String doc) {
             this.doc = doc;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+        public List<String> getAuthors() {
+            return authors;
+        }
+
+        public void setAuthors(List<String> authors) {
+            this.authors = authors;
+        }
+
+        public String getSeries() {
+            return series;
+        }
+
+        public void setSeries(String series) {
+            this.series = series;
+        }
+
+        public String getPublisher() {
+            return publisher;
+        }
+
+        public void setPublisher(String publisher) {
+            this.publisher = publisher;
         }
 
         public Features getFeatures() {
@@ -118,6 +154,18 @@ public class RerankRequest {
 
         @JsonProperty("rrf_score")
         private Double rrfScore;
+
+        @JsonProperty("fused_rank")
+        private Integer fusedRank;
+
+        @JsonProperty("rrf_rank")
+        private Integer rrfRank;
+
+        @JsonProperty("bm25_score")
+        private Double bm25Score;
+
+        @JsonProperty("vec_score")
+        private Double vecScore;
 
         @JsonProperty("issued_year")
         private Integer issuedYear;
@@ -149,6 +197,38 @@ public class RerankRequest {
 
         public void setRrfScore(Double rrfScore) {
             this.rrfScore = rrfScore;
+        }
+
+        public Integer getFusedRank() {
+            return fusedRank;
+        }
+
+        public void setFusedRank(Integer fusedRank) {
+            this.fusedRank = fusedRank;
+        }
+
+        public Integer getRrfRank() {
+            return rrfRank;
+        }
+
+        public void setRrfRank(Integer rrfRank) {
+            this.rrfRank = rrfRank;
+        }
+
+        public Double getBm25Score() {
+            return bm25Score;
+        }
+
+        public void setBm25Score(Double bm25Score) {
+            this.bm25Score = bm25Score;
+        }
+
+        public Double getVecScore() {
+            return vecScore;
+        }
+
+        public void setVecScore(Double vecScore) {
+            this.vecScore = vecScore;
         }
 
         public Integer getIssuedYear() {

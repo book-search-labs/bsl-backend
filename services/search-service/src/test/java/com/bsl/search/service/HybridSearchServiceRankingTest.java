@@ -122,7 +122,7 @@ class HybridSearchServiceRankingTest {
     void searchUsesRankingOrderWhenAvailable() {
         SearchRequest request = buildRequest("harry");
         when(lexicalRetriever.retrieve(any()))
-            .thenReturn(RetrievalStageResult.success(List.of("b1", "b2"), null, 5L));
+            .thenReturn(RetrievalStageResult.success(List.of("b1", "b2"), Map.of(), null, 5L));
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
 
         RerankResponse rerankResponse = new RerankResponse();
@@ -152,7 +152,7 @@ class HybridSearchServiceRankingTest {
     void searchFallsBackToRrfWhenRankingUnavailable() {
         SearchRequest request = buildRequest("harry");
         when(lexicalRetriever.retrieve(any()))
-            .thenReturn(RetrievalStageResult.success(List.of("b1", "b2"), null, 5L));
+            .thenReturn(RetrievalStageResult.success(List.of("b1", "b2"), Map.of(), null, 5L));
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
         when(rankingGateway.rerank(eq("harry"), anyList(), anyInt(), anyInt(), anyBoolean(), anyString(), anyString(), any()))
             .thenThrow(new RankingUnavailableException("down", new RuntimeException("timeout")));

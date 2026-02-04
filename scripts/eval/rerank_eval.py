@@ -6,7 +6,7 @@ import urllib.request
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List, Tuple
 
 
 def load_queries(path: Path) -> List[dict]:
@@ -132,6 +132,40 @@ def build_doc_text(doc_id: str, source: dict) -> str:
         parts.append(str(series))
 
     return " | ".join(parts) if parts else doc_id
+
+
+def parse_json_options(raw: str) -> dict:
+    text = (raw or "").strip()
+    if not text:
+        return {}
+    return json.loads(text)
+
+
+def rerank_once(
+    ranking_url: str,
+    query: str,
+    candidates: List[dict],
+    timeout_seconds: float,
+    base_options: dict,
+    override_options: dict,
+) -> tuple[List[str], float, bool]:
+    options = dict(base_options)
+    if override_options:
+        options.update(override_options)
+    payload = {
+        "query": {"text": query},
+        "candidates": candidates,
+        "options": options,
+    }
+    started = time.time()
+    response = post_json(f"{ranking_url.rstrip('/')}/rerank", payload, timeout_seconds)
+    took_ms = response.get("took_ms")
+    if took_ms is None:
+        took_ms = int((time.time() - started) * 1000)
+    doc_ids = [hit.get("doc_id") for hit in response.get("hits", []) if hit.get("doc_id")]
+    debug = response.get("debug") or {}
+    applied = debug.get("rerank_applied")
+    return doc_ids, float(took_ms), bool(applied) if applied is not None else True
 
 
 def dcg(rels: List[int]) -> float:
@@ -347,6 +381,10 @@ def main() -> int:
     parser.add_argument("--timeout", type=float, default=10.0)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--out", default="data/eval/reports")
+    parser.add_argument("--baseline-mode", choices=["fused", "rerank"], default="fused")
+    parser.add_argument("--candidate-mode", choices=["fused", "rerank"], default="rerank")
+    parser.add_argument("--baseline-rerank-options", default="")
+    parser.add_argument("--candidate-rerank-options", default="")
     parser.add_argument("--baseline-report", default="")
     parser.add_argument("--gate", action="store_true")
     parser.add_argument("--max-drop", type=float, default=0.02)
@@ -366,6 +404,10 @@ def main() -> int:
     candidate_applied: Dict[str, bool] = {}
     candidate_latency: Dict[str, float] = {}
 
+    base_options = {"size": args.rerank_topk, "debug": True, "timeout_ms": int(args.timeout * 1000)}
+    baseline_override = parse_json_options(args.baseline_rerank_options)
+    candidate_override = parse_json_options(args.candidate_rerank_options)
+
     for item, vector in zip(queries, query_vectors):
         qid = item.get("qid")
         if not qid:
@@ -374,7 +416,6 @@ def main() -> int:
         lex_hits = search_lexical(args.os_url, args.doc_index, query, args.lex_topk, args.timeout)
         vec_hits = search_vector(args.os_url, args.vec_index, vector, args.vec_topk, args.timeout)
         fused = rrf_fuse(lex_hits, vec_hits, args.rrf_k)
-        baseline_runs[qid] = fused
 
         candidate_ids = fused[: args.rerank_topk]
         sources = fetch_sources(args.os_url, args.doc_index, candidate_ids, args.timeout)
@@ -401,25 +442,41 @@ def main() -> int:
                 }
             )
 
-        payload = {
-            "query": {"text": query},
-            "candidates": candidates,
-            "options": {"size": args.rerank_topk, "debug": True, "timeout_ms": int(args.timeout * 1000)},
-        }
-        started = time.time()
-        response = post_json(f"{args.ranking_url.rstrip('/')}/rerank", payload, args.timeout)
-        took_ms = response.get("took_ms")
-        if took_ms is None:
-            took_ms = int((time.time() - started) * 1000)
-        candidate_latency[qid] = float(took_ms)
-        candidate_runs[qid] = [hit.get("doc_id") for hit in response.get("hits", []) if hit.get("doc_id")]
-        debug = response.get("debug") or {}
-        applied = debug.get("rerank_applied")
-        candidate_applied[qid] = bool(applied) if applied is not None else True
+        if args.baseline_mode == "rerank":
+            doc_ids, took_ms, applied = rerank_once(
+                args.ranking_url,
+                query,
+                candidates,
+                args.timeout,
+                base_options,
+                baseline_override,
+            )
+            baseline_runs[qid] = doc_ids
+        else:
+            baseline_runs[qid] = fused
+
+        if args.candidate_mode == "rerank":
+            doc_ids, took_ms, applied = rerank_once(
+                args.ranking_url,
+                query,
+                candidates,
+                args.timeout,
+                base_options,
+                candidate_override,
+            )
+            candidate_runs[qid] = doc_ids
+            candidate_latency[qid] = took_ms
+            candidate_applied[qid] = applied
+        else:
+            candidate_runs[qid] = fused
 
     report = build_report(queries, baseline_runs, candidate_runs, candidate_applied, candidate_latency)
-    report["baseline_name"] = "fused_rrf"
-    report["candidate_name"] = "rerank"
+    report["baseline_name"] = "fused_rrf" if args.baseline_mode == "fused" else "rerank_baseline"
+    report["candidate_name"] = "rerank" if args.candidate_mode == "rerank" else "fused_rrf"
+    report["baseline_mode"] = args.baseline_mode
+    report["candidate_mode"] = args.candidate_mode
+    report["baseline_rerank_options"] = baseline_override
+    report["candidate_rerank_options"] = candidate_override
 
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     out_dir = Path(args.out)

@@ -55,7 +55,7 @@ class SearchControllerQcV11Test {
     @Test
     void acceptsQcV11AndPropagatesIds() throws Exception {
         when(openSearchGateway.searchLexicalDetailed(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean()))
-            .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of()));
+            .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of(), Map.of()));
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
 
         Map<String, Object> payload = qcV11Payload(
@@ -93,7 +93,7 @@ class SearchControllerQcV11Test {
     @Test
     void mapsVolumeFilterIntoLexicalQuery() throws Exception {
         when(openSearchGateway.searchLexicalDetailed(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean()))
-            .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of()));
+            .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of(), Map.of()));
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
 
         Map<String, Object> payload = qcV11Payload(
@@ -138,7 +138,7 @@ class SearchControllerQcV11Test {
     @Test
     void allowsQuerylessSearchWithFilters() throws Exception {
         when(openSearchGateway.searchMatchAllDetailed(anyInt(), any(), any(), anyBoolean()))
-            .thenReturn(new com.bsl.search.opensearch.OpenSearchQueryResult(List.of("b1"), Map.of()));
+            .thenReturn(new com.bsl.search.opensearch.OpenSearchQueryResult(List.of("b1"), Map.of(), Map.of()));
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
 
         Map<String, Object> payload = qcV11Payload(
@@ -168,7 +168,7 @@ class SearchControllerQcV11Test {
     @Test
     void mapsKdcNodeFilterIntoLexicalQuery() throws Exception {
         when(openSearchGateway.searchLexicalDetailed(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean()))
-            .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of()));
+            .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of(), Map.of()));
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
 
         Map<String, Object> payload = qcV11Payload(
@@ -213,7 +213,7 @@ class SearchControllerQcV11Test {
     @Test
     void appliesFallbackOnVectorError() throws Exception {
         when(openSearchGateway.searchLexicalDetailed(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean()))
-            .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of()));
+            .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of(), Map.of()));
         when(openSearchGateway.searchVectorDetailed(anyList(), anyInt(), any(), any(), anyBoolean()))
             .thenThrow(new OpenSearchUnavailableException("vector down", new RuntimeException("timeout")));
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
@@ -246,7 +246,7 @@ class SearchControllerQcV11Test {
     @Test
     void usesAuthorRoutingDslWhenUnderstandingExists() throws Exception {
         when(openSearchGateway.searchLexicalByDslDetailed(any(), anyInt(), any(), any(), anyBoolean()))
-            .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of()));
+            .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of(), Map.of()));
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
 
         Map<String, Object> payload = qcV11Payload(
@@ -287,8 +287,8 @@ class SearchControllerQcV11Test {
     void retriesOnceWithEnhanceWhenZeroResults() throws Exception {
         when(openSearchGateway.searchLexicalDetailed(anyString(), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean()))
             .thenReturn(
-                new OpenSearchQueryResult(List.of(), Map.of()),
-                new OpenSearchQueryResult(List.of("b1"), Map.of())
+                new OpenSearchQueryResult(List.of(), Map.of(), Map.of()),
+                new OpenSearchQueryResult(List.of("b1"), Map.of(), Map.of())
             );
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
 

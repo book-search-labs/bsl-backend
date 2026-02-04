@@ -58,6 +58,10 @@ feature-store:
   refresh-ms: ${FEATURE_STORE_REFRESH_MS:10000}
 
 ranking:
+  cache:
+    enabled: ${RERANK_CACHE_ENABLED:true}
+    ttl-seconds: ${RERANK_CACHE_TTL_SECONDS:900}
+    max-entries: ${RERANK_CACHE_MAX_ENTRIES:10000}
   guardrails:
     max-candidates: ${RERANK_MAX_CANDIDATES:200}
     max-top-n: ${RERANK_MAX_TOP_N:50}

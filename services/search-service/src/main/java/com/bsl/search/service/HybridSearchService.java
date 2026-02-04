@@ -445,14 +445,23 @@ public class HybridSearchService {
             features.setLexRank(candidate.getLexRank());
             features.setVecRank(candidate.getVecRank());
             features.setRrfScore(candidate.getScore());
+            features.setFusedRank(candidate.getFusedRank());
+            features.setRrfRank(candidate.getFusedRank());
+            features.setBm25Score(candidate.getBm25Score());
+            features.setVecScore(candidate.getVecScore());
 
             JsonNode source = sources.get(candidate.getDocId());
             rerankCandidate.setDoc(buildDocText(candidate.getDocId(), source));
             if (source != null && !source.isMissingNode()) {
+                rerankCandidate.setTitle(readTitle(source));
+                rerankCandidate.setAuthors(extractAuthors(source));
+                rerankCandidate.setSeries(readText(source, "series_name"));
+                rerankCandidate.setPublisher(readText(source, "publisher_name"));
                 features.setIssuedYear(readInteger(source, "issued_year"));
                 features.setVolume(readInteger(source, "volume"));
                 features.setEditionLabels(extractEditionLabels(source));
             } else {
+                rerankCandidate.setAuthors(Collections.emptyList());
                 features.setEditionLabels(Collections.emptyList());
             }
 
@@ -594,10 +603,12 @@ public class HybridSearchService {
 
         Map<String, Integer> lexRanks = rankMap(lexicalResult.getDocIds());
         Map<String, Integer> vecRanks = rankMap(vectorResult.getDocIds());
+        Map<String, Double> lexScores = lexicalResult.getScoresByDocId();
+        Map<String, Double> vecScores = vectorResult.getScoresByDocId();
 
         long fusionStarted = System.nanoTime();
         FusionMethod fusionMethod = resolveFusionMethod(plan, requestId);
-        List<RrfFusion.Candidate> fused = fuseCandidates(lexRanks, vecRanks, plan, fusionMethod);
+        List<RrfFusion.Candidate> fused = fuseCandidates(lexRanks, vecRanks, lexScores, vecScores, plan, fusionMethod);
         long fusionTookMs = (System.nanoTime() - fusionStarted) / 1_000_000L;
 
         List<String> fusedDocIds = toDocIds(fused);
@@ -857,6 +868,8 @@ public class HybridSearchService {
     private List<RrfFusion.Candidate> fuseCandidates(
         Map<String, Integer> lexRanks,
         Map<String, Integer> vecRanks,
+        Map<String, Double> lexScores,
+        Map<String, Double> vecScores,
         ExecutionPlan plan,
         FusionMethod method
     ) {
@@ -864,9 +877,9 @@ public class HybridSearchService {
         if (method == FusionMethod.WEIGHTED) {
             double lexWeight = fusionPolicy == null ? 1.0 : fusionPolicy.getLexWeight();
             double vecWeight = fusionPolicy == null ? 1.0 : fusionPolicy.getVecWeight();
-            return WeightedFusion.fuse(lexRanks, vecRanks, k, lexWeight, vecWeight);
+            return WeightedFusion.fuse(lexRanks, vecRanks, k, lexWeight, vecWeight, lexScores, vecScores);
         }
-        return RrfFusion.fuse(lexRanks, vecRanks, k);
+        return RrfFusion.fuse(lexRanks, vecRanks, k, lexScores, vecScores);
     }
 
     private FusionMethod resolveFusionMethod(ExecutionPlan plan, String requestId) {
@@ -2339,30 +2352,12 @@ public class HybridSearchService {
             return null;
         }
         BookHit.Source mapped = new BookHit.Source();
-        mapped.setTitleKo(source.path("title_ko").asText(null));
-        mapped.setPublisherName(source.path("publisher_name").asText(null));
+        mapped.setTitleKo(readTitle(source));
+        mapped.setPublisherName(readText(source, "publisher_name"));
         mapped.setIssuedYear(readInteger(source, "issued_year"));
         mapped.setVolume(readInteger(source, "volume"));
         mapped.setEditionLabels(extractEditionLabels(source));
-
-        List<String> authors = new ArrayList<>();
-        JsonNode authorsNode = source.path("authors");
-        if (authorsNode.isArray()) {
-            for (JsonNode authorNode : authorsNode) {
-                if (authorNode.isTextual()) {
-                    authors.add(authorNode.asText());
-                } else if (authorNode.isObject()) {
-                    String nameKo = authorNode.path("name_ko").asText(null);
-                    String nameEn = authorNode.path("name_en").asText(null);
-                    if (nameKo != null && !nameKo.isEmpty()) {
-                        authors.add(nameKo);
-                    } else if (nameEn != null && !nameEn.isEmpty()) {
-                        authors.add(nameEn);
-                    }
-                }
-            }
-        }
-        mapped.setAuthors(authors);
+        mapped.setAuthors(extractAuthors(source));
         return mapped;
     }
 
@@ -2384,13 +2379,57 @@ public class HybridSearchService {
         return editionLabels;
     }
 
+    private String readText(JsonNode source, String fieldName) {
+        if (source == null || source.isMissingNode() || fieldName == null) {
+            return null;
+        }
+        String value = source.path(fieldName).asText(null);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value;
+    }
+
+    private String readTitle(JsonNode source) {
+        String titleKo = readText(source, "title_ko");
+        if (titleKo != null) {
+            return titleKo;
+        }
+        return readText(source, "title_en");
+    }
+
+    private List<String> extractAuthors(JsonNode source) {
+        List<String> authors = new ArrayList<>();
+        JsonNode authorsNode = source == null ? null : source.path("authors");
+        if (authorsNode == null || !authorsNode.isArray()) {
+            return authors;
+        }
+        for (JsonNode authorNode : authorsNode) {
+            if (authorNode.isTextual()) {
+                String value = authorNode.asText(null);
+                if (value != null && !value.isBlank()) {
+                    authors.add(value);
+                }
+            } else if (authorNode.isObject()) {
+                String nameKo = authorNode.path("name_ko").asText(null);
+                String nameEn = authorNode.path("name_en").asText(null);
+                if (nameKo != null && !nameKo.isBlank()) {
+                    authors.add(nameKo);
+                } else if (nameEn != null && !nameEn.isBlank()) {
+                    authors.add(nameEn);
+                }
+            }
+        }
+        return authors;
+    }
+
     private String buildDocText(String docId, JsonNode source) {
         if (source == null || source.isMissingNode()) {
             return docId;
         }
         List<String> parts = new ArrayList<>();
-        String titleKo = source.path("title_ko").asText(null);
-        String titleEn = source.path("title_en").asText(null);
+        String titleKo = readText(source, "title_ko");
+        String titleEn = readText(source, "title_en");
         if (titleKo != null && !titleKo.isBlank()) {
             parts.add(titleKo);
         }
@@ -2398,32 +2437,16 @@ public class HybridSearchService {
             parts.add(titleEn);
         }
 
-        List<String> authors = new ArrayList<>();
-        JsonNode authorsNode = source.path("authors");
-        if (authorsNode.isArray()) {
-            for (JsonNode authorNode : authorsNode) {
-                if (authorNode.isTextual()) {
-                    authors.add(authorNode.asText());
-                } else if (authorNode.isObject()) {
-                    String nameKo = authorNode.path("name_ko").asText(null);
-                    String nameEn = authorNode.path("name_en").asText(null);
-                    if (nameKo != null && !nameKo.isEmpty()) {
-                        authors.add(nameKo);
-                    } else if (nameEn != null && !nameEn.isEmpty()) {
-                        authors.add(nameEn);
-                    }
-                }
-            }
-        }
+        List<String> authors = extractAuthors(source);
         if (!authors.isEmpty()) {
             parts.add(String.join(", ", authors));
         }
 
-        String publisher = source.path("publisher_name").asText(null);
+        String publisher = readText(source, "publisher_name");
         if (publisher != null && !publisher.isBlank()) {
             parts.add(publisher);
         }
-        String series = source.path("series_name").asText(null);
+        String series = readText(source, "series_name");
         if (series != null && !series.isBlank()) {
             parts.add(series);
         }

@@ -9,11 +9,17 @@ import com.bsl.ranking.features.FeatureSpecService;
 import com.bsl.ranking.mis.MisClient;
 import com.bsl.ranking.mis.MisUnavailableException;
 import com.bsl.ranking.mis.dto.MisScoreResponse;
+import io.micrometer.core.instrument.MeterRegistry;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -22,29 +28,39 @@ import org.springframework.stereotype.Service;
 public class RerankService {
     private static final Logger log = LoggerFactory.getLogger(RerankService.class);
     private static final int DEFAULT_SIZE = 10;
+    private static final int DEFAULT_STAGE1_TOP_K = 50;
+    private static final double STAGE1_TIMEOUT_RATIO = 0.4;
 
     private final MisClient misClient;
     private final FeatureFetcher featureFetcher;
     private final FeatureSpecService featureSpecService;
     private final RerankGuardrailsProperties guardrails;
+    private final RerankScoreCache rerankScoreCache;
+    private final MeterRegistry meterRegistry;
 
     public RerankService(
         MisClient misClient,
         FeatureFetcher featureFetcher,
         FeatureSpecService featureSpecService,
-        RerankGuardrailsProperties guardrails
+        RerankGuardrailsProperties guardrails,
+        RerankScoreCache rerankScoreCache,
+        MeterRegistry meterRegistry
     ) {
         this.misClient = misClient;
         this.featureFetcher = featureFetcher;
         this.featureSpecService = featureSpecService;
         this.guardrails = guardrails;
+        this.rerankScoreCache = rerankScoreCache;
+        this.meterRegistry = meterRegistry;
     }
 
     public RerankResponse rerank(RerankRequest request, String traceId, String requestId, String traceparent) {
         long started = System.nanoTime();
         List<String> reasonCodes = new ArrayList<>();
+        Map<String, Object> stageDetails = new LinkedHashMap<>();
         boolean debugEnabled = request.getOptions() != null && Boolean.TRUE.equals(request.getOptions().getDebug());
-        boolean rerankRequested = request.getOptions() == null || request.getOptions().getRerank() == null
+        boolean rerankRequested = request.getOptions() == null
+            || request.getOptions().getRerank() == null
             || Boolean.TRUE.equals(request.getOptions().getRerank());
 
         String queryText = request.getQuery() == null ? null : request.getQuery().getText();
@@ -57,78 +73,78 @@ public class RerankService {
         int timeoutMs = resolveTimeoutMs(request, reasonCodes);
 
         List<EnrichedCandidate> enrichedCandidates = featureFetcher.enrich(candidates, queryText);
+        StagePlan stagePlan = resolveStagePlan(request, timeoutMs, candidatesUsed);
 
-        boolean misEligible = misClient.isEnabled()
-            && rerankRequested
-            && candidatesUsed >= guardrails.getMinCandidatesForMis()
-            && (queryText == null || queryText.trim().length() >= guardrails.getMinQueryLengthForMis())
-            && timeoutMs > 0;
-
-        List<ScoredCandidate> scored;
+        List<ScoredCandidate> finalScored;
         String modelId;
-        boolean rerankApplied = false;
+        boolean rerankApplied;
 
         if (!rerankRequested) {
             reasonCodes.add("rerank_disabled");
-        }
-        if (!misClient.isEnabled()) {
-            reasonCodes.add("mis_disabled");
-        }
-        if (candidatesUsed < guardrails.getMinCandidatesForMis()) {
-            reasonCodes.add("mis_skipped_min_candidates");
-        }
-        if (queryText != null && queryText.trim().length() < guardrails.getMinQueryLengthForMis()) {
-            reasonCodes.add("mis_skipped_short_query");
-        }
-        if (timeoutMs <= 0) {
-            reasonCodes.add("timeout_budget_exhausted");
-        }
+            finalScored = buildScoredHeuristic(enrichedCandidates);
+            modelId = "toy_rerank_v1";
+            rerankApplied = false;
+            stageDetails.put("stage1", stageDebugMap(StageResult.skipped(stagePlan.stage1, candidatesUsed, "skip_rerank_disabled")));
+            stageDetails.put("stage2", stageDebugMap(StageResult.skipped(stagePlan.stage2, candidatesUsed, "skip_rerank_disabled")));
+        } else {
+            StageResult stage1Result = executeStage1(
+                stagePlan.stage1,
+                enrichedCandidates,
+                queryText,
+                debugEnabled,
+                traceId,
+                requestId,
+                traceparent
+            );
+            if (stage1Result.reasonCode != null) {
+                reasonCodes.add("stage1:" + stage1Result.reasonCode);
+            }
+            stageDetails.put("stage1", stageDebugMap(stage1Result));
 
-        if (misEligible) {
-            try {
-                List<EnrichedCandidate> misCandidates = applyMisLimit(enrichedCandidates, reasonCodes);
-                List<RerankRequest.Candidate> misRequestCandidates = buildMisCandidates(misCandidates);
-                MisScoreResponse scoreResponse = misClient.score(
-                    queryText,
-                    misRequestCandidates,
-                    timeoutMs,
-                    debugEnabled,
-                    traceId,
-                    requestId,
-                    traceparent
-                );
-                if (scoreResponse == null || scoreResponse.getScores() == null) {
-                    throw new MisUnavailableException("mis returned empty scores");
+            List<EnrichedCandidate> stage2Input = stage1Result.outputCandidates != null
+                ? stage1Result.outputCandidates
+                : enrichedCandidates;
+
+            StageResult stage2Result = executeStage2(
+                stagePlan.stage2,
+                stage2Input,
+                stage1Result,
+                queryText,
+                debugEnabled,
+                traceId,
+                requestId,
+                traceparent
+            );
+            if (stage2Result.reasonCode != null) {
+                reasonCodes.add("stage2:" + stage2Result.reasonCode);
+            }
+            stageDetails.put("stage2", stageDebugMap(stage2Result));
+
+            finalScored = stage2Result.scored;
+            if (finalScored == null || finalScored.isEmpty()) {
+                if (stage1Result.scored != null && !stage1Result.scored.isEmpty()) {
+                    finalScored = stage1Result.scored;
+                } else {
+                    finalScored = buildScoredHeuristic(enrichedCandidates);
                 }
-                List<Double> scores = scoreResponse.getScores();
-                if (scores.size() != misCandidates.size()) {
-                    throw new MisUnavailableException("mis score size mismatch");
-                }
-                scored = buildScoredFromMis(misCandidates, scores);
-                modelId = scoreResponse.getModel() == null ? "mis" : scoreResponse.getModel();
-                rerankApplied = true;
-            } catch (MisUnavailableException ex) {
-                log.debug("MIS unavailable, falling back to heuristic scorer", ex);
-                reasonCodes.add("mis_error");
-                scored = buildScoredHeuristic(enrichedCandidates);
+            }
+
+            modelId = stage2Result.modelId;
+            if (isBlank(modelId)) {
+                modelId = stage1Result.modelId;
+            }
+            if (isBlank(modelId)) {
                 modelId = "toy_rerank_v1";
             }
-        } else {
-            scored = buildScoredHeuristic(enrichedCandidates);
-            modelId = "toy_rerank_v1";
+            rerankApplied = stage1Result.applied || stage2Result.applied;
         }
 
-        scored.sort(
-            Comparator.comparingDouble(ScoredCandidate::score).reversed()
-                .thenComparing(entry -> nullSafeRank(entry.lexRank()))
-                .thenComparing(entry -> nullSafeRank(entry.vecRank()))
-                .thenComparing(ScoredCandidate::docId)
-        );
+        sortScored(finalScored);
 
-        int limit = Math.min(size, scored.size());
+        int limit = Math.min(size, finalScored.size());
         List<RerankResponse.Hit> hits = new ArrayList<>(limit);
         for (int i = 0; i < limit; i++) {
-            ScoredCandidate entry = scored.get(i);
+            ScoredCandidate entry = finalScored.get(i);
             RerankResponse.Hit hit = new RerankResponse.Hit();
             hit.setDocId(entry.docId());
             hit.setScore(entry.score());
@@ -147,9 +163,400 @@ public class RerankService {
         response.setModel(modelId);
         response.setHits(hits);
         if (debugEnabled) {
-            response.setDebug(buildResponseDebug(modelId, reasonCodes, candidatesIn, candidatesUsed, timeoutMs, rerankApplied, request));
+            response.setDebug(
+                buildResponseDebug(modelId, reasonCodes, candidatesIn, candidatesUsed, timeoutMs, rerankApplied, request, stageDetails)
+            );
         }
         return response;
+    }
+
+    private StagePlan resolveStagePlan(RerankRequest request, int timeoutMs, int candidatesUsed) {
+        RerankRequest.Options options = request.getOptions();
+        RerankRequest.RerankConfig config = options == null ? null : options.getRerankConfig();
+
+        boolean stage1Enabled = false;
+        boolean stage2Enabled = true;
+        Integer stage1TopK = null;
+        Integer stage2TopK = null;
+        String stage1Model = null;
+        String stage2Model = options == null ? null : options.getModel();
+
+        if (config != null) {
+            if (config.getStage1() != null) {
+                if (config.getStage1().getEnabled() != null) {
+                    stage1Enabled = config.getStage1().getEnabled();
+                }
+                stage1TopK = config.getStage1().getTopK();
+                stage1Model = trimToNull(config.getStage1().getModel());
+            }
+            if (config.getStage2() != null) {
+                if (config.getStage2().getEnabled() != null) {
+                    stage2Enabled = config.getStage2().getEnabled();
+                }
+                stage2TopK = config.getStage2().getTopK();
+                if (config.getStage2().getModel() != null && !config.getStage2().getModel().isBlank()) {
+                    stage2Model = config.getStage2().getModel();
+                }
+            }
+            if (config.getModel() != null && !config.getModel().isBlank()) {
+                stage2Model = config.getModel();
+            }
+        }
+
+        int resolvedStage1TopK = resolveStageTopK(stage1TopK, Math.min(DEFAULT_STAGE1_TOP_K, candidatesUsed));
+        int resolvedStage2TopK = resolveStageTopK(stage2TopK, candidatesUsed);
+        int[] stageTimeouts = splitTimeout(timeoutMs, stage1Enabled, stage2Enabled);
+
+        ResolvedStage stage1 = new ResolvedStage(stage1Enabled, resolvedStage1TopK, stageTimeouts[0], stage1Model);
+        ResolvedStage stage2 = new ResolvedStage(stage2Enabled, resolvedStage2TopK, stageTimeouts[1], trimToNull(stage2Model));
+        return new StagePlan(stage1, stage2);
+    }
+
+    private int resolveStageTopK(Integer requested, int fallback) {
+        int topK = requested == null ? fallback : requested;
+        topK = Math.max(topK, 0);
+        topK = Math.min(topK, guardrails.getMaxMisCandidates());
+        return topK;
+    }
+
+    private int[] splitTimeout(int timeoutMs, boolean stage1Enabled, boolean stage2Enabled) {
+        if (timeoutMs <= 0) {
+            return new int[] {0, 0};
+        }
+        if (stage1Enabled && stage2Enabled) {
+            int stage1 = Math.max(1, (int) Math.floor(timeoutMs * STAGE1_TIMEOUT_RATIO));
+            int stage2 = Math.max(1, timeoutMs - stage1);
+            return new int[] {stage1, stage2};
+        }
+        if (stage1Enabled) {
+            return new int[] {timeoutMs, 0};
+        }
+        if (stage2Enabled) {
+            return new int[] {0, timeoutMs};
+        }
+        return new int[] {0, 0};
+    }
+
+    private StageResult executeStage1(
+        ResolvedStage stage,
+        List<EnrichedCandidate> candidates,
+        String queryText,
+        boolean debugEnabled,
+        String traceId,
+        String requestId,
+        String traceparent
+    ) {
+        int in = candidates == null ? 0 : candidates.size();
+        if (stage == null || !stage.enabled) {
+            return StageResult.skipped(stage, in, "skip_disabled");
+        }
+        if (in == 0) {
+            return StageResult.skipped(stage, in, "skip_no_candidates");
+        }
+        if (stage.topK <= 0) {
+            return StageResult.skipped(stage, in, "skip_topk_zero");
+        }
+
+        List<ScoredCandidate> scored;
+        String modelId;
+        int cacheHits = 0;
+        int cacheMisses = 0;
+
+        if (!isBlank(stage.model) && misEligible(queryText, in, stage.timeoutMs)) {
+            try {
+                MisScoringResult misResult = scoreWithMis(
+                    candidates,
+                    queryText,
+                    stage.timeoutMs,
+                    stage.model,
+                    debugEnabled,
+                    traceId,
+                    requestId,
+                    traceparent
+                );
+                scored = misResult.scored;
+                modelId = misResult.modelId;
+                cacheHits = misResult.cacheHits;
+                cacheMisses = misResult.cacheMisses;
+            } catch (MisUnavailableException ex) {
+                log.debug("Stage1 MIS unavailable; fallback to heuristic", ex);
+                scored = buildScoredHeuristic(candidates);
+                modelId = "rs_stage1_heuristic_v1";
+            }
+        } else {
+            scored = buildScoredHeuristic(candidates);
+            modelId = "rs_stage1_heuristic_v1";
+        }
+
+        sortScored(scored);
+        int out = Math.min(stage.topK, scored.size());
+        List<ScoredCandidate> topScored = new ArrayList<>(scored.subList(0, out));
+        List<EnrichedCandidate> output = toEnrichedCandidates(topScored);
+
+        return new StageResult(
+            stage,
+            true,
+            modelId,
+            "applied",
+            in,
+            out,
+            cacheHits,
+            cacheMisses,
+            topScored,
+            output
+        );
+    }
+
+    private StageResult executeStage2(
+        ResolvedStage stage,
+        List<EnrichedCandidate> candidates,
+        StageResult stage1Result,
+        String queryText,
+        boolean debugEnabled,
+        String traceId,
+        String requestId,
+        String traceparent
+    ) {
+        int in = candidates == null ? 0 : candidates.size();
+        if (stage == null || !stage.enabled) {
+            return StageResult.skipped(stage, in, "skip_disabled");
+        }
+        if (in == 0) {
+            return StageResult.skipped(stage, in, "skip_no_candidates");
+        }
+        if (stage.topK <= 0) {
+            return StageResult.skipped(stage, in, "skip_topk_zero");
+        }
+        if (!misEligible(queryText, in, stage.timeoutMs)) {
+            return StageResult.skipped(stage, in, "skip_not_eligible");
+        }
+
+        List<EnrichedCandidate> capped = new ArrayList<>(candidates.subList(0, Math.min(stage.topK, candidates.size())));
+        try {
+            MisScoringResult misResult = scoreWithMis(
+                capped,
+                queryText,
+                stage.timeoutMs,
+                stage.model,
+                debugEnabled,
+                traceId,
+                requestId,
+                traceparent
+            );
+            List<ScoredCandidate> scored = misResult.scored;
+            sortScored(scored);
+            int out = Math.min(stage.topK, scored.size());
+            List<ScoredCandidate> topScored = new ArrayList<>(scored.subList(0, out));
+            List<EnrichedCandidate> output = toEnrichedCandidates(topScored);
+            return new StageResult(
+                stage,
+                true,
+                misResult.modelId,
+                "applied",
+                in,
+                out,
+                misResult.cacheHits,
+                misResult.cacheMisses,
+                topScored,
+                output
+            );
+        } catch (MisUnavailableException ex) {
+            boolean timeout = isTimeoutError(ex);
+            String reasonCode = timeout ? "timeout_degrade_to_stage1" : "error_degrade_to_stage1";
+            List<ScoredCandidate> fallbackScored = stage1Result == null ? null : stage1Result.scored;
+            if (fallbackScored == null || fallbackScored.isEmpty()) {
+                fallbackScored = buildScoredHeuristic(candidates);
+            }
+            sortScored(fallbackScored);
+            List<EnrichedCandidate> output = toEnrichedCandidates(fallbackScored);
+            return new StageResult(
+                stage,
+                false,
+                stage1Result == null ? null : stage1Result.modelId,
+                reasonCode,
+                in,
+                fallbackScored.size(),
+                0,
+                0,
+                fallbackScored,
+                output
+            );
+        }
+    }
+
+    private boolean misEligible(String queryText, int candidatesUsed, int timeoutMs) {
+        if (!misClient.isEnabled()) {
+            return false;
+        }
+        if (timeoutMs <= 0) {
+            return false;
+        }
+        if (candidatesUsed < guardrails.getMinCandidatesForMis()) {
+            return false;
+        }
+        if (queryText != null && queryText.trim().length() < guardrails.getMinQueryLengthForMis()) {
+            return false;
+        }
+        return true;
+    }
+
+    private MisScoringResult scoreWithMis(
+        List<EnrichedCandidate> candidates,
+        String queryText,
+        int timeoutMs,
+        String modelOverride,
+        boolean debugEnabled,
+        String traceId,
+        String requestId,
+        String traceparent
+    ) {
+        if (candidates == null || candidates.isEmpty()) {
+            return new MisScoringResult(List.of(), modelOverride, 0, 0);
+        }
+
+        List<EnrichedCandidate> misCandidates = applyMisLimit(candidates);
+        String resolvedModel = misClient.resolveModelId(modelOverride);
+        String queryHash = queryHash(queryText);
+
+        Map<String, Double> scoreByDocId = new LinkedHashMap<>();
+        List<EnrichedCandidate> cacheMissCandidates = new ArrayList<>();
+        int cacheHits = 0;
+        int cacheMisses = 0;
+
+        for (EnrichedCandidate candidate : misCandidates) {
+            String cacheKey = buildCacheKey(resolvedModel, queryHash, candidate.getDocId());
+            Optional<Double> cachedScore = safeCacheGet(cacheKey);
+            if (cachedScore.isPresent()) {
+                cacheHits++;
+                meterRegistry.counter("rs_rerank_cache_hit_total").increment();
+                scoreByDocId.put(candidate.getDocId(), cachedScore.get());
+            } else {
+                cacheMisses++;
+                meterRegistry.counter("rs_rerank_cache_miss_total").increment();
+                cacheMissCandidates.add(candidate);
+            }
+        }
+
+        String modelId = resolvedModel;
+        if (!cacheMissCandidates.isEmpty()) {
+            meterRegistry.counter("rs_mis_calls_total").increment();
+            List<RerankRequest.Candidate> requestCandidates = buildMisCandidates(cacheMissCandidates);
+            MisScoreResponse scoreResponse = misClient.score(
+                queryText,
+                requestCandidates,
+                timeoutMs,
+                debugEnabled,
+                modelOverride,
+                traceId,
+                requestId,
+                traceparent
+            );
+            if (scoreResponse == null || scoreResponse.getScores() == null) {
+                throw new MisUnavailableException("mis returned empty scores");
+            }
+            List<Double> scores = scoreResponse.getScores();
+            if (scores.size() != cacheMissCandidates.size()) {
+                throw new MisUnavailableException("mis score size mismatch");
+            }
+            for (int i = 0; i < cacheMissCandidates.size(); i++) {
+                EnrichedCandidate candidate = cacheMissCandidates.get(i);
+                double score = scores.get(i) == null ? 0.0 : scores.get(i);
+                scoreByDocId.put(candidate.getDocId(), score);
+                String cacheKey = buildCacheKey(resolvedModel, queryHash, candidate.getDocId());
+                safeCachePut(cacheKey, score);
+            }
+            if (scoreResponse.getModel() != null && !scoreResponse.getModel().isBlank()) {
+                modelId = scoreResponse.getModel();
+            }
+        }
+
+        List<ScoredCandidate> scored = new ArrayList<>(misCandidates.size());
+        for (EnrichedCandidate candidate : misCandidates) {
+            double score = scoreByDocId.getOrDefault(candidate.getDocId(), 0.0);
+            Integer lexRank = toInt(candidate.getRawFeatures().get("lex_rank"));
+            Integer vecRank = toInt(candidate.getRawFeatures().get("vec_rank"));
+            scored.add(new ScoredCandidate(candidate.getDocId(), score, lexRank, vecRank, candidate, null));
+        }
+
+        return new MisScoringResult(scored, modelId, cacheHits, cacheMisses);
+    }
+
+    private Optional<Double> safeCacheGet(String key) {
+        try {
+            return rerankScoreCache.get(key);
+        } catch (RuntimeException ex) {
+            log.debug("rerank cache get failed", ex);
+            return Optional.empty();
+        }
+    }
+
+    private void safeCachePut(String key, double score) {
+        try {
+            rerankScoreCache.put(key, score);
+        } catch (RuntimeException ex) {
+            log.debug("rerank cache put failed", ex);
+        }
+    }
+
+    private String buildCacheKey(String modelId, String queryHash, String docId) {
+        String resolvedModel = isBlank(modelId) ? "default" : modelId;
+        String resolvedQueryHash = isBlank(queryHash) ? "na" : queryHash;
+        String resolvedDocId = isBlank(docId) ? "na" : docId;
+        return "rerank:" + resolvedModel + ":" + resolvedQueryHash + ":" + resolvedDocId;
+    }
+
+    private String queryHash(String queryText) {
+        String normalized = queryText == null ? "" : queryText.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashed = digest.digest(normalized.getBytes(StandardCharsets.UTF_8));
+            StringBuilder builder = new StringBuilder(hashed.length * 2);
+            for (byte b : hashed) {
+                builder.append(String.format("%02x", b));
+            }
+            return builder.toString();
+        } catch (NoSuchAlgorithmException e) {
+            return Integer.toHexString(normalized.hashCode());
+        }
+    }
+
+    private boolean isTimeoutError(Throwable throwable) {
+        if (throwable == null) {
+            return false;
+        }
+        String message = throwable.getMessage();
+        if (message != null) {
+            String lowered = message.toLowerCase(Locale.ROOT);
+            if (lowered.contains("timeout") || lowered.contains("timed out")) {
+                return true;
+            }
+        }
+        return isTimeoutError(throwable.getCause());
+    }
+
+    private void sortScored(List<ScoredCandidate> scored) {
+        if (scored == null) {
+            return;
+        }
+        scored.sort(
+            Comparator.comparingDouble(ScoredCandidate::score).reversed()
+                .thenComparing(entry -> nullSafeRank(entry.lexRank()))
+                .thenComparing(entry -> nullSafeRank(entry.vecRank()))
+                .thenComparing(ScoredCandidate::docId)
+        );
+    }
+
+    private List<EnrichedCandidate> toEnrichedCandidates(List<ScoredCandidate> scored) {
+        if (scored == null || scored.isEmpty()) {
+            return List.of();
+        }
+        List<EnrichedCandidate> candidates = new ArrayList<>(scored.size());
+        for (ScoredCandidate entry : scored) {
+            if (entry.enriched() != null) {
+                candidates.add(entry.enriched());
+            }
+        }
+        return candidates;
     }
 
     private List<RerankRequest.Candidate> collectCandidates(RerankRequest request) {
@@ -204,24 +611,11 @@ public class RerankService {
         return candidates;
     }
 
-    private List<EnrichedCandidate> applyMisLimit(List<EnrichedCandidate> candidates, List<String> reasonCodes) {
+    private List<EnrichedCandidate> applyMisLimit(List<EnrichedCandidate> candidates) {
         if (candidates.size() > guardrails.getMaxMisCandidates()) {
-            reasonCodes.add("mis_candidates_capped");
             return new ArrayList<>(candidates.subList(0, guardrails.getMaxMisCandidates()));
         }
         return candidates;
-    }
-
-    private List<ScoredCandidate> buildScoredFromMis(List<EnrichedCandidate> candidates, List<Double> scores) {
-        List<ScoredCandidate> scored = new ArrayList<>(candidates.size());
-        for (int i = 0; i < candidates.size(); i++) {
-            EnrichedCandidate candidate = candidates.get(i);
-            double score = scores.get(i) == null ? 0.0 : scores.get(i);
-            Integer lexRank = toInt(candidate.getRawFeatures().get("lex_rank"));
-            Integer vecRank = toInt(candidate.getRawFeatures().get("vec_rank"));
-            scored.add(new ScoredCandidate(candidate.getDocId(), score, lexRank, vecRank, candidate, null));
-        }
-        return scored;
     }
 
     private List<ScoredCandidate> buildScoredHeuristic(List<EnrichedCandidate> candidates) {
@@ -244,12 +638,20 @@ public class RerankService {
             rerankCandidate.setDocId(candidate.getDocId());
             if (candidate.getSource() != null) {
                 rerankCandidate.setDoc(candidate.getSource().getDoc());
+                rerankCandidate.setTitle(candidate.getSource().getTitle());
+                rerankCandidate.setAuthors(candidate.getSource().getAuthors());
+                rerankCandidate.setSeries(candidate.getSource().getSeries());
+                rerankCandidate.setPublisher(candidate.getSource().getPublisher());
             }
             RerankRequest.Features features = new RerankRequest.Features();
             Map<String, Object> raw = candidate.getRawFeatures();
             features.setLexRank(toInt(raw.get("lex_rank")));
             features.setVecRank(toInt(raw.get("vec_rank")));
             features.setRrfScore(toDouble(raw.get("rrf_score")));
+            features.setFusedRank(toInt(raw.get("fused_rank")));
+            features.setRrfRank(toInt(raw.get("rrf_rank")));
+            features.setBm25Score(toDouble(raw.get("bm25_score")));
+            features.setVecScore(toDouble(raw.get("vec_score")));
             features.setIssuedYear(toInt(raw.get("issued_year")));
             features.setVolume(toInt(raw.get("volume")));
             if (candidate.getSource().getFeatures() != null) {
@@ -286,18 +688,21 @@ public class RerankService {
         int candidatesUsed,
         int timeoutMs,
         boolean rerankApplied,
-        RerankRequest request
+        RerankRequest request,
+        Map<String, Object> stageDetails
     ) {
         FeatureSpec spec = featureSpecService.getSpec();
         RerankResponse.DebugInfo info = new RerankResponse.DebugInfo();
         info.setModelId(modelId);
         info.setFeatureSetVersion(spec == null ? null : spec.getFeatureSetVersion());
+        info.setFeatureSpecVersion(spec == null ? null : spec.getFeatureSetVersion());
         info.setCandidatesIn(candidatesIn);
         info.setCandidatesUsed(candidatesUsed);
         info.setTimeoutMs(timeoutMs);
         info.setRerankApplied(rerankApplied);
         info.setReasonCodes(reasonCodes);
         info.setReplay(buildReplay(request));
+        info.setStageDetails(stageDetails);
         return info;
     }
 
@@ -344,6 +749,18 @@ public class RerankService {
                 if (candidate.getDoc() != null) {
                     entry.put("doc", candidate.getDoc());
                 }
+                if (candidate.getTitle() != null) {
+                    entry.put("title", candidate.getTitle());
+                }
+                if (candidate.getAuthors() != null) {
+                    entry.put("authors", candidate.getAuthors());
+                }
+                if (candidate.getSeries() != null) {
+                    entry.put("series", candidate.getSeries());
+                }
+                if (candidate.getPublisher() != null) {
+                    entry.put("publisher", candidate.getPublisher());
+                }
                 if (candidate.getFeatures() != null) {
                     entry.put("features", candidate.getFeatures());
                 }
@@ -356,10 +773,28 @@ public class RerankService {
             options.put("size", request.getOptions().getSize());
             options.put("timeout_ms", request.getOptions().getTimeoutMs());
             options.put("rerank", request.getOptions().getRerank());
+            options.put("model", request.getOptions().getModel());
             options.put("debug", request.getOptions().getDebug());
+            if (request.getOptions().getRerankConfig() != null) {
+                options.put("rerank_config", request.getOptions().getRerankConfig());
+            }
             replay.put("options", options);
         }
         return replay;
+    }
+
+    private Map<String, Object> stageDebugMap(StageResult stageResult) {
+        Map<String, Object> stage = new LinkedHashMap<>();
+        stage.put("enabled", stageResult.stage.enabled);
+        stage.put("applied", stageResult.applied);
+        stage.put("model", stageResult.modelId);
+        stage.put("reason_code", stageResult.reasonCode);
+        stage.put("timeout_ms", stageResult.stage.timeoutMs);
+        stage.put("candidates_in", stageResult.candidatesIn);
+        stage.put("candidates_out", stageResult.candidatesOut);
+        stage.put("cache_hits", stageResult.cacheHits);
+        stage.put("cache_misses", stageResult.cacheMisses);
+        return stage;
     }
 
     private int nullSafeRank(Integer rank) {
@@ -368,6 +803,14 @@ public class RerankService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private Integer toInt(Object raw) {
@@ -396,6 +839,53 @@ public class RerankService {
             }
         }
         return null;
+    }
+
+    private record MisScoringResult(List<ScoredCandidate> scored, String modelId, int cacheHits, int cacheMisses) {}
+
+    private record StagePlan(ResolvedStage stage1, ResolvedStage stage2) {}
+
+    private record ResolvedStage(boolean enabled, int topK, int timeoutMs, String model) {}
+
+    private static class StageResult {
+        private final ResolvedStage stage;
+        private final boolean applied;
+        private final String modelId;
+        private final String reasonCode;
+        private final int candidatesIn;
+        private final int candidatesOut;
+        private final int cacheHits;
+        private final int cacheMisses;
+        private final List<ScoredCandidate> scored;
+        private final List<EnrichedCandidate> outputCandidates;
+
+        private StageResult(
+            ResolvedStage stage,
+            boolean applied,
+            String modelId,
+            String reasonCode,
+            int candidatesIn,
+            int candidatesOut,
+            int cacheHits,
+            int cacheMisses,
+            List<ScoredCandidate> scored,
+            List<EnrichedCandidate> outputCandidates
+        ) {
+            this.stage = stage == null ? new ResolvedStage(false, 0, 0, null) : stage;
+            this.applied = applied;
+            this.modelId = modelId;
+            this.reasonCode = reasonCode;
+            this.candidatesIn = candidatesIn;
+            this.candidatesOut = candidatesOut;
+            this.cacheHits = cacheHits;
+            this.cacheMisses = cacheMisses;
+            this.scored = scored;
+            this.outputCandidates = outputCandidates;
+        }
+
+        private static StageResult skipped(ResolvedStage stage, int candidatesIn, String reasonCode) {
+            return new StageResult(stage, false, null, reasonCode, candidatesIn, 0, 0, 0, null, null);
+        }
     }
 
     private record ScoredCandidate(

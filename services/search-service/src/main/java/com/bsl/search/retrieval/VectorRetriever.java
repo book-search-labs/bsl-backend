@@ -62,7 +62,7 @@ public class VectorRetriever implements Retriever {
                 List<String> cachedDocIds = cached.get().getDocIds();
                 Map<String, Object> cachedDsl = context.isDebug() ? cached.get().getQueryDsl() : null;
                 long tookMs = (System.nanoTime() - started) / 1_000_000L;
-                return RetrievalStageResult.success(cachedDocIds, cachedDsl, tookMs);
+                return RetrievalStageResult.success(cachedDocIds, Map.of(), cachedDsl, tookMs);
             }
 
             OpenSearchQueryResult result;
@@ -105,10 +105,11 @@ public class VectorRetriever implements Retriever {
             }
 
             List<String> docIds = result == null ? List.of() : docPromoter.promote(result.getDocIds());
+            Map<String, Double> scoresByDocId = result == null ? Map.of() : result.getScoresByDocId();
             Map<String, Object> queryDsl = context.isDebug() ? (result == null ? null : result.getQueryDsl()) : null;
             long tookMs = (System.nanoTime() - started) / 1_000_000L;
             cacheService.put(context, mode, modelId, docIds, queryDsl);
-            return RetrievalStageResult.success(docIds, queryDsl, tookMs);
+            return RetrievalStageResult.success(docIds, scoresByDocId, queryDsl, tookMs);
         } catch (EmbeddingUnavailableException e) {
             return RetrievalStageResult.skipped(e.getMessage());
         } catch (OpenSearchUnavailableException | OpenSearchRequestException e) {

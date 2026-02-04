@@ -6,10 +6,15 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 @Component
 public class FeatureFetcher {
+    private static final Pattern NUMBER_TOKEN_PATTERN = Pattern.compile(".*\\d+.*");
+    private static final Pattern ISBN_PATTERN = Pattern.compile("^(97(8|9))?\\d{9}[\\dXx]$");
+    private static final Pattern VOLUME_PATTERN = Pattern.compile("(?i)(\\bvol\\.?\\s*\\d+\\b|\\d+\\s*(권|편|부|집)|제\\s*\\d+\\s*권)");
+
     private final FeatureSpecService specService;
     private final FeatureStoreClient featureStore;
 
@@ -77,6 +82,10 @@ public class FeatureFetcher {
             case "lex_rank" -> features.getLexRank();
             case "vec_rank" -> features.getVecRank();
             case "rrf_score" -> features.getRrfScore();
+            case "fused_rank" -> features.getFusedRank() != null ? features.getFusedRank() : features.getRrfRank();
+            case "rrf_rank" -> features.getRrfRank() != null ? features.getRrfRank() : features.getFusedRank();
+            case "bm25_score" -> features.getBm25Score();
+            case "vec_score" -> features.getVecScore();
             case "issued_year" -> features.getIssuedYear();
             case "volume" -> features.getVolume();
             case "edition_labels" -> features.getEditionLabels();
@@ -93,7 +102,14 @@ public class FeatureFetcher {
         return switch (name) {
             case "has_recover" -> hasRecover(candidate);
             case "freshness_days" -> computeFreshnessDays(candidate, kv);
-            case "query_len" -> queryText == null ? 0 : queryText.trim().length();
+            case "query_len" -> queryLength(queryText);
+            case "has_number_token" -> hasNumberToken(queryText);
+            case "is_isbn_like" -> isIsbnLike(queryText);
+            case "has_volume_like" -> hasVolumeLike(queryText);
+            case "title_exact_match" -> exactMatch(queryText, candidate.getTitle());
+            case "author_exact_match" -> authorExactMatch(queryText, candidate.getAuthors());
+            case "series_exact_match" -> exactMatch(queryText, candidate.getSeries());
+            case "metadata_completeness" -> metadataCompleteness(candidate, kv);
             default -> null;
         };
     }
@@ -134,6 +150,97 @@ public class FeatureFetcher {
         int currentYear = LocalDate.now().getYear();
         int ageYears = Math.max(0, currentYear - issuedYear);
         return ageYears * 365;
+    }
+
+    private Integer queryLength(String queryText) {
+        if (queryText == null) {
+            return 0;
+        }
+        String trimmed = queryText.trim();
+        if (trimmed.isEmpty()) {
+            return 0;
+        }
+        return trimmed.length();
+    }
+
+    private boolean hasNumberToken(String queryText) {
+        if (queryText == null || queryText.isBlank()) {
+            return false;
+        }
+        return NUMBER_TOKEN_PATTERN.matcher(queryText).matches();
+    }
+
+    private boolean isIsbnLike(String queryText) {
+        if (queryText == null || queryText.isBlank()) {
+            return false;
+        }
+        String compact = queryText.replaceAll("[^0-9Xx]", "");
+        return ISBN_PATTERN.matcher(compact).matches();
+    }
+
+    private boolean hasVolumeLike(String queryText) {
+        if (queryText == null || queryText.isBlank()) {
+            return false;
+        }
+        return VOLUME_PATTERN.matcher(queryText).find();
+    }
+
+    private boolean exactMatch(String queryText, String candidateText) {
+        String normalizedQuery = normalizeText(queryText);
+        String normalizedCandidate = normalizeText(candidateText);
+        if (normalizedQuery == null || normalizedCandidate == null) {
+            return false;
+        }
+        return normalizedQuery.equals(normalizedCandidate);
+    }
+
+    private boolean authorExactMatch(String queryText, List<String> authors) {
+        String normalizedQuery = normalizeText(queryText);
+        if (normalizedQuery == null || authors == null || authors.isEmpty()) {
+            return false;
+        }
+        for (String author : authors) {
+            String normalizedAuthor = normalizeText(author);
+            if (normalizedAuthor != null && normalizedAuthor.equals(normalizedQuery)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Double metadataCompleteness(RerankRequest.Candidate candidate, Map<String, Object> kv) {
+        double score = 0.0;
+        if (candidate.getAuthors() != null && !candidate.getAuthors().isEmpty()) {
+            score += 0.4;
+        }
+        if (candidate.getPublisher() != null && !candidate.getPublisher().isBlank()) {
+            score += 0.3;
+        }
+        Integer issuedYear = candidate.getFeatures() == null ? null : candidate.getFeatures().getIssuedYear();
+        if (issuedYear == null && kv != null) {
+            Object raw = kv.get("issued_year");
+            if (raw instanceof Number number) {
+                issuedYear = number.intValue();
+            }
+        }
+        if (issuedYear != null && issuedYear > 0) {
+            score += 0.3;
+        }
+        return score;
+    }
+
+    private String normalizeText(String text) {
+        if (text == null) {
+            return null;
+        }
+        String normalized = text.trim().toLowerCase();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        normalized = normalized.replaceAll("\\s+", " ");
+        normalized = normalized.replaceAll("[\\p{Punct}]", "");
+        normalized = normalized.replace(" ", "");
+        return normalized.isEmpty() ? null : normalized;
     }
 
     private double applyTransform(FeatureDefinition def, Object rawValue) {

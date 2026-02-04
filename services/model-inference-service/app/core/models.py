@@ -118,6 +118,67 @@ class ToyRerankModel(BaseModel):
         return bonus
 
 
+class BaselineLtrModel(BaseModel):
+    RANK_BASE = 60.0
+
+    def score(self, pairs: List[dict]) -> List[ScoreResult]:
+        results: List[ScoreResult] = []
+        for pair in pairs:
+            features = pair.get("features") or {}
+            lex_rank = features.get("lex_rank")
+            vec_rank = features.get("vec_rank")
+            rrf_score = features.get("rrf_score")
+            issued_year = features.get("issued_year")
+            volume = features.get("volume")
+            edition_labels = features.get("edition_labels") or []
+
+            lex_bonus = 0.0 if lex_rank is None else 1.0 / (self.RANK_BASE + max(1, int(lex_rank)))
+            vec_bonus = 0.0 if vec_rank is None else 1.0 / (self.RANK_BASE + max(1, int(vec_rank)))
+            freshness_bonus = self._freshness_bonus(issued_year)
+            volume_bonus = min(max(float(volume or 0.0), 0.0), 20.0) / 20.0
+            recover_bonus = 1.0 if self._has_recover(edition_labels) else 0.0
+
+            score = (
+                1.8 * float(rrf_score or 0.0)
+                + 0.9 * lex_bonus
+                + 0.6 * vec_bonus
+                + 0.2 * freshness_bonus
+                + 0.05 * volume_bonus
+                + 0.05 * recover_bonus
+            )
+            results.append(
+                ScoreResult(
+                    score=score,
+                    debug={
+                        "backend": "baseline_ltr",
+                        "base_rrf": float(rrf_score or 0.0),
+                        "lex_bonus": lex_bonus,
+                        "vec_bonus": vec_bonus,
+                        "freshness_bonus": freshness_bonus,
+                        "volume_bonus": volume_bonus,
+                        "recover_bonus": recover_bonus,
+                    },
+                )
+            )
+        return results
+
+    def _freshness_bonus(self, issued_year: Optional[int]) -> float:
+        if issued_year is None:
+            return 0.0
+        raw = (int(issued_year) - 1980) / 100.0
+        if raw < 0.0:
+            return 0.0
+        if raw > 0.5:
+            return 0.5
+        return raw
+
+    def _has_recover(self, edition_labels: List[str]) -> bool:
+        for label in edition_labels:
+            if isinstance(label, str) and label.lower() == "recover":
+                return True
+        return False
+
+
 class OnnxRerankModel(BaseModel):
     def __init__(
         self,

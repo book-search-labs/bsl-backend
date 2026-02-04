@@ -24,3 +24,17 @@ python3 scripts/eval/run_eval.py --run evaluation/runs/sample_run.jsonl \
 python3 scripts/eval/run_eval.py --run evaluation/runs/sample_run.jsonl \
   --baseline evaluation/baseline.json --gate
 ```
+
+## Rerank config before/after report
+
+Use `scripts/eval/rerank_eval.py` to compare rerank settings (for example stage2-only vs stage1+stage2):
+
+```bash
+python3 scripts/eval/rerank_eval.py \
+  --queries data/eval/rerank_queries.jsonl \
+  --baseline-mode rerank \
+  --baseline-rerank-options '{"model":"rerank_toy_v1","rerank":{"stage1":{"enabled":false},"stage2":{"enabled":true,"topK":50}}}' \
+  --candidate-mode rerank \
+  --candidate-rerank-options '{"model":"rerank_ltr_baseline_v1","rerank":{"stage1":{"enabled":true,"topK":30},"stage2":{"enabled":true,"topK":10}}}' \
+  --out evaluation/eval_runs
+```

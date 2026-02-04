@@ -247,6 +247,9 @@ public class RerankResponse {
         @JsonProperty("feature_set_version")
         private String featureSetVersion;
 
+        @JsonProperty("feature_spec_version")
+        private String featureSpecVersion;
+
         @JsonProperty("candidates_in")
         private Integer candidatesIn;
 
@@ -264,6 +267,9 @@ public class RerankResponse {
 
         private Map<String, Object> replay;
 
+        @JsonProperty("stage_details")
+        private Map<String, Object> stageDetails;
+
         public String getModelId() {
             return modelId;
         }
@@ -278,6 +284,14 @@ public class RerankResponse {
 
         public void setFeatureSetVersion(String featureSetVersion) {
             this.featureSetVersion = featureSetVersion;
+        }
+
+        public String getFeatureSpecVersion() {
+            return featureSpecVersion;
+        }
+
+        public void setFeatureSpecVersion(String featureSpecVersion) {
+            this.featureSpecVersion = featureSpecVersion;
         }
 
         public Integer getCandidatesIn() {
@@ -326,6 +340,14 @@ public class RerankResponse {
 
         public void setReplay(Map<String, Object> replay) {
             this.replay = replay;
+        }
+
+        public Map<String, Object> getStageDetails() {
+            return stageDetails;
+        }
+
+        public void setStageDetails(Map<String, Object> stageDetails) {
+            this.stageDetails = stageDetails;
         }
     }
 }
