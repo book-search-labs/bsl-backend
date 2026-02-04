@@ -6,7 +6,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.core.analyzer import analyze_query
 from app.core.cache import get_cache
@@ -16,7 +16,7 @@ from app.core.rewrite import run_rewrite
 from app.core.metrics import metrics
 from app.core.rewrite_log import get_rewrite_log, now_iso
 from app.core.spell import run_spell
-from app.core.chat import run_chat
+from app.core.chat import explain_chat_rag, run_chat, run_chat_stream
 from app.core.understanding import parse_understanding
 
 router = APIRouter()
@@ -260,7 +260,41 @@ async def chat(request: Request):
     if isinstance(body.get("request_id"), str) and body.get("request_id"):
         request_id = body.get("request_id")
 
+    options = body.get("options") if isinstance(body.get("options"), dict) else {}
+    body_stream = bool(options.get("stream")) if isinstance(options.get("stream"), bool) else False
+    query_stream = request.query_params.get("stream")
+    should_stream = body_stream or str(query_stream).lower() in {"1", "true", "yes", "on"}
+    if should_stream:
+        headers = _response_headers(trace_id, request_id, traceparent)
+        headers["cache-control"] = "no-cache"
+        return StreamingResponse(
+            run_chat_stream(body, trace_id, request_id),
+            media_type="text/event-stream",
+            headers=headers,
+        )
+
     response = await run_chat(body, trace_id, request_id)
+    return JSONResponse(content=response, headers=_response_headers(trace_id, request_id, traceparent))
+
+
+@router.post("/internal/rag/explain")
+async def rag_explain(request: Request):
+    trace_id, request_id, _, traceparent = _extract_ids(request)
+    body = await request.json()
+    if not isinstance(body, dict):
+        return _error_response(
+            "invalid_request",
+            "Request body must be a JSON object.",
+            trace_id,
+            request_id,
+        )
+
+    if isinstance(body.get("trace_id"), str) and body.get("trace_id"):
+        trace_id = body.get("trace_id")
+    if isinstance(body.get("request_id"), str) and body.get("request_id"):
+        request_id = body.get("request_id")
+
+    response = await explain_chat_rag(body, trace_id, request_id)
     return JSONResponse(content=response, headers=_response_headers(trace_id, request_id, traceparent))
 
 

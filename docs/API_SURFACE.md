@@ -140,7 +140,11 @@ All structured responses that follow `contracts/*` must include:
 
 ### Streaming (optional)
 - `POST /chat?stream=true` returns `text/event-stream`
-- Events: `meta` (JSON ChatResponse), `token` (string), `done` (`[DONE]`)
+- Events:
+  - `meta` (trace/request metadata)
+  - `delta` (token chunk payload)
+  - `error` (reason code/message when degraded)
+  - `done` (final status + citations)
 
 ## POST `/chat/feedback`
 **Purpose**: user feedback for chat answers (👍/👎 + flags).  
@@ -464,6 +468,53 @@ If supported, the server should treat it as:
 ### Response
 - Contract: `contracts/chat-response.schema.json`
 - Example: `contracts/examples/chat-response.sample.json`
+
+### Streaming (optional)
+- `POST /chat?stream=true` or `options.stream=true` returns `text/event-stream`
+- Events:
+  - `meta`
+  - `delta`
+  - `error`
+  - `done`
+
+## POST `/internal/rag/explain`
+**Purpose**: Internal retrieval debug trace (lexical/vector/fused/selected + rerank/rewrite reason codes).
+
+### Request
+- Same message/query envelope as `/chat` (internal use)
+
+### Response (MVP shape)
+```json
+{
+  "version": "v1",
+  "trace_id": "string",
+  "request_id": "string",
+  "status": "ok",
+  "query": {
+    "text": "string",
+    "locale": "string",
+    "canonical_key": "string",
+    "rewritten": "string"
+  },
+  "rewrite": {
+    "rewrite_applied": true,
+    "rewrite_reason": "RAG_LOW_SCORE",
+    "rewrite_strategy": "rewrite"
+  },
+  "retrieval": {
+    "top_n": 40,
+    "top_k": 6,
+    "lexical": [],
+    "vector": [],
+    "fused": [],
+    "selected": [],
+    "rerank": {},
+    "took_ms": 12,
+    "degraded": false
+  },
+  "reason_codes": ["RAG_RERANK_DISABLED"]
+}
+```
 
 ## GET `/internal/qc/rewrite/failures`
 **Purpose**: List curated rewrite failure cases for replay/analysis.

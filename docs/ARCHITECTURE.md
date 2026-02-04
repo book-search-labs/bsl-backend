@@ -244,6 +244,8 @@ sequenceDiagram
 ### 5.4 Chat (RAG)
 - BFF `/chat` → QS `/chat` orchestrates:
   - normalize/rewrite → retrieve chunks via SR/OS → rerank chunks via MIS (optional) → LLMGW generate with citations
+- Stream mode: QS relays LLMGW token stream (`meta`/`delta`/`done`), and BFF proxies SSE without token splitting.
+- Internal debug path: QS `/internal/rag/explain` exposes lexical/vector/fused/selected traces with rerank/rewrite reason codes.
 
 ---
 

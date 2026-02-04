@@ -29,6 +29,7 @@ class GenerateRequest(BaseModel):
     temperature: Optional[float] = None
     context: Optional[RagContext] = None
     citations_required: bool = Field(default=True, alias="citations_required")
+    stream: Optional[bool] = None
 
 
 class GenerateResponse(BaseModel):

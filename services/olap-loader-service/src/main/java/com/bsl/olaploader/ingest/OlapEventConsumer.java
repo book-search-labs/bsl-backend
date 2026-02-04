@@ -33,7 +33,10 @@ public class OlapEventConsumer {
             "${olap.topics.search-click:search_click_v1}",
             "${olap.topics.search-dwell:search_dwell_v1}",
             "${olap.topics.ac-impression:ac_impression_v1}",
-            "${olap.topics.ac-select:ac_select_v1}"
+            "${olap.topics.ac-select:ac_select_v1}",
+            "${olap.topics.chat-request:chat_request_v1}",
+            "${olap.topics.chat-response:chat_response_v1}",
+            "${olap.topics.chat-feedback:chat_feedback_v1}"
         }
     )
     public void consume(String message) {
@@ -71,6 +74,18 @@ public class OlapEventConsumer {
                 case "ac_select" -> writer.append(
                     "ac_select",
                     buildAcSelect(payload, eventId, dedupKey, occurredAt)
+                );
+                case "chat_request_v1" -> writer.append(
+                    "chat_sessions",
+                    buildChatSession(payload, eventId, dedupKey, occurredAt)
+                );
+                case "chat_response_v1" -> writer.append(
+                    "chat_turns",
+                    buildChatTurn(payload, eventId, dedupKey, occurredAt)
+                );
+                case "chat_feedback_v1" -> writer.append(
+                    "chat_feedbacks",
+                    buildChatFeedback(payload, eventId, dedupKey, occurredAt)
                 );
                 default -> {
                     // ignore
@@ -216,6 +231,77 @@ public class OlapEventConsumer {
         return List.of(row);
     }
 
+    private List<Map<String, Object>> buildChatSession(
+        JsonNode payload,
+        String eventId,
+        String dedupKey,
+        String occurredAt
+    ) {
+        String conversationId = payload.path("conversation_id").asText(payload.path("session_id").asText(""));
+        if (conversationId == null || conversationId.isBlank()) {
+            return List.of();
+        }
+        String eventTime = resolveEventTime(payload, occurredAt);
+        String eventDate = toDate(eventTime);
+        Map<String, Object> row = baseRow(payload, eventId, dedupKey, eventDate, eventTime);
+        row.put("conversation_id", conversationId);
+        row.put("turn_id", payload.path("turn_id").asText(payload.path("request_id").asText("")));
+        row.put("canonical_key", payload.path("canonical_key").asText(null));
+        row.put("query", payload.path("query").asText(null));
+        row.put("stream", payload.path("stream").asBoolean(false) ? 1 : 0);
+        row.put("top_k", payload.has("top_k") && !payload.get("top_k").isNull() ? payload.path("top_k").asInt() : null);
+        return List.of(row);
+    }
+
+    private List<Map<String, Object>> buildChatTurn(
+        JsonNode payload,
+        String eventId,
+        String dedupKey,
+        String occurredAt
+    ) {
+        String conversationId = payload.path("conversation_id").asText("");
+        if (conversationId == null || conversationId.isBlank()) {
+            return List.of();
+        }
+        String eventTime = resolveEventTime(payload, occurredAt);
+        String eventDate = toDate(eventTime);
+        Map<String, Object> row = baseRow(payload, eventId, dedupKey, eventDate, eventTime);
+        row.put("conversation_id", conversationId);
+        row.put("turn_id", payload.path("turn_id").asText(payload.path("request_id").asText("")));
+        row.put("canonical_key", payload.path("canonical_key").asText(null));
+        row.put("status", payload.path("status").asText(null));
+        row.put("stream", payload.path("stream").asBoolean(false) ? 1 : 0);
+        row.put("source_count", payload.path("source_count").asInt(0));
+        row.put("citations", toStringList(payload.get("citations")));
+        row.put("used_chunk_ids", toStringList(payload.get("used_chunk_ids")));
+        return List.of(row);
+    }
+
+    private List<Map<String, Object>> buildChatFeedback(
+        JsonNode payload,
+        String eventId,
+        String dedupKey,
+        String occurredAt
+    ) {
+        String conversationId = payload.path("conversation_id").asText(payload.path("session_id").asText(""));
+        if (conversationId == null || conversationId.isBlank()) {
+            return List.of();
+        }
+        String eventTime = resolveEventTime(payload, occurredAt);
+        String eventDate = toDate(eventTime);
+        Map<String, Object> row = baseRow(payload, eventId, dedupKey, eventDate, eventTime);
+        row.put("conversation_id", conversationId);
+        row.put("turn_id", payload.path("turn_id").asText(payload.path("message_id").asText("")));
+        row.put("message_id", payload.path("message_id").asText(null));
+        row.put("canonical_key", payload.path("canonical_key").asText(null));
+        row.put("rating", payload.path("rating").asText(null));
+        row.put("reason_code", payload.path("reason_code").asText(null));
+        row.put("flag_hallucination", payload.path("flag_hallucination").asBoolean(false) ? 1 : 0);
+        row.put("flag_insufficient", payload.path("flag_insufficient").asBoolean(false) ? 1 : 0);
+        row.put("comment", payload.path("comment").asText(null));
+        return List.of(row);
+    }
+
     private Map<String, Object> baseRow(
         JsonNode payload,
         String eventId,
@@ -255,6 +341,22 @@ public class OlapEventConsumer {
             return eventTime.substring(0, 10);
         }
         return OffsetDateTime.now().format(DATE_FMT);
+    }
+
+    private List<String> toStringList(JsonNode value) {
+        if (value == null || !value.isArray()) {
+            return List.of();
+        }
+        List<String> items = new ArrayList<>();
+        for (JsonNode node : value) {
+            if (node != null && node.isTextual()) {
+                String text = node.asText();
+                if (!text.isBlank() && !items.contains(text)) {
+                    items.add(text);
+                }
+            }
+        }
+        return items;
     }
 
     private String formatDateTime(OffsetDateTime time) {

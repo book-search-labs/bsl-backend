@@ -26,6 +26,9 @@ olap:
     search-dwell: ${OLAP_TOPIC_SEARCH_DWELL:search_dwell_v1}
     ac-impression: ${OLAP_TOPIC_AC_IMPRESSION:ac_impression_v1}
     ac-select: ${OLAP_TOPIC_AC_SELECT:ac_select_v1}
+    chat-request: ${OLAP_TOPIC_CHAT_REQUEST:chat_request_v1}
+    chat-response: ${OLAP_TOPIC_CHAT_RESPONSE:chat_response_v1}
+    chat-feedback: ${OLAP_TOPIC_CHAT_FEEDBACK:chat_feedback_v1}
 
 management:
   endpoints:

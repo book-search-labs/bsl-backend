@@ -204,3 +204,71 @@ CREATE TABLE IF NOT EXISTS bsl_olap.purchase (
 PARTITION BY event_date
 ORDER BY (event_date, dedup_key, doc_id)
 TTL event_date + INTERVAL 365 DAY;
+
+CREATE TABLE IF NOT EXISTS bsl_olap.chat_sessions (
+    event_date Date,
+    event_time DateTime,
+    event_id String,
+    dedup_key String,
+    request_id String,
+    trace_id String,
+    session_id Nullable(String),
+    user_id_hash Nullable(String),
+    conversation_id String,
+    turn_id String,
+    canonical_key Nullable(String),
+    query Nullable(String),
+    stream UInt8,
+    top_k Nullable(UInt8),
+    ingested_at DateTime DEFAULT now()
+) ENGINE = ReplacingMergeTree(event_time)
+PARTITION BY event_date
+ORDER BY (event_date, conversation_id, turn_id, dedup_key)
+TTL event_date + INTERVAL 180 DAY;
+
+CREATE TABLE IF NOT EXISTS bsl_olap.chat_turns (
+    event_date Date,
+    event_time DateTime,
+    event_id String,
+    dedup_key String,
+    request_id String,
+    trace_id String,
+    session_id Nullable(String),
+    user_id_hash Nullable(String),
+    conversation_id String,
+    turn_id String,
+    canonical_key Nullable(String),
+    status Nullable(String),
+    stream UInt8,
+    source_count UInt16,
+    citations Array(String),
+    used_chunk_ids Array(String),
+    ingested_at DateTime DEFAULT now()
+) ENGINE = ReplacingMergeTree(event_time)
+PARTITION BY event_date
+ORDER BY (event_date, conversation_id, turn_id, dedup_key)
+TTL event_date + INTERVAL 180 DAY;
+
+CREATE TABLE IF NOT EXISTS bsl_olap.chat_feedbacks (
+    event_date Date,
+    event_time DateTime,
+    event_id String,
+    dedup_key String,
+    request_id String,
+    trace_id String,
+    session_id Nullable(String),
+    user_id_hash Nullable(String),
+    conversation_id String,
+    turn_id String,
+    message_id Nullable(String),
+    canonical_key Nullable(String),
+    rating Nullable(String),
+    reason_code Nullable(String),
+    flag_hallucination UInt8,
+    flag_insufficient UInt8,
+    comment Nullable(String),
+    ingested_at DateTime DEFAULT now()
+) ENGINE = ReplacingMergeTree(event_time)
+PARTITION BY event_date
+ORDER BY (event_date, conversation_id, turn_id, dedup_key)
+TTL event_date + INTERVAL 365 DAY;

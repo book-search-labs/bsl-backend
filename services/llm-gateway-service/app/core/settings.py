@@ -14,6 +14,7 @@ class Settings:
     cost_per_1k_tokens: float
     audit_log_path: str
     default_model: str
+    stream_token_delay_ms: int
 
 
 def load_settings() -> Settings:
@@ -24,6 +25,7 @@ def load_settings() -> Settings:
         cost_per_1k_tokens=float(os.getenv("LLM_COST_PER_1K", "0.002")),
         audit_log_path=os.getenv("LLM_AUDIT_LOG_PATH", "var/llm_gateway/audit.log"),
         default_model=os.getenv("LLM_DEFAULT_MODEL", "toy-rag-v1"),
+        stream_token_delay_ms=int(os.getenv("LLM_STREAM_TOKEN_DELAY_MS", "10")),
     )
 
 
