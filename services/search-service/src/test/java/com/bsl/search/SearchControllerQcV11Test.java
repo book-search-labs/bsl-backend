@@ -4,7 +4,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -12,7 +14,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.bsl.search.opensearch.OpenSearchGateway;
+import com.bsl.search.opensearch.OpenSearchQueryResult;
 import com.bsl.search.opensearch.OpenSearchUnavailableException;
+import com.bsl.search.query.QueryServiceGateway;
+import com.bsl.search.query.dto.QueryEnhanceResponse;
 import com.bsl.search.ranking.RankingGateway;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -44,10 +49,13 @@ class SearchControllerQcV11Test {
     @MockBean
     private RankingGateway rankingGateway;
 
+    @MockBean
+    private QueryServiceGateway queryServiceGateway;
+
     @Test
     void acceptsQcV11AndPropagatesIds() throws Exception {
-        when(openSearchGateway.searchLexical(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any()))
-            .thenReturn(List.of("b1"));
+        when(openSearchGateway.searchLexicalDetailed(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean()))
+            .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of()));
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
 
         Map<String, Object> payload = qcV11Payload(
@@ -84,8 +92,8 @@ class SearchControllerQcV11Test {
 
     @Test
     void mapsVolumeFilterIntoLexicalQuery() throws Exception {
-        when(openSearchGateway.searchLexical(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any()))
-            .thenReturn(List.of("b1"));
+        when(openSearchGateway.searchLexicalDetailed(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean()))
+            .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of()));
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
 
         Map<String, Object> payload = qcV11Payload(
@@ -111,7 +119,17 @@ class SearchControllerQcV11Test {
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<Map<String, Object>>> filtersCaptor = ArgumentCaptor.forClass(List.class);
-        verify(openSearchGateway).searchLexical(eq("harry"), anyInt(), any(), any(), any(), any(), filtersCaptor.capture(), any());
+        verify(openSearchGateway).searchLexicalDetailed(
+            eq("harry"),
+            anyInt(),
+            any(),
+            any(),
+            any(),
+            any(),
+            filtersCaptor.capture(),
+            any(),
+            anyBoolean()
+        );
         boolean hasVolume = filtersCaptor.getValue().stream()
             .anyMatch(entry -> entry.containsKey("term") && ((Map<String, Object>) entry.get("term")).containsKey("volume"));
         org.junit.jupiter.api.Assertions.assertTrue(hasVolume);
@@ -149,8 +167,8 @@ class SearchControllerQcV11Test {
 
     @Test
     void mapsKdcNodeFilterIntoLexicalQuery() throws Exception {
-        when(openSearchGateway.searchLexical(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any()))
-            .thenReturn(List.of("b1"));
+        when(openSearchGateway.searchLexicalDetailed(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean()))
+            .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of()));
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
 
         Map<String, Object> payload = qcV11Payload(
@@ -176,7 +194,17 @@ class SearchControllerQcV11Test {
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<Map<String, Object>>> filtersCaptor = ArgumentCaptor.forClass(List.class);
-        verify(openSearchGateway).searchLexical(eq("harry"), anyInt(), any(), any(), any(), any(), filtersCaptor.capture(), any());
+        verify(openSearchGateway).searchLexicalDetailed(
+            eq("harry"),
+            anyInt(),
+            any(),
+            any(),
+            any(),
+            any(),
+            filtersCaptor.capture(),
+            any(),
+            anyBoolean()
+        );
         boolean hasKdc = filtersCaptor.getValue().stream()
             .anyMatch(entry -> entry.containsKey("terms") && ((Map<String, Object>) entry.get("terms")).containsKey("kdc_node_id"));
         org.junit.jupiter.api.Assertions.assertTrue(hasKdc);
@@ -184,9 +212,9 @@ class SearchControllerQcV11Test {
 
     @Test
     void appliesFallbackOnVectorError() throws Exception {
-        when(openSearchGateway.searchLexical(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any()))
-            .thenReturn(List.of("b1"));
-        when(openSearchGateway.searchVector(anyList(), anyInt(), any(), any()))
+        when(openSearchGateway.searchLexicalDetailed(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean()))
+            .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of()));
+        when(openSearchGateway.searchVectorDetailed(anyList(), anyInt(), any(), any(), anyBoolean()))
             .thenThrow(new OpenSearchUnavailableException("vector down", new RuntimeException("timeout")));
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
 
@@ -213,6 +241,85 @@ class SearchControllerQcV11Test {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.strategy").value("hybrid_rrf_v1_1_fallback_lexical"))
             .andExpect(jsonPath("$.debug.applied_fallback_id").value("FB1_LEXICAL_ONLY"));
+    }
+
+    @Test
+    void usesAuthorRoutingDslWhenUnderstandingExists() throws Exception {
+        when(openSearchGateway.searchLexicalByDslDetailed(any(), anyInt(), any(), any(), anyBoolean()))
+            .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of()));
+        when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
+
+        Map<String, Object> payload = qcV11Payload(
+            Map.of("raw", "author:김영하 데미안", "norm", "author:김영하 데미안", "final", "데미안"),
+            Map.of(
+                "queryTextSource", "query.final",
+                "lexical", Map.of("enabled", true, "topKHint", 50),
+                "vector", Map.of("enabled", false),
+                "rerank", Map.of("enabled", false)
+            )
+        );
+        @SuppressWarnings("unchecked")
+        Map<String, Object> qc = (Map<String, Object>) payload.get("query_context_v1_1");
+        qc.put(
+            "understanding",
+            Map.of(
+                "entities",
+                Map.of("author", List.of("김영하"), "title", List.of(), "series", List.of(), "publisher", List.of(), "isbn", List.of()),
+                "constraints",
+                Map.of("residualText", "데미안")
+            )
+        );
+
+        mockMvc.perform(post("/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(payload)))
+            .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> dslCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(openSearchGateway).searchLexicalByDslDetailed(dslCaptor.capture(), anyInt(), any(), any(), anyBoolean());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> bool = (Map<String, Object>) dslCaptor.getValue().get("bool");
+        org.junit.jupiter.api.Assertions.assertNotNull(bool.get("must"));
+    }
+
+    @Test
+    void retriesOnceWithEnhanceWhenZeroResults() throws Exception {
+        when(openSearchGateway.searchLexicalDetailed(anyString(), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean()))
+            .thenReturn(
+                new OpenSearchQueryResult(List.of(), Map.of()),
+                new OpenSearchQueryResult(List.of("b1"), Map.of())
+            );
+        when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
+
+        QueryEnhanceResponse enhanceResponse = new QueryEnhanceResponse();
+        enhanceResponse.setDecision("RUN");
+        enhanceResponse.setStrategy("REWRITE_ONLY");
+        QueryEnhanceResponse.FinalQuery finalQuery = new QueryEnhanceResponse.FinalQuery();
+        finalQuery.setText("harry potter");
+        finalQuery.setSource("rewrite");
+        enhanceResponse.setFinalQuery(finalQuery);
+        when(queryServiceGateway.enhance(any(), anyInt(), any(), any(), any())).thenReturn(enhanceResponse);
+
+        Map<String, Object> payload = qcV11Payload(
+            Map.of("raw", "harry", "norm", "harry", "final", "harry"),
+            Map.of(
+                "queryTextSource", "query.final",
+                "lexical", Map.of("enabled", true, "topKHint", 50),
+                "vector", Map.of("enabled", false),
+                "rerank", Map.of("enabled", false)
+            )
+        );
+
+        mockMvc.perform(post("/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(payload)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.debug.enhance_applied").value(true));
+
+        verify(queryServiceGateway).enhance(any(), anyInt(), any(), any(), any());
+        verify(openSearchGateway, times(2))
+            .searchLexicalDetailed(anyString(), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean());
     }
 
     private Map<String, Object> qcV11Payload(Map<String, Object> query, Map<String, Object> retrievalHints) {

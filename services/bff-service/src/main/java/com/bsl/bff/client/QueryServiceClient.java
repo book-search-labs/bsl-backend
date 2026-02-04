@@ -28,7 +28,7 @@ public class QueryServiceClient {
     }
 
     public JsonNode fetchQueryContext(String rawQuery, RequestContext context) {
-        String url = properties.getBaseUrl() + "/query-context";
+        String url = properties.getBaseUrl() + "/query/prepare";
         Map<String, Object> query = new HashMap<>();
         query.put("raw", rawQuery);
         Map<String, Object> body = new HashMap<>();

@@ -13,6 +13,7 @@ public class RetrievalStageContext {
     private final String minimumShouldMatch;
     private final List<Map<String, Object>> filters;
     private final List<String> fieldsOverride;
+    private final Map<String, Object> queryOverride;
     private final boolean debug;
     private final boolean explain;
     private final String traceId;
@@ -27,6 +28,7 @@ public class RetrievalStageContext {
         String minimumShouldMatch,
         List<Map<String, Object>> filters,
         List<String> fieldsOverride,
+        Map<String, Object> queryOverride,
         boolean debug,
         boolean explain,
         String traceId,
@@ -40,6 +42,7 @@ public class RetrievalStageContext {
         this.minimumShouldMatch = minimumShouldMatch;
         this.filters = filters == null ? List.of() : filters;
         this.fieldsOverride = fieldsOverride;
+        this.queryOverride = queryOverride;
         this.debug = debug;
         this.explain = explain;
         this.traceId = traceId;
@@ -76,6 +79,10 @@ public class RetrievalStageContext {
 
     public List<String> getFieldsOverride() {
         return fieldsOverride;
+    }
+
+    public Map<String, Object> getQueryOverride() {
+        return queryOverride;
     }
 
     public boolean isDebug() {

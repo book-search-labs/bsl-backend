@@ -17,6 +17,10 @@ ranking:
   base-url: ${RANKING_BASE_URL:http://localhost:8082}
   timeout-ms: ${RANKING_TIMEOUT_MS:200}
 
+query-service:
+  base-url: ${QUERY_BASE_URL:http://localhost:8001}
+  timeout-ms: ${QUERY_TIMEOUT_MS:120}
+
 embedding:
   mode: ${EMBEDDING_MODE:TOY}
   base-url: ${EMBEDDING_BASE_URL:http://localhost:8005}
@@ -48,6 +52,9 @@ search:
     vector-share: ${SEARCH_BUDGET_VEC_SHARE:0.3}
     rerank-share: ${SEARCH_BUDGET_RERANK_SHARE:0.2}
     min-stage-ms: ${SEARCH_BUDGET_MIN_STAGE_MS:20}
+  quality:
+    low-results-hits-threshold: ${SEARCH_QUALITY_LOW_RESULTS_HITS_THRESHOLD:3}
+    low-results-top-score-threshold: ${SEARCH_QUALITY_LOW_RESULTS_TOP_SCORE_THRESHOLD:0.02}
   vector:
     mode: ${SEARCH_VECTOR_MODE:EMBEDDING}
     model-id: ${SEARCH_VECTOR_MODEL_ID:}

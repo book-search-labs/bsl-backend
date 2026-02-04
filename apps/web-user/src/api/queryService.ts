@@ -18,7 +18,7 @@ export async function postQueryContext(rawQuery: string, headers?: HeadersInit):
     user: null,
   }
 
-  return fetchJson(joinUrl(queryBaseUrl, '/query-context'), {
+  return fetchJson(joinUrl(queryBaseUrl, '/query/prepare'), {
     method: 'POST',
     headers,
     body: payload,

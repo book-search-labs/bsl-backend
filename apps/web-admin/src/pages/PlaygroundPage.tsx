@@ -30,6 +30,10 @@ type ErrorInfo = {
 
 type QueryContext = {
   meta?: { schemaVersion?: string; traceId?: string; requestId?: string };
+  query?: { raw?: string; norm?: string; final?: string };
+  understanding?: {
+    constraints?: { residualText?: string };
+  };
   retrievalHints?: { vector?: { enabled?: boolean } };
   [key: string]: unknown;
 };
@@ -65,6 +69,13 @@ type SearchResponse = {
     stages?: { lexical?: boolean; vector?: boolean; rerank?: boolean };
     query_dsl?: Record<string, unknown>;
     cache?: { hit?: boolean; age_ms?: number; ttl_ms?: number; key?: string };
+    enhance_applied?: boolean;
+    enhance_reason?: string;
+    enhance_strategy?: string;
+    enhance_final_query?: string;
+    enhance_final_source?: string;
+    enhance_improved?: boolean;
+    enhance_skip_reason?: string;
     retrieval?: {
       lexical?: { took_ms?: number; doc_count?: number; top_k?: number; error?: boolean; timed_out?: boolean };
       vector?: { took_ms?: number; doc_count?: number; top_k?: number; error?: boolean; timed_out?: boolean; mode?: string };
@@ -181,7 +192,7 @@ export default function PlaygroundPage() {
     } else {
       if (lastRequest.queryPayload) {
         blocks.push("# Query Service");
-        blocks.push(buildCurl(joinUrl(queryBaseUrl, "/query-context"), lastRequest.queryPayload));
+        blocks.push(buildCurl(joinUrl(queryBaseUrl, "/query/prepare"), lastRequest.queryPayload));
       }
       if (lastRequest.searchPayload) {
         blocks.push("# Search Service");
@@ -223,7 +234,7 @@ export default function PlaygroundPage() {
       queryPayload?: unknown;
       searchPayload?: unknown;
       stage?: "query" | "search";
-    } | null = null;
+    } = {};
 
     try {
       const { result, target } = await routeRequest<SearchResponse>({
@@ -256,7 +267,7 @@ export default function PlaygroundPage() {
               user: null,
             };
 
-            const qcResult = await fetchJson<QueryContext>(joinUrl(queryBaseUrl, "/query-context"), {
+            const qcResult = await fetchJson<QueryContext>(joinUrl(queryBaseUrl, "/query/prepare"), {
               method: "POST",
               headers: context.headers,
               body: JSON.stringify(qcPayload),
@@ -321,18 +332,18 @@ export default function PlaygroundPage() {
         setQcResponse(null);
         setLastRequest({ mode, target, bffPayload });
       } else {
-        setQcResponse(directMeta?.qcData ?? null);
+        setQcResponse(directMeta.qcData ?? null);
         setLastRequest({
           mode,
           target,
-          queryPayload: directMeta?.queryPayload,
-          searchPayload: directMeta?.searchPayload,
+          queryPayload: directMeta.queryPayload,
+          searchPayload: directMeta.searchPayload,
         });
       }
 
       if (!result.ok) {
         setError({
-          stage: target === "bff" ? "search" : directMeta?.stage ?? "search",
+          stage: target === "bff" ? "search" : directMeta.stage ?? "search",
           status: result.status,
           statusText: result.statusText,
           body: result.body,
@@ -360,6 +371,19 @@ export default function PlaygroundPage() {
 
   const traceId = qcResponse?.meta?.traceId ?? searchResponse?.trace_id ?? "-";
   const requestId = qcResponse?.meta?.requestId ?? searchResponse?.request_id ?? "-";
+  const qcRaw = qcResponse?.query?.raw ?? rawQuery;
+  const qcNorm = qcResponse?.query?.norm ?? "-";
+  const qcFinal = qcResponse?.query?.final ?? "-";
+  const enhanceApplied = searchResponse?.debug?.enhance_applied;
+  const enhanceReason = searchResponse?.debug?.enhance_reason ?? "-";
+  const enhanceStrategy = searchResponse?.debug?.enhance_strategy ?? "-";
+  const enhanceFinalQuery = searchResponse?.debug?.enhance_final_query ?? "-";
+  const enhanceFinalSource = searchResponse?.debug?.enhance_final_source ?? "-";
+  const enhanceImproved = searchResponse?.debug?.enhance_improved;
+  const enhanceSkipReason = searchResponse?.debug?.enhance_skip_reason ?? "-";
+  const hitScores = hits.map((item) => item?.score).filter((value): value is number => typeof value === "number");
+  const topScore = hitScores.length > 0 ? Math.max(...hitScores) : null;
+  const avgScore = hitScores.length > 0 ? hitScores.reduce((sum, value) => sum + value, 0) / hitScores.length : null;
 
   return (
     <>
@@ -368,9 +392,9 @@ export default function PlaygroundPage() {
           <h3 className="mb-1">Search Playground</h3>
           <div className="text-muted">Inspect query context, retrieval, and debug info.</div>
         </div>
-        <Button as={Link} to="/rerank-playground" variant="outline-primary">
+        <Link className="btn btn-outline-primary" to="/rerank-playground">
           Open Rerank Playground
-        </Button>
+        </Link>
       </div>
 
       <Card className="shadow-sm mb-3">
@@ -592,6 +616,63 @@ export default function PlaygroundPage() {
                 <Col xs={12} md={6}>
                   <div className="text-muted small">debug.query_text_source_used</div>
                   <div className="fw-semibold">{searchResponse?.debug?.query_text_source_used ?? "-"}</div>
+                </Col>
+              </Row>
+            </Card.Body>
+          </Card>
+
+          <Card className="shadow-sm mt-3">
+            <Card.Header className="fw-semibold">Search Debug Panel</Card.Header>
+            <Card.Body>
+              <Row className="g-3">
+                <Col xs={12}>
+                  <div className="text-muted small">Query pipeline</div>
+                  <div className="small">raw: {qcRaw || "-"}</div>
+                  <div className="small">q_norm: {qcNorm}</div>
+                  <div className="small">q_final: {qcFinal}</div>
+                </Col>
+                <Col xs={12} md={6}>
+                  <div className="text-muted small">enhanceApplied</div>
+                  <div className="fw-semibold">
+                    {enhanceApplied === undefined ? "-" : String(enhanceApplied)}
+                  </div>
+                </Col>
+                <Col xs={12} md={6}>
+                  <div className="text-muted small">enhanceImproved</div>
+                  <div className="fw-semibold">
+                    {enhanceImproved === undefined ? "-" : String(enhanceImproved)}
+                  </div>
+                </Col>
+                <Col xs={12} md={6}>
+                  <div className="text-muted small">enhanceReason</div>
+                  <div className="fw-semibold">{enhanceReason}</div>
+                </Col>
+                <Col xs={12} md={6}>
+                  <div className="text-muted small">enhanceStrategy</div>
+                  <div className="fw-semibold">{enhanceStrategy}</div>
+                </Col>
+                <Col xs={12} md={6}>
+                  <div className="text-muted small">finalQuery</div>
+                  <div className="fw-semibold">{enhanceFinalQuery}</div>
+                </Col>
+                <Col xs={12} md={6}>
+                  <div className="text-muted small">finalSource</div>
+                  <div className="fw-semibold">{enhanceFinalSource}</div>
+                </Col>
+                <Col xs={12} md={6}>
+                  <div className="text-muted small">skipReason</div>
+                  <div className="fw-semibold">{enhanceSkipReason}</div>
+                </Col>
+                <Col xs={12} md={6}>
+                  <div className="text-muted small">hits</div>
+                  <div className="fw-semibold">{hits.length}</div>
+                </Col>
+                <Col xs={12} md={6}>
+                  <div className="text-muted small">score summary</div>
+                  <div className="fw-semibold">
+                    top={topScore === null ? "-" : topScore.toFixed(4)} / avg=
+                    {avgScore === null ? "-" : avgScore.toFixed(4)}
+                  </div>
                 </Col>
               </Row>
             </Card.Body>

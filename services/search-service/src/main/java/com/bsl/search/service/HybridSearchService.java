@@ -13,6 +13,11 @@ import com.bsl.search.experiment.SearchExperimentProperties;
 import com.bsl.search.merge.RrfFusion;
 import com.bsl.search.merge.WeightedFusion;
 import com.bsl.search.opensearch.OpenSearchGateway;
+import com.bsl.search.query.QueryServiceGateway;
+import com.bsl.search.query.QueryServiceProperties;
+import com.bsl.search.query.QueryServiceUnavailableException;
+import com.bsl.search.query.dto.QueryEnhanceRequest;
+import com.bsl.search.query.dto.QueryEnhanceResponse;
 import com.bsl.search.retrieval.FusionMethod;
 import com.bsl.search.retrieval.FusionPolicyProperties;
 import com.bsl.search.retrieval.LexicalRetriever;
@@ -27,9 +32,12 @@ import com.bsl.search.ranking.RankingUnavailableException;
 import com.bsl.search.ranking.dto.RerankRequest;
 import com.bsl.search.ranking.dto.RerankResponse;
 import com.fasterxml.jackson.databind.JsonNode;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -41,10 +49,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class HybridSearchService {
+    private static final Logger log = LoggerFactory.getLogger(HybridSearchService.class);
     private static final int DEFAULT_SIZE = 10;
     private static final int DEFAULT_FROM = 0;
     private static final int DEFAULT_RRF_K = 60;
@@ -82,6 +93,10 @@ public class HybridSearchService {
     private final MaterialGroupingService groupingService;
     private final RerankPolicyProperties rerankPolicy;
     private final SearchBudgetProperties budgetProperties;
+    private final SearchQualityEvaluator qualityEvaluator;
+    private final QueryServiceGateway queryServiceGateway;
+    private final QueryServiceProperties queryServiceProperties;
+    private final MeterRegistry meterRegistry;
     private static final Pattern ISBN_PATTERN = Pattern.compile("^(97(8|9))?\\d{9}[\\dXx]$");
 
     public HybridSearchService(
@@ -97,7 +112,11 @@ public class HybridSearchService {
         SearchExperimentProperties experimentProperties,
         MaterialGroupingService groupingService,
         RerankPolicyProperties rerankPolicy,
-        SearchBudgetProperties budgetProperties
+        SearchBudgetProperties budgetProperties,
+        SearchQualityEvaluator qualityEvaluator,
+        QueryServiceGateway queryServiceGateway,
+        QueryServiceProperties queryServiceProperties,
+        MeterRegistry meterRegistry
     ) {
         this.openSearchGateway = openSearchGateway;
         this.lexicalRetriever = lexicalRetriever;
@@ -112,6 +131,10 @@ public class HybridSearchService {
         this.groupingService = groupingService;
         this.rerankPolicy = rerankPolicy;
         this.budgetProperties = budgetProperties;
+        this.qualityEvaluator = qualityEvaluator;
+        this.queryServiceGateway = queryServiceGateway;
+        this.queryServiceProperties = queryServiceProperties;
+        this.meterRegistry = meterRegistry;
     }
 
     public SearchResponse search(SearchRequest request, String traceId, String requestId, String traceparent) {
@@ -216,7 +239,15 @@ public class HybridSearchService {
             traceparent
         );
 
-        SearchResponse.Debug debug = buildDebug(plan, retrieval, rerankOutcome, null, cacheKey, false);
+        SearchResponse.Debug debug = buildDebug(
+            plan,
+            retrieval,
+            rerankOutcome,
+            null,
+            cacheKey,
+            false,
+            EnhanceOutcome.notAttempted()
+        );
         List<BookHit> finalHits = maybeApplyExploration(plan, rerankOutcome.hits, from, size, requestId, debug);
         finalHits = groupingService.apply(plan.queryText, finalHits, size);
         SearchResponse response = buildResponse(
@@ -262,7 +293,9 @@ public class HybridSearchService {
         int from = options.getFrom() != null ? Math.max(options.getFrom(), 0) : DEFAULT_FROM;
 
         ExecutionPlan plan = buildPlanFromQcV11(qc, options);
-        if (isBlank(plan.queryText) && (plan.filters == null || plan.filters.isEmpty())) {
+        if (isBlank(plan.queryText)
+            && (plan.filters == null || plan.filters.isEmpty())
+            && (plan.lexicalQueryOverride == null || plan.lexicalQueryOverride.isEmpty())) {
             throw new InvalidSearchRequestException("query text is required");
         }
         assignExperimentBucket(plan, requestId);
@@ -294,6 +327,19 @@ public class HybridSearchService {
             }
         }
 
+        EnhanceOutcome enhanceOutcome = maybeRetryWithEnhance(
+            plan,
+            qc,
+            retrieval,
+            started,
+            traceId,
+            requestId,
+            traceparent
+        );
+        if (enhanceOutcome.retryRetrieval != null) {
+            retrieval = enhanceOutcome.retryRetrieval;
+        }
+
         RerankOutcome rerankOutcome = applyRerank(
             plan,
             retrieval,
@@ -323,7 +369,15 @@ public class HybridSearchService {
         }
 
         String strategy = resolveQcStrategy(plan, appliedFallbackId);
-        SearchResponse.Debug debug = buildDebug(plan, retrieval, rerankOutcome, appliedFallbackId, cacheKey, false);
+        SearchResponse.Debug debug = buildDebug(
+            plan,
+            retrieval,
+            rerankOutcome,
+            appliedFallbackId,
+            cacheKey,
+            false,
+            enhanceOutcome
+        );
         List<BookHit> finalHits = maybeApplyExploration(plan, rerankOutcome.hits, from, size, requestId, debug);
         finalHits = groupingService.apply(plan.queryText, finalHits, size);
 
@@ -490,6 +544,7 @@ public class HybridSearchService {
             plan.minimumShouldMatch,
             plan.filters,
             plan.lexicalFields,
+            plan.lexicalQueryOverride,
             plan.debugEnabled,
             plan.explainEnabled,
             traceId,
@@ -504,6 +559,7 @@ public class HybridSearchService {
             null,
             null,
             plan.filters,
+            null,
             null,
             plan.debugEnabled,
             plan.explainEnabled,
@@ -557,6 +613,245 @@ public class HybridSearchService {
         }
 
         return new RetrievalResult(fused, sources, lexicalResult, vectorResult, fusionTookMs);
+    }
+
+    private EnhanceOutcome maybeRetryWithEnhance(
+        ExecutionPlan plan,
+        QueryContextV1_1 qc,
+        RetrievalResult retrieval,
+        long started,
+        String traceId,
+        String requestId,
+        String traceparent
+    ) {
+        int hitCount = retrieval == null || retrieval.fused == null ? 0 : retrieval.fused.size();
+        double topScore = topScore(retrieval);
+        SearchQualityEvaluator.QualityEvaluation quality = qualityEvaluator.evaluate(hitCount, topScore);
+        if (!quality.shouldEnhance()) {
+            return EnhanceOutcome.notAttempted();
+        }
+        if (plan.lexicalQueryOverride != null && !plan.lexicalQueryOverride.isEmpty()) {
+            return EnhanceOutcome.skipped(quality.getReason(), "EXPLICIT_FIELD_ROUTING");
+        }
+
+        String qNorm = resolveQNorm(qc, plan.queryText);
+        if (isBlank(qNorm)) {
+            return EnhanceOutcome.skipped(quality.getReason(), "MISSING_QUERY_TEXT");
+        }
+        if (isIsbnQuery(qc, qNorm)) {
+            return EnhanceOutcome.skipped(quality.getReason(), "ISBN_QUERY");
+        }
+
+        int remainingBudgetMs = estimateRemainingBudget(plan, started);
+        if (remainingBudgetMs <= 0) {
+            return EnhanceOutcome.skipped(quality.getReason(), "BUDGET_EXHAUSTED");
+        }
+
+        meterRegistry.counter("sr_enhance_attempt_total", "reason", quality.getReason()).increment();
+        QueryEnhanceRequest enhanceRequest = buildEnhanceRequest(
+            qc,
+            qNorm,
+            quality,
+            hitCount,
+            topScore,
+            remainingBudgetMs,
+            traceId,
+            requestId,
+            plan.debugEnabled
+        );
+        int timeoutMs = Math.min(remainingBudgetMs, queryServiceProperties.getTimeoutMs());
+        EnhanceOutcome outcome = EnhanceOutcome.attempted(quality.getReason());
+        long callStarted = System.nanoTime();
+        QueryEnhanceResponse response;
+        try {
+            response = queryServiceGateway.enhance(
+                enhanceRequest,
+                timeoutMs,
+                traceId,
+                requestId,
+                traceparent
+            );
+        } catch (QueryServiceUnavailableException ex) {
+            outcome.skipReason = "QS_TIMEOUT_OR_ERROR";
+            recordEnhanceLatency(callStarted);
+            log.info(
+                "sr_enhance trace_id={} request_id={} reason={} strategy=NONE final_source=NONE improved=false skip_reason={}",
+                traceId,
+                requestId,
+                quality.getReason(),
+                outcome.skipReason
+            );
+            return outcome;
+        }
+        recordEnhanceLatency(callStarted);
+
+        if (response == null) {
+            outcome.skipReason = "EMPTY_ENHANCE_RESPONSE";
+            return outcome;
+        }
+
+        outcome.decision = response.getDecision();
+        outcome.strategy = response.getStrategy();
+        if (!"RUN".equalsIgnoreCase(response.getDecision()) || response.getFinalQuery() == null) {
+            outcome.skipReason = "ENHANCE_SKIP";
+            log.info(
+                "sr_enhance trace_id={} request_id={} reason={} strategy={} final_source=NONE improved=false skip_reason={}",
+                traceId,
+                requestId,
+                quality.getReason(),
+                response.getStrategy(),
+                outcome.skipReason
+            );
+            return outcome;
+        }
+
+        String finalQuery = trimToNull(response.getFinalQuery().getText());
+        if (isBlank(finalQuery)) {
+            outcome.skipReason = "EMPTY_FINAL_QUERY";
+            return outcome;
+        }
+
+        plan.queryText = finalQuery;
+        plan.queryTextSourceUsed = "query.enhance";
+        meterRegistry.counter("sr_search_retry_total").increment();
+        RetrievalResult retryResult = retrieveCandidates(plan, traceId, requestId);
+
+        boolean improved = isEnhancedImproved(retrieval, retryResult);
+        meterRegistry.counter("sr_enhance_success_total", "improved", Boolean.toString(improved)).increment();
+
+        outcome.applied = true;
+        outcome.finalQuery = finalQuery;
+        outcome.finalSource = response.getFinalQuery().getSource();
+        outcome.improved = improved;
+        outcome.retryRetrieval = retryResult;
+        log.info(
+            "sr_enhance trace_id={} request_id={} reason={} strategy={} final_source={} improved={}",
+            traceId,
+            requestId,
+            quality.getReason(),
+            response.getStrategy(),
+            outcome.finalSource == null ? "unknown" : outcome.finalSource,
+            improved
+        );
+        return outcome;
+    }
+
+    private QueryEnhanceRequest buildEnhanceRequest(
+        QueryContextV1_1 qc,
+        String qNorm,
+        SearchQualityEvaluator.QualityEvaluation quality,
+        int hits,
+        double topScore,
+        int remainingBudgetMs,
+        String traceId,
+        String requestId,
+        boolean debugEnabled
+    ) {
+        QueryEnhanceRequest request = new QueryEnhanceRequest();
+        request.setTraceId(traceId);
+        request.setRequestId(requestId);
+        request.setQNorm(qNorm);
+        request.setQNospace(resolveQNoSpace(qc, qNorm));
+        request.setReason(quality.getReason());
+        request.setLocale(resolveLocale(qc));
+        request.setDebug(debugEnabled);
+
+        Map<String, Object> signals = new HashMap<>();
+        signals.put("hits", hits);
+        signals.put("top_score", topScore);
+        signals.put("from", 0);
+        signals.put("size", DEFAULT_SIZE);
+        signals.put("latency_budget_ms", remainingBudgetMs);
+        request.setSignals(signals);
+
+        request.setDetected(buildDetectedPayload(qc));
+        return request;
+    }
+
+    private Map<String, Object> buildDetectedPayload(QueryContextV1_1 qc) {
+        if (qc == null || qc.getDetected() == null) {
+            return Map.of();
+        }
+        Map<String, Object> detected = new HashMap<>();
+        if (qc.getDetected().getMode() != null) {
+            detected.put("mode", qc.getDetected().getMode());
+        }
+        if (qc.getDetected().getIsIsbn() != null) {
+            detected.put("is_isbn", qc.getDetected().getIsIsbn());
+            detected.put("isIsbn", qc.getDetected().getIsIsbn());
+        }
+        return detected;
+    }
+
+    private String resolveQNorm(QueryContextV1_1 qc, String fallback) {
+        if (qc != null && qc.getQuery() != null) {
+            if (!isBlank(qc.getQuery().getNorm())) {
+                return qc.getQuery().getNorm().trim();
+            }
+            if (!isBlank(qc.getQuery().getFinalValue())) {
+                return qc.getQuery().getFinalValue().trim();
+            }
+        }
+        return trimToNull(fallback);
+    }
+
+    private String resolveQNoSpace(QueryContextV1_1 qc, String qNorm) {
+        if (qc != null && qc.getQuery() != null && !isBlank(qc.getQuery().getNospace())) {
+            return qc.getQuery().getNospace().trim();
+        }
+        return qNorm == null ? null : qNorm.replaceAll("\\s+", "");
+    }
+
+    private String resolveLocale(QueryContextV1_1 qc) {
+        if (qc != null && qc.getMeta() != null && !isBlank(qc.getMeta().getLocale())) {
+            return qc.getMeta().getLocale().trim();
+        }
+        return "ko-KR";
+    }
+
+    private int estimateRemainingBudget(ExecutionPlan plan, long started) {
+        if (plan == null || plan.timeBudgetMs == null) {
+            return queryServiceProperties.getTimeoutMs();
+        }
+        long elapsed = Math.max(0L, (System.nanoTime() - started) / 1_000_000L);
+        return Math.max(0, (int) (plan.timeBudgetMs - elapsed));
+    }
+
+    private boolean isIsbnQuery(QueryContextV1_1 qc, String qNorm) {
+        if (qc != null && qc.getDetected() != null && Boolean.TRUE.equals(qc.getDetected().getIsIsbn())) {
+            return true;
+        }
+        if (qNorm == null) {
+            return false;
+        }
+        String compact = qNorm.replaceAll("[^0-9Xx]", "");
+        return ISBN_PATTERN.matcher(compact).matches();
+    }
+
+    private void recordEnhanceLatency(long started) {
+        long tookMs = Math.max(0L, (System.nanoTime() - started) / 1_000_000L);
+        Timer.builder("sr_enhance_latency_ms").register(meterRegistry).record(tookMs, TimeUnit.MILLISECONDS);
+    }
+
+    private double topScore(RetrievalResult retrieval) {
+        if (retrieval == null || retrieval.fused == null || retrieval.fused.isEmpty()) {
+            return 0.0d;
+        }
+        return retrieval.fused.get(0).getScore();
+    }
+
+    private boolean isEnhancedImproved(RetrievalResult before, RetrievalResult after) {
+        int beforeHits = before == null || before.fused == null ? 0 : before.fused.size();
+        int afterHits = after == null || after.fused == null ? 0 : after.fused.size();
+        if (beforeHits == 0 && afterHits > 0) {
+            return true;
+        }
+        if (afterHits > beforeHits) {
+            return true;
+        }
+        double beforeTop = topScore(before);
+        double afterTop = topScore(after);
+        return afterTop > beforeTop;
     }
 
     private List<RrfFusion.Candidate> fuseCandidates(
@@ -1022,9 +1317,14 @@ public class HybridSearchService {
         RerankOutcome rerankOutcome,
         String appliedFallbackId,
         String cacheKey,
-        boolean cacheHit
+        boolean cacheHit,
+        EnhanceOutcome enhanceOutcome
     ) {
-        boolean include = plan.debugEnabled || plan.explainEnabled || appliedFallbackId != null || cacheHit;
+        boolean include = plan.debugEnabled
+            || plan.explainEnabled
+            || appliedFallbackId != null
+            || cacheHit
+            || (enhanceOutcome != null && enhanceOutcome.attempted);
         if (!include) {
             return null;
         }
@@ -1067,6 +1367,15 @@ public class HybridSearchService {
         List<String> warnings = buildWarnings(retrieval, rerankOutcome);
         if (!warnings.isEmpty()) {
             debug.setWarnings(warnings);
+        }
+        if (enhanceOutcome != null && enhanceOutcome.attempted) {
+            debug.setEnhanceApplied(enhanceOutcome.applied);
+            debug.setEnhanceReason(enhanceOutcome.reason);
+            debug.setEnhanceStrategy(enhanceOutcome.strategy);
+            debug.setEnhanceFinalQuery(enhanceOutcome.finalQuery);
+            debug.setEnhanceFinalSource(enhanceOutcome.finalSource);
+            debug.setEnhanceImproved(enhanceOutcome.improved);
+            debug.setEnhanceSkipReason(enhanceOutcome.skipReason);
         }
         debug.setExperimentBucket(plan.experimentBucket);
         debug.setExperimentApplied(plan.exploreApplied);
@@ -1170,6 +1479,9 @@ public class HybridSearchService {
         if (plan.experimentBucket != null) {
             fields.put("experiment_bucket", plan.experimentBucket);
         }
+        if (plan.lexicalQueryOverride != null && !plan.lexicalQueryOverride.isEmpty()) {
+            fields.put("lexical_query_override", plan.lexicalQueryOverride);
+        }
         return serpCacheService.buildKey(fields);
     }
 
@@ -1203,7 +1515,15 @@ public class HybridSearchService {
         }
         SerpCacheService.CachedResponse entry = cached.get();
         SearchResponse cachedResponse = copySearchResponse(entry.getResponse(), traceId, requestId, started);
-        SearchResponse.Debug debug = buildDebug(plan, emptyRetrieval(plan), emptyRerankOutcome(), null, cacheKey, true);
+        SearchResponse.Debug debug = buildDebug(
+            plan,
+            emptyRetrieval(plan),
+            emptyRerankOutcome(),
+            null,
+            cacheKey,
+            true,
+            EnhanceOutcome.notAttempted()
+        );
         if (debug != null && debug.getCache() != null) {
             long ageMs = Math.max(0L, System.currentTimeMillis() - entry.getCreatedAt());
             long ttlMs = Math.max(0L, entry.getExpiresAt() - entry.getCreatedAt());
@@ -1330,6 +1650,14 @@ public class HybridSearchService {
         QueryTextSelection selection = selectQueryText(query, hints == null ? null : hints.getQueryTextSource());
         plan.queryText = selection.text;
         plan.queryTextSourceUsed = selection.sourceUsed;
+        if (isBlank(plan.queryText)
+            && qc.getUnderstanding() != null
+            && qc.getUnderstanding().getConstraints() != null) {
+            plan.queryText = trimToNull(qc.getUnderstanding().getConstraints().getResidualText());
+            if (!isBlank(plan.queryText)) {
+                plan.queryTextSourceUsed = "understanding.residualText";
+            }
+        }
 
         QueryContextV1_1.Lexical lexical = hints == null ? null : hints.getLexical();
         plan.lexicalEnabled = lexical == null || lexical.getEnabled() == null || lexical.getEnabled();
@@ -1339,6 +1667,7 @@ public class HybridSearchService {
         plan.lexicalOperator = normalizeOperator(lexical == null ? null : lexical.getOperator());
         plan.minimumShouldMatch = blankToNull(lexical == null ? null : lexical.getMinimumShouldMatch());
         plan.lexicalFields = mapPreferredFields(lexical == null ? null : lexical.getPreferredLogicalFields());
+        plan.lexicalQueryOverride = buildLexicalQueryOverride(qc, plan.queryText);
 
         QueryContextV1_1.Vector vector = hints == null ? null : hints.getVector();
         plan.vectorEnabled = vector == null || vector.getEnabled() == null || vector.getEnabled();
@@ -1454,9 +1783,122 @@ public class HybridSearchService {
                 mapped.add("authors.name_ko");
             } else if ("series_ko".equals(normalized)) {
                 mapped.add("series_name");
+            } else if ("publisher".equals(normalized) || "publisher_name".equals(normalized)) {
+                mapped.add("publisher_name");
+            } else if ("isbn13".equals(normalized) || "isbn".equals(normalized)) {
+                mapped.add("identifiers.isbn13");
             }
         }
         return mapped.isEmpty() ? null : mapped;
+    }
+
+    private Map<String, Object> buildLexicalQueryOverride(QueryContextV1_1 qc, String selectedQueryText) {
+        if (qc == null || qc.getUnderstanding() == null || qc.getUnderstanding().getEntities() == null) {
+            return null;
+        }
+        QueryContextV1_1.Entities entities = qc.getUnderstanding().getEntities();
+        String residualText = qc.getUnderstanding().getConstraints() == null
+            ? null
+            : trimToNull(qc.getUnderstanding().getConstraints().getResidualText());
+        String fallbackText = firstNonBlank(residualText, selectedQueryText);
+
+        List<String> isbnValues = cleanValues(entities.getIsbn());
+        if (!isbnValues.isEmpty()) {
+            List<Map<String, Object>> isbnShould = new ArrayList<>();
+            for (String isbn : isbnValues) {
+                isbnShould.add(Map.of("term", Map.of("identifiers.isbn13", isbn)));
+                isbnShould.add(Map.of("term", Map.of("identifiers.isbn10", isbn)));
+            }
+
+            Map<String, Object> isbnBool = new LinkedHashMap<>();
+            isbnBool.put("should", isbnShould);
+            isbnBool.put("minimum_should_match", 1);
+
+            Map<String, Object> bool = new LinkedHashMap<>();
+            bool.put("must", List.of(Map.of("bool", isbnBool)));
+            if (!isBlank(fallbackText)) {
+                bool.put("should", List.of(buildResidualMultiMatch(fallbackText)));
+            }
+            return Map.of("bool", bool);
+        }
+
+        List<Map<String, Object>> must = new ArrayList<>();
+        addBoostedMatch(must, "authors.name_ko", firstValue(entities.getAuthor()), 3.0d);
+        addBoostedMatch(must, "title_ko", firstValue(entities.getTitle()), 3.0d);
+        addBoostedMatch(must, "series_name", firstValue(entities.getSeries()), 2.5d);
+        addBoostedMatch(must, "publisher_name", firstValue(entities.getPublisher()), 2.0d);
+
+        if (must.isEmpty()) {
+            return null;
+        }
+
+        Map<String, Object> bool = new LinkedHashMap<>();
+        bool.put("must", must);
+        if (!isBlank(fallbackText)) {
+            bool.put("should", List.of(buildResidualMultiMatch(fallbackText)));
+        }
+        return Map.of("bool", bool);
+    }
+
+    private Map<String, Object> buildResidualMultiMatch(String query) {
+        return Map.of(
+            "multi_match",
+            Map.of(
+                "query",
+                query,
+                "fields",
+                List.of("title_ko^2", "series_name^1.5", "publisher_name^1.2")
+            )
+        );
+    }
+
+    private void addBoostedMatch(List<Map<String, Object>> must, String field, String value, double boost) {
+        if (isBlank(value)) {
+            return;
+        }
+        must.add(
+            Map.of(
+                "match",
+                Map.of(
+                    field,
+                    Map.of(
+                        "query",
+                        value,
+                        "boost",
+                        boost
+                    )
+                )
+            )
+        );
+    }
+
+    private List<String> cleanValues(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        List<String> cleaned = new ArrayList<>();
+        for (String value : values) {
+            if (isBlank(value)) {
+                continue;
+            }
+            String trimmed = value.trim();
+            if (!cleaned.contains(trimmed)) {
+                cleaned.add(trimmed);
+            }
+        }
+        return cleaned;
+    }
+
+    private String firstValue(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+        for (String value : values) {
+            if (!isBlank(value)) {
+                return value.trim();
+            }
+        }
+        return null;
     }
 
     private List<Map<String, Object>> buildFilters(QueryContextV1_1.RetrievalHints hints) {
@@ -1521,6 +1963,21 @@ public class HybridSearchService {
                 return Map.of("terms", Map.of("kdc_node_id", values));
             }
             return Map.of("term", Map.of("kdc_node_id", value));
+        }
+        if ("kdc_code".equals(normalized) || "kdc_codes".equals(normalized)) {
+            if (value instanceof List<?> values) {
+                return Map.of("terms", Map.of("kdc_code", values));
+            }
+            return Map.of("term", Map.of("kdc_code", value));
+        }
+        if ("kdc_path_codes".equals(normalized)) {
+            if (value instanceof List<?> values) {
+                return Map.of("terms", Map.of("kdc_path_codes", values));
+            }
+            return Map.of("term", Map.of("kdc_path_codes", value));
+        }
+        if ("kdc_edition".equals(normalized)) {
+            return Map.of("term", Map.of("kdc_edition", value));
         }
         return null;
     }
@@ -1695,6 +2152,36 @@ public class HybridSearchService {
         return value == null || value.trim().isEmpty();
     }
 
+    private static class EnhanceOutcome {
+        private boolean attempted;
+        private boolean applied;
+        private String reason;
+        private String decision;
+        private String strategy;
+        private String finalQuery;
+        private String finalSource;
+        private boolean improved;
+        private String skipReason;
+        private RetrievalResult retryRetrieval;
+
+        private static EnhanceOutcome notAttempted() {
+            return new EnhanceOutcome();
+        }
+
+        private static EnhanceOutcome attempted(String reason) {
+            EnhanceOutcome outcome = new EnhanceOutcome();
+            outcome.attempted = true;
+            outcome.reason = reason;
+            return outcome;
+        }
+
+        private static EnhanceOutcome skipped(String reason, String skipReason) {
+            EnhanceOutcome outcome = attempted(reason);
+            outcome.skipReason = skipReason;
+            return outcome;
+        }
+    }
+
     private static class ExecutionPlan {
         private final QueryContextV1_1 context;
         private String queryText;
@@ -1710,6 +2197,7 @@ public class HybridSearchService {
         private String lexicalOperator;
         private String minimumShouldMatch;
         private List<String> lexicalFields;
+        private Map<String, Object> lexicalQueryOverride;
         private List<Map<String, Object>> filters;
         private List<QueryContextV1_1.FallbackPolicy> fallbackPolicy;
         private Map<String, Double> boost;
@@ -1743,6 +2231,7 @@ public class HybridSearchService {
             this.lexicalOperator = other.lexicalOperator;
             this.minimumShouldMatch = other.minimumShouldMatch;
             this.lexicalFields = other.lexicalFields;
+            this.lexicalQueryOverride = other.lexicalQueryOverride;
             this.filters = other.filters;
             this.fallbackPolicy = other.fallbackPolicy;
             this.boost = other.boost;

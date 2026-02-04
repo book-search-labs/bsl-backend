@@ -1014,6 +1014,23 @@
   min-width: 240px;
 }
 
+.explicit-filter-bar {
+  max-width: 900px;
+}
+
+.filter-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.advanced-filter-panel {
+  padding: 1rem;
+  border: 1px solid rgba(11, 79, 108, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
 .search-layout {
   display: grid;
   grid-template-columns: minmax(0, 260px) minmax(0, 1fr);

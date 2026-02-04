@@ -52,7 +52,7 @@ def evaluate_gate(
     if is_isbn:
         return _skip("ISBN_QUERY", reason_codes)
 
-    if reason not in {"ZERO_RESULTS", "LOW_CONFIDENCE", "HIGH_OOV", "USER_EXPLICIT"}:
+    if reason not in {"ZERO_RESULTS", "LOW_RESULTS", "LOW_CONFIDENCE", "HIGH_OOV", "USER_EXPLICIT"}:
         return _skip("UNSUPPORTED_REASON", reason_codes)
 
     if reason == "LOW_CONFIDENCE":
@@ -83,6 +83,8 @@ def evaluate_gate(
 
     if reason == "ZERO_RESULTS":
         strategy = "SPELL_THEN_REWRITE"
+    elif reason == "LOW_RESULTS":
+        strategy = "REWRITE_ONLY"
     elif reason == "HIGH_OOV":
         strategy = "SPELL_ONLY"
     elif reason == "LOW_CONFIDENCE":

@@ -8,6 +8,8 @@ import java.util.List;
 public class QueryContextV1_1 {
     private Meta meta;
     private Query query;
+    private Detected detected;
+    private Understanding understanding;
 
     @JsonProperty("retrievalHints")
     private RetrievalHints retrievalHints;
@@ -28,6 +30,22 @@ public class QueryContextV1_1 {
         this.query = query;
     }
 
+    public Detected getDetected() {
+        return detected;
+    }
+
+    public void setDetected(Detected detected) {
+        this.detected = detected;
+    }
+
+    public Understanding getUnderstanding() {
+        return understanding;
+    }
+
+    public void setUnderstanding(Understanding understanding) {
+        this.understanding = understanding;
+    }
+
     public RetrievalHints getRetrievalHints() {
         return retrievalHints;
     }
@@ -41,6 +59,7 @@ public class QueryContextV1_1 {
         private String schemaVersion;
         private String traceId;
         private String requestId;
+        private String locale;
 
         public String getSchemaVersion() {
             return schemaVersion;
@@ -65,12 +84,21 @@ public class QueryContextV1_1 {
         public void setRequestId(String requestId) {
             this.requestId = requestId;
         }
+
+        public String getLocale() {
+            return locale;
+        }
+
+        public void setLocale(String locale) {
+            this.locale = locale;
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Query {
         private String raw;
         private String norm;
+        private String nospace;
         private String finall;
 
         @JsonProperty("final")
@@ -97,6 +125,205 @@ public class QueryContextV1_1 {
 
         public void setNorm(String norm) {
             this.norm = norm;
+        }
+
+        public String getNospace() {
+            return nospace;
+        }
+
+        public void setNospace(String nospace) {
+            this.nospace = nospace;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Detected {
+        private String mode;
+        private Boolean isIsbn;
+        private Boolean hasVolume;
+        private Lang lang;
+        private Boolean isMixed;
+
+        public String getMode() {
+            return mode;
+        }
+
+        public void setMode(String mode) {
+            this.mode = mode;
+        }
+
+        public Boolean getIsIsbn() {
+            return isIsbn;
+        }
+
+        public void setIsIsbn(Boolean isIsbn) {
+            this.isIsbn = isIsbn;
+        }
+
+        public Boolean getHasVolume() {
+            return hasVolume;
+        }
+
+        public void setHasVolume(Boolean hasVolume) {
+            this.hasVolume = hasVolume;
+        }
+
+        public Lang getLang() {
+            return lang;
+        }
+
+        public void setLang(Lang lang) {
+            this.lang = lang;
+        }
+
+        public Boolean getIsMixed() {
+            return isMixed;
+        }
+
+        public void setIsMixed(Boolean isMixed) {
+            this.isMixed = isMixed;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Lang {
+        private String primary;
+        private Double confidence;
+
+        public String getPrimary() {
+            return primary;
+        }
+
+        public void setPrimary(String primary) {
+            this.primary = primary;
+        }
+
+        public Double getConfidence() {
+            return confidence;
+        }
+
+        public void setConfidence(Double confidence) {
+            this.confidence = confidence;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Understanding {
+        private String intent;
+        private Double confidence;
+        private String method;
+        private Entities entities;
+        private Constraints constraints;
+
+        public String getIntent() {
+            return intent;
+        }
+
+        public void setIntent(String intent) {
+            this.intent = intent;
+        }
+
+        public Double getConfidence() {
+            return confidence;
+        }
+
+        public void setConfidence(Double confidence) {
+            this.confidence = confidence;
+        }
+
+        public String getMethod() {
+            return method;
+        }
+
+        public void setMethod(String method) {
+            this.method = method;
+        }
+
+        public Entities getEntities() {
+            return entities;
+        }
+
+        public void setEntities(Entities entities) {
+            this.entities = entities;
+        }
+
+        public Constraints getConstraints() {
+            return constraints;
+        }
+
+        public void setConstraints(Constraints constraints) {
+            this.constraints = constraints;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Entities {
+        private List<String> title;
+        private List<String> author;
+        private List<String> publisher;
+        private List<String> series;
+        private List<String> isbn;
+
+        public List<String> getTitle() {
+            return title;
+        }
+
+        public void setTitle(List<String> title) {
+            this.title = title;
+        }
+
+        public List<String> getAuthor() {
+            return author;
+        }
+
+        public void setAuthor(List<String> author) {
+            this.author = author;
+        }
+
+        public List<String> getPublisher() {
+            return publisher;
+        }
+
+        public void setPublisher(List<String> publisher) {
+            this.publisher = publisher;
+        }
+
+        public List<String> getSeries() {
+            return series;
+        }
+
+        public void setSeries(List<String> series) {
+            this.series = series;
+        }
+
+        public List<String> getIsbn() {
+            return isbn;
+        }
+
+        public void setIsbn(List<String> isbn) {
+            this.isbn = isbn;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Constraints {
+        private List<String> preferredLogicalFields;
+        private String residualText;
+
+        public List<String> getPreferredLogicalFields() {
+            return preferredLogicalFields;
+        }
+
+        public void setPreferredLogicalFields(List<String> preferredLogicalFields) {
+            this.preferredLogicalFields = preferredLogicalFields;
+        }
+
+        public String getResidualText() {
+            return residualText;
+        }
+
+        public void setResidualText(String residualText) {
+            this.residualText = residualText;
         }
     }
 

@@ -65,6 +65,7 @@ const sidebarItems: SidebarNode[] = [
         children: [
           { type: "leaf", key: "indices", label: "Indices", to: "/ops/index/indices" },
           { type: "leaf", key: "doc-lookup", label: "Doc Lookup", to: "/ops/index/doc-lookup" },
+          { type: "leaf", key: "kdc-viewer", label: "KDC Viewer", to: "/ops/categories/kdc" },
         ],
       },
       { type: "leaf", key: "ops-autocomplete", label: "Autocomplete", icon: "bi-magic", to: "/ops/autocomplete" },

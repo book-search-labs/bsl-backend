@@ -394,8 +394,8 @@ All structured responses that follow `contracts/*` must include:
 { "status": "ok" }
 ```
 
-## POST `/query-context`
-**Purpose**: Convert user input into `QueryContext (qc.v1.1)` (legacy QS response used by BFF/SR pipeline).
+## POST `/query/prepare`
+**Purpose**: Convert user input into `QueryContext (qc.v1.1)` (primary endpoint).
 
 ### Request
 **Body (JSON)** — **Preferred (official)**
@@ -421,8 +421,8 @@ If supported, the server should treat it as:
 ```
 
 ### Response
-- `200 OK`
-- Response shape: **qc.v1.1** (legacy; schema not yet formalized)
+- Contract: `contracts/query-context-v1_1.schema.json`
+- Example: `contracts/examples/query-context.sample.json`
 
 ### Notes (MVP)
 - QS must:
@@ -432,16 +432,16 @@ If supported, the server should treat it as:
   - If headers exist, propagate them
   - Otherwise generate them
 
-## POST `/query/prepare`
-**Purpose**: Convert user input into **QueryContext v1** (frozen contract).
+## POST `/query-context` (Deprecated alias)
+**Purpose**: Compatibility alias for `/query/prepare`.
 
 ### Request
 - Contract: `contracts/query-prepare-request.schema.json`
 - Example: `contracts/examples/query-prepare-request.sample.json`
 
 ### Response
-- Contract: `contracts/query_context/v1/query-context.schema.json`
-- Example: `contracts/examples/query-context-v1.sample.json`
+- Contract: `contracts/query-context-v1_1.schema.json`
+- Example: `contracts/examples/query-context.sample.json`
 
 ## POST `/query/enhance`
 **Purpose**: Run 2-pass gating (spell/rewrite/RAG) and return decision + enhanced query.
@@ -763,7 +763,7 @@ If supported, the server should treat it as:
 
 ### QS: QueryContext
 ```bash
-curl -s -XPOST http://localhost:8001/query-context \
+curl -s -XPOST http://localhost:8001/query/prepare \
   -H "Content-Type: application/json" \
   -H "x-trace-id: trace_demo" \
   -H "x-request-id: req_demo" \

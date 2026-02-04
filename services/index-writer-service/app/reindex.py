@@ -96,6 +96,31 @@ def choose_title_fields(title: Optional[str], extras: Optional[Dict[str, Any]]) 
 
 
 def choose_isbn13(rows: List[Dict[str, Any]], extras: Optional[Dict[str, Any]]) -> Optional[str]:
+    candidates = collect_isbn_candidates(rows, extras)
+    if not candidates:
+        return None
+
+    isbn13_candidates = [value for value in candidates if len(value) == 13 and value.isdigit()]
+    if isbn13_candidates:
+        return isbn13_candidates[0]
+
+    isbn10_candidates = [value for value in candidates if len(value) == 10]
+    if isbn10_candidates:
+        return isbn10_to_isbn13(isbn10_candidates[0])
+    return None
+
+
+def choose_isbn10(rows: List[Dict[str, Any]], extras: Optional[Dict[str, Any]]) -> Optional[str]:
+    candidates = collect_isbn_candidates(rows, extras)
+    if not candidates:
+        return None
+    for candidate in candidates:
+        if len(candidate) == 10:
+            return candidate
+    return None
+
+
+def collect_isbn_candidates(rows: List[Dict[str, Any]], extras: Optional[Dict[str, Any]]) -> List[str]:
     candidates: List[str] = []
     for row in rows:
         scheme = (row.get("scheme") or "").upper()
@@ -103,22 +128,47 @@ def choose_isbn13(rows: List[Dict[str, Any]], extras: Optional[Dict[str, Any]]) 
         if not value:
             continue
         if "ISBN" in scheme:
-            candidates.append(str(value))
+            normalized = normalize_isbn(str(value))
+            if normalized:
+                candidates.append(normalized)
     if extras:
         ids = extras.get("identifiers")
         if isinstance(ids, dict):
-            extra = ids.get("isbn13")
-            if extra:
-                candidates.append(str(extra))
+            for key in ("isbn13", "isbn10"):
+                extra = ids.get(key)
+                if extra:
+                    normalized = normalize_isbn(str(extra))
+                    if normalized:
+                        candidates.append(normalized)
     if not candidates:
+        return []
+    deduped: List[str] = []
+    for candidate in candidates:
+        if candidate not in deduped:
+            deduped.append(candidate)
+    deduped.sort(key=lambda value: (0 if len(value) == 13 else 1, len(value)))
+    return deduped
+
+
+def normalize_isbn(value: str) -> Optional[str]:
+    cleaned = "".join(ch for ch in value if ch.isdigit() or ch.upper() == "X")
+    if len(cleaned) in (10, 13):
+        return cleaned.upper()
+    return None
+
+
+def isbn10_to_isbn13(isbn10: str) -> Optional[str]:
+    if len(isbn10) != 10:
         return None
-
-    def score(value: str) -> Tuple[int, int]:
-        digits = "".join(ch for ch in value if ch.isdigit())
-        return (0 if len(digits) == 13 else 1, len(digits))
-
-    candidates.sort(key=score)
-    return candidates[0]
+    core = f"978{isbn10[:-1]}"
+    if not core.isdigit():
+        return None
+    total = 0
+    for idx, ch in enumerate(core):
+        factor = 1 if idx % 2 == 0 else 3
+        total += int(ch) * factor
+    check = (10 - (total % 10)) % 10
+    return f"{core}{check}"
 
 
 def build_authors(rows: List[Dict[str, Any]]) -> Optional[List[Dict[str, Any]]]:
@@ -173,6 +223,38 @@ def build_concepts(rows: List[Dict[str, Any]]) -> Tuple[Optional[List[str]], Opt
     return concept_ids, category_paths
 
 
+def resolve_kdc_fields(
+    rows: List[Dict[str, Any]],
+    fallback_node_id: Optional[int],
+) -> Tuple[Optional[str], Optional[List[str]], Optional[int]]:
+    if not rows:
+        return None, None, fallback_node_id
+
+    sorted_rows = sorted(
+        rows,
+        key=lambda row: (
+            0 if int(row.get("is_primary") or 0) == 1 else 1,
+            int(row.get("ord") or 0),
+        ),
+    )
+    primary = sorted_rows[0]
+    kdc_code = str(primary.get("kdc_code_raw") or "").strip() or None
+    kdc_code_3 = str(primary.get("kdc_code_3") or "").strip() or None
+    resolved_node_id = coerce_int(primary.get("kdc_node_id")) or fallback_node_id
+
+    path_codes: List[str] = []
+    if kdc_code_3:
+        path_codes.append(kdc_code_3)
+    if kdc_code and kdc_code not in path_codes:
+        path_codes.append(kdc_code)
+    if kdc_code and "." in kdc_code:
+        prefix = kdc_code.split(".", 1)[0]
+        if prefix and prefix not in path_codes:
+            path_codes.insert(0, prefix)
+
+    return kdc_code, (path_codes or None), resolved_node_id
+
+
 def build_document(
     material: Dict[str, Any],
     overrides: Dict[str, Dict[str, Any]],
@@ -180,6 +262,7 @@ def build_document(
     identifiers: Dict[str, List[Dict[str, Any]]],
     agents: Dict[str, List[Dict[str, Any]]],
     concepts: Dict[str, List[Dict[str, Any]]],
+    kdc_rows: Dict[str, List[Dict[str, Any]]],
 ) -> Dict[str, Any]:
     material_id = material["material_id"]
     override = overrides.get(material_id, {})
@@ -199,8 +282,11 @@ def build_document(
     edition_labels = normalize_list(extras.get("edition_labels") or extras.get("editionLabels"))
     volume = coerce_int(extras.get("volume"))
     kdc_node_id = coerce_int(material.get("kdc_node_id"))
+    kdc_code, kdc_path_codes, resolved_kdc_node_id = resolve_kdc_fields(kdc_rows.get(material_id, []), kdc_node_id)
+    kdc_edition = extras.get("kdc_edition") or extras.get("kdcEdition")
 
     isbn13 = choose_isbn13(identifiers.get(material_id, []), extras)
+    isbn10 = choose_isbn10(identifiers.get(material_id, []), extras)
     authors = build_authors(agents.get(material_id, []))
     concept_ids, category_paths = build_concepts(concepts.get(material_id, []))
 
@@ -221,8 +307,13 @@ def build_document(
         doc["authors"] = authors
     if publisher_name:
         doc["publisher_name"] = publisher_name
-    if isbn13:
-        doc["identifiers"] = {"isbn13": isbn13}
+    if isbn13 or isbn10:
+        identifiers_doc: Dict[str, Any] = {}
+        if isbn13:
+            identifiers_doc["isbn13"] = isbn13
+        if isbn10:
+            identifiers_doc["isbn10"] = isbn10
+        doc["identifiers"] = identifiers_doc
     if language_code:
         doc["language_code"] = language_code
     if issued_year is not None:
@@ -231,8 +322,14 @@ def build_document(
         doc["volume"] = volume
     if edition_labels:
         doc["edition_labels"] = edition_labels
-    if kdc_node_id is not None:
-        doc["kdc_node_id"] = kdc_node_id
+    if resolved_kdc_node_id is not None:
+        doc["kdc_node_id"] = resolved_kdc_node_id
+    if kdc_code:
+        doc["kdc_code"] = kdc_code
+    if isinstance(kdc_edition, str) and kdc_edition.strip():
+        doc["kdc_edition"] = kdc_edition.strip()
+    if kdc_path_codes:
+        doc["kdc_path_codes"] = kdc_path_codes
     if category_paths:
         doc["category_paths"] = category_paths
     if concept_ids:
@@ -517,6 +614,7 @@ def bulk_load(
             "agent",
             "material_concept",
             "concept",
+            "material_kdc",
         ],
         settings.mysql_database,
     )
@@ -737,8 +835,23 @@ def process_batch(
                 material_ids,
             )
 
+        kdc_rows = {}
+        mk_cols = table_info.get("material_kdc", set())
+        if "material_id" in mk_cols:
+            kdc_select = build_select_parts(
+                "mk",
+                mk_cols,
+                required=["material_id"],
+                optional=["kdc_code_raw", "kdc_code_3", "kdc_node_id", "ord", "is_primary"],
+            )
+            kdc_rows = fetch_map(
+                cursor,
+                f"SELECT {', '.join(kdc_select)} FROM material_kdc mk WHERE mk.material_id IN ({{placeholders}})",
+                material_ids,
+            )
+
     for material in batch:
-        doc = build_document(material, overrides, merges, identifiers, agents, concepts)
+        doc = build_document(material, overrides, merges, identifiers, agents, concepts, kdc_rows)
         actions.append(json.dumps({"index": {"_id": doc["doc_id"]}}, ensure_ascii=False))
         actions.append(json.dumps(doc, ensure_ascii=False))
         if len(actions) // 2 >= settings.bulk_size:

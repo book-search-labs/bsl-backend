@@ -17,6 +17,8 @@ import com.bsl.search.api.dto.SearchResponse;
 import com.bsl.search.cache.BookDetailCacheService;
 import com.bsl.search.cache.SerpCacheService;
 import com.bsl.search.opensearch.OpenSearchGateway;
+import com.bsl.search.query.QueryServiceGateway;
+import com.bsl.search.query.QueryServiceProperties;
 import com.bsl.search.retrieval.FusionPolicyProperties;
 import com.bsl.search.retrieval.LexicalRetriever;
 import com.bsl.search.retrieval.RetrievalStageResult;
@@ -31,6 +33,7 @@ import com.bsl.search.service.grouping.MaterialGroupingService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +67,9 @@ class HybridSearchServiceRankingTest {
     @Mock
     private BookDetailCacheService bookDetailCacheService;
 
+    @Mock
+    private QueryServiceGateway queryServiceGateway;
+
     private HybridSearchService service;
     private ObjectMapper objectMapper;
     private ExecutorService executorService;
@@ -78,7 +84,12 @@ class HybridSearchServiceRankingTest {
         groupingProperties.setEnabled(false);
         MaterialGroupingService groupingService = new MaterialGroupingService(groupingProperties);
         RerankPolicyProperties rerankPolicy = new RerankPolicyProperties();
+        rerankPolicy.setMinCandidates(1);
+        rerankPolicy.setMinQueryLength(1);
         SearchBudgetProperties budgetProperties = new SearchBudgetProperties();
+        SearchQualityProperties qualityProperties = new SearchQualityProperties();
+        SearchQualityEvaluator qualityEvaluator = new SearchQualityEvaluator(qualityProperties);
+        QueryServiceProperties queryServiceProperties = new QueryServiceProperties();
         service = new HybridSearchService(
             openSearchGateway,
             lexicalRetriever,
@@ -92,7 +103,11 @@ class HybridSearchServiceRankingTest {
             new com.bsl.search.experiment.SearchExperimentProperties(),
             groupingService,
             rerankPolicy,
-            budgetProperties
+            budgetProperties,
+            qualityEvaluator,
+            queryServiceGateway,
+            queryServiceProperties,
+            new SimpleMeterRegistry()
         );
         objectMapper = new ObjectMapper();
         when(serpCacheService.isEnabled()).thenReturn(false);
@@ -108,7 +123,6 @@ class HybridSearchServiceRankingTest {
         SearchRequest request = buildRequest("harry");
         when(lexicalRetriever.retrieve(any()))
             .thenReturn(RetrievalStageResult.success(List.of("b1", "b2"), null, 5L));
-        when(vectorRetriever.retrieve(any())).thenReturn(RetrievalStageResult.empty());
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
 
         RerankResponse rerankResponse = new RerankResponse();
@@ -139,7 +153,6 @@ class HybridSearchServiceRankingTest {
         SearchRequest request = buildRequest("harry");
         when(lexicalRetriever.retrieve(any()))
             .thenReturn(RetrievalStageResult.success(List.of("b1", "b2"), null, 5L));
-        when(vectorRetriever.retrieve(any())).thenReturn(RetrievalStageResult.empty());
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
         when(rankingGateway.rerank(eq("harry"), anyList(), anyInt(), anyInt(), anyBoolean(), anyString(), anyString(), any()))
             .thenThrow(new RankingUnavailableException("down", new RuntimeException("timeout")));

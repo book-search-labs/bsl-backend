@@ -111,6 +111,27 @@ public class SearchResponse {
         @JsonProperty("experiment_applied")
         private Boolean experimentApplied;
 
+        @JsonProperty("enhance_applied")
+        private Boolean enhanceApplied;
+
+        @JsonProperty("enhance_reason")
+        private String enhanceReason;
+
+        @JsonProperty("enhance_strategy")
+        private String enhanceStrategy;
+
+        @JsonProperty("enhance_final_query")
+        private String enhanceFinalQuery;
+
+        @JsonProperty("enhance_final_source")
+        private String enhanceFinalSource;
+
+        @JsonProperty("enhance_improved")
+        private Boolean enhanceImproved;
+
+        @JsonProperty("enhance_skip_reason")
+        private String enhanceSkipReason;
+
         public String getAppliedFallbackId() {
             return appliedFallbackId;
         }
@@ -181,6 +202,62 @@ public class SearchResponse {
 
         public void setExperimentApplied(Boolean experimentApplied) {
             this.experimentApplied = experimentApplied;
+        }
+
+        public Boolean getEnhanceApplied() {
+            return enhanceApplied;
+        }
+
+        public void setEnhanceApplied(Boolean enhanceApplied) {
+            this.enhanceApplied = enhanceApplied;
+        }
+
+        public String getEnhanceReason() {
+            return enhanceReason;
+        }
+
+        public void setEnhanceReason(String enhanceReason) {
+            this.enhanceReason = enhanceReason;
+        }
+
+        public String getEnhanceStrategy() {
+            return enhanceStrategy;
+        }
+
+        public void setEnhanceStrategy(String enhanceStrategy) {
+            this.enhanceStrategy = enhanceStrategy;
+        }
+
+        public String getEnhanceFinalQuery() {
+            return enhanceFinalQuery;
+        }
+
+        public void setEnhanceFinalQuery(String enhanceFinalQuery) {
+            this.enhanceFinalQuery = enhanceFinalQuery;
+        }
+
+        public String getEnhanceFinalSource() {
+            return enhanceFinalSource;
+        }
+
+        public void setEnhanceFinalSource(String enhanceFinalSource) {
+            this.enhanceFinalSource = enhanceFinalSource;
+        }
+
+        public Boolean getEnhanceImproved() {
+            return enhanceImproved;
+        }
+
+        public void setEnhanceImproved(Boolean enhanceImproved) {
+            this.enhanceImproved = enhanceImproved;
+        }
+
+        public String getEnhanceSkipReason() {
+            return enhanceSkipReason;
+        }
+
+        public void setEnhanceSkipReason(String enhanceSkipReason) {
+            this.enhanceSkipReason = enhanceSkipReason;
         }
     }
 

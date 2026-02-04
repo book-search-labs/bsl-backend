@@ -17,6 +17,7 @@ from app.core.metrics import metrics
 from app.core.rewrite_log import get_rewrite_log, now_iso
 from app.core.spell import run_spell
 from app.core.chat import run_chat
+from app.core.understanding import parse_understanding
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ def metrics_endpoint():
     return metrics.snapshot()
 
 
-@router.post("/query-context")
+@router.post("/query-context", deprecated=True)
 async def query_context(request: Request):
     trace_id, request_id, span_id, traceparent = _extract_ids(request)
     body = await request.json()
@@ -96,7 +97,7 @@ async def query_prepare(request: Request):
         message = "Query is empty after normalization." if code == "empty_query" else "Invalid query."
         return _error_response(code, message, trace_id, request_id)
 
-    response = _build_qc_v1_response(analysis, body, trace_id, request_id, span_id, cache_hit)
+    response = _build_qc_v11_response(analysis, body, trace_id, request_id, span_id, cache_hit)
     _log_prepare(trace_id, request_id, analysis)
     return JSONResponse(content=response, headers=_response_headers(trace_id, request_id, traceparent))
 
@@ -349,6 +350,12 @@ def _prepare_analysis(raw: str, body: dict) -> tuple[dict[str, Any], bool]:
         metrics.inc("qs_norm_cache_hit_total")
         return cached, True
     analysis = analyze_query(raw, locale)
+    understanding = parse_understanding(analysis.get("norm") or "")
+    analysis["understanding"] = understanding
+    analysis["preferred_fields"] = understanding.get("preferred_fields", [])
+    analysis["explicit_filters"] = understanding.get("filters", [])
+    analysis["residual_text"] = understanding.get("residual_text", "")
+    analysis["has_explicit"] = understanding.get("has_explicit", False)
     CACHE.set_json(key, analysis, ttl=_norm_cache_ttl())
     metrics.inc("qs_norm_cache_miss_total")
     return analysis, False
@@ -416,6 +423,44 @@ def _build_qc_v11_response(
     isbn = analysis.get("isbn")
     series_hint = analysis.get("series")
     canonical_key = analysis.get("canonical_key") or _hash_key(analysis.get("norm", ""))
+    understanding_info = analysis.get("understanding") or {}
+    entities = understanding_info.get("entities") or {}
+    preferred_fields = analysis.get("preferred_fields") or []
+    explicit_filters = analysis.get("explicit_filters") or []
+    residual_text = analysis.get("residual_text") or ""
+    has_explicit = bool(analysis.get("has_explicit"))
+
+    author_entities = list(entities.get("author") or [])
+    title_entities = list(entities.get("title") or [])
+    publisher_entities = list(entities.get("publisher") or [])
+    series_entities = list(entities.get("series") or [])
+    isbn_entities = list(entities.get("isbn") or [])
+
+    if series_hint and series_hint not in series_entities:
+        series_entities.append(series_hint)
+
+    default_preferred = ["title_ko", "series_ko", "author_ko"]
+    if not preferred_fields:
+        preferred_fields = default_preferred
+
+    final_text, final_source = _resolve_final_text(
+        analysis.get("norm", ""),
+        residual_text,
+        author_entities,
+        title_entities,
+        publisher_entities,
+        series_entities,
+        isbn_entities,
+        has_explicit,
+    )
+    retrieval_hints = _build_retrieval_hints(plan_id, canonical_key, tenant_id)
+    if preferred_fields:
+        retrieval_hints["lexical"]["preferredLogicalFields"] = preferred_fields
+    if explicit_filters:
+        retrieval_hints["filters"] = explicit_filters
+    if isbn_entities and not residual_text:
+        retrieval_hints["vector"]["enabled"] = False
+        retrieval_hints["rerank"]["enabled"] = False
 
     response = {
         "meta": {
@@ -439,10 +484,10 @@ def _build_qc_v11_response(
             "nfkc": analysis.get("nfkc"),
             "norm": analysis.get("norm"),
             "nospace": analysis.get("nospace"),
-            "final": analysis.get("norm"),
-            "finalSource": "norm",
+            "final": final_text,
+            "finalSource": final_source,
             "canonicalKey": canonical_key,
-            "tokens": _build_tokens(analysis.get("norm", "")),
+            "tokens": _build_tokens(final_text),
             "protectedSpans": [],
             "normalized": {"rulesApplied": analysis.get("rules", [])},
         },
@@ -468,14 +513,16 @@ def _build_qc_v11_response(
             "confidence": 0.5,
             "method": "mvp",
             "entities": {
-                "title": [],
-                "author": [],
-                "publisher": [],
-                "series": [series_hint] if series_hint else [],
+                "title": title_entities,
+                "author": author_entities,
+                "publisher": publisher_entities,
+                "series": series_entities,
+                "isbn": isbn_entities,
             },
             "constraints": {
-                "preferredLogicalFields": ["title_ko", "series_ko", "author_ko"],
+                "preferredLogicalFields": preferred_fields,
                 "mustPreserve": [],
+                "residualText": residual_text,
             },
         },
         "spell": {
@@ -491,7 +538,7 @@ def _build_qc_v11_response(
             "method": "none",
             "notes": "MVP",
         },
-        "retrievalHints": _build_retrieval_hints(plan_id, canonical_key, tenant_id),
+        "retrievalHints": retrieval_hints,
         "features": {},
         "policy": {},
         "executionTrace": {},
@@ -543,6 +590,31 @@ def _build_qc_v1_response(
         "expanded": {"aliases": [], "series": [analysis.get("series")] if analysis.get("series") else [], "author_variants": []},
     }
     return response
+
+
+def _resolve_final_text(
+    norm: str,
+    residual_text: str,
+    author_entities: list[str],
+    title_entities: list[str],
+    publisher_entities: list[str],
+    series_entities: list[str],
+    isbn_entities: list[str],
+    has_explicit: bool,
+) -> tuple[str, str]:
+    if residual_text:
+        return residual_text, "explicit_residual"
+    if has_explicit:
+        parts: list[str] = []
+        parts.extend(title_entities)
+        parts.extend(author_entities)
+        parts.extend(series_entities)
+        parts.extend(publisher_entities)
+        parts.extend(isbn_entities)
+        composed = " ".join([part for part in parts if part])
+        if composed:
+            return composed, "explicit_entities"
+    return norm, "norm"
 
 
 async def _apply_spell(

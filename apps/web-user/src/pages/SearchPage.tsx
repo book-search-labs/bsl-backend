@@ -14,6 +14,20 @@ const SIZE_MAX = 50
 const EXAMPLE_QUERIES = ['베스트셀러', '에세이', '자기계발', '한강', '어린이 그림책']
 const REFINE_TAGS = ['세트', '양장본', '에디션', '개정판', '작가 인터뷰']
 const CATEGORY_QUICK = ['문학', '경제 경영', '자기계발', '어린이', '외국어', '취미']
+const EXPLICIT_FILTER_FIELDS = [
+  { key: 'author', label: '저자' },
+  { key: 'title', label: '제목' },
+  { key: 'isbn', label: 'ISBN' },
+  { key: 'publisher', label: '출판사' },
+  { key: 'series', label: '시리즈' },
+] as const
+
+type ExplicitFilterKey = (typeof EXPLICIT_FILTER_FIELDS)[number]['key']
+type AdvancedFilters = Record<ExplicitFilterKey, string>
+
+function explicitPattern() {
+  return /(author|title|isbn|publisher|series):(\"[^\"]+\"|\\S+)/gi
+}
 
 type ViewMode = 'card' | 'compact'
 
@@ -45,6 +59,48 @@ function parseVectorParam(value: string | null) {
   if (normalized === 'false' || normalized === '0' || normalized === 'no') return false
   if (normalized === 'true' || normalized === '1' || normalized === 'yes') return true
   return true
+}
+
+function emptyAdvancedFilters(): AdvancedFilters {
+  return {
+    author: '',
+    title: '',
+    isbn: '',
+    publisher: '',
+    series: '',
+  }
+}
+
+function hasAdvancedFilters(filters: AdvancedFilters) {
+  return Object.values(filters).some((value) => value.trim().length > 0)
+}
+
+function stripExplicitSyntax(query: string) {
+  return query.replace(explicitPattern(), ' ').replace(/\\s+/g, ' ').trim()
+}
+
+function composeQueryWithAdvancedFilters(query: string, filters: AdvancedFilters) {
+  if (!hasAdvancedFilters(filters)) {
+    return query.trim()
+  }
+  const base = stripExplicitSyntax(query)
+  const tokens = EXPLICIT_FILTER_FIELDS.flatMap(({ key }) => {
+    const value = filters[key].trim()
+    return value.length > 0 ? [`${key}:${value}`] : []
+  })
+  return [base, ...tokens].join(' ').trim()
+}
+
+function extractAdvancedFilters(query: string): AdvancedFilters {
+  const filters = emptyAdvancedFilters()
+  const matches = query.matchAll(explicitPattern())
+  for (const match of matches) {
+    const key = match[1]?.toLowerCase() as ExplicitFilterKey | undefined
+    const value = match[2]?.replace(/^\"|\"$/g, '').trim() ?? ''
+    if (!key || !(key in filters) || !value) continue
+    filters[key] = value
+  }
+  return filters
 }
 
 function formatError(error: HttpError, stage?: string): ErrorMessage {
@@ -119,6 +175,8 @@ export default function SearchPage() {
   const vectorEnabled = parseVectorParam(searchParams.get('vector'))
 
   const [searchInput, setSearchInput] = useState(query)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>(emptyAdvancedFilters)
   const [debugEnabled, setDebugEnabled] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('card')
   const [loading, setLoading] = useState(false)
@@ -147,6 +205,7 @@ export default function SearchPage() {
 
   useEffect(() => {
     setSearchInput(query)
+    setAdvancedFilters(extractAdvancedFilters(query))
   }, [query])
 
   useEffect(() => {
@@ -304,7 +363,7 @@ export default function SearchPage() {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const nextQuery = searchInput.trim()
+    const nextQuery = composeQueryWithAdvancedFilters(searchInput, advancedFilters)
 
     updateParams({
       q: nextQuery,
@@ -324,6 +383,7 @@ export default function SearchPage() {
   }
 
   const handleExampleClick = (value: string) => {
+    setAdvancedFilters(emptyAdvancedFilters())
     updateParams({ q: value, size: sizeValue, vector: vectorEnabled, kdc: '' })
   }
 
@@ -333,8 +393,37 @@ export default function SearchPage() {
     updateParams({ q: next, size: sizeValue, vector: vectorEnabled })
   }
 
+  const handleFilterChip = (key: ExplicitFilterKey) => {
+    const token = `${key}:`
+    if (searchInput.includes(token)) {
+      setShowAdvanced(true)
+      return
+    }
+    const next = `${searchInput.trim()} ${token}`.trim()
+    setSearchInput(next.length > 0 ? `${next} ` : token)
+    setShowAdvanced(true)
+  }
+
+  const handleAdvancedFilterChange = (key: ExplicitFilterKey, value: string) => {
+    setAdvancedFilters((prev) => ({
+      ...prev,
+      [key]: value,
+    }))
+  }
+
+  const applyAdvancedFilters = () => {
+    const nextQuery = composeQueryWithAdvancedFilters(searchInput, advancedFilters)
+    updateParams({ q: nextQuery, size: sizeValue, vector: vectorEnabled })
+  }
+
+  const clearAdvancedFilters = () => {
+    setAdvancedFilters(emptyAdvancedFilters())
+    updateParams({ q: stripExplicitSyntax(searchInput), size: sizeValue, vector: vectorEnabled })
+  }
+
   const handleCategoryClick = (code?: string) => {
     if (!code) return
+    setAdvancedFilters(emptyAdvancedFilters())
     updateParams({ kdc: code, q: '', size: sizeValue, vector: vectorEnabled })
   }
 
@@ -391,8 +480,9 @@ export default function SearchPage() {
 
   const viewLabel = viewMode === 'card' ? 'Grid view' : 'List view'
   const totalCount = response?.total ?? hits.length
+  const displayQuery = stripExplicitSyntax(trimmedQuery) || trimmedQuery
   const resultsTitle = trimmedQuery
-    ? `"${trimmedQuery}" 검색 결과`
+    ? `"${displayQuery}" 검색 결과`
     : selectedCategory
       ? `${selectedCategory.name} 카테고리`
       : '검색 결과'
@@ -424,6 +514,54 @@ export default function SearchPage() {
             검색
           </button>
         </form>
+
+        <div className="explicit-filter-bar mt-3">
+          <div className="filter-chip-row">
+            {EXPLICIT_FILTER_FIELDS.map((field) => (
+              <button
+                key={field.key}
+                type="button"
+                className="btn btn-outline-secondary btn-sm"
+                onClick={() => handleFilterChip(field.key)}
+              >
+                {field.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="btn btn-outline-dark btn-sm"
+              onClick={() => setShowAdvanced((prev) => !prev)}
+            >
+              {showAdvanced ? '고급 필터 닫기' : '고급 검색'}
+            </button>
+          </div>
+          {showAdvanced && (
+            <div className="advanced-filter-panel mt-3">
+              <div className="row g-2">
+                {EXPLICIT_FILTER_FIELDS.map((field) => (
+                  <div key={field.key} className="col-12 col-md-6 col-xl-4">
+                    <label className="form-label small text-muted mb-1">{field.label}</label>
+                    <input
+                      className="form-control form-control-sm"
+                      type="text"
+                      value={advancedFilters[field.key]}
+                      onChange={(event) => handleAdvancedFilterChange(field.key, event.target.value)}
+                      placeholder={`${field.key}:...`}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="d-flex gap-2 mt-3">
+                <button type="button" className="btn btn-sm btn-dark" onClick={applyAdvancedFilters}>
+                  필터 적용
+                </button>
+                <button type="button" className="btn btn-sm btn-outline-secondary" onClick={clearAdvancedFilters}>
+                  필터 초기화
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {!trimmedQuery && !kdcCode ? (
           <div className="placeholder-card empty-state mt-4">

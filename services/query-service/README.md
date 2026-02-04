@@ -61,8 +61,8 @@ CORS_ALLOW_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:
 ```
 
 ## Endpoints
-- `POST /query-context` (qc.v1.1 legacy)
-- `POST /query/prepare` (QueryContext v1 contract)
+- `POST /query/prepare` (qc.v1.1 primary contract)
+- `POST /query-context` (deprecated alias of `/query/prepare`)
 - `POST /query/enhance` (gating + rewrite)
 - `GET /internal/qc/rewrite/failures`
 

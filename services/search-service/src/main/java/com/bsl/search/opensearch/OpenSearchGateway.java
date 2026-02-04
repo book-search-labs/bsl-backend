@@ -108,6 +108,24 @@ public class OpenSearchGateway {
         return new OpenSearchQueryResult(extractDocIds(response), body);
     }
 
+    public OpenSearchQueryResult searchLexicalByDslDetailed(
+        Map<String, Object> queryDsl,
+        int topK,
+        Integer timeBudgetMs,
+        List<Map<String, Object>> filters,
+        boolean explain
+    ) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("size", topK);
+        body.put("query", applyGlobalConstraints(queryDsl, filters));
+        if (explain) {
+            body.put("explain", true);
+        }
+
+        JsonNode response = postJson("/" + properties.getDocIndex() + "/_search", body, timeBudgetMs);
+        return new OpenSearchQueryResult(extractDocIds(response), body);
+    }
+
     public OpenSearchQueryResult searchMatchAllDetailed(
         int topK,
         Integer timeBudgetMs,
@@ -130,6 +148,61 @@ public class OpenSearchGateway {
 
         JsonNode response = postJson("/" + properties.getDocIndex() + "/_search", body, timeBudgetMs);
         return new OpenSearchQueryResult(extractDocIds(response), body);
+    }
+
+    private Map<String, Object> applyGlobalConstraints(
+        Map<String, Object> queryDsl,
+        List<Map<String, Object>> filters
+    ) {
+        if (queryDsl == null || queryDsl.isEmpty()) {
+            return Map.of(
+                "bool",
+                Map.of(
+                    "must", List.of(Map.of("match_all", Map.of())),
+                    "must_not", List.of(Map.of("term", Map.of("is_hidden", true)))
+                )
+            );
+        }
+
+        if (queryDsl.containsKey("bool") && queryDsl.get("bool") instanceof Map<?, ?> boolRaw) {
+            Map<String, Object> boolQuery = new LinkedHashMap<>();
+            for (Map.Entry<?, ?> entry : boolRaw.entrySet()) {
+                if (entry.getKey() instanceof String key) {
+                    boolQuery.put(key, entry.getValue());
+                }
+            }
+
+            List<Object> mustNot = toClauseList(boolQuery.get("must_not"));
+            mustNot.add(Map.of("term", Map.of("is_hidden", true)));
+            boolQuery.put("must_not", mustNot);
+
+            if (filters != null && !filters.isEmpty()) {
+                List<Object> filterClauses = toClauseList(boolQuery.get("filter"));
+                filterClauses.addAll(filters);
+                boolQuery.put("filter", filterClauses);
+            }
+            return Map.of("bool", boolQuery);
+        }
+
+        Map<String, Object> boolQuery = new LinkedHashMap<>();
+        boolQuery.put("must", List.of(queryDsl));
+        boolQuery.put("must_not", List.of(Map.of("term", Map.of("is_hidden", true))));
+        if (filters != null && !filters.isEmpty()) {
+            boolQuery.put("filter", filters);
+        }
+        return Map.of("bool", boolQuery);
+    }
+
+    private List<Object> toClauseList(Object value) {
+        if (value instanceof List<?> list) {
+            return new ArrayList<>(list);
+        }
+        if (value == null) {
+            return new ArrayList<>();
+        }
+        List<Object> wrapped = new ArrayList<>();
+        wrapped.add(value);
+        return wrapped;
     }
 
     public List<String> searchVector(List<Double> vector, int topK) {

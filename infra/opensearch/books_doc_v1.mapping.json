@@ -103,7 +103,8 @@
       "publisher_name": { "type": "keyword", "normalizer": "keyword_lower" },
       "identifiers": {
         "properties": {
-          "isbn13": { "type": "keyword" }
+          "isbn13": { "type": "keyword" },
+          "isbn10": { "type": "keyword" }
         }
       },
       "language_code": { "type": "keyword" },
@@ -111,6 +112,9 @@
       "volume": { "type": "short" },
       "edition_labels": { "type": "keyword" },
       "kdc_node_id": { "type": "long" },
+      "kdc_code": { "type": "keyword" },
+      "kdc_edition": { "type": "keyword" },
+      "kdc_path_codes": { "type": "keyword" },
       "category_paths": { "type": "keyword" },
       "concept_ids": { "type": "keyword" },
       "is_hidden": { "type": "boolean" },

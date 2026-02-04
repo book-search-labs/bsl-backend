@@ -39,6 +39,7 @@ flowchart LR
     QS["Query Service<br/>normalize/detect<br/>2-pass enhance (conditional)"]
     SR["Search Service<br/>retrieve + hybrid fusion<br/>rerank orchestration"]
     AC["Autocomplete Service<br/>Redis hot + OS miss"]
+    IDXW["Index Writer Service<br/>canonical -> search docs<br/>reindex + alias swap"]
     COM["Commerce API<br/>cart/order/payment/shipping/refund"]
     RS["Ranking Service<br/>feature assembly + scoring orchestrator"]
     MIS["Model Inference Service<br/>cross-encoder / LTR scorer"]
@@ -57,6 +58,7 @@ flowchart LR
     OUTBOX[(outbox_event)]
     RELAY["Outbox Relay"]
     K[(Kafka)]
+    OLAPL["OLAP Loader"]
   end
 
   UWeb --> GW --> BFF
@@ -75,13 +77,15 @@ flowchart LR
   QS --> LLMGW
 
   BFF -->|/cart, /order, /payment...| COM --> DB
+  IDXW --> DB
+  IDXW --> OS
 
   BFF --> OUTBOX
   COM --> OUTBOX
-  AC --> OUTBOX
-  SR --> OUTBOX
+  AC -. planned .-> OUTBOX
+  SR -. planned .-> OUTBOX
   OUTBOX --> RELAY --> K
-  K --> OLAP
+  K --> OLAPL --> OLAP
   K --> FEAT
 ```
 
@@ -101,6 +105,10 @@ Fan-out must be guarded by:
 - per-downstream **timeout budgets**
 - **circuit breakers** (degrade mode)
 - **idempotency** for side effects (outbox)
+
+Current implementation note:
+- **Event emit ownership is primarily in BFF** (search/autocomplete click/impression paths).
+- AC/SR direct outbox emit remains a planned hardening path and is not the default production path yet.
 
 ---
 
@@ -134,7 +142,7 @@ Fan-out must be guarded by:
 ### 4.5 Autocomplete Service (AC)
 - Redis hot-prefix cache (p99 defense)
 - OS prefix query fallback (miss)
-- emits `ac_impression` / `ac_select` (via outbox)
+- current production event emit is handled by BFF (`/autocomplete/select`); AC-native emit is optional/planned
 
 ### 4.6 Ranking Service (RS)
 - assembles feature vectors (query-doc, ctr/popularity, freshness, commerce signals)
@@ -156,6 +164,21 @@ Fan-out must be guarded by:
 ### 4.9 LLM Gateway (LLMGW)
 - centralized place to call external LLM providers
 - key/quotas/retries, audit logs, prompt templates, cost controls
+
+### 4.10 Outbox Relay Service
+- reads pending `outbox_event` rows and publishes them to Kafka
+- enforces idempotent publish (`dedup_key`) and replay-safe retry semantics
+- isolates transport failures from online read/write paths
+
+### 4.11 Index Writer Service
+- owns canonical-to-search document projection (`material*` -> `books_doc_*`)
+- executes reindex jobs with checkpointing and alias cutover (`books_doc_read/write`)
+- supports blue/green index rollout without direct client impact
+
+### 4.12 OLAP Loader Service
+- consumes analytics/event streams (Kafka) and materializes OLAP tables
+- normalizes event schema versions and backfills replay windows
+- powers dashboard/reporting pipelines without coupling to online APIs
 
 ---
 
