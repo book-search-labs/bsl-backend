@@ -92,6 +92,7 @@ All structured responses that follow `contracts/*` must include:
 
 ## POST `/search`
 **Purpose**: fan-out to QS → SS and return SearchResponse (v1).
+**Alias**: `POST /v1/search`
 
 ### Request
 - Contract: `contracts/search-request.schema.json`
@@ -107,6 +108,7 @@ All structured responses that follow `contracts/*` must include:
 
 ## POST `/search/click`
 **Purpose**: record a search result click event.
+**Alias**: `POST /v1/search/click`
 
 ### Request
 - Contract: `contracts/search-click-request.schema.json`
@@ -118,6 +120,7 @@ All structured responses that follow `contracts/*` must include:
 
 ## POST `/search/dwell`
 **Purpose**: record a search result dwell event.
+**Alias**: `POST /v1/search/dwell`
 
 ### Request
 - Contract: `contracts/search-dwell-request.schema.json`
@@ -129,6 +132,7 @@ All structured responses that follow `contracts/*` must include:
 
 ## POST `/chat`
 **Purpose**: RAG chat response with citations (BFF → QS `/chat`).  
+**Alias**: `POST /v1/chat`
 
 ### Request
 - Contract: `contracts/chat-request.schema.json`
@@ -148,6 +152,7 @@ All structured responses that follow `contracts/*` must include:
 
 ## POST `/chat/feedback`
 **Purpose**: user feedback for chat answers (👍/👎 + flags).  
+**Alias**: `POST /v1/chat/feedback`
 
 ### Request
 - Contract: `contracts/chat-feedback-request.schema.json`
@@ -196,6 +201,7 @@ All structured responses that follow `contracts/*` must include:
 
 ## GET `/books/{docId}`
 **Purpose**: book detail by doc id.
+**Alias**: `GET /v1/books/{docId}`
 
 ### Response (MVP Shape)
 ```json
@@ -538,6 +544,7 @@ If supported, the server should treat it as:
 
 ## POST `/search`
 **Purpose**: Execute retrieval using `SearchRequest (v1)` and return `SearchResponse (v1)`.
+**Alias**: `POST /internal/search` (service-to-service)
 
 ### Request
 - Contract: `contracts/search-request.schema.json`
@@ -551,6 +558,15 @@ If supported, the server should treat it as:
 - Primary query text should be `query_context.query.canonical`
 - Pagination maps to OpenSearch `from/size`
 - If `options.debug == true`, include `debug.query_dsl`
+
+## POST `/internal/explain`
+**Purpose**: Internal debug variant of search (forces explain/debug flags).
+
+### Request
+- Contract: `contracts/search-request.schema.json`
+
+### Response
+- Contract: `contracts/search-response.schema.json`
 
 ---
 
@@ -566,6 +582,7 @@ If supported, the server should treat it as:
 
 ## GET `/autocomplete`
 **Purpose**: Return query suggestions for a prefix.
+**Alias**: `GET /internal/autocomplete` (service-to-service)
 
 ### Request (Query Params)
 - `q` (string, required): prefix
@@ -598,6 +615,7 @@ If supported, the server should treat it as:
 
 ## POST `/rerank`
 **Purpose**: Re-rank candidates for a query.
+**Alias**: `POST /internal/rank` (service-to-service)
 
 ### Request (MVP)
 ```json

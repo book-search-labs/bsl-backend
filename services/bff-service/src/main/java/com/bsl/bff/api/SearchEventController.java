@@ -23,7 +23,7 @@ public class SearchEventController {
         this.outboxService = outboxService;
     }
 
-    @PostMapping("/search/click")
+    @PostMapping({"/search/click", "/v1/search/click"})
     public BffAckResponse recordClick(@RequestBody(required = false) BffSearchClickRequest request) {
         RequestContext context = RequestContextHolder.get();
         if (request == null) {
@@ -59,7 +59,7 @@ public class SearchEventController {
         return ack(context);
     }
 
-    @PostMapping("/search/dwell")
+    @PostMapping({"/search/dwell", "/v1/search/dwell"})
     public BffAckResponse recordDwell(@RequestBody(required = false) BffSearchDwellRequest request) {
         RequestContext context = RequestContextHolder.get();
         if (request == null) {

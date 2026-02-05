@@ -2,6 +2,7 @@ package com.bsl.search;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -63,7 +64,7 @@ class SearchControllerTest {
         hit.setSource(source);
         response.setHits(List.of(hit));
 
-        when(hybridSearchService.search(any(), anyString(), anyString(), anyString())).thenReturn(response);
+        when(hybridSearchService.search(any(), anyString(), anyString(), any())).thenReturn(response);
 
         SearchRequest request = new SearchRequest();
         SearchRequest.Query query = new SearchRequest.Query();
@@ -80,8 +81,62 @@ class SearchControllerTest {
     }
 
     @Test
+    void internalSearchAliasReturnsHits() throws Exception {
+        SearchResponse response = new SearchResponse();
+        response.setTraceId("trace-1");
+        response.setRequestId("req-1");
+        response.setTookMs(12L);
+        response.setStrategy("hybrid_rrf_v1");
+        response.setHits(List.of());
+        when(hybridSearchService.search(any(), anyString(), anyString(), any())).thenReturn(response);
+
+        SearchRequest request = new SearchRequest();
+        SearchRequest.Query query = new SearchRequest.Query();
+        query.setRaw("harry");
+        request.setQuery(query);
+
+        mockMvc.perform(post("/internal/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.trace_id").value("trace-1"))
+            .andExpect(jsonPath("$.strategy").value("hybrid_rrf_v1"));
+    }
+
+    @Test
+    void internalExplainForcesDebugAndExplainOptions() throws Exception {
+        SearchResponse response = new SearchResponse();
+        response.setTraceId("trace-1");
+        response.setRequestId("req-1");
+        response.setTookMs(5L);
+        response.setStrategy("hybrid_rrf_v1");
+        response.setHits(List.of());
+        when(hybridSearchService.search(any(), anyString(), anyString(), any())).thenReturn(response);
+
+        SearchRequest request = new SearchRequest();
+        SearchRequest.Query query = new SearchRequest.Query();
+        query.setRaw("harry");
+        request.setQuery(query);
+
+        mockMvc.perform(post("/internal/explain")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk());
+
+        verify(hybridSearchService).search(
+            argThat(req -> req != null
+                && req.getOptions() != null
+                && Boolean.TRUE.equals(req.getOptions().getDebug())
+                && Boolean.TRUE.equals(req.getOptions().getExplain())),
+            anyString(),
+            anyString(),
+            any()
+        );
+    }
+
+    @Test
     void searchRejectsMissingQuery() throws Exception {
-        when(hybridSearchService.search(any(), anyString(), anyString(), anyString()))
+        when(hybridSearchService.search(any(), anyString(), anyString(), any()))
             .thenThrow(new InvalidSearchRequestException("query text is required"));
 
         mockMvc.perform(post("/search")

@@ -341,15 +341,15 @@ Later split (only if needed):
 ## Appendix — Minimal API surface (target)
 
 ### Public (BFF)
-- `POST /v1/search`
-- `GET /v1/autocomplete`
-- `GET /v1/books/{id}`
-- `POST /v1/chat`
+- `POST /search` (alias: `/v1/search`)
+- `GET /autocomplete` (alias: `/v1/autocomplete`)
+- `GET /books/{id}` (alias: `/v1/books/{id}`)
+- `POST /chat` (alias: `/v1/chat`)
 - `POST /v1/cart/*`, `POST /v1/order/*`, `POST /v1/payment/*` ...
 
 ### Internal (service-to-service)
-- QS: `/query/prepare`, `/query/enhance`, `/chat`
-- SR: `/internal/search`, `/internal/explain`
-- AC: `/internal/autocomplete`
-- RS: `/internal/rank`
+- QS: `/query/prepare`, `/query/enhance`, `/chat`, `/internal/rag/explain`
+- SR: `/search` (alias: `/internal/search`), `/internal/explain`
+- AC: `/autocomplete` (alias: `/internal/autocomplete`)
+- RS: `/rerank` (alias: `/internal/rank`)
 - MIS: `/v1/score`, `/v1/models`

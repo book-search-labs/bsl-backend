@@ -55,7 +55,7 @@ public class SearchController {
         this.aliasService = aliasService;
     }
 
-    @PostMapping("/search")
+    @PostMapping({"/search", "/v1/search"})
     public BffSearchResponse search(
         @RequestBody(required = false) BffSearchRequest request,
         @RequestHeader(value = "x-experiment-id", required = false) String experimentId,

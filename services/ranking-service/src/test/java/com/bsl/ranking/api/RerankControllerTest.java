@@ -69,6 +69,25 @@ class RerankControllerTest {
     }
 
     @Test
+    void internalRankAliasMatchesRerank() throws Exception {
+        String body = "{"
+            + "\"query\":{\"text\":\"harry potter\"},"
+            + "\"candidates\":["
+            + "{\"doc_id\":\"b1\",\"features\":{\"rrf_score\":0.167,\"lex_rank\":1,\"vec_rank\":2,\"issued_year\":1999,\"volume\":1,\"edition_labels\":[\"recover\"]}},"
+            + "{\"doc_id\":\"b2\",\"features\":{\"rrf_score\":0.150,\"lex_rank\":2,\"vec_rank\":1,\"issued_year\":2000,\"volume\":2,\"edition_labels\":[]}}"
+            + "],"
+            + "\"options\":{\"size\":2}"
+            + "}";
+
+        mockMvc.perform(post("/internal/rank")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.hits.length()").value(2))
+            .andExpect(jsonPath("$.hits[0].doc_id").value("b1"));
+    }
+
+    @Test
     void rerankRejectsInvalidInput() throws Exception {
         mockMvc.perform(post("/rerank")
                 .contentType(MediaType.APPLICATION_JSON)
