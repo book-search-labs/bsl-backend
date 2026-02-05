@@ -335,11 +335,46 @@ python scripts/rag/index_chunks.py --docs var/rag/docs_doc.jsonl --vec var/rag/d
 
 ---
 
+## Local LLM (Ollama)
+```bash
+make local-llm-up
+curl -fsS http://localhost:11434/v1/models
+```
+
+Model (default in `Makefile`):
+- `llama3.1:8b-instruct` (override with `LOCAL_LLM_MODEL=...`)
+
+---
+
 ## LLM Gateway (Local)
 ```bash
 cd services/llm-gateway-service
 python -m pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8010
+```
+
+Example env (OpenAI-compatible local LLM):
+```bash
+export LLM_PROVIDER=openai_compat
+export LLM_BASE_URL=http://localhost:11434/v1
+export LLM_API_KEY=
+export LLM_MODEL=llama3.1:8b-instruct
+export LLM_TIMEOUT_MS=15000
+export LLM_MAX_TOKENS=512
+export LLM_TEMPERATURE=0.2
+```
+
+QS env (optional model label pass-through):
+```bash
+export QS_LLM_URL=http://localhost:8010
+export QS_LLM_MODEL=llama3.1:8b-instruct
+```
+
+---
+
+## Chat smoke test (BFF → QS → LLMGW)
+```bash
+./scripts/smoke_chat.sh
 ```
 
 ---

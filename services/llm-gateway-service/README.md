@@ -13,7 +13,14 @@ Centralized LLM access with API keys, rate limits, retries, audit logging, and c
 - `LLM_COST_BUDGET_USD` (default 5.0)
 - `LLM_COST_PER_1K` (default 0.002)
 - `LLM_AUDIT_LOG_PATH` (default `var/llm_gateway/audit.log`)
-- `LLM_DEFAULT_MODEL` (default `toy-rag-v1`)
+- `LLM_PROVIDER` (`toy` or `openai_compat`, default `toy`)
+- `LLM_BASE_URL` (default `http://localhost:11434/v1`)
+- `LLM_API_KEY` (optional)
+- `LLM_MODEL` (preferred; overrides default model)
+- `LLM_DEFAULT_MODEL` (fallback, default `toy-rag-v1`)
+- `LLM_TIMEOUT_MS` (default `15000`)
+- `LLM_MAX_TOKENS` (default `512`)
+- `LLM_TEMPERATURE` (default `0.2`)
 
 ## Run
 ```bash
