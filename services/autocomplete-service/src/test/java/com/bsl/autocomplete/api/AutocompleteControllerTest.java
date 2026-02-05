@@ -37,6 +37,16 @@ class AutocompleteControllerTest {
     }
 
     @Test
+    void internalAutocompleteAliasAllowsEmptyQuery() throws Exception {
+        mockMvc.perform(get("/internal/autocomplete").param("q", ""))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.trace_id").exists())
+            .andExpect(jsonPath("$.request_id").exists())
+            .andExpect(jsonPath("$.suggestions").isArray())
+            .andExpect(jsonPath("$.suggestions").isEmpty());
+    }
+
+    @Test
     void autocompleteReturnsSuggestions() throws Exception {
         AutocompleteResponse response = new AutocompleteResponse();
         response.setTraceId("trace-1");

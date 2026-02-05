@@ -102,4 +102,35 @@ class ChatControllerTest {
         verify(queryServiceClient, timeout(1000)).chatStream(anyMap(), any(), any(SseEmitter.class));
         verify(queryServiceClient, never()).chat(anyMap(), any());
     }
+
+    @Test
+    void v1ChatAliasUsesNonStreamDownstream() throws Exception {
+        JsonNode responseNode = objectMapper.readTree(
+            "{"
+                + "\"version\":\"v1\","
+                + "\"trace_id\":\"trace_a\","
+                + "\"request_id\":\"req_a\","
+                + "\"status\":\"ok\","
+                + "\"answer\":{\"role\":\"assistant\",\"content\":\"hi\"},"
+                + "\"sources\":[],"
+                + "\"citations\":[\"chunk-1\"]"
+                + "}"
+        );
+        when(queryServiceClient.chat(anyMap(), any())).thenReturn(responseNode);
+
+        String body = "{"
+            + "\"version\":\"v1\","
+            + "\"trace_id\":\"trace_1\","
+            + "\"request_id\":\"req_1\","
+            + "\"message\":{\"role\":\"user\",\"content\":\"hello\"}"
+            + "}";
+
+        mockMvc.perform(post("/v1/chat")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"));
+
+        verify(queryServiceClient).chat(anyMap(), any());
+    }
 }

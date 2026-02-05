@@ -11,11 +11,14 @@ npm run dev -- --port 5174
 ## Environment
 ```
 VITE_BFF_BASE_URL=http://localhost:8088
-VITE_API_MODE=bff_primary
+VITE_API_MODE=bff_only
+VITE_ALLOW_DIRECT_FALLBACK=false
 VITE_SEARCH_BASE_URL=http://localhost:8080
 VITE_QUERY_BASE_URL=http://localhost:8001
 VITE_AUTOCOMPLETE_SERVICE_BASE_URL=http://localhost:8081
 ```
+
+- `VITE_ALLOW_DIRECT_FALLBACK=true` enables legacy direct-call fallback only for migration/debug.
 
 ## Example URLs
 - http://localhost:5174/
