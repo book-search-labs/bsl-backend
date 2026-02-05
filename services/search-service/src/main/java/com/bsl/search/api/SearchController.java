@@ -38,7 +38,7 @@ public class SearchController {
         return Map.of("status", "ok");
     }
 
-    @PostMapping("/search")
+    @PostMapping({"/search", "/internal/search"})
     public ResponseEntity<?> search(
         @RequestBody(required = false) SearchRequest request,
         @RequestHeader(value = "x-trace-id", required = false) String traceIdHeader,
@@ -71,6 +71,16 @@ public class SearchController {
                 new ErrorResponse("internal_error", "Unexpected error", traceId, requestId)
             );
         }
+    }
+
+    @PostMapping("/internal/explain")
+    public ResponseEntity<?> explain(
+        @RequestBody(required = false) SearchRequest request,
+        @RequestHeader(value = "x-trace-id", required = false) String traceIdHeader,
+        @RequestHeader(value = "x-request-id", required = false) String requestIdHeader,
+        @RequestHeader(value = "traceparent", required = false) String traceparent
+    ) {
+        return search(withExplainOptions(request), traceIdHeader, requestIdHeader, traceparent);
     }
 
     @GetMapping("/books/{docId}")
@@ -206,6 +216,20 @@ public class SearchController {
             return null;
         }
         return parts[1];
+    }
+
+    private SearchRequest withExplainOptions(SearchRequest request) {
+        if (request == null) {
+            return null;
+        }
+        com.bsl.search.api.dto.Options options = request.getOptions();
+        if (options == null) {
+            options = new com.bsl.search.api.dto.Options();
+            request.setOptions(options);
+        }
+        options.setDebug(true);
+        options.setExplain(true);
+        return request;
     }
 
     private enum RequestKind {

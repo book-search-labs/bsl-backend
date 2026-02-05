@@ -24,7 +24,7 @@ public class AutocompleteController {
         this.autocompleteService = autocompleteService;
     }
 
-    @GetMapping({"/autocomplete", "/v1/autocomplete"})
+    @GetMapping({"/autocomplete", "/v1/autocomplete", "/internal/autocomplete"})
     public ResponseEntity<?> autocomplete(
         @RequestParam(value = "q", required = false) String query,
         @RequestParam(value = "size", required = false) Integer size,

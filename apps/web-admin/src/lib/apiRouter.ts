@@ -19,7 +19,7 @@ type RouteConfig<T> = {
   direct: (context: ApiRequestContext) => Promise<FetchResult<T>>
 }
 
-const DEFAULT_MODE: AdminApiMode = 'bff_primary'
+const DEFAULT_MODE: AdminApiMode = 'bff_only'
 
 export function resolveAdminApiMode(): AdminApiMode {
   const raw = (import.meta.env.VITE_ADMIN_API_MODE ?? DEFAULT_MODE).toLowerCase()
@@ -77,6 +77,10 @@ function shouldFallback<T>(result: FetchResult<T>) {
   return !result.ok && (result.status === 0 || result.status >= 500)
 }
 
+function allowDirectFallback() {
+  return String(import.meta.env.VITE_ADMIN_ALLOW_DIRECT_FALLBACK ?? '').toLowerCase() === 'true'
+}
+
 export async function routeRequest<T>(config: RouteConfig<T>): Promise<{
   result: FetchResult<T>
   target: ApiTarget
@@ -95,7 +99,8 @@ export async function routeRequest<T>(config: RouteConfig<T>): Promise<{
     return { result: primaryResult, target: primary, requestId: requestContext.requestId }
   }
 
-  const canFallback = allowFallback && mode === 'bff_primary' && shouldFallback(primaryResult)
+  const canFallback =
+    allowDirectFallback() && allowFallback && mode === 'bff_primary' && shouldFallback(primaryResult)
   if (canFallback) {
     console.warn(`[admin-api] ${config.route} fallback to ${secondary} request_id=${requestContext.requestId}`)
     const fallbackResult = await config.direct(requestContext)

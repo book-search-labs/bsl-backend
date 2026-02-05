@@ -25,7 +25,7 @@ public class RerankController {
         return Map.of("status", "ok");
     }
 
-    @PostMapping("/rerank")
+    @PostMapping({"/rerank", "/internal/rank"})
     public ResponseEntity<?> rerank(
         @RequestBody(required = false) RerankRequest request,
         @RequestHeader(value = "x-trace-id", required = false) String traceHeader,

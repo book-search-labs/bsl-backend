@@ -180,7 +180,7 @@ export default function OpsJobsPage() {
       return routeRequest<T>({
         route: bffPath,
         mode: apiMode,
-        allowFallback: true,
+        allowFallback: false,
         bff: (context) =>
           fetchJson<T>(joinUrl(bffBaseUrl, bffPath), {
             ...init,

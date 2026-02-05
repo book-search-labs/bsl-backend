@@ -21,7 +21,7 @@ export type ApiRequestContext = {
   headers: Record<string, string>
 }
 
-const DEFAULT_MODE: ApiMode = 'bff_primary'
+const DEFAULT_MODE: ApiMode = 'bff_only'
 
 export function resolveApiMode(): ApiMode {
   const raw = (import.meta.env.VITE_API_MODE ?? DEFAULT_MODE).toLowerCase()
@@ -83,9 +83,13 @@ function shouldFallback(error: unknown) {
   return error instanceof HttpError && (error.status === 0 || error.status >= 500)
 }
 
+function allowDirectFallback() {
+  return String(import.meta.env.VITE_ALLOW_DIRECT_FALLBACK ?? '').toLowerCase() === 'true'
+}
+
 export async function routeRequest<T>(config: RouteConfig<T>): Promise<T> {
   const mode = config.mode ?? resolveApiMode()
-  const allowFallback = config.allowFallback ?? true
+  const allowFallback = config.allowFallback ?? false
   const requestContext = config.requestContext ?? createRequestContext()
   const primary: ApiTarget = mode === 'direct_primary' || mode === 'direct_only' ? 'direct' : 'bff'
   const secondary: ApiTarget = primary === 'bff' ? 'direct' : 'bff'
@@ -102,6 +106,7 @@ export async function routeRequest<T>(config: RouteConfig<T>): Promise<T> {
     return result
   } catch (error) {
     const allow =
+      allowDirectFallback() &&
       allowFallback &&
       (mode === 'bff_primary' || mode === 'direct_primary') &&
       secondaryCall &&

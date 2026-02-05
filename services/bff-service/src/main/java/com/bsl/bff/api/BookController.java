@@ -25,7 +25,7 @@ public class BookController {
         this.outboxService = outboxService;
     }
 
-    @GetMapping("/books/{docId}")
+    @GetMapping({"/books/{docId}", "/v1/books/{docId}"})
     public BffBookDetailResponse getBook(@PathVariable("docId") String docId) {
         RequestContext context = RequestContextHolder.get();
         if (docId == null || docId.trim().isEmpty()) {
