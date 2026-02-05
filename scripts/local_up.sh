@@ -1,10 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-COMPOSE_FILE="infra/docker/docker-compose.yml"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+COMPOSE_FILE="$ROOT_DIR/infra/docker/docker-compose.yml"
 OS_URL="${OS_URL:-http://localhost:9200}"
+MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-localroot}"
 
-echo "Starting OpenSearch (docker compose)..."
+print_logs() {
+  echo "OpenSearch logs (last 200 lines):"
+  docker compose -f "$COMPOSE_FILE" logs opensearch --tail=200 || true
+}
+
+trap 'print_logs' ERR
+
+echo "Starting OpenSearch + MySQL (docker compose)..."
 docker compose -f "$COMPOSE_FILE" up -d
 
 echo "Waiting for OpenSearch to become ready..."
@@ -15,14 +25,30 @@ for i in $(seq 1 60); do
   fi
 
   if [ "$i" -eq 60 ]; then
-    echo "OpenSearch did not become ready in time (60s). Printing logs:"
-    docker compose -f "$COMPOSE_FILE" logs opensearch --tail=200
+    echo "OpenSearch did not become ready in time (60s). Is port 9200 available?" >&2
     exit 1
   fi
   sleep 1
 done
 
-echo "Seeding OpenSearch index..."
-scripts/os_seed_books_v1.sh
+echo "Waiting for MySQL to become ready..."
+for i in $(seq 1 60); do
+  if docker compose -f "$COMPOSE_FILE" exec -T mysql \
+    mysqladmin ping -uroot -p"$MYSQL_ROOT_PASSWORD" --silent >/dev/null 2>&1; then
+    echo "MySQL is ready."
+    break
+  fi
+  if [ "$i" -eq 60 ]; then
+    echo "MySQL did not become ready in time (60s). Is port 3306 available?" >&2
+    exit 1
+  fi
+  sleep 1
+done
+
+echo "Bootstrapping indices + aliases..."
+"$SCRIPT_DIR/os_bootstrap_indices_v1_1.sh"
+
+echo "Seeding doc/vec indices..."
+"$SCRIPT_DIR/os_seed_books_v1_1.sh"
 
 echo "Done."

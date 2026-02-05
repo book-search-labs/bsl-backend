@@ -1,0 +1,34 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/bsl}
+    username: ${DB_USER:bsl}
+    password: ${DB_PASSWORD:bsl}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+server:
+  port: ${OUTBOX_RELAY_PORT:8095}
+
+outbox:
+  relay:
+    enabled: ${OUTBOX_RELAY_ENABLED:true}
+    poll-interval-ms: ${OUTBOX_RELAY_POLL_INTERVAL_MS:1000}
+    batch-size: ${OUTBOX_RELAY_BATCH_SIZE:200}
+    max-retries: ${OUTBOX_RELAY_MAX_RETRIES:3}
+    backoff-ms: ${OUTBOX_RELAY_BACKOFF_MS:200}
+    dlq-enabled: ${OUTBOX_RELAY_DLQ_ENABLED:true}
+    dlq-suffix: ${OUTBOX_RELAY_DLQ_SUFFIX:.dlq}
+    producer-name: ${OUTBOX_RELAY_PRODUCER:outbox-relay}
+    topic-mapping:
+      search_impression: ${OUTBOX_RELAY_TOPIC_SEARCH_IMPRESSION:search_impression_v1}
+      search_click: ${OUTBOX_RELAY_TOPIC_SEARCH_CLICK:search_click_v1}
+      search_dwell: ${OUTBOX_RELAY_TOPIC_SEARCH_DWELL:search_dwell_v1}
+      ac_impression: ${OUTBOX_RELAY_TOPIC_AC_IMPRESSION:ac_impression_v1}
+      ac_select: ${OUTBOX_RELAY_TOPIC_AC_SELECT:ac_select_v1}
+
+logging:
+  level:
+    root: ${LOG_LEVEL:DEBUG}

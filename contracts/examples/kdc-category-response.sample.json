@@ -1,0 +1,22 @@
+{
+  "version": "v1",
+  "trace_id": "trace_demo",
+  "request_id": "req_demo",
+  "categories": [
+    {
+      "id": 1,
+      "code": "000",
+      "name": "총류",
+      "depth": 0,
+      "children": [
+        {
+          "id": 10,
+          "code": "010",
+          "name": "도서관, 문헌정보학",
+          "depth": 1,
+          "children": []
+        }
+      ]
+    }
+  ]
+}

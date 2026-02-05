@@ -1,0 +1,19 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+server:
+  port: ${RANKING_PORT}
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOW_ORIGINS}
+    allowed-methods: ${CORS_ALLOW_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
+    allowed-headers: ${CORS_ALLOW_HEADERS:*}
+    exposed-headers: ${CORS_EXPOSED_HEADERS:x-trace-id,x-request-id}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+
+logging:
+  level:
+    root: ${LOG_LEVEL:WARN}

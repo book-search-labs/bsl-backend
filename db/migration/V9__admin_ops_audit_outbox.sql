@@ -12,8 +12,7 @@ CREATE TABLE audit_log (
   user_agent VARCHAR(255),
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_audit_actor_time (actor_admin_id, created_at),
-  INDEX idx_audit_action_time (action, created_at),
-  CONSTRAINT fk_audit_admin FOREIGN KEY(actor_admin_id) REFERENCES admin_account(admin_id)
+  INDEX idx_audit_action_time (action, created_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE ops_task (
@@ -24,8 +23,7 @@ CREATE TABLE ops_task (
   assigned_admin_id BIGINT UNSIGNED,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_ops_status_time (status, created_at),
-  CONSTRAINT fk_ops_admin FOREIGN KEY(assigned_admin_id) REFERENCES admin_account(admin_id)
+  INDEX idx_ops_status_time (status, created_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE job_run (

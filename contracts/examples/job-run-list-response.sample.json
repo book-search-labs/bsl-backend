@@ -1,0 +1,19 @@
+{
+  "version": "v1",
+  "trace_id": "trace_123",
+  "request_id": "req_123",
+  "count": 1,
+  "items": [
+    {
+      "job_run_id": 41,
+      "job_type": "INGEST",
+      "status": "FAILED",
+      "params": {
+        "batch": "2026-01-29"
+      },
+      "error_message": "timeout",
+      "started_at": "2026-01-29T09:00:00Z",
+      "finished_at": "2026-01-29T09:05:00Z"
+    }
+  ]
+}

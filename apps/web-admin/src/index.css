@@ -1,0 +1,94 @@
+:root {
+  font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #212529;
+  background-color: #f5f6f8;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --admin-sidebar-width: 280px;
+  --admin-sidebar-bg: #f8f9fa;
+  --admin-sidebar-hover-bg: #e9ecef;
+  --admin-sidebar-active-bg: #0d6efd;
+  --admin-sidebar-active-color: #ffffff;
+  --admin-sidebar-group-active-bg: #e7f1ff;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  color: #212529;
+  background-color: #f5f6f8;
+}
+
+#root {
+  width: 100%;
+}
+
+.admin-shell {
+  min-height: 100vh;
+}
+
+.admin-content {
+  background: linear-gradient(180deg, #f8f9fb 0%, #eef2f6 100%);
+}
+
+.admin-sidebar {
+  width: var(--admin-sidebar-width);
+  background: var(--admin-sidebar-bg);
+  flex-shrink: 0;
+}
+
+.sidebar-link {
+  border-radius: 10px;
+  color: #212529;
+  padding: 0.5rem 0.75rem;
+}
+
+.sidebar-link:hover {
+  background: var(--admin-sidebar-hover-bg);
+  color: #212529;
+}
+
+.sidebar-link.active {
+  background: var(--admin-sidebar-active-bg);
+  color: var(--admin-sidebar-active-color);
+}
+
+.sidebar-link.active i {
+  color: inherit;
+}
+
+.sidebar-group-btn {
+  border: 0;
+  background: transparent;
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  color: #212529;
+}
+
+.sidebar-group-btn:hover {
+  background: var(--admin-sidebar-hover-bg);
+}
+
+.sidebar-group-btn.active {
+  background: var(--admin-sidebar-group-active-bg);
+  color: #0d6efd;
+}
+
+.sidebar-caret {
+  display: inline-block;
+  transition: transform 120ms ease;
+}
+
+.sidebar-caret.open {
+  transform: rotate(90deg);
+}

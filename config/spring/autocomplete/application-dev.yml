@@ -1,0 +1,37 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+
+server:
+  port: ${AUTOCOMPLETE_PORT:8081}
+
+opensearch:
+  url: ${OPENSEARCH_URL:http://localhost:9200}
+  username: ${OPENSEARCH_USERNAME:}
+  password: ${OPENSEARCH_PASSWORD:}
+  timeout-ms: ${OPENSEARCH_TIMEOUT_MS:300}
+  index: ${OPENSEARCH_AC_INDEX:ac_read}
+
+autocomplete:
+  cache:
+    enabled: ${AUTOCOMPLETE_CACHE_ENABLED:true}
+    ttl-seconds: ${AUTOCOMPLETE_CACHE_TTL_SECONDS:300}
+    max-prefix-length: ${AUTOCOMPLETE_CACHE_MAX_PREFIX:6}
+    max-items: ${AUTOCOMPLETE_CACHE_MAX_ITEMS:12}
+    key-prefix: ${AUTOCOMPLETE_CACHE_KEY_PREFIX:ac:prefix:}
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOW_ORIGINS:http://localhost:4173,http://localhost:5173,http://localhost:5174}
+    allowed-methods: ${CORS_ALLOW_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
+    allowed-headers: ${CORS_ALLOW_HEADERS:*}
+    exposed-headers: ${CORS_EXPOSED_HEADERS:x-trace-id,x-request-id}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+
+logging:
+  level:
+    root: ${LOG_LEVEL:DEBUG}

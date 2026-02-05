@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "trace_id": "trace_123",
+  "request_id": "req_123",
+  "job_run": {
+    "job_run_id": 42,
+    "job_type": "REINDEX",
+    "status": "RUNNING",
+    "params": {
+      "logical_name": "books_doc"
+    },
+    "error_message": null,
+    "started_at": "2026-01-29T10:00:00Z",
+    "finished_at": null
+  }
+}

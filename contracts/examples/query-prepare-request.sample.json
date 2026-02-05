@@ -1,0 +1,5 @@
+{
+  "query": { "raw": "Harry Potter" },
+  "client": { "app": "web", "locale": "en-US" },
+  "user": { "user_id": "u_123" }
+}

@@ -17,8 +17,7 @@ CREATE TABLE sku (
   attrs_json JSON,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_sku_material (material_id),
-  CONSTRAINT fk_sku_material FOREIGN KEY(material_id) REFERENCES material(material_id)
+  INDEX idx_sku_material (material_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE offer (
@@ -37,18 +36,14 @@ CREATE TABLE offer (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_offer_sku (sku_id),
   INDEX idx_offer_seller (seller_id),
-  INDEX idx_offer_active (status, start_at, end_at),
-  CONSTRAINT fk_offer_sku FOREIGN KEY(sku_id) REFERENCES sku(sku_id),
-  CONSTRAINT fk_offer_seller FOREIGN KEY(seller_id) REFERENCES seller(seller_id)
+  INDEX idx_offer_active (status, start_at, end_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE current_offer (
   sku_id BIGINT UNSIGNED PRIMARY KEY,
   offer_id BIGINT UNSIGNED NOT NULL,
   computed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  reason VARCHAR(64) NOT NULL DEFAULT 'AUTO',
-  CONSTRAINT fk_co_sku FOREIGN KEY(sku_id) REFERENCES sku(sku_id),
-  CONSTRAINT fk_co_offer FOREIGN KEY(offer_id) REFERENCES offer(offer_id)
+  reason VARCHAR(64) NOT NULL DEFAULT 'AUTO'
 ) ENGINE=InnoDB;
 
 -- v1.1 FIX: available is generated to avoid inconsistency
@@ -59,9 +54,7 @@ CREATE TABLE inventory_balance (
   reserved INT NOT NULL DEFAULT 0,
   available INT AS (on_hand - reserved) STORED,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY(sku_id, seller_id),
-  CONSTRAINT fk_ib_sku FOREIGN KEY(sku_id) REFERENCES sku(sku_id),
-  CONSTRAINT fk_ib_seller FOREIGN KEY(seller_id) REFERENCES seller(seller_id)
+  PRIMARY KEY(sku_id, seller_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE inventory_ledger (
@@ -76,10 +69,7 @@ CREATE TABLE inventory_ledger (
   created_by_admin_id BIGINT UNSIGNED,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_ledger_sku_time (sku_id, created_at),
-  INDEX idx_ledger_ref (ref_type, ref_id),
-  CONSTRAINT fk_il_sku FOREIGN KEY(sku_id) REFERENCES sku(sku_id),
-  CONSTRAINT fk_il_seller FOREIGN KEY(seller_id) REFERENCES seller(seller_id),
-  CONSTRAINT fk_il_admin FOREIGN KEY(created_by_admin_id) REFERENCES admin_account(admin_id)
+  INDEX idx_ledger_ref (ref_type, ref_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE user_address (
@@ -92,16 +82,14 @@ CREATE TABLE user_address (
   addr2 VARCHAR(255),
   is_default TINYINT(1) NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_addr_user (user_id, is_default),
-  CONSTRAINT fk_addr_user FOREIGN KEY(user_id) REFERENCES user_account(user_id)
+  INDEX idx_addr_user (user_id, is_default)
 ) ENGINE=InnoDB;
 
 CREATE TABLE cart (
   cart_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id BIGINT UNSIGNED NOT NULL,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_cart_user (user_id),
-  CONSTRAINT fk_cart_user FOREIGN KEY(user_id) REFERENCES user_account(user_id)
+  UNIQUE KEY uk_cart_user (user_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE cart_item (
@@ -112,10 +100,7 @@ CREATE TABLE cart_item (
   qty INT NOT NULL,
   added_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uk_cart_line (cart_id, sku_id, seller_id),
-  INDEX idx_ci_cart (cart_id),
-  CONSTRAINT fk_ci_cart FOREIGN KEY(cart_id) REFERENCES cart(cart_id),
-  CONSTRAINT fk_ci_sku FOREIGN KEY(sku_id) REFERENCES sku(sku_id),
-  CONSTRAINT fk_ci_seller FOREIGN KEY(seller_id) REFERENCES seller(seller_id)
+  INDEX idx_ci_cart (cart_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE orders (
@@ -129,8 +114,7 @@ CREATE TABLE orders (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_orders_user_time (user_id, created_at),
-  INDEX idx_orders_status_time (status, created_at),
-  CONSTRAINT fk_orders_user FOREIGN KEY(user_id) REFERENCES user_account(user_id)
+  INDEX idx_orders_status_time (status, created_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE order_item (
@@ -144,11 +128,7 @@ CREATE TABLE order_item (
   item_amount INT NOT NULL,
   status VARCHAR(24) NOT NULL DEFAULT 'ORDERED',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_oi_order (order_id),
-  CONSTRAINT fk_oi_order FOREIGN KEY(order_id) REFERENCES orders(order_id),
-  CONSTRAINT fk_oi_sku FOREIGN KEY(sku_id) REFERENCES sku(sku_id),
-  CONSTRAINT fk_oi_seller FOREIGN KEY(seller_id) REFERENCES seller(seller_id),
-  CONSTRAINT fk_oi_offer FOREIGN KEY(offer_id) REFERENCES offer(offer_id)
+  INDEX idx_oi_order (order_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE order_event (
@@ -159,8 +139,7 @@ CREATE TABLE order_event (
   reason_code VARCHAR(32),
   payload_json JSON,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_oe_order_time (order_id, created_at),
-  CONSTRAINT fk_oe_order FOREIGN KEY(order_id) REFERENCES orders(order_id)
+  INDEX idx_oe_order_time (order_id, created_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE payment (
@@ -173,8 +152,7 @@ CREATE TABLE payment (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uk_payment_pg (pg_tx_id),
-  INDEX idx_payment_order (order_id),
-  CONSTRAINT fk_payment_order FOREIGN KEY(order_id) REFERENCES orders(order_id)
+  INDEX idx_payment_order (order_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE refund (
@@ -186,9 +164,7 @@ CREATE TABLE refund (
   approved_by_admin_id BIGINT UNSIGNED,
   requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_refund_status_time (status, requested_at),
-  CONSTRAINT fk_refund_order FOREIGN KEY(order_id) REFERENCES orders(order_id),
-  CONSTRAINT fk_refund_admin FOREIGN KEY(approved_by_admin_id) REFERENCES admin_account(admin_id)
+  INDEX idx_refund_status_time (status, requested_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE refund_item (
@@ -196,9 +172,7 @@ CREATE TABLE refund_item (
   order_item_id BIGINT UNSIGNED NOT NULL,
   qty INT NOT NULL,
   amount INT NOT NULL,
-  PRIMARY KEY(refund_id, order_item_id),
-  CONSTRAINT fk_ri_refund FOREIGN KEY(refund_id) REFERENCES refund(refund_id),
-  CONSTRAINT fk_ri_order_item FOREIGN KEY(order_item_id) REFERENCES order_item(order_item_id)
+  PRIMARY KEY(refund_id, order_item_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE shipment (
@@ -211,17 +185,14 @@ CREATE TABLE shipment (
   delivered_at DATETIME,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_ship_order (order_id),
-  CONSTRAINT fk_ship_order FOREIGN KEY(order_id) REFERENCES orders(order_id)
+  INDEX idx_ship_order (order_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE shipment_item (
   shipment_id BIGINT UNSIGNED NOT NULL,
   order_item_id BIGINT UNSIGNED NOT NULL,
   qty INT NOT NULL,
-  PRIMARY KEY(shipment_id, order_item_id),
-  CONSTRAINT fk_si_ship FOREIGN KEY(shipment_id) REFERENCES shipment(shipment_id),
-  CONSTRAINT fk_si_order_item FOREIGN KEY(order_item_id) REFERENCES order_item(order_item_id)
+  PRIMARY KEY(shipment_id, order_item_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE shipment_event (
@@ -230,6 +201,5 @@ CREATE TABLE shipment_event (
   event_type VARCHAR(32) NOT NULL,
   event_time DATETIME NOT NULL,
   payload_json JSON,
-  INDEX idx_se_ship_time (shipment_id, event_time),
-  CONSTRAINT fk_se_ship FOREIGN KEY(shipment_id) REFERENCES shipment(shipment_id)
+  INDEX idx_se_ship_time (shipment_id, event_time)
 ) ENGINE=InnoDB;

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "reindex-job-response.schema.json",
+  "title": "ReindexJobResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "trace_id", "request_id", "job"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "job": { "$ref": "reindex-job.schema.json" }
+  }
+}

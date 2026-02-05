@@ -1,0 +1,222 @@
+openapi: 3.0.3
+info:
+  title: BFF Public API
+  version: v1
+servers:
+  - url: http://localhost:8088
+paths:
+  /search:
+    post:
+      summary: Search books
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../search-request.schema.json
+      responses:
+        "200":
+          description: Search response
+          content:
+            application/json:
+              schema:
+                $ref: ../search-response.schema.json
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: ../error.schema.json
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: ../error.schema.json
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: ../error.schema.json
+  /autocomplete:
+    get:
+      summary: Autocomplete suggestions
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: size
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Autocomplete response
+          content:
+            application/json:
+              schema:
+                $ref: ../autocomplete-response.schema.json
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: ../error.schema.json
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: ../error.schema.json
+  /autocomplete/select:
+    post:
+      summary: Autocomplete select event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../autocomplete-select-request.schema.json
+      responses:
+        "200":
+          description: Ack response
+          content:
+            application/json:
+              schema:
+                $ref: ../ack-response.schema.json
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: ../error.schema.json
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: ../error.schema.json
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: ../error.schema.json
+  /search/click:
+    post:
+      summary: Search click event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../search-click-request.schema.json
+      responses:
+        "200":
+          description: Ack response
+          content:
+            application/json:
+              schema:
+                $ref: ../ack-response.schema.json
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: ../error.schema.json
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: ../error.schema.json
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: ../error.schema.json
+  /search/dwell:
+    post:
+      summary: Search dwell event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../search-dwell-request.schema.json
+      responses:
+        "200":
+          description: Ack response
+          content:
+            application/json:
+              schema:
+                $ref: ../ack-response.schema.json
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: ../error.schema.json
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: ../error.schema.json
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: ../error.schema.json
+  /books/{docId}:
+    get:
+      summary: Book detail by doc id
+      parameters:
+        - in: path
+          name: docId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Book detail response
+          content:
+            application/json:
+              schema:
+                $ref: ../book-detail-response.schema.json
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: ../error.schema.json
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: ../error.schema.json
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: ../error.schema.json
+  /health:
+    get:
+      summary: Liveness probe
+      responses:
+        "200":
+          description: OK
+  /ready:
+    get:
+      summary: Readiness probe
+      responses:
+        "200":
+          description: OK

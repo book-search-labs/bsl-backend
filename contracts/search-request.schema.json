@@ -10,7 +10,7 @@
     "trace_id": { "type": "string", "minLength": 1 },
     "request_id": { "type": "string", "minLength": 1 },
 
-    "query_context": { "$ref": "query-context.schema.json" },
+    "query_context": { "$ref": "query-context-v1_1.schema.json" },
 
     "pagination": {
       "type": "object",

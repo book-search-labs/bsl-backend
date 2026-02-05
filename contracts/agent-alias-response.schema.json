@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-alias-response.schema.json",
+  "title": "AgentAliasResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "trace_id", "request_id", "alias"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "alias": { "$ref": "agent-alias.schema.json" }
+  }
+}

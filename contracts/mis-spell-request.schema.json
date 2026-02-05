@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mis-spell-request.schema.json",
+  "title": "MisSpellRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "trace_id", "request_id", "text"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "text": { "type": "string", "minLength": 1 },
+    "locale": { "type": "string" },
+    "model": { "type": "string", "minLength": 1 }
+  }
+}

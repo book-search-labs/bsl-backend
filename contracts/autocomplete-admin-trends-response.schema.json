@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "autocomplete-admin-trends-response.schema.json",
+  "title": "AutocompleteAdminTrendsResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "trace_id", "request_id", "count", "items"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "metric": { "type": "string" },
+    "count": { "type": "integer", "minimum": 0 },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["suggest_id", "text", "type"],
+        "properties": {
+          "suggest_id": { "type": "string" },
+          "text": { "type": "string" },
+          "type": { "type": "string" },
+          "lang": { "type": "string" },
+          "impressions_7d": { "type": "number" },
+          "clicks_7d": { "type": "number" },
+          "ctr_7d": { "type": "number" },
+          "popularity_7d": { "type": "number" },
+          "last_seen_at": { "type": "string" },
+          "updated_at": { "type": "string" }
+        }
+      }
+    }
+  }
+}

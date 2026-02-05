@@ -1,0 +1,366 @@
+package com.bsl.bff.api;
+
+import com.bsl.bff.api.dto.BffSearchRequest;
+import com.bsl.bff.api.dto.BffSearchResponse;
+import com.bsl.bff.authority.AgentAliasService;
+import com.bsl.bff.budget.BudgetContext;
+import com.bsl.bff.budget.BudgetContextHolder;
+import com.bsl.bff.budget.BudgetProperties;
+import com.bsl.bff.client.QueryServiceClient;
+import com.bsl.bff.client.SearchServiceClient;
+import com.bsl.bff.client.dto.DownstreamSearchRequest;
+import com.bsl.bff.client.dto.SearchServiceResponse;
+import com.bsl.bff.common.BadRequestException;
+import com.bsl.bff.common.RequestContext;
+import com.bsl.bff.common.RequestContextHolder;
+import com.bsl.bff.outbox.OutboxService;
+import com.fasterxml.jackson.databind.JsonNode;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class SearchController {
+    private static final int DEFAULT_SIZE = 10;
+    private static final int DEFAULT_FROM = 0;
+
+    private final QueryServiceClient queryServiceClient;
+    private final SearchServiceClient searchServiceClient;
+    private final OutboxService outboxService;
+    private final BudgetProperties budgetProperties;
+    private final AgentAliasService aliasService;
+
+    public SearchController(
+        QueryServiceClient queryServiceClient,
+        SearchServiceClient searchServiceClient,
+        OutboxService outboxService,
+        BudgetProperties budgetProperties,
+        AgentAliasService aliasService
+    ) {
+        this.queryServiceClient = queryServiceClient;
+        this.searchServiceClient = searchServiceClient;
+        this.outboxService = outboxService;
+        this.budgetProperties = budgetProperties;
+        this.aliasService = aliasService;
+    }
+
+    @PostMapping({"/search", "/v1/search"})
+    public BffSearchResponse search(
+        @RequestBody(required = false) BffSearchRequest request,
+        @RequestHeader(value = "x-experiment-id", required = false) String experimentId,
+        @RequestHeader(value = "x-policy-id", required = false) String policyId
+    ) {
+        RequestContext context = RequestContextHolder.get();
+        if (request == null) {
+            throw new BadRequestException("request body is required");
+        }
+
+        String rawQuery = request.getQuery() != null ? request.getQuery().getRaw() : null;
+        JsonNode queryContextV11 = request.getQueryContextV11();
+        JsonNode queryContext = request.getQueryContext();
+
+        BudgetContext budget = BudgetContextHolder.get();
+
+        if (queryContextV11 == null && queryContext == null) {
+            if (rawQuery == null || rawQuery.trim().isEmpty()) {
+                throw new BadRequestException("query.raw is required");
+            }
+            if (budget == null || budget.remainingMs() > budgetProperties.getDownstreamReserveMs()) {
+                queryContextV11 = queryServiceClient.fetchQueryContext(rawQuery, context);
+            }
+        }
+
+        DownstreamSearchRequest downstreamRequest = new DownstreamSearchRequest();
+        if (rawQuery != null && !rawQuery.trim().isEmpty()) {
+            DownstreamSearchRequest.Query query = new DownstreamSearchRequest.Query();
+            query.setRaw(rawQuery);
+            downstreamRequest.setQuery(query);
+        }
+        downstreamRequest.setQueryContextV11(queryContextV11);
+        downstreamRequest.setQueryContext(queryContext);
+        downstreamRequest.setOptions(toDownstreamOptions(request, budget));
+
+        long started = System.nanoTime();
+        SearchServiceResponse searchResponse = searchServiceClient.search(downstreamRequest, context);
+        if (searchResponse == null) {
+            throw new BadRequestException("search service response is empty");
+        }
+
+        BffSearchResponse response = new BffSearchResponse();
+        response.setVersion("v1");
+        response.setTraceId(context == null ? null : context.getTraceId());
+        response.setRequestId(context == null ? null : context.getRequestId());
+        String impId = "imp_" + UUID.randomUUID().toString().replace("-", "");
+        String queryHash = computeQueryHash(rawQuery, queryContextV11, queryContext);
+        response.setImpId(impId);
+        response.setQueryHash(queryHash);
+        response.setTookMs(searchResponse.getTookMs() > 0
+            ? searchResponse.getTookMs()
+            : (System.nanoTime() - started) / 1_000_000L);
+        response.setTimedOut(false);
+
+        List<SearchServiceResponse.BookHit> hits = searchResponse.getHits();
+        List<BffSearchResponse.Hit> mapped = new ArrayList<>();
+        if (hits != null) {
+            for (SearchServiceResponse.BookHit hit : hits) {
+                if (hit == null) {
+                    continue;
+                }
+                BffSearchResponse.Hit mappedHit = new BffSearchResponse.Hit();
+                mappedHit.setDocId(hit.getDocId());
+                mappedHit.setScore(hit.getScore());
+                if (hit.getSource() != null) {
+                    mappedHit.setTitle(nullToEmpty(hit.getSource().getTitleKo()));
+                    mappedHit.setAuthors(nullToEmptyList(hit.getSource().getAuthors()));
+                    mappedHit.setPublisher(hit.getSource().getPublisherName());
+                    mappedHit.setPublicationYear(hit.getSource().getIssuedYear());
+                } else {
+                    mappedHit.setTitle("");
+                    mappedHit.setAuthors(List.of());
+                }
+                mapped.add(mappedHit);
+            }
+        }
+        applyAuthorAliases(mapped);
+        response.setHits(mapped);
+        response.setTotal(mapped.size());
+
+        String experimentBucket = searchResponse.getExperimentBucket();
+
+        Map<String, Object> payload = new HashMap<>();
+        if (rawQuery != null) {
+            payload.put("query", rawQuery);
+        }
+        payload.put("from", resolveFrom(request));
+        payload.put("size", resolveSize(request));
+        recordOutbox("search_request", "search", context, payload);
+        recordImpression(
+            context,
+            impId,
+            queryHash,
+            rawQuery,
+            experimentId,
+            policyId,
+            experimentBucket,
+            payload,
+            mapped
+        );
+
+        return response;
+    }
+
+    private void applyAuthorAliases(List<BffSearchResponse.Hit> hits) {
+        if (aliasService == null || hits == null || hits.isEmpty()) {
+            return;
+        }
+        List<String> allAuthors = new ArrayList<>();
+        for (BffSearchResponse.Hit hit : hits) {
+            if (hit.getAuthors() != null) {
+                allAuthors.addAll(hit.getAuthors());
+            }
+        }
+        if (allAuthors.isEmpty()) {
+            return;
+        }
+        List<String> resolved = aliasService.applyAliases(allAuthors);
+        if (resolved == null || resolved.size() != allAuthors.size()) {
+            return;
+        }
+        int cursor = 0;
+        for (BffSearchResponse.Hit hit : hits) {
+            if (hit.getAuthors() == null || hit.getAuthors().isEmpty()) {
+                continue;
+            }
+            List<String> updated = new ArrayList<>();
+            for (int i = 0; i < hit.getAuthors().size(); i++) {
+                updated.add(resolved.get(cursor++));
+            }
+            hit.setAuthors(updated);
+        }
+    }
+
+    private DownstreamSearchRequest.Options toDownstreamOptions(BffSearchRequest request) {
+        DownstreamSearchRequest.Options options = new DownstreamSearchRequest.Options();
+        int from = resolveFrom(request);
+        int size = resolveSize(request);
+        options.setFrom(from);
+        options.setSize(size);
+        if (request.getOptions() != null) {
+            options.setEnableVector(request.getOptions().getEnableVector());
+            options.setRrfK(request.getOptions().getRrfK());
+        }
+        return options;
+    }
+
+    private DownstreamSearchRequest.Options toDownstreamOptions(BffSearchRequest request, BudgetContext budget) {
+        DownstreamSearchRequest.Options options = toDownstreamOptions(request);
+        if (budget == null) {
+            return options;
+        }
+        long remainingMs = budget.remainingMs();
+        int reserve = budgetProperties.getDownstreamReserveMs();
+        long available = Math.max(0, remainingMs - reserve);
+        if (available > 0) {
+            int timeout = (int) Math.min(available, budgetProperties.getMaxDownstreamTimeoutMs());
+            timeout = Math.max(timeout, budgetProperties.getMinDownstreamTimeoutMs());
+            options.setTimeoutMs(timeout);
+        }
+        return options;
+    }
+
+    private int resolveFrom(BffSearchRequest request) {
+        if (request.getPagination() != null && request.getPagination().getFrom() != null) {
+            return Math.max(request.getPagination().getFrom(), 0);
+        }
+        if (request.getOptions() != null && request.getOptions().getFrom() != null) {
+            return Math.max(request.getOptions().getFrom(), 0);
+        }
+        return DEFAULT_FROM;
+    }
+
+    private int resolveSize(BffSearchRequest request) {
+        if (request.getPagination() != null && request.getPagination().getSize() != null) {
+            return Math.max(request.getPagination().getSize(), 1);
+        }
+        if (request.getOptions() != null && request.getOptions().getSize() != null) {
+            return Math.max(request.getOptions().getSize(), 1);
+        }
+        return DEFAULT_SIZE;
+    }
+
+    private void recordOutbox(String eventType, String aggregateType, RequestContext context, Map<String, Object> payload) {
+        if (context == null) {
+            return;
+        }
+        Map<String, Object> enriched = new HashMap<>(payload);
+        enriched.put("request_id", context.getRequestId());
+        enriched.put("trace_id", context.getTraceId());
+        outboxService.record(eventType, aggregateType, context.getRequestId(), enriched);
+    }
+
+    private void recordImpression(
+        RequestContext context,
+        String impId,
+        String queryHash,
+        String rawQuery,
+        String experimentId,
+        String policyId,
+        String experimentBucket,
+        Map<String, Object> basePayload,
+        List<BffSearchResponse.Hit> hits
+    ) {
+        if (context == null) {
+            return;
+        }
+        Map<String, Object> payload = new HashMap<>(basePayload);
+        payload.put("imp_id", impId);
+        if (queryHash != null && !queryHash.isBlank()) {
+            payload.put("query_hash", queryHash);
+        }
+        if (rawQuery != null && !rawQuery.isBlank()) {
+            payload.put("query_raw", rawQuery);
+        }
+        if (experimentId != null && !experimentId.isBlank()) {
+            payload.put("experiment_id", experimentId.trim());
+        }
+        if (policyId != null && !policyId.isBlank()) {
+            payload.put("policy_id", policyId.trim());
+        }
+        if (experimentBucket != null && !experimentBucket.isBlank()) {
+            payload.put("experiment_bucket", experimentBucket.trim());
+        }
+        payload.put("event_time", OffsetDateTime.now(ZoneOffset.UTC).toString());
+        List<Map<String, Object>> results = new ArrayList<>();
+        int position = 1;
+        if (hits != null) {
+            for (BffSearchResponse.Hit hit : hits) {
+                if (hit == null || hit.getDocId() == null || hit.getDocId().isBlank()) {
+                    continue;
+                }
+                Map<String, Object> entry = new HashMap<>();
+                entry.put("doc_id", hit.getDocId());
+                entry.put("position", position++);
+                results.add(entry);
+            }
+        }
+        payload.put("results", results);
+        outboxService.record("search_impression", "search", impId, enrichPayload(context, payload));
+    }
+
+    private Map<String, Object> enrichPayload(RequestContext context, Map<String, Object> payload) {
+        Map<String, Object> enriched = new HashMap<>(payload);
+        enriched.put("request_id", context.getRequestId());
+        enriched.put("trace_id", context.getTraceId());
+        return enriched;
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    private List<String> nullToEmptyList(List<String> value) {
+        return value == null ? List.of() : value;
+    }
+
+    private String computeQueryHash(String rawQuery, JsonNode queryContextV11, JsonNode queryContext) {
+        String normalized = extractQueryField(queryContextV11, "normalized");
+        if (normalized == null || normalized.isBlank()) {
+            normalized = extractQueryField(queryContext, "normalized");
+        }
+        if (normalized == null || normalized.isBlank()) {
+            normalized = extractQueryField(queryContextV11, "canonical");
+        }
+        if (normalized == null || normalized.isBlank()) {
+            normalized = extractQueryField(queryContext, "canonical");
+        }
+        String base = normalized;
+        if (base == null || base.isBlank()) {
+            base = rawQuery;
+        }
+        if (base == null || base.isBlank()) {
+            return null;
+        }
+        return sha256(base.trim().toLowerCase());
+    }
+
+    private String extractQueryField(JsonNode node, String field) {
+        if (node == null) {
+            return null;
+        }
+        JsonNode queryNode = node.get("query");
+        if (queryNode == null || queryNode.isMissingNode()) {
+            return null;
+        }
+        JsonNode fieldNode = queryNode.get(field);
+        if (fieldNode == null || fieldNode.isMissingNode()) {
+            return null;
+        }
+        String value = fieldNode.asText(null);
+        return value == null || value.isBlank() ? null : value;
+    }
+
+    private String sha256(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 not available", ex);
+        }
+    }
+}

@@ -1,0 +1,127 @@
+server:
+  port: ${BFF_PORT:8088}
+
+spring:
+  application:
+    name: bff-service
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/bsl}
+    username: ${DB_USER:bsl}
+    password: ${DB_PASSWORD:bsl}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+
+bff:
+  auth:
+    enabled: ${BFF_AUTH_ENABLED:true}
+    bypass: ${BFF_AUTH_BYPASS:false}
+    admin-header: ${BFF_ADMIN_HEADER:x-admin-id}
+    user-header: ${BFF_USER_HEADER:x-user-id}
+  downstream:
+    query-service:
+      base-url: ${QS_BASE_URL:http://localhost:8001}
+      timeout-ms: ${QS_TIMEOUT_MS:300}
+    search-service:
+      base-url: ${SS_BASE_URL:http://localhost:8080}
+      timeout-ms: ${SS_TIMEOUT_MS:400}
+    autocomplete-service:
+      base-url: ${AC_BASE_URL:http://localhost:8081}
+      timeout-ms: ${AC_TIMEOUT_MS:200}
+    index-writer-service:
+      base-url: ${INDEX_WRITER_BASE_URL:http://localhost:8090}
+      timeout-ms: ${INDEX_WRITER_TIMEOUT_MS:1000}
+    mis-service:
+      base-url: ${MIS_BASE_URL:http://localhost:8005}
+      timeout-ms: ${MIS_TIMEOUT_MS:300}
+    commerce-service:
+      base-url: ${COMMERCE_BASE_URL:http://localhost:8091}
+      timeout-ms: ${COMMERCE_TIMEOUT_MS:500}
+  outbox:
+    enabled: ${BFF_OUTBOX_ENABLED:false}
+  rbac:
+    enabled: ${BFF_RBAC_ENABLED:true}
+    cache-ttl-ms: ${BFF_RBAC_CACHE_TTL_MS:30000}
+  rate-limit:
+    enabled: ${BFF_RATE_LIMIT_ENABLED:true}
+    backend: ${BFF_RATE_LIMIT_BACKEND:memory}
+    window-seconds: ${BFF_RATE_LIMIT_WINDOW_SECONDS:60}
+    search-per-minute: ${BFF_RATE_LIMIT_SEARCH:60}
+    autocomplete-per-minute: ${BFF_RATE_LIMIT_AUTOCOMPLETE:300}
+    admin-per-minute: ${BFF_RATE_LIMIT_ADMIN:30}
+    default-per-minute: ${BFF_RATE_LIMIT_DEFAULT:60}
+  budget:
+    enabled: ${BFF_BUDGET_ENABLED:true}
+    search-ms: ${BFF_BUDGET_SEARCH_MS:800}
+    chat-ms: ${BFF_BUDGET_CHAT_MS:1200}
+    default-ms: ${BFF_BUDGET_DEFAULT_MS:600}
+    downstream-reserve-ms: ${BFF_BUDGET_RESERVE_MS:50}
+    min-downstream-timeout-ms: ${BFF_BUDGET_MIN_TIMEOUT_MS:50}
+    max-downstream-timeout-ms: ${BFF_BUDGET_MAX_TIMEOUT_MS:1500}
+  model-ops:
+    registry-path: ${MODEL_REGISTRY_PATH:services/model-inference-service/app/config/model_registry.json}
+    eval-runs-dir: ${EVAL_RUNS_DIR:evaluation/eval_runs}
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOW_ORIGINS:http://localhost:4173,http://localhost:5173,http://localhost:5174}
+    allowed-methods: ${CORS_ALLOW_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
+    allowed-headers: ${CORS_ALLOW_HEADERS:*}
+    exposed-headers: ${CORS_EXPOSED_HEADERS:x-trace-id,x-request-id,traceparent}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+
+security:
+  headers:
+    enabled: ${SECURITY_HEADERS_ENABLED:true}
+    frame-options: ${SECURITY_FRAME_OPTIONS:DENY}
+    referrer-policy: ${SECURITY_REFERRER_POLICY:no-referrer}
+    permissions-policy: ${SECURITY_PERMISSIONS_POLICY:geolocation=(), microphone=(), camera=()}
+    cross-origin-opener-policy: ${SECURITY_COOP:same-origin}
+    cross-origin-resource-policy: ${SECURITY_CORP:same-site}
+    hsts-enabled: ${SECURITY_HSTS_ENABLED:false}
+    hsts-max-age: ${SECURITY_HSTS_MAX_AGE:31536000}
+  csrf:
+    enabled: ${SECURITY_CSRF_ENABLED:true}
+    allowed-origins: ${SECURITY_CSRF_ALLOWED_ORIGINS:${CORS_ALLOW_ORIGINS:http://localhost:4173,http://localhost:5173,http://localhost:5174}}
+  admin-approval:
+    enabled: ${SECURITY_ADMIN_APPROVAL_ENABLED:false}
+    risky-paths: ${SECURITY_ADMIN_APPROVAL_RISKY_PATHS:^/admin/ops/reindex-jobs.*,^/admin/ops/job-runs.*,^/admin/authority.*,^/admin/sellers.*,^/admin/skus.*,^/admin/offers.*,^/admin/inventory/adjust.*,^/admin/payments.*,^/admin/refunds.*,^/admin/shipments.*}
+  abuse:
+    enabled: ${SECURITY_ABUSE_ENABLED:false}
+    window-seconds: ${SECURITY_ABUSE_WINDOW_SECONDS:60}
+    error-threshold: ${SECURITY_ABUSE_ERROR_THRESHOLD:20}
+    block-seconds: ${SECURITY_ABUSE_BLOCK_SECONDS:600}
+    error-statuses: ${SECURITY_ABUSE_ERROR_STATUSES:400,401,403,404,429}
+  pii:
+    enabled: ${SECURITY_PII_ENABLED:true}
+    mask: ${SECURITY_PII_MASK:***}
+    keys: ${SECURITY_PII_KEYS:name,email,phone,addr1,addr2,zip,card_number}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.95,0.99
+  tracing:
+    sampling:
+      probability: ${TRACE_SAMPLE_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}

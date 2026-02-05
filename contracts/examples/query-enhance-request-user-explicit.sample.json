@@ -1,0 +1,21 @@
+{
+  "request_id": "req_user",
+  "trace_id": "trace_user",
+  "q_norm": "harry potter set",
+  "q_nospace": "harrypotterset",
+  "canonical_key": "ck:0f1e2d3c4b5a",
+  "locale": "en-US",
+  "detected": {
+    "mode": "normal",
+    "is_isbn": false,
+    "has_volume": false,
+    "lang": "en"
+  },
+  "reason": "USER_EXPLICIT",
+  "signals": {
+    "latency_budget_ms": 800
+  },
+  "top_candidates": [
+    { "title": "Harry Potter Box Set", "author": "J.K. Rowling" }
+  ]
+}

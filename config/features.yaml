@@ -1,0 +1,142 @@
+version: v1
+feature_set_version: rs.fs.v1
+features:
+  - name: rrf_score
+    type: float
+    key_type: query_doc
+    source: request
+    transform:
+      default: 0.0
+      clip:
+        min: 0.0
+        max: 1.0
+  - name: fused_rank
+    type: int
+    key_type: query_doc
+    source: request
+    transform:
+      default: 9999
+  - name: lex_rank
+    type: int
+    key_type: query_doc
+    source: request
+    transform:
+      default: 9999
+  - name: vec_rank
+    type: int
+    key_type: query_doc
+    source: request
+    transform:
+      default: 9999
+  - name: bm25_score
+    type: float
+    key_type: query_doc
+    source: request
+    transform:
+      default: 0.0
+  - name: vec_score
+    type: float
+    key_type: query_doc
+    source: request
+    transform:
+      default: 0.0
+  - name: issued_year
+    type: int
+    key_type: doc
+    source: request
+    transform:
+      default: 0
+      clip:
+        min: 1800
+        max: 2100
+  - name: volume
+    type: int
+    key_type: doc
+    source: request
+    transform:
+      default: 0
+      clip:
+        min: 0
+        max: 200
+  - name: has_recover
+    type: bool
+    key_type: doc
+    source: derived
+    transform:
+      default: false
+  - name: ctr_7d
+    type: float
+    key_type: doc
+    source: kv
+    transform:
+      default: 0.0
+      clip:
+        min: 0.0
+        max: 1.0
+  - name: popularity_30d
+    type: float
+    key_type: doc
+    source: kv
+    transform:
+      default: 0.0
+      log1p: true
+  - name: freshness_days
+    type: int
+    key_type: doc
+    source: derived
+    transform:
+      default: 9999
+      clip:
+        min: 0
+        max: 36500
+  - name: query_len
+    type: int
+    key_type: query
+    source: derived
+    transform:
+      default: 0
+  - name: has_number_token
+    type: bool
+    key_type: query
+    source: derived
+    transform:
+      default: false
+  - name: is_isbn_like
+    type: bool
+    key_type: query
+    source: derived
+    transform:
+      default: false
+  - name: has_volume_like
+    type: bool
+    key_type: query
+    source: derived
+    transform:
+      default: false
+  - name: title_exact_match
+    type: bool
+    key_type: query_doc
+    source: derived
+    transform:
+      default: false
+  - name: author_exact_match
+    type: bool
+    key_type: query_doc
+    source: derived
+    transform:
+      default: false
+  - name: series_exact_match
+    type: bool
+    key_type: query_doc
+    source: derived
+    transform:
+      default: false
+  - name: metadata_completeness
+    type: float
+    key_type: doc
+    source: derived
+    transform:
+      default: 0.0
+      clip:
+        min: 0.0
+        max: 1.0

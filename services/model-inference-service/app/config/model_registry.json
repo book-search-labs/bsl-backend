@@ -1,0 +1,28 @@
+{
+  "updated_at": "2026-01-01T00:00:00Z",
+  "models": [
+    {
+      "id": "rerank_toy_v1",
+      "task": "rerank",
+      "backend": "toy",
+      "artifact_uri": "local://models/rerank_toy_v1.onnx",
+      "active": true,
+      "canary": false,
+      "canary_weight": 0.0,
+      "status": "ready",
+      "updated_at": "2026-01-01T00:00:00Z",
+      "feature_order": ["rrf_score", "lex_rank", "vec_rank", "issued_year", "volume", "has_recover"]
+    },
+    {
+      "id": "rerank_ltr_baseline_v1",
+      "task": "rerank",
+      "backend": "baseline_ltr",
+      "artifact_uri": "local://models/rerank_ltr_baseline_v1.onnx",
+      "active": false,
+      "canary": false,
+      "canary_weight": 0.0,
+      "status": "ready",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  ]
+}

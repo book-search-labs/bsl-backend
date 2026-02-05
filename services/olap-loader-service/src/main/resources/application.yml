@@ -1,0 +1,59 @@
+server:
+  port: ${OLAP_LOADER_PORT:8096}
+
+spring:
+  application:
+    name: olap-loader-service
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${OLAP_CONSUMER_GROUP:olap-loader}
+      auto-offset-reset: ${OLAP_CONSUMER_OFFSET_RESET:earliest}
+      enable-auto-commit: true
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+olap:
+  clickhouse:
+    base-url: ${CLICKHOUSE_URL:http://localhost:8123}
+    database: ${CLICKHOUSE_DB:bsl_olap}
+    batch-size: ${CLICKHOUSE_BATCH_SIZE:200}
+    flush-interval-ms: ${CLICKHOUSE_FLUSH_MS:1000}
+    request-timeout-ms: ${CLICKHOUSE_TIMEOUT_MS:2000}
+  topics:
+    search-impression: ${OLAP_TOPIC_SEARCH_IMPRESSION:search_impression_v1}
+    search-click: ${OLAP_TOPIC_SEARCH_CLICK:search_click_v1}
+    search-dwell: ${OLAP_TOPIC_SEARCH_DWELL:search_dwell_v1}
+    ac-impression: ${OLAP_TOPIC_AC_IMPRESSION:ac_impression_v1}
+    ac-select: ${OLAP_TOPIC_AC_SELECT:ac_select_v1}
+    chat-request: ${OLAP_TOPIC_CHAT_REQUEST:chat_request_v1}
+    chat-response: ${OLAP_TOPIC_CHAT_RESPONSE:chat_response_v1}
+    chat-feedback: ${OLAP_TOPIC_CHAT_FEEDBACK:chat_feedback_v1}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.95,0.99
+  tracing:
+    sampling:
+      probability: ${TRACE_SAMPLE_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}

@@ -1,0 +1,33 @@
+{
+  "version": "v1",
+  "trace_id": "trace_9f4a2c0b5e1a",
+  "request_id": "req_1b2c3d4e5f6a",
+  "metric": "ctr",
+  "count": 2,
+  "items": [
+    {
+      "suggest_id": "ac_q1",
+      "text": "해리포터",
+      "type": "QUERY",
+      "lang": "ko",
+      "impressions_7d": 120.0,
+      "clicks_7d": 15.0,
+      "ctr_7d": 0.12,
+      "popularity_7d": 0.68,
+      "last_seen_at": "2026-01-30T12:00:00Z",
+      "updated_at": "2026-01-30T12:05:00Z"
+    },
+    {
+      "suggest_id": "ac_t1",
+      "text": "해리 포터와 마법사의 돌",
+      "type": "TITLE",
+      "lang": "ko",
+      "impressions_7d": 100.0,
+      "clicks_7d": 10.0,
+      "ctr_7d": 0.10,
+      "popularity_7d": 0.70,
+      "last_seen_at": "2026-01-30T12:00:00Z",
+      "updated_at": "2026-01-30T12:05:00Z"
+    }
+  ]
+}

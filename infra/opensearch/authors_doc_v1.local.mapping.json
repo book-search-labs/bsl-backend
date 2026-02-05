@@ -1,0 +1,45 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "1s",
+    "analysis": {
+      "analyzer": {
+        "ko": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "asciifolding"]
+        }
+      },
+      "normalizer": {
+        "kw_norm": {
+          "type": "custom",
+          "filter": ["lowercase", "asciifolding"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "author_id": { "type": "keyword" },
+      "name_ko": {
+        "type": "text",
+        "analyzer": "ko",
+        "fields": {
+          "raw": { "type": "keyword", "normalizer": "kw_norm" }
+        }
+      },
+      "name_en": { "type": "text" },
+      "bio": { "type": "text" },
+      "work_count": { "type": "integer" },
+      "top_doc_ids": { "type": "keyword" },
+      "rank": {
+        "properties": {
+          "popularity_30d": { "type": "float" }
+        }
+      },
+      "updated_at": { "type": "date" }
+    }
+  }
+}

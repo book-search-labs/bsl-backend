@@ -1,0 +1,17 @@
+{
+  "logical_name": "books_doc",
+  "params": {
+    "index_prefix": "books_doc_v1_local",
+    "mapping_path": "infra/opensearch/books_doc_v1.mapping.json",
+    "delete_existing": false,
+    "batch_size": 1000,
+    "bulk_size": 1000,
+    "retry_max": 3,
+    "retry_backoff_sec": 1.0,
+    "max_failures": 1000,
+    "bulk_delay_sec": 0.0,
+    "refresh_interval_bulk": "-1",
+    "refresh_interval_post": "1s",
+    "material_kinds": ["BOOK"]
+  }
+}

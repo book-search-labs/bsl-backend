@@ -1,0 +1,40 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  data:
+    redis:
+      url: ${REDIS_URL}
+
+server:
+  port: ${BFF_PORT}
+
+bff:
+  downstream:
+    query-service:
+      base-url: ${QS_BASE_URL}
+      timeout-ms: ${QS_TIMEOUT_MS:300}
+    search-service:
+      base-url: ${SS_BASE_URL}
+      timeout-ms: ${SS_TIMEOUT_MS:400}
+    autocomplete-service:
+      base-url: ${AC_BASE_URL}
+      timeout-ms: ${AC_TIMEOUT_MS:200}
+  outbox:
+    enabled: ${BFF_OUTBOX_ENABLED:true}
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOW_ORIGINS}
+    allowed-methods: ${CORS_ALLOW_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
+    allowed-headers: ${CORS_ALLOW_HEADERS:*}
+    exposed-headers: ${CORS_EXPOSED_HEADERS:x-trace-id,x-request-id}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+
+logging:
+  level:
+    root: ${LOG_LEVEL:WARN}

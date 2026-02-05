@@ -1,0 +1,100 @@
+{"qid": "r001", "query": "harry potter philosopher stone", "relevant_doc_ids": ["b1"]}
+{"qid": "r002", "query": "harry poter philospher stone", "relevant_doc_ids": ["b1"]}
+{"qid": "r003", "query": "hp 1", "relevant_doc_ids": ["b1"]}
+{"qid": "r004", "query": "harry potter chamber of secrets", "relevant_doc_ids": ["b2"]}
+{"qid": "r005", "query": "harry potter 2", "relevant_doc_ids": ["b2"], "set": "hard"}
+{"qid": "r006", "query": "harry potter vol 2", "relevant_doc_ids": ["b2"]}
+{"qid": "r007", "query": "clean code robert martin", "relevant_doc_ids": ["b3"]}
+{"qid": "r008", "query": "clean c0de robert martin", "relevant_doc_ids": ["b3"]}
+{"qid": "r009", "query": "domain driven design", "relevant_doc_ids": ["b4"]}
+{"qid": "r010", "query": "ddd eric evans", "relevant_doc_ids": ["b4"], "set": "hard"}
+{"qid": "r011", "query": "elasticsearch guide", "relevant_doc_ids": ["b5"]}
+{"qid": "r012", "query": "elastic search guide", "relevant_doc_ids": ["b5"]}
+{"qid": "r013", "query": "effective java", "relevant_doc_ids": ["b6"]}
+{"qid": "r014", "query": "refactoring martin fowler", "relevant_doc_ids": ["b7"]}
+{"qid": "r015", "query": "design patterns gof", "relevant_doc_ids": ["b8"], "set": "hard"}
+{"qid": "r016", "query": "head first design patterns", "relevant_doc_ids": ["b9"]}
+{"qid": "r017", "query": "python data analysis", "relevant_doc_ids": ["b10"]}
+{"qid": "r018", "query": "sql tuning", "relevant_doc_ids": ["b11"]}
+{"qid": "r019", "query": "kafka streams", "relevant_doc_ids": ["b12"]}
+{"qid": "r020", "query": "microservices patterns", "relevant_doc_ids": ["b13"], "set": "hard"}
+{"qid": "r021", "query": "deep learning goodfellow", "relevant_doc_ids": ["b14"]}
+{"qid": "r022", "query": "machine learning intro", "relevant_doc_ids": ["b15"]}
+{"qid": "r023", "query": "data structures algorithms", "relevant_doc_ids": ["b16"]}
+{"qid": "r024", "query": "operating systems", "relevant_doc_ids": ["b17"]}
+{"qid": "r025", "query": "computer networks", "relevant_doc_ids": ["b18"], "set": "hard"}
+{"qid": "r026", "query": "distributed systems", "relevant_doc_ids": ["b19"]}
+{"qid": "r027", "query": "database system concepts", "relevant_doc_ids": ["b20"]}
+{"qid": "r028", "query": "\ud574\ub9ac\ud3ec\ud130 \ub9c8\ubc95\uc0ac\uc758 \ub3cc", "relevant_doc_ids": ["b1"]}
+{"qid": "r029", "query": "\ud574\ub9ac\ud3ec\ud130 1\uad8c", "relevant_doc_ids": ["b1"]}
+{"qid": "r030", "query": "\uc5d8\ub77c\uc2a4\ud2f1\uc11c\uce58 \uc785\ubb38", "relevant_doc_ids": ["b21"], "set": "hard"}
+{"qid": "r031", "query": "\ud30c\uc774\uc36c \ub370\uc774\ud130 \ubd84\uc11d", "relevant_doc_ids": ["b10"]}
+{"qid": "r032", "query": "\uba38\uc2e0\ub7ec\ub2dd \uc785\ubb38", "relevant_doc_ids": ["b15"]}
+{"qid": "r033", "query": "\uc54c\uace0\ub9ac\uc998 \uae30\ucd08", "relevant_doc_ids": ["b16"]}
+{"qid": "r034", "query": "\uc790\ub8cc\uad6c\uc870", "relevant_doc_ids": ["b16"]}
+{"qid": "r035", "query": "\ub370\uc774\ud130\ubca0\uc774\uc2a4 \uc2dc\uc2a4\ud15c", "relevant_doc_ids": ["b20"], "set": "hard"}
+{"qid": "r036", "query": "\ucfe0\ubc84\ub124\ud2f0\uc2a4 \uc785\ubb38", "relevant_doc_ids": ["b22"]}
+{"qid": "r037", "query": "\uc2a4\ud504\ub9c1 \ubd80\ud2b8 \uc785\ubb38", "relevant_doc_ids": ["b23"]}
+{"qid": "r038", "query": "spring boot 3", "relevant_doc_ids": ["b23"]}
+{"qid": "r039", "query": "spring boot microservices", "relevant_doc_ids": ["b13"]}
+{"qid": "r040", "query": "react handbook", "relevant_doc_ids": ["b24"], "set": "hard"}
+{"qid": "r041", "query": "javascript the good parts", "relevant_doc_ids": ["b25"]}
+{"qid": "r042", "query": "clean architecture", "relevant_doc_ids": ["b26"]}
+{"qid": "r043", "query": "kubernetes up and running", "relevant_doc_ids": ["b22"]}
+{"qid": "r044", "query": "docker deep dive", "relevant_doc_ids": ["b27"]}
+{"qid": "r045", "query": "system design interview", "relevant_doc_ids": ["b28"], "set": "hard"}
+{"qid": "r046", "query": "cracking the coding interview", "relevant_doc_ids": ["b29"]}
+{"qid": "r047", "query": "grokking algorithms", "relevant_doc_ids": ["b16"]}
+{"qid": "r048", "query": "\ubc18\uc9c0\uc758 \uc81c\uc655 1\uad8c", "relevant_doc_ids": ["b30"]}
+{"qid": "r049", "query": "\ubc18\uc9c0\uc758 \uc81c\uc655 2\uad8c", "relevant_doc_ids": ["b31"]}
+{"qid": "r050", "query": "\uc0bc\uad6d\uc9c0 1\uad8c", "relevant_doc_ids": ["b32"], "set": "hard"}
+{"qid": "r051", "query": "\ud0dc\ubc31\uc0b0\ub9e5 1", "relevant_doc_ids": ["b33"]}
+{"qid": "r052", "query": "\ud30c\uc774\uc36c \uc54c\uace0\ub9ac\uc998", "relevant_doc_ids": ["b16"]}
+{"qid": "r053", "query": "sample query 53", "relevant_doc_ids": ["s053"]}
+{"qid": "r054", "query": "sample query 54", "relevant_doc_ids": ["s054"]}
+{"qid": "r055", "query": "sample query 55", "relevant_doc_ids": ["s055"]}
+{"qid": "r056", "query": "sample query 56", "relevant_doc_ids": ["s056"], "set": "shadow"}
+{"qid": "r057", "query": "sample query 57", "relevant_doc_ids": ["s057"]}
+{"qid": "r058", "query": "sample query 58", "relevant_doc_ids": ["s058"]}
+{"qid": "r059", "query": "sample query 59", "relevant_doc_ids": ["s059"]}
+{"qid": "r060", "query": "sample query 60", "relevant_doc_ids": ["s060"]}
+{"qid": "r061", "query": "sample query 61", "relevant_doc_ids": ["s061"]}
+{"qid": "r062", "query": "sample query 62", "relevant_doc_ids": ["s062"]}
+{"qid": "r063", "query": "sample query 63", "relevant_doc_ids": ["s063"], "set": "shadow"}
+{"qid": "r064", "query": "sample query 64", "relevant_doc_ids": ["s064"]}
+{"qid": "r065", "query": "sample query 65", "relevant_doc_ids": ["s065"]}
+{"qid": "r066", "query": "sample query 66", "relevant_doc_ids": ["s066"]}
+{"qid": "r067", "query": "sample query 67", "relevant_doc_ids": ["s067"]}
+{"qid": "r068", "query": "sample query 68", "relevant_doc_ids": ["s068"]}
+{"qid": "r069", "query": "sample query 69", "relevant_doc_ids": ["s069"]}
+{"qid": "r070", "query": "sample query 70", "relevant_doc_ids": ["s070"], "set": "shadow"}
+{"qid": "r071", "query": "sample query 71", "relevant_doc_ids": ["s071"]}
+{"qid": "r072", "query": "sample query 72", "relevant_doc_ids": ["s072"]}
+{"qid": "r073", "query": "sample query 73", "relevant_doc_ids": ["s073"]}
+{"qid": "r074", "query": "sample query 74", "relevant_doc_ids": ["s074"]}
+{"qid": "r075", "query": "sample query 75", "relevant_doc_ids": ["s075"]}
+{"qid": "r076", "query": "sample query 76", "relevant_doc_ids": ["s076"]}
+{"qid": "r077", "query": "sample query 77", "relevant_doc_ids": ["s077"], "set": "shadow"}
+{"qid": "r078", "query": "sample query 78", "relevant_doc_ids": ["s078"]}
+{"qid": "r079", "query": "sample query 79", "relevant_doc_ids": ["s079"]}
+{"qid": "r080", "query": "sample query 80", "relevant_doc_ids": ["s080"]}
+{"qid": "r081", "query": "sample query 81", "relevant_doc_ids": ["s081"]}
+{"qid": "r082", "query": "sample query 82", "relevant_doc_ids": ["s082"]}
+{"qid": "r083", "query": "sample query 83", "relevant_doc_ids": ["s083"]}
+{"qid": "r084", "query": "sample query 84", "relevant_doc_ids": ["s084"], "set": "shadow"}
+{"qid": "r085", "query": "sample query 85", "relevant_doc_ids": ["s085"]}
+{"qid": "r086", "query": "sample query 86", "relevant_doc_ids": ["s086"]}
+{"qid": "r087", "query": "sample query 87", "relevant_doc_ids": ["s087"]}
+{"qid": "r088", "query": "sample query 88", "relevant_doc_ids": ["s088"]}
+{"qid": "r089", "query": "sample query 89", "relevant_doc_ids": ["s089"]}
+{"qid": "r090", "query": "sample query 90", "relevant_doc_ids": ["s090"]}
+{"qid": "r091", "query": "sample query 91", "relevant_doc_ids": ["s091"], "set": "shadow"}
+{"qid": "r092", "query": "sample query 92", "relevant_doc_ids": ["s092"]}
+{"qid": "r093", "query": "sample query 93", "relevant_doc_ids": ["s093"]}
+{"qid": "r094", "query": "sample query 94", "relevant_doc_ids": ["s094"]}
+{"qid": "r095", "query": "sample query 95", "relevant_doc_ids": ["s095"]}
+{"qid": "r096", "query": "sample query 96", "relevant_doc_ids": ["s096"]}
+{"qid": "r097", "query": "sample query 97", "relevant_doc_ids": ["s097"]}
+{"qid": "r098", "query": "sample query 98", "relevant_doc_ids": ["s098"], "set": "shadow"}
+{"qid": "r099", "query": "sample query 99", "relevant_doc_ids": ["s099"]}
+{"qid": "r100", "query": "sample query 100", "relevant_doc_ids": ["s100"]}

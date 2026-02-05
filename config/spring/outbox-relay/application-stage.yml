@@ -1,0 +1,34 @@
+spring:
+  config:
+    activate:
+      on-profile: stage
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+
+server:
+  port: ${OUTBOX_RELAY_PORT}
+
+outbox:
+  relay:
+    enabled: ${OUTBOX_RELAY_ENABLED}
+    poll-interval-ms: ${OUTBOX_RELAY_POLL_INTERVAL_MS}
+    batch-size: ${OUTBOX_RELAY_BATCH_SIZE}
+    max-retries: ${OUTBOX_RELAY_MAX_RETRIES}
+    backoff-ms: ${OUTBOX_RELAY_BACKOFF_MS}
+    dlq-enabled: ${OUTBOX_RELAY_DLQ_ENABLED}
+    dlq-suffix: ${OUTBOX_RELAY_DLQ_SUFFIX}
+    producer-name: ${OUTBOX_RELAY_PRODUCER}
+    topic-mapping:
+      search_impression: ${OUTBOX_RELAY_TOPIC_SEARCH_IMPRESSION}
+      search_click: ${OUTBOX_RELAY_TOPIC_SEARCH_CLICK}
+      search_dwell: ${OUTBOX_RELAY_TOPIC_SEARCH_DWELL}
+      ac_impression: ${OUTBOX_RELAY_TOPIC_AC_IMPRESSION}
+      ac_select: ${OUTBOX_RELAY_TOPIC_AC_SELECT}
+
+logging:
+  level:
+    root: ${LOG_LEVEL}

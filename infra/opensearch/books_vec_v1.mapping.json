@@ -1,0 +1,30 @@
+{
+  "settings": {
+    "index": {
+      "knn": true
+    },
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "1s"
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "doc_id": { "type": "keyword" },
+      "language_code": { "type": "keyword" },
+      "category_paths": { "type": "keyword" },
+      "kdc_node_id": { "type": "long" },
+      "concept_ids": { "type": "keyword" },
+      "embedding": {
+        "type": "knn_vector",
+        "dimension": 1024,
+        "method": {
+          "name": "hnsw",
+          "engine": "lucene",
+          "space_type": "cosinesimil"
+        }
+      },
+      "updated_at": { "type": "date" }
+    }
+  }
+}

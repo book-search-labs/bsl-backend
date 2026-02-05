@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "authority-merge-group-resolve-request.schema.json",
+  "title": "AuthorityMergeGroupResolveRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["master_material_id"],
+  "properties": {
+    "master_material_id": { "type": "string", "minLength": 1 },
+    "status": { "type": "string" }
+  }
+}

@@ -1,2 +1,31 @@
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "autocomplete-response.schema.json",
+  "title": "AutocompleteResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "trace_id", "request_id", "took_ms", "suggestions"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "took_ms": { "type": "integer", "minimum": 0 },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "score", "source"],
+        "properties": {
+          "text": { "type": "string" },
+          "score": { "type": "number" },
+          "source": { "type": "string" },
+          "suggest_id": { "type": "string" },
+          "type": { "type": "string" },
+          "target_id": { "type": "string" },
+          "target_doc_id": { "type": "string" }
+        }
+      }
+    }
+  }
 }

@@ -1,0 +1,30 @@
+spring:
+  config:
+    activate:
+      on-profile: stage
+
+server:
+  port: ${SEARCH_PORT}
+
+opensearch:
+  base-url: ${OPENSEARCH_URL}
+  doc-index: ${OPENSEARCH_DOC_INDEX}
+  vec-index: ${OPENSEARCH_VEC_INDEX}
+  connect-timeout-ms: ${OPENSEARCH_CONNECT_TIMEOUT_MS:200}
+  read-timeout-ms: ${OPENSEARCH_READ_TIMEOUT_MS:200}
+
+ranking:
+  base-url: ${RANKING_BASE_URL}
+  timeout-ms: ${RANKING_TIMEOUT_MS:200}
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOW_ORIGINS}
+    allowed-methods: ${CORS_ALLOW_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
+    allowed-headers: ${CORS_ALLOW_HEADERS:*}
+    exposed-headers: ${CORS_EXPOSED_HEADERS:x-trace-id,x-request-id}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}

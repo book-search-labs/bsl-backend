@@ -3,9 +3,7 @@ CREATE TABLE user_saved_material (
   material_id VARCHAR(128) NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY(user_id, material_id),
-  INDEX idx_usm_material (material_id),
-  CONSTRAINT fk_usm_user FOREIGN KEY(user_id) REFERENCES user_account(user_id),
-  CONSTRAINT fk_usm_material FOREIGN KEY(material_id) REFERENCES material(material_id)
+  INDEX idx_usm_material (material_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE user_shelf (
@@ -16,17 +14,14 @@ CREATE TABLE user_shelf (
   finished_at DATETIME NULL,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY(user_id, material_id),
-  INDEX idx_ushelf_status_time (user_id, shelf_status, updated_at),
-  CONSTRAINT fk_ushelf_user FOREIGN KEY(user_id) REFERENCES user_account(user_id),
-  CONSTRAINT fk_ushelf_material FOREIGN KEY(material_id) REFERENCES material(material_id)
+  INDEX idx_ushelf_status_time (user_id, shelf_status, updated_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE user_preference (
   user_id BIGINT UNSIGNED PRIMARY KEY,
   pref_json JSON NOT NULL,
   reco_opt_in TINYINT(1) NOT NULL DEFAULT 1,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_up_user FOREIGN KEY(user_id) REFERENCES user_account(user_id)
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 CREATE TABLE user_consent (
@@ -35,6 +30,5 @@ CREATE TABLE user_consent (
   version VARCHAR(32) NOT NULL,
   agreed TINYINT(1) NOT NULL,
   agreed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY(user_id, consent_type, version),
-  CONSTRAINT fk_uc_user FOREIGN KEY(user_id) REFERENCES user_account(user_id)
+  PRIMARY KEY(user_id, consent_type, version)
 ) ENGINE=InnoDB;

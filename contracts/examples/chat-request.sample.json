@@ -1,0 +1,12 @@
+{
+  "version": "v1",
+  "trace_id": "trace_demo",
+  "request_id": "req_demo",
+  "session_id": "sess_demo",
+  "message": {"role": "user", "content": "What is the return policy?"},
+  "history": [
+    {"role": "user", "content": "Hi"},
+    {"role": "assistant", "content": "Hello! How can I help?"}
+  ],
+  "options": {"stream": false, "top_k": 6}
+}

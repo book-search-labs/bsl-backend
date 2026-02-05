@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-alias.schema.json",
+  "title": "AgentAlias",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["alias_id", "alias_name", "canonical_name", "status"],
+  "properties": {
+    "alias_id": { "type": "integer" },
+    "alias_name": { "type": "string", "minLength": 1 },
+    "canonical_name": { "type": "string", "minLength": 1 },
+    "canonical_agent_id": { "type": ["string", "null"] },
+    "status": { "type": "string" },
+    "created_at": { "type": ["string", "null"], "format": "date-time" },
+    "updated_at": { "type": ["string", "null"], "format": "date-time" }
+  }
+}

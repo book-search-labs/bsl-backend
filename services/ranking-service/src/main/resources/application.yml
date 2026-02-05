@@ -1,3 +1,71 @@
 spring:
   application:
     name: ranking-service
+
+server:
+  port: ${RANKING_PORT:8082}
+
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOW_ORIGINS:http://localhost:4173,http://localhost:5173,http://localhost:5174}
+    allowed-methods: ${CORS_ALLOW_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
+    allowed-headers: ${CORS_ALLOW_HEADERS:*}
+    exposed-headers: ${CORS_EXPOSED_HEADERS:x-trace-id,x-request-id,traceparent}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.95,0.99
+  tracing:
+    sampling:
+      probability: ${TRACE_SAMPLE_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+
+logging:
+  level:
+    root: ${LOG_LEVEL:DEBUG}
+
+mis:
+  enabled: ${MIS_ENABLED:false}
+  base-url: ${MIS_BASE_URL:http://localhost:8005}
+  timeout-ms: ${MIS_TIMEOUT_MS:200}
+  model-id: ${MIS_MODEL_ID:}
+  task: ${MIS_TASK:rerank}
+
+feature-spec:
+  path: ${FEATURE_SPEC_PATH:config/features.yaml}
+  strict: ${FEATURE_SPEC_STRICT:true}
+
+feature-store:
+  path: ${FEATURE_STORE_PATH:config/feature_store.json}
+  refresh-ms: ${FEATURE_STORE_REFRESH_MS:10000}
+
+ranking:
+  cache:
+    enabled: ${RERANK_CACHE_ENABLED:true}
+    ttl-seconds: ${RERANK_CACHE_TTL_SECONDS:900}
+    max-entries: ${RERANK_CACHE_MAX_ENTRIES:10000}
+  guardrails:
+    max-candidates: ${RERANK_MAX_CANDIDATES:200}
+    max-top-n: ${RERANK_MAX_TOP_N:50}
+    max-mis-candidates: ${RERANK_MAX_MIS_CANDIDATES:100}
+    min-candidates-for-mis: ${RERANK_MIN_CANDIDATES_MIS:5}
+    min-query-length-for-mis: ${RERANK_MIN_QUERY_LEN_MIS:2}
+    timeout-ms-max: ${RERANK_TIMEOUT_MS_MAX:500}

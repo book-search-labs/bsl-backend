@@ -1,3 +1,144 @@
+server:
+  port: ${SEARCH_PORT:8080}
+
 spring:
   application:
     name: search-service
+
+opensearch:
+  base-url: ${OPENSEARCH_URL:http://localhost:9200}
+  doc-index: ${OPENSEARCH_DOC_INDEX:books_doc_read}
+  vec-index: ${OPENSEARCH_VEC_INDEX:books_vec_read}
+  chunk-index: ${OPENSEARCH_CHUNK_INDEX:book_chunks_v1}
+  connect-timeout-ms: ${OPENSEARCH_CONNECT_TIMEOUT_MS:200}
+  read-timeout-ms: ${OPENSEARCH_READ_TIMEOUT_MS:200}
+
+ranking:
+  base-url: ${RANKING_BASE_URL:http://localhost:8082}
+  timeout-ms: ${RANKING_TIMEOUT_MS:200}
+
+query-service:
+  base-url: ${QUERY_BASE_URL:http://localhost:8001}
+  timeout-ms: ${QUERY_TIMEOUT_MS:120}
+
+embedding:
+  mode: ${EMBEDDING_MODE:TOY}
+  base-url: ${EMBEDDING_BASE_URL:http://localhost:8005}
+  model: ${EMBEDDING_MODEL:}
+  timeout-ms: ${EMBEDDING_TIMEOUT_MS:200}
+  retry-count: ${EMBEDDING_RETRY_COUNT:0}
+  cache:
+    enabled: ${EMBEDDING_CACHE_ENABLED:true}
+    ttl-ms: ${EMBEDDING_CACHE_TTL_MS:60000}
+    max-entries: ${EMBEDDING_CACHE_MAX:2000}
+    max-text-length: ${EMBEDDING_CACHE_MAX_TEXT:200}
+    normalize: ${EMBEDDING_CACHE_NORMALIZE:true}
+
+search:
+  experiments:
+    enabled: ${SEARCH_EXPERIMENTS_ENABLED:false}
+    explore-rate: ${SEARCH_EXPERIMENT_EXPLORE_RATE:0.01}
+    shuffle-start: ${SEARCH_EXPERIMENT_SHUFFLE_START:5}
+    shuffle-end: ${SEARCH_EXPERIMENT_SHUFFLE_END:20}
+    min-results: ${SEARCH_EXPERIMENT_MIN_RESULTS:20}
+    min-query-length: ${SEARCH_EXPERIMENT_MIN_QUERY_LENGTH:2}
+    exclude-isbn: ${SEARCH_EXPERIMENT_EXCLUDE_ISBN:true}
+    exclude-quoted: ${SEARCH_EXPERIMENT_EXCLUDE_QUOTED:true}
+  execution:
+    pool-size: ${SEARCH_EXEC_POOL_SIZE:6}
+  budget:
+    enabled: ${SEARCH_BUDGET_ENABLED:true}
+    lexical-share: ${SEARCH_BUDGET_LEX_SHARE:0.5}
+    vector-share: ${SEARCH_BUDGET_VEC_SHARE:0.3}
+    rerank-share: ${SEARCH_BUDGET_RERANK_SHARE:0.2}
+    min-stage-ms: ${SEARCH_BUDGET_MIN_STAGE_MS:20}
+  quality:
+    low-results-hits-threshold: ${SEARCH_QUALITY_LOW_RESULTS_HITS_THRESHOLD:3}
+    low-results-top-score-threshold: ${SEARCH_QUALITY_LOW_RESULTS_TOP_SCORE_THRESHOLD:0.02}
+  vector:
+    mode: ${SEARCH_VECTOR_MODE:EMBEDDING}
+    model-id: ${SEARCH_VECTOR_MODEL_ID:}
+    cache:
+      enabled: ${SEARCH_VECTOR_CACHE_ENABLED:true}
+      ttl-ms: ${SEARCH_VECTOR_CACHE_TTL_MS:20000}
+      max-entries: ${SEARCH_VECTOR_CACHE_MAX:2000}
+      max-text-length: ${SEARCH_VECTOR_CACHE_MAX_TEXT:200}
+      normalize: ${SEARCH_VECTOR_CACHE_NORMALIZE:true}
+      cache-debug: ${SEARCH_VECTOR_CACHE_DEBUG:false}
+    promotion:
+      enabled: ${SEARCH_VECTOR_PROMOTION_ENABLED:false}
+      separators: ${SEARCH_VECTOR_PROMOTION_SEPARATORS:#,::}
+  fusion:
+    default-method: ${SEARCH_FUSION_DEFAULT:rrf}
+    experiment-enabled: ${SEARCH_FUSION_EXPERIMENT_ENABLED:false}
+    weighted-rate: ${SEARCH_FUSION_WEIGHTED_RATE:0.2}
+    lex-weight: ${SEARCH_FUSION_LEX_WEIGHT:1.0}
+    vec-weight: ${SEARCH_FUSION_VEC_WEIGHT:1.0}
+  grouping:
+    enabled: ${SEARCH_GROUPING_ENABLED:false}
+    fill-variants: ${SEARCH_GROUPING_FILL_VARIANTS:true}
+    recover-penalty: ${SEARCH_GROUPING_RECOVER_PENALTY:0.15}
+    set-penalty: ${SEARCH_GROUPING_SET_PENALTY:0.2}
+    special-penalty: ${SEARCH_GROUPING_SPECIAL_PENALTY:0.1}
+  rerank:
+    enabled: ${SEARCH_RERANK_ENABLED:true}
+    max-top-k: ${SEARCH_RERANK_MAX_TOP_K:50}
+    min-candidates: ${SEARCH_RERANK_MIN_CANDIDATES:5}
+    min-query-length: ${SEARCH_RERANK_MIN_QUERY_LENGTH:2}
+    skip-isbn: ${SEARCH_RERANK_SKIP_ISBN:true}
+  resilience:
+    embed-failure-threshold: ${SEARCH_EMBED_FAIL_THRESHOLD:3}
+    embed-open-ms: ${SEARCH_EMBED_OPEN_MS:30000}
+    vector-failure-threshold: ${SEARCH_VECTOR_FAIL_THRESHOLD:3}
+    vector-open-ms: ${SEARCH_VECTOR_OPEN_MS:30000}
+    rerank-failure-threshold: ${SEARCH_RERANK_FAIL_THRESHOLD:3}
+    rerank-open-ms: ${SEARCH_RERANK_OPEN_MS:30000}
+    rerank-hedge-delay-ms: ${SEARCH_RERANK_HEDGE_DELAY_MS:60}
+  cache:
+    serp:
+      enabled: ${SEARCH_SERP_CACHE_ENABLED:true}
+      ttl-ms: ${SEARCH_SERP_CACHE_TTL_MS:2000}
+      max-entries: ${SEARCH_SERP_CACHE_MAX:500}
+      key-prefix: ${SEARCH_SERP_CACHE_PREFIX:serp:}
+    book:
+      enabled: ${SEARCH_BOOK_CACHE_ENABLED:true}
+      ttl-ms: ${SEARCH_BOOK_CACHE_TTL_MS:60000}
+      max-entries: ${SEARCH_BOOK_CACHE_MAX:2000}
+      key-prefix: ${SEARCH_BOOK_CACHE_PREFIX:book:}
+      cache-control-max-age-seconds: ${SEARCH_BOOK_CACHE_MAX_AGE_SECONDS:60}
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOW_ORIGINS:http://localhost:4173,http://localhost:5173,http://localhost:5174}
+    allowed-methods: ${CORS_ALLOW_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
+    allowed-headers: ${CORS_ALLOW_HEADERS:*}
+    exposed-headers: ${CORS_EXPOSED_HEADERS:x-trace-id,x-request-id,traceparent}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.95,0.99
+  tracing:
+    sampling:
+      probability: ${TRACE_SAMPLE_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+
+logging:
+  level:
+    root: ${LOG_LEVEL:DEBUG}

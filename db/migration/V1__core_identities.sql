@@ -29,14 +29,11 @@ CREATE TABLE role (
 CREATE TABLE role_permission (
   role_id BIGINT UNSIGNED NOT NULL,
   perm VARCHAR(64) NOT NULL,
-  PRIMARY KEY(role_id, perm),
-  CONSTRAINT fk_rp_role FOREIGN KEY(role_id) REFERENCES role(role_id)
+  PRIMARY KEY(role_id, perm)
 ) ENGINE=InnoDB;
 
 CREATE TABLE admin_role (
   admin_id BIGINT UNSIGNED NOT NULL,
   role_id BIGINT UNSIGNED NOT NULL,
-  PRIMARY KEY(admin_id, role_id),
-  CONSTRAINT fk_ar_admin FOREIGN KEY(admin_id) REFERENCES admin_account(admin_id),
-  CONSTRAINT fk_ar_role FOREIGN KEY(role_id) REFERENCES role(role_id)
+  PRIMARY KEY(admin_id, role_id)
 ) ENGINE=InnoDB;

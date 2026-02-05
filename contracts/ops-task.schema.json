@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ops-task.schema.json",
+  "title": "OpsTask",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["task_id", "task_type", "status", "payload", "created_at", "updated_at"],
+  "properties": {
+    "task_id": { "type": "integer" },
+    "task_type": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "minLength": 1 },
+    "payload": { "type": ["object", "null"], "additionalProperties": true },
+    "assigned_admin_id": { "type": ["integer", "null"] },
+    "created_at": { "type": ["string", "null"], "format": "date-time" },
+    "updated_at": { "type": ["string", "null"], "format": "date-time" }
+  }
+}

@@ -1,2 +1,5 @@
 fastapi
+numpy
+onnxruntime
+tokenizers
 uvicorn[standard]

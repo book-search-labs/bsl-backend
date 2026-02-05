@@ -16,6 +16,20 @@ build/
 .env
 .env.*
 !.env.example
+!config/.env.dev
+!config/.env.stage
+!config/.env.prod
+data/nlk/
+data/nlk/**
+var/ingest/
+var/ingest/**
+var/normalization/
+var/normalization/**
+var/models/
+var/models/**
+models/
+models/**
+infra/opensearch/generated/
 
 ### STS ###
 .apt_generated

@@ -1,0 +1,50 @@
+{"qid": "e001", "query": "harry potter philosopher stone", "relevant_doc_ids": ["b1"]}
+{"qid": "e002", "query": "harry poter philospher stone", "relevant_doc_ids": ["b1"]}
+{"qid": "e003", "query": "hp 1", "relevant_doc_ids": ["b1"]}
+{"qid": "e004", "query": "harry potter chamber of secrets", "relevant_doc_ids": ["b2"]}
+{"qid": "e005", "query": "harry potter 2", "relevant_doc_ids": ["b2"]}
+{"qid": "e006", "query": "harry potter vol 2", "relevant_doc_ids": ["b2"]}
+{"qid": "e007", "query": "clean code robert martin", "relevant_doc_ids": ["b3"]}
+{"qid": "e008", "query": "clean c0de robert martin", "relevant_doc_ids": ["b3"]}
+{"qid": "e009", "query": "domain driven design", "relevant_doc_ids": ["b4"]}
+{"qid": "e010", "query": "ddd eric evans", "relevant_doc_ids": ["b4"]}
+{"qid": "e011", "query": "elasticsearch guide", "relevant_doc_ids": ["b5"]}
+{"qid": "e012", "query": "elastic search guide", "relevant_doc_ids": ["b5"]}
+{"qid": "e013", "query": "effective java", "relevant_doc_ids": ["b6"]}
+{"qid": "e014", "query": "refactoring martin fowler", "relevant_doc_ids": ["b7"]}
+{"qid": "e015", "query": "design patterns gof", "relevant_doc_ids": ["b8"]}
+{"qid": "e016", "query": "head first design patterns", "relevant_doc_ids": ["b9"]}
+{"qid": "e017", "query": "python data analysis", "relevant_doc_ids": ["b10"]}
+{"qid": "e018", "query": "sql tuning", "relevant_doc_ids": ["b11"]}
+{"qid": "e019", "query": "kafka streams", "relevant_doc_ids": ["b12"]}
+{"qid": "e020", "query": "microservices patterns", "relevant_doc_ids": ["b13"]}
+{"qid": "e021", "query": "deep learning goodfellow", "relevant_doc_ids": ["b14"]}
+{"qid": "e022", "query": "machine learning intro", "relevant_doc_ids": ["b15"]}
+{"qid": "e023", "query": "data structures algorithms", "relevant_doc_ids": ["b16"]}
+{"qid": "e024", "query": "operating systems", "relevant_doc_ids": ["b17"]}
+{"qid": "e025", "query": "computer networks", "relevant_doc_ids": ["b18"]}
+{"qid": "e026", "query": "distributed systems", "relevant_doc_ids": ["b19"]}
+{"qid": "e027", "query": "database system concepts", "relevant_doc_ids": ["b20"]}
+{"qid": "e028", "query": "\ud574\ub9ac\ud3ec\ud130 \ub9c8\ubc95\uc0ac\uc758 \ub3cc", "relevant_doc_ids": ["b1"]}
+{"qid": "e029", "query": "\ud574\ub9ac\ud3ec\ud130 1\uad8c", "relevant_doc_ids": ["b1"]}
+{"qid": "e030", "query": "\uc5d8\ub77c\uc2a4\ud2f1\uc11c\uce58 \uc785\ubb38", "relevant_doc_ids": ["b21"]}
+{"qid": "e031", "query": "\ud30c\uc774\uc36c \ub370\uc774\ud130 \ubd84\uc11d", "relevant_doc_ids": ["b10"]}
+{"qid": "e032", "query": "\uba38\uc2e0\ub7ec\ub2dd \uc785\ubb38", "relevant_doc_ids": ["b15"]}
+{"qid": "e033", "query": "\uc54c\uace0\ub9ac\uc998 \uae30\ucd08", "relevant_doc_ids": ["b16"]}
+{"qid": "e034", "query": "\uc790\ub8cc\uad6c\uc870", "relevant_doc_ids": ["b16"]}
+{"qid": "e035", "query": "\ub370\uc774\ud130\ubca0\uc774\uc2a4 \uc2dc\uc2a4\ud15c", "relevant_doc_ids": ["b20"]}
+{"qid": "e036", "query": "\ucfe0\ubc84\ub124\ud2f0\uc2a4 \uc785\ubb38", "relevant_doc_ids": ["b22"]}
+{"qid": "e037", "query": "\uc2a4\ud504\ub9c1 \ubd80\ud2b8 \uc785\ubb38", "relevant_doc_ids": ["b23"]}
+{"qid": "e038", "query": "sample query 38", "relevant_doc_ids": ["s038"]}
+{"qid": "e039", "query": "sample query 39", "relevant_doc_ids": ["s039"]}
+{"qid": "e040", "query": "sample query 40", "relevant_doc_ids": ["s040"]}
+{"qid": "e041", "query": "sample query 41", "relevant_doc_ids": ["s041"]}
+{"qid": "e042", "query": "sample query 42", "relevant_doc_ids": ["s042"]}
+{"qid": "e043", "query": "sample query 43", "relevant_doc_ids": ["s043"]}
+{"qid": "e044", "query": "sample query 44", "relevant_doc_ids": ["s044"]}
+{"qid": "e045", "query": "sample query 45", "relevant_doc_ids": ["s045"]}
+{"qid": "e046", "query": "sample query 46", "relevant_doc_ids": ["s046"]}
+{"qid": "e047", "query": "sample query 47", "relevant_doc_ids": ["s047"]}
+{"qid": "e048", "query": "sample query 48", "relevant_doc_ids": ["s048"]}
+{"qid": "e049", "query": "sample query 49", "relevant_doc_ids": ["s049"]}
+{"qid": "e050", "query": "sample query 50", "relevant_doc_ids": ["s050"]}

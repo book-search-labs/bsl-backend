@@ -1,0 +1,66 @@
+server:
+  port: ${OUTBOX_RELAY_PORT:8095}
+
+spring:
+  application:
+    name: outbox-relay-service
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/bsl}
+    username: ${DB_USER:bsl}
+    password: ${DB_PASSWORD:bsl}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all
+      retries: ${KAFKA_PRODUCER_RETRIES:3}
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+outbox:
+  relay:
+    enabled: ${OUTBOX_RELAY_ENABLED:true}
+    poll-interval-ms: ${OUTBOX_RELAY_POLL_INTERVAL_MS:1000}
+    batch-size: ${OUTBOX_RELAY_BATCH_SIZE:200}
+    max-retries: ${OUTBOX_RELAY_MAX_RETRIES:3}
+    backoff-ms: ${OUTBOX_RELAY_BACKOFF_MS:200}
+    dlq-enabled: ${OUTBOX_RELAY_DLQ_ENABLED:true}
+    dlq-suffix: ${OUTBOX_RELAY_DLQ_SUFFIX:.dlq}
+    producer-name: ${OUTBOX_RELAY_PRODUCER:outbox-relay}
+    topic-mapping:
+      search_impression: ${OUTBOX_RELAY_TOPIC_SEARCH_IMPRESSION:search_impression_v1}
+      search_click: ${OUTBOX_RELAY_TOPIC_SEARCH_CLICK:search_click_v1}
+      search_dwell: ${OUTBOX_RELAY_TOPIC_SEARCH_DWELL:search_dwell_v1}
+      ac_impression: ${OUTBOX_RELAY_TOPIC_AC_IMPRESSION:ac_impression_v1}
+      ac_select: ${OUTBOX_RELAY_TOPIC_AC_SELECT:ac_select_v1}
+      chat_request_v1: ${OUTBOX_RELAY_TOPIC_CHAT_REQUEST:chat_request_v1}
+      chat_response_v1: ${OUTBOX_RELAY_TOPIC_CHAT_RESPONSE:chat_response_v1}
+      chat_feedback_v1: ${OUTBOX_RELAY_TOPIC_CHAT_FEEDBACK:chat_feedback_v1}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.95,0.99
+  tracing:
+    sampling:
+      probability: ${TRACE_SAMPLE_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}

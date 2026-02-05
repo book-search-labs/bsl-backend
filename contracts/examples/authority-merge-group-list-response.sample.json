@@ -1,0 +1,18 @@
+{
+  "version": "v1",
+  "trace_id": "trace_demo",
+  "request_id": "req_demo",
+  "count": 1,
+  "items": [
+    {
+      "group_id": 1,
+      "status": "OPEN",
+      "rule_version": "v1",
+      "group_key": "hash_key",
+      "master_material_id": null,
+      "members": { "materials": ["nlk:CMO-1", "nlk:CMO-2"] },
+      "created_at": "2026-01-31T00:00:00Z",
+      "updated_at": "2026-01-31T00:00:00Z"
+    }
+  ]
+}

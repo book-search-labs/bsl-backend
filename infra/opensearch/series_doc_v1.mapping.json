@@ -1,0 +1,22 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "1s"
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "series_id": { "type": "keyword" },
+      "name": {
+        "type": "text",
+        "fields": {
+          "raw": { "type": "keyword" }
+        }
+      },
+      "work_count": { "type": "integer" },
+      "top_doc_ids": { "type": "keyword" },
+      "updated_at": { "type": "date" }
+    }
+  }
+}

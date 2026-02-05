@@ -1,0 +1,122 @@
+openapi: 3.0.3
+info:
+  title: BFF Internal API (Downstream)
+  version: v1
+paths:
+  /query-context:
+    post:
+      summary: QS query context
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: object
+                  required: [raw]
+                  properties:
+                    raw:
+                      type: string
+      responses:
+        "200":
+          description: Query context
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /query/prepare:
+    post:
+      summary: QS query prepare (QueryContext v1)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../query-prepare-request.schema.json
+      responses:
+        "200":
+          description: QueryContext v1
+          content:
+            application/json:
+              schema:
+                $ref: ../query_context/v1/query-context.schema.json
+  /query/enhance:
+    post:
+      summary: QS query enhance (spell/rewrite gating)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../query-enhance-request.schema.json
+      responses:
+        "200":
+          description: Query enhance response
+          content:
+            application/json:
+              schema:
+                $ref: ../query-enhance-response.schema.json
+  /internal/qc/rewrite/failures:
+    get:
+      summary: QS rewrite failure cases
+      parameters:
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Failure list
+          content:
+            application/json:
+              schema:
+                $ref: ../query-rewrite-failure-response.schema.json
+  /search:
+    post:
+      summary: Search service request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Search response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /autocomplete:
+    get:
+      summary: Autocomplete service request
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: size
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Autocomplete response
+          content:
+            application/json:
+              schema:
+                $ref: ../autocomplete-response.schema.json

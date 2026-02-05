@@ -1,0 +1,12 @@
+{
+  "version": "v1",
+  "trace_id": "trace_demo",
+  "request_id": "req_demo",
+  "session_id": "sess_demo",
+  "message_id": "msg_001",
+  "rating": "down",
+  "reason_code": "hallucination",
+  "comment": "Answer cites the wrong policy.",
+  "flag_hallucination": true,
+  "flag_insufficient": false
+}
