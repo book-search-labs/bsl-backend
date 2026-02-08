@@ -3,19 +3,20 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-COMPOSE_FILE="$ROOT_DIR/infra/docker/docker-compose.yml"
+COMPOSE_FILE="$ROOT_DIR/compose.yaml"
+COMPOSE_PROJECT="${COMPOSE_PROJECT:-bsl-core}"
 OS_URL="${OS_URL:-http://localhost:9200}"
 MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-localroot}"
 
 print_logs() {
   echo "OpenSearch logs (last 200 lines):"
-  docker compose -f "$COMPOSE_FILE" logs opensearch --tail=200 || true
+  docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" logs opensearch --tail=200 || true
 }
 
 trap 'print_logs' ERR
 
 echo "Starting OpenSearch + MySQL (docker compose)..."
-docker compose -f "$COMPOSE_FILE" up -d
+docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" up -d mysql opensearch opensearch-dashboards
 
 echo "Waiting for OpenSearch to become ready..."
 for i in $(seq 1 60); do
@@ -33,7 +34,7 @@ done
 
 echo "Waiting for MySQL to become ready..."
 for i in $(seq 1 60); do
-  if docker compose -f "$COMPOSE_FILE" exec -T mysql \
+  if docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" exec -T mysql \
     mysqladmin ping -uroot -p"$MYSQL_ROOT_PASSWORD" --silent >/dev/null 2>&1; then
     echo "MySQL is ready."
     break

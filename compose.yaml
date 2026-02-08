@@ -1,7 +1,8 @@
+name: bsl-backend
+
 services:
   mysql:
     image: mysql:8.0.36
-    container_name: mysql
     command: ["--max_allowed_packet=256M", "--local-infile=1"]
     environment:
       - MYSQL_ROOT_PASSWORD=localroot
@@ -24,7 +25,6 @@ services:
       context: ./infra/docker
       dockerfile: opensearch/Dockerfile
     image: bsl-opensearch:2.11.1-nori
-    container_name: opensearch
     environment:
       - discovery.type=single-node
       - plugins.security.disabled=true
@@ -44,7 +44,6 @@ services:
 
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.11.1
-    container_name: opensearch-dashboards
     ports:
       - "5601:5601"
     environment:
@@ -53,9 +52,20 @@ services:
     depends_on:
       - opensearch
 
+  redis:
+    image: redis:7.2-alpine
+    profiles: ["data"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   clickhouse:
     image: clickhouse/clickhouse-server:24.8
-    container_name: clickhouse
+    profiles: ["data"]
     ports:
       - "8123:8123"
       - "9000:9000"
@@ -69,7 +79,7 @@ services:
 
   redpanda:
     image: redpandadata/redpanda:latest
-    container_name: redpanda
+    profiles: ["data"]
     command:
       - redpanda
       - start
@@ -84,19 +94,103 @@ services:
       - "9092:9092"
       - "9644:9644"
 
-  redis:
-    image: redis:7.2-alpine
-    container_name: redis
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.98.0
+    profiles: ["observability"]
+    command: ["--config=/etc/otel-collector.yml"]
+    volumes:
+      - ./infra/observability/otel-collector.yml:/etc/otel-collector.yml:ro
     ports:
-      - "6379:6379"
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      - tempo
+
+  tempo:
+    image: grafana/tempo:2.4.1
+    profiles: ["observability"]
+    command: ["-config.file=/etc/tempo.yml"]
+    volumes:
+      - ./infra/observability/tempo.yml:/etc/tempo.yml:ro
+    ports:
+      - "3200:3200"
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    profiles: ["observability"]
+    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+    volumes:
+      - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    profiles: ["observability"]
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./infra/observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./infra/observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - tempo
+
+  loki:
+    image: grafana/loki:2.9.8
+    profiles: ["observability"]
+    command: ["-config.file=/etc/loki.yml"]
+    volumes:
+      - ./infra/observability/loki.yml:/etc/loki.yml:ro
+    ports:
+      - "3100:3100"
+
+  promtail:
+    image: grafana/promtail:2.9.8
+    profiles: ["observability"]
+    command: ["-config.file=/etc/promtail.yml"]
+    volumes:
+      - ./infra/observability/promtail.yml:/etc/promtail.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      - loki
+
+  metabase:
+    image: metabase/metabase:v0.50.23
+    profiles: ["observability"]
+    environment:
+      - MB_DB_FILE=/metabase-data/metabase.db
+    volumes:
+      - metabase-data:/metabase-data
+    ports:
+      - "3001:3000"
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["llm"]
+    ports:
+      - "11434:11434"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 20
+    volumes:
+      - ollama-data:/root/.ollama
+
 volumes:
   mysql-data:
+    external: true
+    name: docker_mysql-data
   opensearch-data:
   opensearch-backup:
   clickhouse-data:
+  metabase-data:
+  ollama-data:
   gradle-cache:
