@@ -31,7 +31,7 @@ For full data ingestion, see **NLK Ingestion (Local)** below.
 
 Start MySQL (if not already running):
 ```bash
-docker compose -f compose.yaml up -d mysql
+docker compose up -d mysql
 ```
 
 Run Flyway (CLI installed):
@@ -233,7 +233,7 @@ If Redis is not available, cache invalidation is skipped.
 
 ### Start Kafka (Redpanda single-node)
 ```bash
-docker compose up -d redpanda
+docker compose --profile data up -d redpanda
 ```
 
 Alternate (standalone):
@@ -272,7 +272,7 @@ python3 scripts/outbox/replay_outbox.py --status FAILED --limit 500
 
 ### Start ClickHouse
 ```bash
-docker compose up -d clickhouse
+docker compose --profile data up -d clickhouse
 ```
 
 ### Run OLAP loader (Kafka → ClickHouse)

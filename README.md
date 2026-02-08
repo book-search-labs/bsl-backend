@@ -51,8 +51,10 @@ Stop infra (removes volumes by default):
 ```
 
 Notes:
-- `./scripts/local_up.sh` uses `infra/docker/docker-compose.yml` (OpenSearch + MySQL) and seeds indices.
-- For the broader infra stack (Redis/ClickHouse/Redpanda), use `docker compose -f compose.yaml up -d`.
+- `./scripts/local_up.sh` uses `compose.yaml` (MySQL + OpenSearch + Dashboards) and seeds indices.
+- For the broader infra stack (Redis/ClickHouse/Redpanda), use `docker compose --profile data up -d`.
+- Observability stack: `./scripts/observability_up.sh` (uses `compose.yaml` + `observability` profile).
+- Local Ollama: `make local-llm-up` (uses `compose.yaml` + `llm` profile).
 
 ## Ingestion & indexing
 
