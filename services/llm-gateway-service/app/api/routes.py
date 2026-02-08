@@ -11,16 +11,13 @@ from fastapi.responses import StreamingResponse
 
 from app.api.schemas import GenerateRequest, GenerateResponse
 from app.core.audit import append_audit
+from app.core.budget import BudgetManager
 from app.core.limiter import RateLimiter
 from app.core.settings import SETTINGS
 
 router = APIRouter()
 rate_limiter = RateLimiter(SETTINGS.rate_limit_rpm)
-
-state = {
-    "spent_usd": 0.0,
-    "spent_day": None,
-}
+budget_manager = BudgetManager.from_settings(SETTINGS)
 
 
 def _estimate_tokens(text: str) -> int:
@@ -34,14 +31,14 @@ def _charge_cost(tokens: int) -> float:
 
 
 def _check_budget(cost: float) -> None:
-    if SETTINGS.cost_budget_usd <= 0:
+    if cost <= 0 or not budget_manager.enabled():
         return
-    if state["spent_usd"] + cost > SETTINGS.cost_budget_usd:
+    if not budget_manager.can_spend(cost):
         raise HTTPException(status_code=429, detail={"code": "budget_exceeded", "message": "cost budget exceeded"})
 
 
 def _apply_charge(cost: float) -> None:
-    state["spent_usd"] += cost
+    budget_manager.spend(cost)
 
 
 def _synthesize_answer(payload: GenerateRequest) -> tuple[str, list[str]]:

@@ -13,6 +13,9 @@ class Settings:
     cost_budget_usd: float
     cost_per_1k_tokens: float
     audit_log_path: str
+    redis_url: str
+    budget_window_sec: int
+    budget_key: str
     provider: str
     base_url: str
     api_key: str
@@ -33,6 +36,9 @@ def load_settings() -> Settings:
         cost_budget_usd=float(os.getenv("LLM_COST_BUDGET_USD", "5.0")),
         cost_per_1k_tokens=float(os.getenv("LLM_COST_PER_1K", "0.002")),
         audit_log_path=os.getenv("LLM_AUDIT_LOG_PATH", "var/llm_gateway/audit.log"),
+        redis_url=os.getenv("LLM_REDIS_URL", "").strip(),
+        budget_window_sec=int(os.getenv("LLM_BUDGET_WINDOW_SEC", "86400")),
+        budget_key=os.getenv("LLM_BUDGET_KEY", "llm:budget:global"),
         provider=os.getenv("LLM_PROVIDER", "toy").strip().lower(),
         base_url=os.getenv("LLM_BASE_URL", "http://localhost:11434/v1").rstrip("/"),
         api_key=os.getenv("LLM_API_KEY", ""),
