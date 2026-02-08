@@ -189,8 +189,12 @@ volumes:
     external: true
     name: docker_mysql-data
   opensearch-data:
+    external: true
+    name: docker_opensearch-data
   opensearch-backup:
   clickhouse-data:
+    external: true
+    name: docker_clickhouse-data
   metabase-data:
   ollama-data:
   gradle-cache:

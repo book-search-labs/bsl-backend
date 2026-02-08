@@ -33,6 +33,8 @@ def javaServices = [
 def pythonServices = [
     project(':services:query-service'),
     project(':services:model-inference-service'),
+    project(':services:index-writer-service'),
+    project(':services:llm-gateway-service'),
 ]
 
 configure(javaServices) {
