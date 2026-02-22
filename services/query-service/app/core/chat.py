@@ -61,6 +61,30 @@ def _prompt_version() -> str:
     return os.getenv("QS_CHAT_PROMPT_VERSION", "v1")
 
 
+def _output_guard_enabled() -> bool:
+    return str(os.getenv("QS_CHAT_OUTPUT_GUARD_ENABLED", "1")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _guard_high_risk_min_citations() -> int:
+    return max(1, int(os.getenv("QS_CHAT_GUARD_HIGH_RISK_MIN_CITATIONS", "1")))
+
+
+def _risk_band_high_keywords() -> List[str]:
+    raw = os.getenv(
+        "QS_CHAT_RISK_HIGH_KEYWORDS",
+        "주문,결제,환불,취소,배송,주소,payment,refund,cancel,shipping,address",
+    )
+    return [item.strip().lower() for item in raw.split(",") if item.strip()]
+
+
+def _guard_forbidden_answer_keywords() -> List[str]:
+    raw = os.getenv(
+        "QS_CHAT_GUARD_FORBIDDEN_ANSWER_KEYWORDS",
+        "무조건,반드시,절대,100% 보장,guarantee,always",
+    )
+    return [item.strip().lower() for item in raw.split(",") if item.strip()]
+
+
 def _extract_citations_from_text(text: str) -> List[str]:
     matches = re.findall(r"\[([a-zA-Z0-9_\-:#]+)\]", text or "")
     seen: set[str] = set()
@@ -149,6 +173,69 @@ def _fallback(trace_id: str, request_id: str, message: str, reason_code: str) ->
         "citations": [],
         "status": "insufficient_evidence",
     }
+
+
+def _is_high_risk_query(query: str) -> bool:
+    q = (query or "").lower()
+    if not q:
+        return False
+    return any(keyword in q for keyword in _risk_band_high_keywords())
+
+
+def _contains_forbidden_claim(answer: str) -> bool:
+    text = (answer or "").lower()
+    if not text:
+        return False
+    return any(keyword in text for keyword in _guard_forbidden_answer_keywords())
+
+
+def _compute_risk_band(query: str, status: str, citations: List[str], guard_reason: Optional[str]) -> str:
+    if status in {"error", "insufficient_evidence"}:
+        return "R3"
+    if guard_reason:
+        return "R3"
+    high_risk = _is_high_risk_query(query)
+    citation_count = len(citations or [])
+    if high_risk and citation_count <= 0:
+        return "R3"
+    if high_risk:
+        return "R2"
+    if citation_count <= 0:
+        return "R1"
+    return "R0"
+
+
+def _guard_answer(
+    query: str,
+    answer_text: str,
+    citations: List[str],
+    trace_id: str,
+    request_id: str,
+) -> tuple[Optional[Dict[str, Any]], Optional[str]]:
+    if not _output_guard_enabled():
+        return None, None
+    answer = (answer_text or "").strip()
+    if not answer:
+        return _fallback(trace_id, request_id, "응답 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.", "OUTPUT_GUARD_EMPTY_ANSWER"), "OUTPUT_GUARD_EMPTY_ANSWER"
+
+    high_risk = _is_high_risk_query(query)
+    min_citations = _guard_high_risk_min_citations() if high_risk else 1
+    if len(citations or []) < min_citations:
+        return _fallback(
+            trace_id,
+            request_id,
+            "근거 확인이 충분하지 않아 확정 답변을 제공할 수 없습니다.",
+            "OUTPUT_GUARD_INSUFFICIENT_CITATIONS",
+        ), "OUTPUT_GUARD_INSUFFICIENT_CITATIONS"
+
+    if high_risk and _contains_forbidden_claim(answer):
+        return _fallback(
+            trace_id,
+            request_id,
+            "정확한 근거가 확인되지 않아 확답할 수 없습니다. 주문/배송/환불 정보를 다시 확인해 주세요.",
+            "OUTPUT_GUARD_FORBIDDEN_CLAIM",
+        ), "OUTPUT_GUARD_FORBIDDEN_CLAIM"
+    return None, None
 
 
 def _validate_citations(raw_citations: List[str], chunks: List[dict[str, Any]]) -> List[str]:
@@ -461,6 +548,7 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return prepared.get("response")
 
+    query = prepared.get("query") or ""
     canonical_key = prepared.get("canonical_key")
     locale = prepared.get("locale")
     selected = prepared.get("selected") or []
@@ -472,7 +560,7 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
             metrics.inc("chat_requests_total", {"decision": "answer_cache_hit"})
             return cached.get("response")
 
-    payload = _build_llm_payload(request, trace_id, request_id, prepared.get("query") or "", selected)
+    payload = _build_llm_payload(request, trace_id, request_id, query, selected)
     try:
         data = await _call_llm_json(payload, trace_id, request_id)
     except Exception:
@@ -486,6 +574,16 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return _fallback(trace_id, request_id, "Insufficient evidence to answer with citations.", "LLM_NO_CITATIONS")
 
+    guarded_response, guard_reason = _guard_answer(query, answer_text, citations, trace_id, request_id)
+    if guarded_response is not None:
+        metrics.inc("chat_output_guard_total", {"result": "blocked", "reason": guard_reason or "unknown"})
+        metrics.inc(
+            "chat_answer_risk_band_total",
+            {"band": _compute_risk_band(query, guarded_response.get("status", "insufficient_evidence"), [], guard_reason)},
+        )
+        metrics.inc("chat_requests_total", {"decision": "fallback"})
+        return guarded_response
+
     response = {
         "version": "v1",
         "trace_id": trace_id,
@@ -495,6 +593,8 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
         "citations": citations,
         "status": "ok",
     }
+    metrics.inc("chat_output_guard_total", {"result": "pass", "reason": "ok"})
+    metrics.inc("chat_answer_risk_band_total", {"band": _compute_risk_band(query, "ok", citations, None)})
     if _answer_cache_enabled():
         _CACHE.set_json(answer_cache_key, {"response": response}, ttl=max(1, _answer_cache_ttl_sec()))
 
@@ -507,15 +607,22 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
     if not prepared.get("ok"):
         response = prepared.get("response") or _fallback(trace_id, request_id, "Insufficient evidence to answer with citations.", "RAG_NO_CHUNKS")
         answer = response.get("answer", {}).get("content") if isinstance(response.get("answer"), dict) else ""
-        yield _sse_event("meta", {"trace_id": trace_id, "request_id": request_id, "status": "fallback"})
+        risk_band = _compute_risk_band("", response.get("status", "insufficient_evidence"), [], "RAG_NO_CHUNKS")
+        yield _sse_event(
+            "meta",
+            {"trace_id": trace_id, "request_id": request_id, "status": "fallback", "sources": [], "citations": [], "risk_band": risk_band},
+        )
         yield _sse_event("delta", {"delta": answer})
-        yield _sse_event("done", {"status": response.get("status", "insufficient_evidence"), "citations": []})
+        yield _sse_event("done", {"status": response.get("status", "insufficient_evidence"), "citations": [], "risk_band": risk_band})
+        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return
 
+    query = prepared.get("query") or ""
     canonical_key = prepared.get("canonical_key")
     locale = prepared.get("locale")
     selected = prepared.get("selected") or []
+    sources = _format_sources(selected)
     answer_cache_key = _answer_cache_key(canonical_key, locale)
 
     if _answer_cache_enabled():
@@ -523,13 +630,27 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
         if isinstance(cached, dict) and isinstance(cached.get("response"), dict):
             cached_response = cached.get("response")
             cached_answer = cached_response.get("answer") if isinstance(cached_response.get("answer"), dict) else {}
-            yield _sse_event("meta", {"trace_id": trace_id, "request_id": request_id, "status": "cached"})
+            cached_citations = [str(item) for item in (cached_response.get("citations") or []) if isinstance(item, str)]
+            cached_status = str(cached_response.get("status") or "ok")
+            risk_band = _compute_risk_band(query, cached_status, cached_citations, None)
+            yield _sse_event(
+                "meta",
+                {
+                    "trace_id": trace_id,
+                    "request_id": request_id,
+                    "status": "cached",
+                    "sources": sources,
+                    "citations": cached_citations,
+                    "risk_band": risk_band,
+                },
+            )
             yield _sse_event("delta", {"delta": cached_answer.get("content") or ""})
-            yield _sse_event("done", {"status": "ok", "citations": cached_response.get("citations") or []})
+            yield _sse_event("done", {"status": cached_status, "citations": cached_citations, "risk_band": risk_band})
+            metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
             metrics.inc("chat_requests_total", {"decision": "answer_cache_hit"})
             return
 
-    payload = _build_llm_payload(request, trace_id, request_id, prepared.get("query") or "", selected)
+    payload = _build_llm_payload(request, trace_id, request_id, query, selected)
     if not _llm_stream_enabled():
         try:
             data = await _call_llm_json(payload, trace_id, request_id)
@@ -538,12 +659,48 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
             citations = _validate_citations([str(item) for item in raw_citations if isinstance(item, str)], selected)
             if not citations:
                 yield _sse_event("error", {"code": "LLM_NO_CITATIONS", "message": "citation mapping failed"})
-                yield _sse_event("done", {"status": "insufficient_evidence", "citations": []})
+                risk_band = _compute_risk_band(query, "insufficient_evidence", [], "LLM_NO_CITATIONS")
+                yield _sse_event("done", {"status": "insufficient_evidence", "citations": [], "risk_band": risk_band})
+                metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
                 metrics.inc("chat_requests_total", {"decision": "fallback"})
                 return
-            yield _sse_event("meta", {"trace_id": trace_id, "request_id": request_id, "status": "ok"})
+
+            guarded_response, guard_reason = _guard_answer(query, answer_text, citations, trace_id, request_id)
+            if guarded_response is not None:
+                metrics.inc("chat_output_guard_total", {"result": "blocked", "reason": guard_reason or "unknown"})
+                risk_band = _compute_risk_band(query, guarded_response.get("status", "insufficient_evidence"), [], guard_reason)
+                yield _sse_event(
+                    "meta",
+                    {
+                        "trace_id": trace_id,
+                        "request_id": request_id,
+                        "status": "guard_blocked",
+                        "sources": sources,
+                        "citations": [],
+                        "risk_band": risk_band,
+                    },
+                )
+                yield _sse_event("error", {"code": guard_reason or "OUTPUT_GUARD_BLOCKED", "message": "output guard blocked"})
+                yield _sse_event("done", {"status": guarded_response.get("status", "insufficient_evidence"), "citations": [], "risk_band": risk_band})
+                metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
+                metrics.inc("chat_requests_total", {"decision": "fallback"})
+                return
+
+            risk_band = _compute_risk_band(query, "ok", citations, None)
+            metrics.inc("chat_output_guard_total", {"result": "pass", "reason": "ok"})
+            yield _sse_event(
+                "meta",
+                {
+                    "trace_id": trace_id,
+                    "request_id": request_id,
+                    "status": "ok",
+                    "sources": sources,
+                    "citations": citations,
+                    "risk_band": risk_band,
+                },
+            )
             yield _sse_event("delta", {"delta": answer_text})
-            yield _sse_event("done", {"status": "ok", "citations": citations})
+            yield _sse_event("done", {"status": "ok", "citations": citations, "risk_band": risk_band})
             response = {
                 "version": "v1",
                 "trace_id": trace_id,
@@ -555,19 +712,39 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
             }
             if _answer_cache_enabled():
                 _CACHE.set_json(answer_cache_key, {"response": response}, ttl=max(1, _answer_cache_ttl_sec()))
+            metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
             metrics.inc("chat_requests_total", {"decision": "ok"})
             return
         except Exception:
             yield _sse_event("error", {"code": "PROVIDER_TIMEOUT", "message": "LLM gateway unavailable"})
-            yield _sse_event("done", {"status": "error", "citations": []})
+            risk_band = _compute_risk_band(query, "error", [], "PROVIDER_TIMEOUT")
+            yield _sse_event("done", {"status": "error", "citations": [], "risk_band": risk_band})
+            metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
             metrics.inc("chat_requests_total", {"decision": "fallback"})
             return
 
+    yield _sse_event(
+        "meta",
+        {
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "status": "streaming",
+            "sources": sources,
+            "citations": [],
+        },
+    )
     stream_iter, stream_state = await _stream_llm(payload, trace_id, request_id)
     async for event in stream_iter:
+        if event.startswith("event: done"):
+            continue
+        if event.startswith("event: meta"):
+            continue
         yield event
 
     if stream_state.get("llm_error"):
+        risk_band = _compute_risk_band(query, "error", [], "PROVIDER_TIMEOUT")
+        yield _sse_event("done", {"status": "error", "citations": [], "risk_band": risk_band})
+        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return
 
@@ -577,7 +754,19 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
     if not citations:
         metrics.inc("chat_fallback_total", {"reason": "LLM_NO_CITATIONS"})
         yield _sse_event("error", {"code": "LLM_NO_CITATIONS", "message": "citation mapping failed"})
-        yield _sse_event("done", {"status": "insufficient_evidence", "citations": []})
+        risk_band = _compute_risk_band(query, "insufficient_evidence", [], "LLM_NO_CITATIONS")
+        yield _sse_event("done", {"status": "insufficient_evidence", "citations": [], "risk_band": risk_band})
+        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
+        metrics.inc("chat_requests_total", {"decision": "fallback"})
+        return
+
+    guarded_response, guard_reason = _guard_answer(query, answer_text, citations, trace_id, request_id)
+    if guarded_response is not None:
+        metrics.inc("chat_output_guard_total", {"result": "blocked", "reason": guard_reason or "unknown"})
+        risk_band = _compute_risk_band(query, guarded_response.get("status", "insufficient_evidence"), [], guard_reason)
+        yield _sse_event("error", {"code": guard_reason or "OUTPUT_GUARD_BLOCKED", "message": "output guard blocked"})
+        yield _sse_event("done", {"status": guarded_response.get("status", "insufficient_evidence"), "citations": [], "risk_band": risk_band})
+        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return
 
@@ -593,7 +782,11 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
     if _answer_cache_enabled():
         _CACHE.set_json(answer_cache_key, {"response": response}, ttl=max(1, _answer_cache_ttl_sec()))
 
-    yield _sse_event("done", {"status": stream_state.get("done_status") or "ok", "citations": citations})
+    final_status = stream_state.get("done_status") or "ok"
+    risk_band = _compute_risk_band(query, final_status, citations, None)
+    metrics.inc("chat_output_guard_total", {"result": "pass", "reason": "ok"})
+    metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
+    yield _sse_event("done", {"status": final_status, "citations": citations, "risk_band": risk_band})
     metrics.inc("chat_requests_total", {"decision": "ok"})
 
 

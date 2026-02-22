@@ -39,6 +39,11 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RestController
 @RequestMapping({"/chat", "/v1/chat"})
 public class ChatController {
+    private static final List<String> HIGH_RISK_KEYWORDS = List.of(
+        "주문", "결제", "환불", "취소", "배송", "주소",
+        "payment", "refund", "cancel", "shipping", "address"
+    );
+
     private final QueryServiceClient queryServiceClient;
     private final ObjectMapper objectMapper;
     private final OutboxService outboxService;
@@ -69,12 +74,13 @@ public class ChatController {
 
         String conversationId = resolveConversationId(request, context);
         String canonicalKey = canonicalKey(request.getMessage().getContent());
+        String queryText = resolveQueryText(request);
         String turnId = resolveTurnId(context);
-        recordChatRequestEvent(request, context, conversationId, turnId, canonicalKey, shouldStream);
+        recordChatRequestEvent(request, context, conversationId, turnId, canonicalKey, shouldStream, queryText);
 
         if (shouldStream) {
             SseEmitter emitter = new SseEmitter(0L);
-            CompletableFuture.runAsync(() -> streamFromQueryService(emitter, body, context, conversationId, turnId, canonicalKey));
+            CompletableFuture.runAsync(() -> streamFromQueryService(emitter, body, context, conversationId, turnId, canonicalKey, queryText));
             return ResponseEntity.ok()
                 .contentType(MediaType.TEXT_EVENT_STREAM)
                 .body(emitter);
@@ -85,7 +91,7 @@ public class ChatController {
             throw new BadRequestException("chat response is empty");
         }
         BffChatResponse response = objectMapper.convertValue(responseNode, BffChatResponse.class);
-        recordChatResponseEvent(response, context, conversationId, turnId, canonicalKey, false, null);
+        recordChatResponseEvent(response, context, conversationId, turnId, canonicalKey, false, null, queryText);
         return ResponseEntity.ok(response);
     }
 
@@ -126,7 +132,8 @@ public class ChatController {
         RequestContext context,
         String conversationId,
         String turnId,
-        String canonicalKey
+        String canonicalKey,
+        String queryText
     ) {
         try {
             ChatStreamResult streamResult = queryServiceClient.chatStream(body, context, emitter);
@@ -135,7 +142,7 @@ public class ChatController {
             response.setStatus(streamResult.getStatus());
             response.setSources(List.of());
             response.setCitations(streamResult.getCitations());
-            recordChatResponseEvent(response, context, conversationId, turnId, canonicalKey, true, streamResult.getCitations());
+            recordChatResponseEvent(response, context, conversationId, turnId, canonicalKey, true, streamResult.getCitations(), queryText);
             emitter.complete();
         } catch (Exception ex) {
             BffChatResponse response = new BffChatResponse();
@@ -143,7 +150,7 @@ public class ChatController {
             response.setStatus("error");
             response.setSources(List.of());
             response.setCitations(List.of());
-            recordChatResponseEvent(response, context, conversationId, turnId, canonicalKey, true, null);
+            recordChatResponseEvent(response, context, conversationId, turnId, canonicalKey, true, null, queryText);
             try {
                 emitter.send(
                     SseEmitter.event()
@@ -163,7 +170,8 @@ public class ChatController {
         String conversationId,
         String turnId,
         String canonicalKey,
-        boolean stream
+        boolean stream,
+        String queryText
     ) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("version", request.getVersion());
@@ -174,6 +182,7 @@ public class ChatController {
         payload.put("session_id", request.getSessionId());
         payload.put("canonical_key", canonicalKey);
         payload.put("query", request.getMessage() == null ? null : request.getMessage().getContent());
+        payload.put("risk_band_hint", computeRiskBandHint(queryText));
         payload.put("stream", stream);
         payload.put("top_k", request.getOptions() == null ? null : request.getOptions().getTopK());
         payload.put("event_time", OffsetDateTime.now(ZoneOffset.UTC).toString());
@@ -187,7 +196,8 @@ public class ChatController {
         String turnId,
         String canonicalKey,
         boolean stream,
-        List<String> streamChunkIds
+        List<String> streamChunkIds,
+        String queryText
     ) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("version", response == null ? "v1" : response.getVersion());
@@ -199,6 +209,7 @@ public class ChatController {
         payload.put("status", response == null ? "error" : response.getStatus());
         payload.put("stream", stream);
         payload.put("citations", response == null ? List.of() : response.getCitations());
+        payload.put("risk_band", computeRiskBand(queryText, response == null ? "error" : response.getStatus(), response == null ? List.of() : response.getCitations()));
         payload.put("used_chunk_ids", extractChunkIds(response == null ? null : response.getSources(), streamChunkIds));
         payload.put("source_count", response == null || response.getSources() == null ? 0 : response.getSources().size());
         payload.put("event_time", OffsetDateTime.now(ZoneOffset.UTC).toString());
@@ -275,6 +286,56 @@ public class ChatController {
         } catch (NoSuchAlgorithmException ex) {
             return "ck:" + Integer.toHexString(normalized.hashCode());
         }
+    }
+
+    private String resolveQueryText(BffChatRequest request) {
+        if (request == null || request.getMessage() == null || request.getMessage().getContent() == null) {
+            return "";
+        }
+        return request.getMessage().getContent();
+    }
+
+    private String computeRiskBandHint(String queryText) {
+        return isHighRiskQuery(queryText) ? "R2" : "R0";
+    }
+
+    private String computeRiskBand(String queryText, String status, List<String> citations) {
+        String normalizedStatus = status == null ? "" : status.trim().toLowerCase();
+        int citationCount = 0;
+        if (citations != null) {
+            for (String citation : citations) {
+                if (citation != null && !citation.isBlank()) {
+                    citationCount += 1;
+                }
+            }
+        }
+        boolean highRisk = isHighRiskQuery(queryText);
+        if ("error".equals(normalizedStatus) || "insufficient_evidence".equals(normalizedStatus)) {
+            return "R3";
+        }
+        if (highRisk && citationCount == 0) {
+            return "R3";
+        }
+        if (highRisk) {
+            return "R2";
+        }
+        if (citationCount == 0) {
+            return "R1";
+        }
+        return "R0";
+    }
+
+    private boolean isHighRiskQuery(String queryText) {
+        if (queryText == null || queryText.isBlank()) {
+            return false;
+        }
+        String normalized = queryText.toLowerCase();
+        for (String keyword : HIGH_RISK_KEYWORDS) {
+            if (normalized.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private BffAckResponse ack(RequestContext context) {

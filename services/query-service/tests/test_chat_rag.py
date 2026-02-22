@@ -142,3 +142,50 @@ def test_run_chat_stream_emits_error_when_citation_mapping_fails(monkeypatch):
 
     assert any("event: error" in event and "LLM_NO_CITATIONS" in event for event in events)
     assert any("event: done" in event and "insufficient_evidence" in event for event in events)
+
+
+def test_run_chat_blocks_forbidden_claim_on_high_risk_query(monkeypatch):
+    chat._CACHE = CacheClient(None)
+
+    async def fake_prepare_chat(request, trace_id, request_id):
+        return {
+            "ok": True,
+            "query": "환불 정책 알려줘",
+            "canonical_key": "ck:test",
+            "locale": "ko-KR",
+            "selected": [
+                {
+                    "chunk_id": "chunk-1",
+                    "citation_key": "chunk-1",
+                    "doc_id": "doc-1",
+                    "title": "환불 정책",
+                    "url": "https://example.com/refund",
+                    "snippet": "환불은 정책에 따라 달라집니다.",
+                    "score": 0.9,
+                }
+            ],
+        }
+
+    async def fake_call_llm_json(payload, trace_id, request_id):
+        return {"content": "해당 주문은 반드시 100% 환불됩니다.", "citations": ["chunk-1"]}
+
+    monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
+    monkeypatch.setattr(chat, "_call_llm_json", fake_call_llm_json)
+    monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
+    monkeypatch.setenv("QS_CHAT_OUTPUT_GUARD_ENABLED", "1")
+    monkeypatch.setenv("QS_CHAT_GUARD_FORBIDDEN_ANSWER_KEYWORDS", "반드시,100%")
+
+    result = asyncio.run(chat.run_chat({"message": {"role": "user", "content": "환불 정책 알려줘"}}, "trace_test", "req_test"))
+
+    assert result["status"] == "insufficient_evidence"
+    assert "확답" in result["answer"]["content"]
+
+
+def test_compute_risk_band_high_risk_with_citations():
+    band = chat._compute_risk_band("refund status", "ok", ["chunk-1"], None)
+    assert band == "R2"
+
+
+def test_compute_risk_band_error_path():
+    band = chat._compute_risk_band("배송 상태", "error", [], "PROVIDER_TIMEOUT")
+    assert band == "R3"

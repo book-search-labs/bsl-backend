@@ -2,10 +2,12 @@ package com.bsl.bff.api;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -19,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
@@ -66,7 +69,7 @@ class ChatControllerTest {
             "\"version\":\"v1\"," +
             "\"trace_id\":\"trace_1\"," +
             "\"request_id\":\"req_1\"," +
-            "\"message\":{\"role\":\"user\",\"content\":\"hello\"}" +
+            "\"message\":{\"role\":\"user\",\"content\":\"refund status\"}" +
             "}";
 
         mockMvc.perform(post("/chat")
@@ -78,6 +81,9 @@ class ChatControllerTest {
 
         verify(queryServiceClient).chat(anyMap(), any());
         verify(queryServiceClient, never()).chatStream(anyMap(), any(), any(SseEmitter.class));
+        ArgumentCaptor<java.util.Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(java.util.Map.class);
+        verify(outboxService).record(eq("chat_response_v1"), eq("chat_session"), any(), payloadCaptor.capture());
+        assertEquals("R2", payloadCaptor.getValue().get("risk_band"));
     }
 
     @Test
