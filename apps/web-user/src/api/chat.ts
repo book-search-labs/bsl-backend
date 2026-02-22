@@ -32,6 +32,21 @@ export type ChatResponse = {
   citations: string[]
 }
 
+export type ChatStreamMeta = Partial<ChatResponse> & {
+  risk_band?: string
+}
+
+export type ChatStreamDone = {
+  status?: string
+  citations?: string[]
+  risk_band?: string
+}
+
+export type ChatStreamError = {
+  code?: string
+  message?: string
+}
+
 export type ChatFeedbackRequest = {
   version: string
   session_id: string
@@ -74,8 +89,10 @@ function parseSseChunk(buffer: string) {
 export async function streamChat(
   payload: ChatRequest,
   handlers: {
-    onMeta: (meta: ChatResponse) => void
+    onMeta: (meta: ChatStreamMeta) => void
     onToken: (token: string) => void
+    onDone?: (done: ChatStreamDone) => void
+    onError?: (error: ChatStreamError) => void
   },
 ) {
   const baseUrl = resolveBffBaseUrl()
@@ -112,8 +129,29 @@ export async function streamChat(
         } catch {
           // ignore
         }
-      } else if (evt.event === 'token') {
-        handlers.onToken(evt.data)
+      } else if (evt.event === 'token' || evt.event === 'delta') {
+        try {
+          const payloadData = JSON.parse(evt.data)
+          if (payloadData && typeof payloadData.delta === 'string') {
+            handlers.onToken(payloadData.delta)
+          } else {
+            handlers.onToken(evt.data)
+          }
+        } catch {
+          handlers.onToken(evt.data)
+        }
+      } else if (evt.event === 'done' && handlers.onDone) {
+        try {
+          handlers.onDone(JSON.parse(evt.data))
+        } catch {
+          handlers.onDone({})
+        }
+      } else if (evt.event === 'error' && handlers.onError) {
+        try {
+          handlers.onError(JSON.parse(evt.data))
+        } catch {
+          handlers.onError({ message: evt.data })
+        }
       }
     }
   }
