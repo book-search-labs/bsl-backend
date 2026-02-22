@@ -7,6 +7,11 @@ Start core infra + seed demo data:
 ./scripts/local_up.sh
 ```
 
+Hard reset volumes + run sample bootstrap (`V2 -> ingest -> V3+`):
+```bash
+./scripts/local_reset_sample_data.sh
+```
+
 Run Search Service:
 ```bash
 cd services/search-service
@@ -26,6 +31,57 @@ curl -s "http://localhost:8081/autocomplete?q=해리&size=5"
 ```
 
 For full data ingestion, see **NLK Ingestion (Local)** below.
+
+## Sample Dev Bootstrap (Recommended)
+
+For team onboarding / fresh clone, use this exact flow:
+- `3)` docker compose up
+- `4)` Flyway `V2__ingest_raw.sql` 까지
+- `5)` sample ingest
+- `6)` Flyway `V3+`
+
+One command:
+```bash
+./scripts/bootstrap_sample_dev.sh
+```
+
+Hard reset + bootstrap (recommended when data looks inconsistent):
+```bash
+./scripts/local_reset_sample_data.sh
+```
+
+Equivalent manual commands:
+```bash
+docker volume create docker_mysql-data
+docker volume create docker_opensearch-data
+docker compose up -d mysql opensearch opensearch-dashboards
+
+docker run --rm \
+  -v "$PWD/db/migration:/flyway/sql:ro" \
+  flyway/flyway:10 \
+  -url='jdbc:mysql://host.docker.internal:3306/bsl?allowPublicKeyRetrieval=true&useSSL=false' \
+  -user=bsl -password=bsl \
+  -target=2 migrate
+
+INSTALL_DEPS=1 RESET=1 FAST_MODE=1 NLK_INPUT_MODE=sample EMBED_PROVIDER=toy \
+  ./scripts/ingest/run_ingest.sh
+
+docker run --rm \
+  -v "$PWD/db/migration:/flyway/sql:ro" \
+  flyway/flyway:10 \
+  -url='jdbc:mysql://host.docker.internal:3306/bsl?allowPublicKeyRetrieval=true&useSSL=false' \
+  -user=bsl -password=bsl \
+  migrate
+```
+
+`run_ingest.sh` syncs `nlk_raw_nodes` to `raw_node` by default when `raw_node`/`ingest_batch` tables exist.
+Disable with:
+```bash
+RAW_NODE_SYNC=0 ./scripts/ingest/run_ingest.sh
+```
+
+`local_down.sh` removes external MySQL/OpenSearch volumes by default.
+Use `KEEP_VOLUME=1 ./scripts/local_down.sh` to keep data.
 
 ## Database Migrations (Flyway)
 
@@ -76,6 +132,11 @@ Notes:
 ```bash
 ./scripts/local_up.sh
 ./scripts/local_down.sh
+```
+
+Skip demo seed when you only want ingest-based data:
+```bash
+SEED_DEMO_DATA=0 ./scripts/local_up.sh
 ```
 
 ### Health + aliases
@@ -132,7 +193,7 @@ curl -s http://localhost:9200/_cat/aliases?v
 ### Smoke checks
 ```bash
 curl -s -XPOST http://localhost:9200/books_doc_read/_search -H 'Content-Type: application/json' -d '{"query":{"match":{"title_ko":"해리"}},"size":3}'
-curl -s -XPOST http://localhost:9200/books_vec_read/_search -H 'Content-Type: application/json' -d "{\"size\":3,\"query\":{\"knn\":{\"embedding\":{\"vector\":$(python3 -c 'import hashlib,random,json; seed=int(hashlib.sha256(b"b1").hexdigest()[:8],16); r=random.Random(seed); print(json.dumps([round(r.random(),6) for _ in range(1024)]))'),\"k\":3}}}}"
+curl -s -XPOST http://localhost:9200/books_vec_read/_search -H 'Content-Type: application/json' -d "{\"size\":3,\"query\":{\"knn\":{\"embedding\":{\"vector\":$(python3 -c 'import hashlib,random,json; seed=int(hashlib.sha256(b"b1").hexdigest()[:8],16); r=random.Random(seed); print(json.dumps([round(r.random(),6) for _ in range(768)]))'),\"k\":3}}}}"
 ```
 
 ---
@@ -143,6 +204,7 @@ curl -s -XPOST http://localhost:9200/books_vec_read/_search -H 'Content-Type: ap
 - Data root: `./data/nlk` (override with `NLK_DATA_DIR=/path/to/nlk`)
 - Raw files: `./data/nlk/raw`
 - Checkpoints: `./data/nlk/checkpoints` (deadletters in `./data/nlk/deadletter`)
+- Input mode: `NLK_INPUT_MODE=sample|full|all` (default: `sample`)
 
 ### Start stack + install deps
 ```bash
@@ -162,6 +224,8 @@ OpenSearch ingest defaults to `EMBED_PROVIDER=mis` and **requires** `MIS_URL`:
 EMBED_PROVIDER=mis MIS_URL=http://localhost:8005 \
   ./scripts/ingest/run_ingest_opensearch.sh
 ```
+When `NLK_INPUT_MODE=sample` and neither `EMBED_PROVIDER` nor `MIS_URL` is set,
+`run_ingest.sh` automatically falls back to `EMBED_PROVIDER=toy`.
 If you don’t want embeddings:
 ```bash
 ENABLE_VECTOR_INDEX=0 ./scripts/ingest/run_ingest_opensearch.sh
@@ -183,6 +247,7 @@ RESET=1 ./scripts/ingest/run_ingest.sh
 INGEST_TARGETS=mysql ./scripts/ingest/run_ingest.sh
 INGEST_TARGETS=opensearch ./scripts/ingest/run_ingest.sh
 FAST_MODE=1 ./scripts/ingest/run_ingest.sh
+NLK_INPUT_MODE=full ./scripts/ingest/run_ingest.sh
 ENABLE_VECTOR_INDEX=0 ./scripts/ingest/run_ingest_opensearch.sh
 ```
 

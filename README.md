@@ -24,6 +24,16 @@ Bring up core infra and seed OpenSearch:
 ./scripts/local_up.sh
 ```
 
+Recommended (fresh clone): docker compose up → Flyway V2 → sample ingest → Flyway V3+
+```bash
+make sample-bootstrap
+```
+
+Hard-reset MySQL/OpenSearch volumes, then run the sample bootstrap flow:
+```bash
+make sample-reset
+```
+
 Run Search Service (Spring Boot):
 ```bash
 ./gradlew :services:search-service:bootRun
@@ -51,14 +61,19 @@ Stop infra (removes volumes by default):
 ```
 
 Notes:
-- `./scripts/local_up.sh` uses `compose.yaml` (MySQL + OpenSearch + Dashboards) and seeds indices.
+- `./scripts/local_up.sh` uses `compose.yaml` (MySQL + OpenSearch + Dashboards) and seeds demo indices (`SEED_DEMO_DATA=0` to skip).
+- `make sample-bootstrap` runs the clone-friendly flow: `compose up` → Flyway `V2` → sample ingest → Flyway `V3+`.
+- `make sample-reset` removes containers + data volumes first, then runs the same `V2 -> sample ingest -> V3+` bootstrap.
+- `scripts/ingest/run_ingest.sh` now syncs `nlk_raw_nodes` to `raw_node` by default (`RAW_NODE_SYNC=1`), so canonical migrations using `raw_node` can consume sample data.
+- `./scripts/local_down.sh` removes external MySQL/OpenSearch volumes by default (`KEEP_VOLUME=1` to preserve).
 - For the broader infra stack (Redis/ClickHouse/Redpanda), use `docker compose --profile data up -d`.
 - Observability stack: `./scripts/observability_up.sh` (uses `compose.yaml` + `observability` profile).
 - Local Ollama: `make local-llm-up` (uses `compose.yaml` + `llm` profile).
 
 ## Ingestion & indexing
 
-For full NLK ingestion and OpenSearch bootstrap details, see `docs/RUNBOOK.md` and `scripts/ingest/`.
+`scripts/ingest/run_ingest.sh` now defaults to `NLK_INPUT_MODE=sample` (use `NLK_INPUT_MODE=full` to process non-sample files).
+For detailed ingestion/indexing steps, see `docs/RUNBOOK.md` and `scripts/ingest/`.
 
 ## Configuration
 

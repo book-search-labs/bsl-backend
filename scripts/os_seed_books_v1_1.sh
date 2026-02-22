@@ -7,6 +7,7 @@ VEC_ALIAS="${VEC_ALIAS:-books_vec_write}"
 AC_ALIAS="${AC_ALIAS:-ac_write}"
 AUTHORS_ALIAS="${AUTHORS_ALIAS:-authors_doc_write}"
 SERIES_ALIAS="${SERIES_ALIAS:-series_doc_write}"
+VEC_DIM="${VEC_DIM:-768}"
 
 if command -v python3 >/dev/null 2>&1; then
   PYTHON="python3"
@@ -32,16 +33,17 @@ done
 
 vector_for_doc() {
   local doc_id="$1"
-  "$PYTHON" - "$doc_id" <<'PY'
+  "$PYTHON" - "$doc_id" "$VEC_DIM" <<'PY'
 import sys
 import hashlib
 import json
 import random
 
 doc_id = sys.argv[1]
+vec_dim = int(sys.argv[2])
 seed = int(hashlib.sha256(doc_id.encode("utf-8")).hexdigest()[:8], 16)
 rng = random.Random(seed)
-vec = [round(rng.random(), 6) for _ in range(1024)]
+vec = [round(rng.random(), 6) for _ in range(vec_dim)]
 print(json.dumps(vec))
 PY
 }

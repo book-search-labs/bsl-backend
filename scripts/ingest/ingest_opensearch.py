@@ -49,7 +49,7 @@ EMBED_BATCH_SIZE = int(os.environ.get("EMBED_BATCH_SIZE", "32"))
 EMBED_TIMEOUT_SEC = float(os.environ.get("EMBED_TIMEOUT_SEC", "5"))
 EMBED_MAX_RETRY = int(os.environ.get("EMBED_MAX_RETRY", "3"))
 EMBED_FALLBACK_TO_TOY = os.environ.get("EMBED_FALLBACK_TO_TOY", "0") == "1"
-EMBED_DIM = int(os.environ.get("EMBED_DIM", "1024"))
+EMBED_DIM = int(os.environ.get("EMBED_DIM", "768"))
 EMBED_NORMALIZE = os.environ.get("EMBED_NORMALIZE", "1") == "1"
 EMBED_CACHE = os.environ.get("EMBED_CACHE", "off").lower()
 EMBED_CACHE_PATH = os.environ.get("EMBED_CACHE_PATH", "data/cache/emb.sqlite")
@@ -121,6 +121,8 @@ def post_bulk(index_alias: str, actions: List[Dict[str, Any]], deadletter_path: 
 
 
 def format_updated_at(updated_at_raw: Optional[str], updated_at: Optional[Any]) -> Optional[str]:
+    if updated_at_raw and "^^" in updated_at_raw:
+        updated_at_raw = updated_at_raw.split("^^", 1)[0].strip()
     if updated_at_raw:
         return updated_at_raw
     if updated_at is None:
