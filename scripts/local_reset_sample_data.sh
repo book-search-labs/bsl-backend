@@ -11,6 +11,7 @@ INSTALL_DEPS="${INSTALL_DEPS:-0}"
 EMBED_PROVIDER="${EMBED_PROVIDER:-toy}"
 INGEST_TARGETS="${INGEST_TARGETS:-mysql,opensearch}"
 RAW_NODE_SYNC="${RAW_NODE_SYNC:-1}"
+RUN_KDC_SEED="${RUN_KDC_SEED:-1}"
 
 if [ "$NLK_INPUT_MODE" != "sample" ]; then
   echo "local_reset_sample_data.sh requires NLK_INPUT_MODE=sample (current: $NLK_INPUT_MODE)." >&2
@@ -26,6 +27,7 @@ FAST_MODE="$FAST_MODE" \
 EMBED_PROVIDER="$EMBED_PROVIDER" \
 INGEST_TARGETS="$INGEST_TARGETS" \
 RAW_NODE_SYNC="$RAW_NODE_SYNC" \
+RUN_KDC_SEED="$RUN_KDC_SEED" \
 "$ROOT_DIR/scripts/bootstrap_sample_dev.sh"
 
 if [[ ",${INGEST_TARGETS// /}," == *",mysql,"* ]]; then

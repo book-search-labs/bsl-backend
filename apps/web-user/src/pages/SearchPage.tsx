@@ -6,7 +6,7 @@ import { postSearchClick, search } from '../api/searchApi'
 import { HttpError } from '../api/http'
 import type { KdcCategoryNode } from '../api/categories'
 import type { BookHit, SearchResponse } from '../types/search'
-import { collectKdcDescendantIds, flattenKdcCategories, getTopLevelKdc } from '../utils/kdc'
+import { collectKdcDescendantCodes, flattenKdcCategories, getTopLevelKdc } from '../utils/kdc'
 
 const DEFAULT_SIZE = 10
 const SIZE_MIN = 1
@@ -188,8 +188,8 @@ export default function SearchPage() {
   const topCategories = useMemo(() => getTopLevelKdc(kdcCategories), [kdcCategories])
   const categoryIndex = useMemo(() => flattenKdcCategories(kdcCategories), [kdcCategories])
   const selectedCategory = kdcCode ? categoryIndex.get(kdcCode) : undefined
-  const selectedCategoryIds = useMemo(
-    () => collectKdcDescendantIds(selectedCategory),
+  const selectedCategoryCodes = useMemo(
+    () => collectKdcDescendantCodes(selectedCategory),
     [selectedCategory],
   )
   const categoryQuick = useMemo(() => {
@@ -237,7 +237,7 @@ export default function SearchPage() {
   }, [searchParams, setSearchParams, sizeValue, trimmedQuery, vectorEnabled])
 
   const executeSearch = useCallback(async () => {
-    const hasCategoryFilter = selectedCategoryIds.length > 0
+    const hasCategoryFilter = selectedCategoryCodes.length > 0
     const shouldSearch = trimmedQuery.length > 0 || kdcCode.length > 0
 
     if (!shouldSearch) {
@@ -289,9 +289,9 @@ export default function SearchPage() {
                 and: [
                   {
                     scope: 'CATALOG',
-                    logicalField: 'kdc_node_id',
+                    logicalField: 'kdc_path_codes',
                     op: 'eq',
-                    value: selectedCategoryIds,
+                    value: selectedCategoryCodes,
                   },
                 ],
               },
@@ -318,7 +318,7 @@ export default function SearchPage() {
     kdcCategories.length,
     kdcCode,
     selectedCategory,
-    selectedCategoryIds,
+    selectedCategoryCodes,
     sizeValue,
     trimmedQuery,
     vectorEnabled,

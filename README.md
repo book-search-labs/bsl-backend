@@ -65,6 +65,7 @@ Notes:
 - `make sample-bootstrap` runs the clone-friendly flow: `compose up` → Flyway `V2` → sample ingest → Flyway `V3+`.
 - `make sample-reset` removes containers + data volumes first, then runs the same `V2 -> sample ingest -> V3+` bootstrap.
 - `scripts/ingest/run_ingest.sh` now syncs `nlk_raw_nodes` to `raw_node` by default (`RAW_NODE_SYNC=1`), so canonical migrations using `raw_node` can consume sample data.
+- sample bootstrap now also runs `db/seeds/kdc_seed_load.sql` (loads `db/seeds/kdc_seed_raw.csv`) to populate `kdc_seed_raw/kdc_seed/kdc_node`.
 - `./scripts/local_down.sh` removes external MySQL/OpenSearch volumes by default (`KEEP_VOLUME=1` to preserve).
 - For the broader infra stack (Redis/ClickHouse/Redpanda), use `docker compose --profile data up -d`.
 - Observability stack: `./scripts/observability_up.sh` (uses `compose.yaml` + `observability` profile).

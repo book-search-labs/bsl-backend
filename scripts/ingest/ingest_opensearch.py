@@ -3,12 +3,15 @@ import hashlib
 import json
 import math
 import os
+import re
 import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+import pymysql
 
 from lib.checkpoints import CheckpointStore
 from lib.extract import (
@@ -60,6 +63,11 @@ BULK_SIZE = int(os.environ.get("OS_BULK_SIZE", "10000"))
 PROGRESS_EVERY = int(os.environ.get("OS_PROGRESS_EVERY", "5000"))
 RESET = os.environ.get("RESET", "0") == "1"
 TIMEOUT_SEC = int(os.environ.get("OS_TIMEOUT_SEC", "30"))
+MYSQL_HOST = os.environ.get("MYSQL_HOST", "127.0.0.1")
+MYSQL_PORT = int(os.environ.get("MYSQL_PORT", "3306"))
+MYSQL_USER = os.environ.get("MYSQL_USER", "bsl")
+MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "bsl")
+MYSQL_DATABASE = os.environ.get("MYSQL_DATABASE", "bsl")
 
 BIBLIO_DATASETS = {
     "offline",
@@ -72,6 +80,7 @@ BIBLIO_DATASETS = {
     "governmentpublication",
 }
 AUTHOR_DATASETS = {"person", "organization"}
+KDC_CODE_RE = re.compile(r"([0-9]{3})(?:\\.[0-9]+)?")
 
 
 def alias_exists(alias: str) -> bool:
@@ -132,7 +141,62 @@ def format_updated_at(updated_at_raw: Optional[str], updated_at: Optional[Any]) 
     return None
 
 
-def build_book_doc(record_id: str, node: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def extract_kdc_codes(node: Dict[str, Any]) -> List[str]:
+    candidates = (
+        extract_strings(node.get("kdc"))
+        + extract_strings(node.get("classification"))
+        + extract_strings(node.get("kdcCode"))
+    )
+    seen = set()
+    codes: List[str] = []
+    for value in candidates:
+        if not value:
+            continue
+        for match in KDC_CODE_RE.finditer(value):
+            code = match.group(1)
+            if code in seen:
+                continue
+            seen.add(code)
+            codes.append(code)
+    return codes
+
+
+def load_kdc_node_map() -> Dict[str, int]:
+    conn: Optional[pymysql.Connection] = None
+    try:
+        conn = pymysql.connect(
+            host=MYSQL_HOST,
+            port=MYSQL_PORT,
+            user=MYSQL_USER,
+            password=MYSQL_PASSWORD,
+            database=MYSQL_DATABASE,
+            charset="utf8mb4",
+            autocommit=True,
+        )
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT code, id FROM kdc_node")
+            rows = cursor.fetchall()
+        mapping: Dict[str, int] = {}
+        for row in rows:
+            if not row or len(row) < 2:
+                continue
+            code = str(row[0]) if row[0] is not None else ""
+            if not code:
+                continue
+            try:
+                mapping[code] = int(row[1])
+            except Exception:
+                continue
+        return mapping
+    except Exception as exc:
+        print(f"[opensearch] warning: unable to load kdc_node map from MySQL: {exc}")
+        return {}
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def build_book_doc(record_id: str, node: Dict[str, Any], kdc_node_map: Dict[str, int]) -> Optional[Dict[str, Any]]:
     title_ko, title_en = extract_title(node)
     if not title_ko and not title_en:
         return None
@@ -168,6 +232,14 @@ def build_book_doc(record_id: str, node: Dict[str, Any]) -> Optional[Dict[str, A
         doc["title_en"] = title_en
     if authors:
         doc["authors"] = authors
+
+    kdc_codes = extract_kdc_codes(node)
+    if kdc_codes:
+        doc["kdc_code"] = kdc_codes[0]
+        doc["kdc_path_codes"] = kdc_codes
+        node_id = kdc_node_map.get(kdc_codes[0])
+        if node_id is not None:
+            doc["kdc_node_id"] = node_id
 
     return {k: v for k, v in doc.items() if v is not None}
 
@@ -568,6 +640,7 @@ def process_file(
     cache: Optional[EmbeddingCache],
     metrics: EmbedMetrics,
     vector_dump: Optional[VectorTextDump],
+    kdc_node_map: Dict[str, int],
 ) -> None:
     dataset = dataset_name(file_path)
     dataset_lower = dataset.lower()
@@ -631,7 +704,7 @@ def process_file(
                 last_offset = offset
                 last_line = line_number
                 if dataset_lower in BIBLIO_DATASETS:
-                    book_doc = build_book_doc(record_id, node)
+                    book_doc = build_book_doc(record_id, node, kdc_node_map)
                     if book_doc:
                         book_actions.append(
                             {"meta": {"index": {"_id": record_id}}, "doc": book_doc}
@@ -694,7 +767,7 @@ def process_file(
                     continue
                 last_index = index
                 if dataset_lower in BIBLIO_DATASETS:
-                    book_doc = build_book_doc(record_id, node)
+                    book_doc = build_book_doc(record_id, node, kdc_node_map)
                     if book_doc:
                         book_actions.append(
                             {"meta": {"index": {"_id": record_id}}, "doc": book_doc}
@@ -834,6 +907,8 @@ def main() -> int:
         EMBED_NORMALIZE,
     )
     metrics = EmbedMetrics()
+    kdc_node_map = load_kdc_node_map()
+    print(f"[opensearch] kdc_node map loaded: {len(kdc_node_map)} codes")
 
     files = iter_input_files()
     if not files:
@@ -855,6 +930,7 @@ def main() -> int:
             cache,
             metrics,
             vector_dump,
+            kdc_node_map,
         )
 
     if vector_dump is not None:

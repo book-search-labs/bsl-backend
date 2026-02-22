@@ -8,11 +8,14 @@ COMPOSE_FILE="$ROOT_DIR/compose.yaml"
 FLYWAY_IMAGE="${FLYWAY_IMAGE:-flyway/flyway:10}"
 DB_USER="${DB_USER:-bsl}"
 DB_PASSWORD="${DB_PASSWORD:-bsl}"
+DB_HOST="${DB_HOST:-127.0.0.1}"
+DB_PORT="${DB_PORT:-3306}"
 INGEST_INSTALL_DEPS="${INGEST_INSTALL_DEPS:-1}"
 FAST_MODE="${FAST_MODE:-1}"
 EMBED_PROVIDER="${EMBED_PROVIDER:-toy}"
 INGEST_TARGETS="${INGEST_TARGETS:-mysql,opensearch}"
 RAW_NODE_SYNC="${RAW_NODE_SYNC:-1}"
+RUN_KDC_SEED="${RUN_KDC_SEED:-1}"
 
 create_external_volumes() {
   docker volume create docker_mysql-data >/dev/null
@@ -94,6 +97,17 @@ mysql_count() {
     mysql -u"$DB_USER" -p"$DB_PASSWORD" -D bsl -Nse "SELECT COUNT(*) FROM ${table_name}"
 }
 
+run_kdc_seed_load() {
+  if [ "$RUN_KDC_SEED" != "1" ]; then
+    return 0
+  fi
+  echo "Running KDC seed load..."
+  mysql --local-infile=1 --protocol=tcp \
+    -h "$DB_HOST" -P "$DB_PORT" \
+    -u"$DB_USER" -p"$DB_PASSWORD" \
+    bsl < "$ROOT_DIR/db/seeds/kdc_seed_load.sql"
+}
+
 echo "Step 1/4: docker compose up (mysql, opensearch, dashboards)"
 create_external_volumes
 docker compose -f "$COMPOSE_FILE" up -d mysql opensearch opensearch-dashboards
@@ -130,5 +144,7 @@ fi
 
 echo "Step 4/4: Flyway migrate from V3 to latest"
 run_flyway "$NETWORK_NAME" migrate
+
+run_kdc_seed_load
 
 echo "Done: sample development bootstrap complete."

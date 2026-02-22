@@ -83,6 +83,12 @@ RAW_NODE_SYNC=0 ./scripts/ingest/run_ingest.sh
 `local_down.sh` removes external MySQL/OpenSearch volumes by default.
 Use `KEEP_VOLUME=1 ./scripts/local_down.sh` to keep data.
 
+`bootstrap_sample_dev.sh` also runs `db/seeds/kdc_seed_load.sql` by default, so KDC categories are available.
+Disable with:
+```bash
+RUN_KDC_SEED=0 ./scripts/bootstrap_sample_dev.sh
+```
+
 ## Database Migrations (Flyway)
 
 Start MySQL (if not already running):
