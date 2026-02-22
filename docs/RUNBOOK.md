@@ -20,7 +20,7 @@ cd services/search-service
 
 Test search:
 ```bash
-curl -s -XPOST http://localhost:8080/search -H 'Content-Type: application/json' -d '{"query":{"raw":"해리"}}'
+curl -s -XPOST http://localhost:18087/search -H 'Content-Type: application/json' -d '{"query":{"raw":"해리"}}'
 ```
 
 Optional: autocomplete (requires OpenSearch to be up):
@@ -453,8 +453,8 @@ cd services/search-service
 
 Tests:
 ```bash
-curl -s -XPOST http://localhost:8080/search -H 'Content-Type: application/json' -d '{"query":{"raw":"해리"}}'
-curl -s http://localhost:8080/books/b1
+curl -s -XPOST http://localhost:18087/search -H 'Content-Type: application/json' -d '{"query":{"raw":"해리"}}'
+curl -s http://localhost:18087/books/b1
 ```
 
 ---

@@ -50,7 +50,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 
 Smoke search:
 ```bash
-curl -s -XPOST http://localhost:8080/search \
+curl -s -XPOST http://localhost:18087/search \
   -H 'Content-Type: application/json' \
   -d '{"query":{"raw":"harry"}}'
 ```

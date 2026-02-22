@@ -19,7 +19,7 @@ bff:
       base-url: ${QS_BASE_URL:http://localhost:8001}
       timeout-ms: ${QS_TIMEOUT_MS:300}
     search-service:
-      base-url: ${SS_BASE_URL:http://localhost:8080}
+      base-url: ${SS_BASE_URL:http://localhost:18087}
       timeout-ms: ${SS_TIMEOUT_MS:400}
     autocomplete-service:
       base-url: ${AC_BASE_URL:http://localhost:8081}

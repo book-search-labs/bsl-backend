@@ -332,7 +332,7 @@ Later split (only if needed):
 ## 11) Local development ports (fixed)
 - web-admin: **5173**
 - web-user: **5174**
-- search-service: **8080**
+- search-service: **18087**
 - autocomplete-service: **8081**
 - query-service: **8001**
 
