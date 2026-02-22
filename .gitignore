@@ -21,6 +21,9 @@ build/
 !config/.env.prod
 data/nlk/
 data/nlk/**
+!data/nlk/
+!data/nlk/raw/
+!data/nlk/raw/*_sample.json
 var/ingest/
 var/ingest/**
 var/normalization/
