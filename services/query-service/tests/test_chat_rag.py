@@ -610,6 +610,56 @@ def test_call_llm_json_uses_low_cost_provider_for_low_risk_query(monkeypatch):
     assert float(after.get(cost_key, 0.0)) == 0.14
 
 
+def test_call_llm_json_bypasses_cost_steering_for_high_risk_query(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    call_urls = []
+
+    class FakeResponse:
+        def __init__(self, payload):
+            self.status_code = 200
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url, json=None, headers=None, timeout=None):
+            call_urls.append(url)
+            return FakeResponse({"content": "고위험 기본 라우팅", "citations": ["chunk-1"]})
+
+    before = dict(chat.metrics.snapshot())
+    monkeypatch.setenv("QS_LLM_URL", "http://llm-primary")
+    monkeypatch.setenv("QS_LLM_FALLBACK_URLS", "http://llm-secondary")
+    monkeypatch.setenv("QS_LLM_COST_STEERING_ENABLED", "1")
+    monkeypatch.setenv("QS_LLM_LOW_COST_PROVIDER", "fallback_1")
+    monkeypatch.setenv("QS_CHAT_RISK_HIGH_KEYWORDS", "환불,배송")
+    monkeypatch.delenv("QS_LLM_FORCE_PROVIDER", raising=False)
+    monkeypatch.setattr(chat.httpx, "AsyncClient", FakeAsyncClient)
+
+    payload = {
+        "model": "toy",
+        "messages": [
+            {"role": "system", "content": "system"},
+            {"role": "user", "content": "환불 가능 여부 알려줘"},
+        ],
+    }
+    data = asyncio.run(chat._call_llm_json(payload, "trace_test", "req_test"))
+
+    assert data["content"] == "고위험 기본 라우팅"
+    assert call_urls == ["http://llm-primary/v1/generate"]
+    after = chat.metrics.snapshot()
+    bypass_key = "chat_provider_cost_steer_total{mode=json,provider=none,reason=high_risk_bypass}"
+    route_key = "chat_provider_route_total{mode=json,provider=primary,result=ok}"
+    assert after.get(bypass_key, 0) >= before.get(bypass_key, 0) + 1
+    assert after.get(route_key, 0) >= before.get(route_key, 0) + 1
+
+
 def test_call_llm_json_skips_provider_on_cooldown(monkeypatch):
     chat._CACHE = CacheClient(None)
     call_urls = []

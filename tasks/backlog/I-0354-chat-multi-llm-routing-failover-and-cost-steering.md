@@ -142,3 +142,8 @@ Implement multi-provider LLM routing for chat:
   - `docs/RUNBOOK.md`에 책봇 다중 provider 운영 섹션 추가
   - failover/강제 라우팅/비용 스티어링 환경변수와 점검 절차를 명시
   - 운영 중 확인해야 하는 핵심 메트릭 목록 정리
+
+## Implementation Update (2026-02-23, Bundle 19)
+- [x] 비용 스티어링 안전장치 회귀 테스트 추가
+  - 고위험 질의(환불/배송 등)에서 비용 스티어링이 bypass 되고 primary provider가 유지되는지 검증
+  - `chat_provider_cost_steer_total{reason=high_risk_bypass}` 메트릭 검증
