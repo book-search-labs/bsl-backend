@@ -199,3 +199,9 @@ Implement multi-provider LLM routing for chat:
 - [x] 회귀 테스트 추가
   - explain 응답에 라우팅 디버그 필드 존재 검증
   - 강제 라우팅과 blocklist 충돌 시 explain에서 `forced_blocked=true` 확인
+
+## Implementation Update (2026-02-23, Bundle 26)
+- [x] `/internal/rag/explain` 입력 안정성 보강
+  - invalid JSON body 요청 시 500 대신 표준 `invalid_request` 400으로 응답
+- [x] 회귀 테스트 추가
+  - explain endpoint invalid JSON 요청 시 에러 코드/상태값 검증

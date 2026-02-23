@@ -290,7 +290,15 @@ async def chat(request: Request):
 @router.post("/internal/rag/explain")
 async def rag_explain(request: Request):
     trace_id, request_id, _, traceparent = _extract_ids(request)
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        return _error_response(
+            "invalid_request",
+            "Request body must be a valid JSON object.",
+            trace_id,
+            request_id,
+        )
     if not isinstance(body, dict):
         return _error_response(
             "invalid_request",
