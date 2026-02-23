@@ -136,3 +136,9 @@ Implement multi-provider LLM routing for chat:
 - [x] stream failover 메트릭 검증
   - `chat_provider_failover_total{mode=stream}` 증가 확인
   - fallback provider `chat_provider_route_total{result=ok}` 증가 확인
+
+## Implementation Update (2026-02-23, Bundle 18)
+- [x] Runbook 연동
+  - `docs/RUNBOOK.md`에 책봇 다중 provider 운영 섹션 추가
+  - failover/강제 라우팅/비용 스티어링 환경변수와 점검 절차를 명시
+  - 운영 중 확인해야 하는 핵심 메트릭 목록 정리

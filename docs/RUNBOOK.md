@@ -32,6 +32,51 @@ curl -s "http://localhost:8081/autocomplete?q=해리&size=5"
 
 For full data ingestion, see **NLK Ingestion (Local)** below.
 
+## Chat LLM Multi-Provider Failover Ops (Local)
+
+책봇(query-service) 다중 LLM 라우팅은 아래 환경변수로 제어합니다.
+
+### Core routing envs
+```bash
+export QS_LLM_URL=http://localhost:8010
+export QS_LLM_FALLBACK_URLS=http://localhost:8011,http://localhost:8012
+export QS_LLM_TIMEOUT_SEC=10
+export QS_LLM_PROVIDER_COOLDOWN_SEC=15
+```
+
+### Operator override / cost steering
+```bash
+# 강제 라우팅 (alias: primary|fallback_1|fallback_2... 또는 base URL)
+export QS_LLM_FORCE_PROVIDER=fallback_1
+
+# 비용 스티어링(고위험 질의는 자동 bypass)
+export QS_LLM_COST_STEERING_ENABLED=1
+export QS_LLM_LOW_COST_PROVIDER=fallback_1
+export QS_LLM_PROVIDER_COSTS_JSON='{"primary":0.30,"fallback_1":0.14,"fallback_2":0.11}'
+```
+
+### Smoke checks
+```bash
+# BFF chat endpoint
+curl -s -XPOST http://localhost:8088/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"message":{"role":"user","content":"배송 상태 알려줘"},"client":{"user_id":"1","locale":"ko-KR"}}'
+```
+
+### Incident playbook
+1. Primary provider 429/5xx/timeout 증가 시 `QS_LLM_FALLBACK_URLS` 경로로 자동 failover 되는지 확인한다.
+2. 품질/지연 이슈 시 `QS_LLM_FORCE_PROVIDER`로 임시 우회한다.
+3. 비용 경보 시 `QS_LLM_COST_STEERING_ENABLED=1`, `QS_LLM_LOW_COST_PROVIDER`를 적용한다.
+4. 이슈 종료 후 `QS_LLM_FORCE_PROVIDER`를 해제해 기본 정책으로 복귀한다.
+
+### Key metrics (labels)
+- `chat_provider_route_total{provider,result,mode}`
+- `chat_provider_failover_total{from,to,reason,mode}`
+- `chat_provider_forced_route_total{provider,reason,mode}`
+- `chat_provider_cost_steer_total{provider,reason,mode}`
+- `chat_provider_health_score{provider}`
+- `chat_provider_cost_per_1k{provider}`
+
 ## Sample Dev Bootstrap (Recommended)
 
 For team onboarding / fresh clone, use this exact flow:
