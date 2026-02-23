@@ -2,19 +2,19 @@
 
 ## Chatbot 고도화 (Phase 11)
 - B-0350 chat 장애 재현 키트
-- B-0351 /chat 요청 유효성/한도/타임아웃 표준화 (개정)
+- B-0351 /chat 요청 유효성/한도/타임아웃 표준화 (개정 v2)
 - B-0352 chat degrade 정책 명시화
-- B-0353 citation coverage 게이트 강화 (개정)
+- B-0353 citation coverage 게이트 강화 (개정 v2)
 - B-0354 다국어 질의 품질 보강
 - B-0355 대화 메모리 정책 v1
 - B-0356 prompt injection/jailbreak 방어 체인
-- B-0357 chat 품질 지표 게이트 (개정)
+- B-0357 chat 품질 지표 게이트 (개정 v2)
 - B-0358 도메인 평가셋 확장
-- B-0359 chat tool calling (주문/배송/환불, 개정)
+- B-0359 chat tool calling (주문/배송/환불, 개정 v3)
 - B-0360 answer-citation entailment verifier
 - B-0361 query decomposition + multi-hop retrieval
 - B-0362 consent 기반 개인화 + 설명가능성
-- B-0363 conversation state store (checkpoint/recovery, 개정)
+- B-0363 conversation state store (checkpoint/recovery, 개정 v2)
 - B-0364 tool schema registry + permission policy
 - B-0365 knowledge freshness pipeline
 - B-0366 real-time feedback triage loop
@@ -65,10 +65,50 @@
 - I-0350 LLM 비용/쿼터/속도 가드레일
 - I-0351 chat 장애 런북/리허설 강화
 - I-0352 chat canary/shadow/auto-rollback (개정)
-- I-0353 chat SLO guardrails + auto remediation (개정)
-- I-0354 chat multi-LLM routing failover + cost steering (개정)
+- I-0353 chat SLO guardrails + auto remediation (개정 v2)
+- I-0354 chat multi-LLM routing failover + cost steering (개정 v2)
 - I-0355 chat priority queue + load shedding + backpressure control (개정)
 - I-0356 chat synthetic journey monitoring + auto drill (개정)
 - I-0357 chat control-plane backup/restore + DR drills (개정)
 - I-0358 chat config drift detection + immutable release bundles (개정)
 - I-0359 chat traffic partitioning + fail-safe isolation mode
+
+## Chatbot 실서비스 전환 (Phase 12)
+- B-0391 chat production launch readiness gate (실서비스 출시 게이트)
+- B-0392 chat action ledger + idempotent workflow state machine
+- U-0150 chat widget persistent NPC + guided commerce UX
+- U-0151 chat production guided forms + recovery copy UX
+- A-0150 chat go-live certification + playbook console
+- A-0151 chat QA adjudication + policy approval queue
+- I-0360 chat liveops on-call + release train hardening
+- I-0361 chat gameday drillpack + production readiness score
+
+## Chatbot 실서비스 확장 (Phase 13)
+- B-0393 grounded answer composer + Korean policy template bundle
+- U-0152 contextual entrypoints + conversion funnel UX
+- A-0152 release audit + incident review console
+- I-0362 data governance retention + egress guardrails
+
+## Chatbot 실서비스 운영 고도화 (Phase 14)
+- B-0394 chat session quality scorer + realtime intervention
+- U-0153 chat smart sidebar + summary glance cards UX
+- A-0153 chat KPI/budget/risk sign-off board
+- I-0363 chat production load model + capacity forecasting
+
+## Chatbot 실서비스 완결성 강화 (Phase 15)
+- B-0395 chat resolution plan + action simulation engine
+- U-0154 chat resolve center + human handoff UX
+- A-0154 chat resolution ops + policy exception console
+- I-0364 chat session gateway (SSE durability + backpressure)
+
+## Chatbot 실서비스 수익/지속성 최적화 (Phase 16)
+- B-0396 chat actionability scorer + repair loop
+- U-0155 chat persistent conversation dock + re-entry UX
+- A-0155 chat outcome review + rollback decision console
+- I-0365 chat unit economics SLO + cost-to-resolve optimizer
+
+## Chatbot 실서비스 운영 자동화 고도화 (Phase 17)
+- B-0397 chat policy-aware dialog planner + escalation trigger
+- U-0156 chat omnichannel handoff + notification UX
+- A-0156 chat supervisor copilot + coaching loop console
+- I-0366 chat policy distribution + realtime config control plane
