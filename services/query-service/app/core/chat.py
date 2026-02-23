@@ -22,6 +22,20 @@ def _llm_url() -> str:
     return os.getenv("QS_LLM_URL", "http://localhost:8010").rstrip("/")
 
 
+def _llm_fallback_urls() -> List[str]:
+    raw = os.getenv("QS_LLM_FALLBACK_URLS", "")
+    urls = [item.strip().rstrip("/") for item in raw.split(",") if item.strip()]
+    return [url for url in urls if url]
+
+
+def _llm_provider_chain() -> List[tuple[str, str]]:
+    providers: List[tuple[str, str]] = [("primary", _llm_url())]
+    for idx, url in enumerate(_llm_fallback_urls(), start=1):
+        if url and url != providers[0][1]:
+            providers.append((f"fallback_{idx}", url))
+    return providers
+
+
 def _llm_model() -> str:
     return os.getenv("QS_LLM_MODEL", "toy-rag-v1")
 
@@ -32,6 +46,10 @@ def _llm_timeout_sec() -> float:
 
 def _llm_stream_enabled() -> bool:
     return str(os.getenv("QS_LLM_STREAM_ENABLED", "1")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _is_failover_status(status_code: int) -> bool:
+    return status_code == 429 or status_code >= 500
 
 
 def _rewrite_on_bad_enabled() -> bool:
@@ -779,13 +797,48 @@ def _build_llm_payload(request: Dict[str, Any], trace_id: str, request_id: str, 
 async def _call_llm_json(payload: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
     headers = {"x-trace-id": trace_id, "x-request-id": request_id}
     started = time.perf_counter()
+    providers = _llm_provider_chain()
+    last_error: Exception | None = None
     async with httpx.AsyncClient() as client:
-        response = await client.post(f"{_llm_url()}/v1/generate", json=payload, headers=headers, timeout=_llm_timeout_sec())
-        response.raise_for_status()
-        data = response.json()
-    took_ms = int((time.perf_counter() - started) * 1000)
-    metrics.inc("llm_generate_latency_ms", value=max(0, took_ms))
-    return data
+        for idx, (provider, base_url) in enumerate(providers):
+            try:
+                response = await client.post(f"{base_url}/v1/generate", json=payload, headers=headers, timeout=_llm_timeout_sec())
+            except (httpx.TimeoutException, httpx.NetworkError) as exc:
+                last_error = exc
+                metrics.inc("chat_provider_route_total", {"provider": provider, "result": "timeout", "mode": "json"})
+                if idx + 1 < len(providers):
+                    metrics.inc(
+                        "chat_provider_failover_total",
+                        {"from": provider, "to": providers[idx + 1][0], "reason": "timeout", "mode": "json"},
+                    )
+                    continue
+                raise
+            except Exception as exc:
+                last_error = exc
+                metrics.inc("chat_provider_route_total", {"provider": provider, "result": "error", "mode": "json"})
+                raise
+            status_code = int(response.status_code)
+            if status_code >= 400:
+                reason = f"http_{status_code}"
+                metrics.inc("chat_provider_route_total", {"provider": provider, "result": reason, "mode": "json"})
+                if _is_failover_status(status_code) and idx + 1 < len(providers):
+                    metrics.inc(
+                        "chat_provider_failover_total",
+                        {"from": provider, "to": providers[idx + 1][0], "reason": reason, "mode": "json"},
+                    )
+                    continue
+                response.raise_for_status()
+            try:
+                data = response.json()
+            except Exception as exc:
+                last_error = exc
+                metrics.inc("chat_provider_route_total", {"provider": provider, "result": "invalid_json", "mode": "json"})
+                raise
+            metrics.inc("chat_provider_route_total", {"provider": provider, "result": "ok", "mode": "json"})
+            took_ms = int((time.perf_counter() - started) * 1000)
+            metrics.inc("llm_generate_latency_ms", value=max(0, took_ms))
+            return data
+    raise last_error or RuntimeError("llm_provider_unavailable")
 
 
 async def _stream_llm(
@@ -805,62 +858,98 @@ async def _stream_llm(
 
     async def generator() -> AsyncIterator[str]:
         nonlocal first_token_reported
-        event_name = "message"
-        data_lines: List[str] = []
-        try:
-            async with httpx.AsyncClient() as client:
-                async with client.stream(
-                    "POST",
-                    f"{_llm_url()}/v1/generate?stream=true",
-                    json={**payload, "stream": True},
-                    headers=headers,
-                    timeout=_llm_timeout_sec(),
-                ) as response:
-                    response.raise_for_status()
-                    async for raw_line in response.aiter_lines():
-                        line = raw_line if raw_line is not None else ""
-                        if line.startswith("event:"):
-                            event_name = line.split(":", 1)[1].strip() or "message"
-                        elif line.startswith("data:"):
-                            data_lines.append(line.split(":", 1)[1].strip())
-                        elif line == "":
-                            if not data_lines:
-                                event_name = "message"
+        providers = _llm_provider_chain()
+        last_error: Optional[Exception] = None
+        async with httpx.AsyncClient() as client:
+            for idx, (provider, base_url) in enumerate(providers):
+                event_name = "message"
+                data_lines: List[str] = []
+                try:
+                    async with client.stream(
+                        "POST",
+                        f"{base_url}/v1/generate?stream=true",
+                        json={**payload, "stream": True},
+                        headers=headers,
+                        timeout=_llm_timeout_sec(),
+                    ) as response:
+                        status_code = int(response.status_code)
+                        if status_code >= 400:
+                            reason = f"http_{status_code}"
+                            metrics.inc(
+                                "chat_provider_route_total",
+                                {"provider": provider, "result": reason, "mode": "stream"},
+                            )
+                            if _is_failover_status(status_code) and idx + 1 < len(providers):
+                                metrics.inc(
+                                    "chat_provider_failover_total",
+                                    {"from": provider, "to": providers[idx + 1][0], "reason": reason, "mode": "stream"},
+                                )
                                 continue
-                            data = "\n".join(data_lines)
-                            if event_name == "delta":
-                                if not first_token_reported:
-                                    first_token_reported = True
-                                    first_token_ms = int((time.perf_counter() - started) * 1000)
-                                    metrics.inc("chat_first_token_latency_ms", value=max(0, first_token_ms))
-                                try:
-                                    parsed = json.loads(data)
-                                    delta = parsed.get("delta") if isinstance(parsed, dict) else None
-                                    if isinstance(delta, str):
-                                        stream_state["answer"] += delta
-                                except Exception:
-                                    stream_state["answer"] += data
-                            elif event_name == "done":
-                                try:
-                                    parsed = json.loads(data)
-                                    if isinstance(parsed, dict):
-                                        done_status = parsed.get("status")
-                                        if isinstance(done_status, str) and done_status:
-                                            stream_state["done_status"] = done_status
-                                        if isinstance(parsed.get("citations"), list):
-                                            stream_state["citations"] = [str(item) for item in parsed.get("citations") if isinstance(item, str)]
-                                except Exception:
-                                    pass
+                            response.raise_for_status()
+                        async for raw_line in response.aiter_lines():
+                            line = raw_line if raw_line is not None else ""
+                            if line.startswith("event:"):
+                                event_name = line.split(":", 1)[1].strip() or "message"
+                            elif line.startswith("data:"):
+                                data_lines.append(line.split(":", 1)[1].strip())
+                            elif line == "":
+                                if not data_lines:
+                                    event_name = "message"
+                                    continue
+                                data = "\n".join(data_lines)
+                                if event_name == "delta":
+                                    if not first_token_reported:
+                                        first_token_reported = True
+                                        first_token_ms = int((time.perf_counter() - started) * 1000)
+                                        metrics.inc("chat_first_token_latency_ms", value=max(0, first_token_ms))
+                                    try:
+                                        parsed = json.loads(data)
+                                        delta = parsed.get("delta") if isinstance(parsed, dict) else None
+                                        if isinstance(delta, str):
+                                            stream_state["answer"] += delta
+                                    except Exception:
+                                        stream_state["answer"] += data
+                                elif event_name == "done":
+                                    try:
+                                        parsed = json.loads(data)
+                                        if isinstance(parsed, dict):
+                                            done_status = parsed.get("status")
+                                            if isinstance(done_status, str) and done_status:
+                                                stream_state["done_status"] = done_status
+                                            if isinstance(parsed.get("citations"), list):
+                                                stream_state["citations"] = [str(item) for item in parsed.get("citations") if isinstance(item, str)]
+                                    except Exception:
+                                        pass
+                                    data_lines = []
+                                    event_name = "message"
+                                    continue
+                                yield _sse_event(event_name, data)
                                 data_lines = []
                                 event_name = "message"
-                                continue
-                            yield _sse_event(event_name, data)
-                            data_lines = []
-                            event_name = "message"
-            took_ms = int((time.perf_counter() - started) * 1000)
-            metrics.inc("llm_generate_latency_ms", value=max(0, took_ms))
-        except Exception as exc:
-            stream_state["llm_error"] = str(exc)
+                    metrics.inc("chat_provider_route_total", {"provider": provider, "result": "ok", "mode": "stream"})
+                    took_ms = int((time.perf_counter() - started) * 1000)
+                    metrics.inc("llm_generate_latency_ms", value=max(0, took_ms))
+                    return
+                except (httpx.TimeoutException, httpx.NetworkError) as exc:
+                    last_error = exc
+                    metrics.inc("chat_provider_route_total", {"provider": provider, "result": "timeout", "mode": "stream"})
+                    if idx + 1 < len(providers) and not stream_state.get("answer"):
+                        metrics.inc(
+                            "chat_provider_failover_total",
+                            {"from": provider, "to": providers[idx + 1][0], "reason": "timeout", "mode": "stream"},
+                        )
+                        continue
+                    stream_state["llm_error"] = str(exc)
+                    break
+                except Exception as exc:
+                    last_error = exc
+                    stream_state["llm_error"] = str(exc)
+                    metrics.inc("chat_provider_route_total", {"provider": provider, "result": "error", "mode": "stream"})
+                    break
+
+        if stream_state.get("llm_error") is None and last_error is not None:
+            stream_state["llm_error"] = str(last_error)
+        if stream_state.get("llm_error"):
             metrics.inc("chat_fallback_total", {"reason": "PROVIDER_TIMEOUT"})
             _record_chat_timeout("llm_stream")
             yield _sse_event("error", {"code": "PROVIDER_TIMEOUT", "message": "LLM 응답 지연으로 처리하지 못했습니다."})

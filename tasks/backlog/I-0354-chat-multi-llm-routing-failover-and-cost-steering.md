@@ -1,10 +1,11 @@
-# I-0354 — Chat Multi-LLM Routing (Failover + Cost Steering)
+# I-0354 — Chat Multi-LLM Routing (Failover + Cost Steering, 개정 v2)
 
 ## Priority
 - P1
 
 ## Dependencies
 - I-0350, I-0352, I-0353
+- I-0365
 
 ## Goal
 LLM 제공자 장애/지연/비용 급등 상황에서 자동 라우팅/페일오버로 챗봇 가용성과 비용 안정성을 동시에 확보한다.
@@ -31,6 +32,11 @@ LLM 제공자 장애/지연/비용 급등 상황에서 자동 라우팅/페일�
 - 수동 강제 라우팅/차단 스위치 제공
 - provider 단위 canary 트래픽 안전 스위치 제공
 
+### 5) Quality-aware routing layer (신규)
+- groundedness/actionability/해결률 지표를 라우팅 가중치에 반영
+- 비용 최적화가 품질 컷라인을 침범하면 자동으로 고신뢰 경로 승격
+- 특정 인텐트 버킷만 provider override 가능한 부분 정책 지원
+
 ## Runbook integration
 - provider 장애별 대응 절차를 `docs/RUNBOOK.md`와 연결
 - 자동 failover 실패 시 온콜 escalation 룰 명시
@@ -41,6 +47,7 @@ LLM 제공자 장애/지연/비용 급등 상황에서 자동 라우팅/페일�
 - `chat_provider_cost_per_1k{provider}`
 - `chat_provider_health_score{provider}`
 - `chat_provider_forced_route_total{provider,reason}`
+- `chat_provider_quality_weight{provider,intent}`
 
 ## Test / Validation
 - provider 다운/지연/쿼터 소진 chaos 시나리오 테스트
@@ -53,9 +60,26 @@ LLM 제공자 장애/지연/비용 급등 상황에서 자동 라우팅/페일�
 - 비용 급등 시 자동 steering 동작 검증
 - 라우팅/페일오버 의사결정 근거 추적 가능
 - 수동 override 적용/복구 절차를 운영자가 5분 내 수행 가능
+- 비용-품질 동시 제약 라우팅(quality-aware)이 운영 지표로 검증됨
 
 ## Codex Prompt
 Implement multi-provider LLM routing for chat:
 - Compute provider health and route by policy tiers.
 - Fail over automatically on outages, timeouts, and quota breaches.
 - Add cost-aware steering, operator overrides, and full decision telemetry.
+
+## Implementation Update (2026-02-23, Bundle 12)
+- [x] 다중 LLM provider failover 체인 도입
+  - `QS_LLM_URL` + `QS_LLM_FALLBACK_URLS`(comma-separated) 기반 provider 체인 구성
+  - provider alias: `primary`, `fallback_1..N`
+- [x] JSON 생성 경로 failover 적용
+  - `/v1/generate` 호출에서 `429`, `5xx`, timeout/network 오류 발생 시 다음 provider로 전환
+  - 비-failover 대상(일반 4xx)은 즉시 실패 처리
+- [x] SSE 스트리밍 경로 failover 적용
+  - 스트리밍 시작 전 `429`, `5xx`, timeout/network 오류 시 다음 provider로 전환
+  - 토큰 송신 시작 후에는 provider 전환 없이 현재 경로 실패 처리
+- [x] 라우팅/전환 메트릭 추가
+  - `chat_provider_route_total{provider,result,mode}`
+  - `chat_provider_failover_total{from,to,reason,mode}`
+- [x] 회귀 테스트 추가
+  - primary 500 응답 시 fallback provider 성공 경로 및 메트릭 증가 검증

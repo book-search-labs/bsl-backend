@@ -464,6 +464,55 @@ def test_run_chat_blocks_when_citation_coverage_is_too_low(monkeypatch):
     assert result["next_action"] == "REFINE_QUERY"
 
 
+def test_call_llm_json_fails_over_to_secondary_provider(monkeypatch):
+    call_urls = []
+
+    class FakeResponse:
+        def __init__(self, status_code, payload):
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+        def raise_for_status(self):
+            if int(self.status_code) >= 400:
+                raise RuntimeError(f"http_{self.status_code}")
+
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url, json=None, headers=None, timeout=None):
+            call_urls.append(url)
+            if len(call_urls) == 1:
+                return FakeResponse(500, {"error": "down"})
+            return FakeResponse(200, {"content": "정상 응답", "citations": ["chunk-1"]})
+
+    before = dict(chat.metrics.snapshot())
+    monkeypatch.setenv("QS_LLM_URL", "http://llm-primary")
+    monkeypatch.setenv("QS_LLM_FALLBACK_URLS", "http://llm-secondary")
+    monkeypatch.setattr(chat.httpx, "AsyncClient", FakeAsyncClient)
+
+    data = asyncio.run(chat._call_llm_json({"model": "toy"}, "trace_test", "req_test"))
+
+    assert data["content"] == "정상 응답"
+    assert call_urls == [
+        "http://llm-primary/v1/generate",
+        "http://llm-secondary/v1/generate",
+    ]
+    after = chat.metrics.snapshot()
+    route_fail_key = "chat_provider_route_total{mode=json,provider=primary,result=http_500}"
+    failover_key = "chat_provider_failover_total{from=primary,mode=json,reason=http_500,to=fallback_1}"
+    route_ok_key = "chat_provider_route_total{mode=json,provider=fallback_1,result=ok}"
+    assert after.get(route_fail_key, 0) >= before.get(route_fail_key, 0) + 1
+    assert after.get(failover_key, 0) >= before.get(failover_key, 0) + 1
+    assert after.get(route_ok_key, 0) >= before.get(route_ok_key, 0) + 1
+
+
 def test_run_chat_provider_timeout_emits_timeout_metric(monkeypatch):
     chat._CACHE = CacheClient(None)
     before = dict(chat.metrics.snapshot())
