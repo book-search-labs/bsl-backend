@@ -10,6 +10,7 @@ import httpx
 from app.core.analyzer import analyze_query
 from app.core.cache import get_cache
 from app.core.metrics import metrics
+from app.core.chat_tools import run_tool_chat
 from app.core.rag import retrieve_chunks_with_trace
 from app.core.rag_candidates import retrieve_candidates
 from app.core.rewrite import run_rewrite
@@ -543,6 +544,11 @@ async def _prepare_chat(
 
 
 async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
+    tool_response = await run_tool_chat(request, trace_id, request_id)
+    if tool_response is not None:
+        metrics.inc("chat_requests_total", {"decision": "tool_path"})
+        return tool_response
+
     prepared = await _prepare_chat(request, trace_id, request_id)
     if not prepared.get("ok"):
         metrics.inc("chat_requests_total", {"decision": "fallback"})
@@ -603,6 +609,30 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
 
 
 async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: str) -> AsyncIterator[str]:
+    tool_response = await run_tool_chat(request, trace_id, request_id)
+    if tool_response is not None:
+        answer = tool_response.get("answer", {}) if isinstance(tool_response.get("answer"), dict) else {}
+        citations = [str(item) for item in (tool_response.get("citations") or []) if isinstance(item, str)]
+        sources = tool_response.get("sources") if isinstance(tool_response.get("sources"), list) else []
+        status = str(tool_response.get("status") or "ok")
+        risk_band = _compute_risk_band(_extract_query_text(request), status, citations, None)
+        yield _sse_event(
+            "meta",
+            {
+                "trace_id": trace_id,
+                "request_id": request_id,
+                "status": "tool_path",
+                "sources": sources,
+                "citations": citations,
+                "risk_band": risk_band,
+            },
+        )
+        yield _sse_event("delta", {"delta": str(answer.get("content") or "")})
+        yield _sse_event("done", {"status": status, "citations": citations, "risk_band": risk_band})
+        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
+        metrics.inc("chat_requests_total", {"decision": "tool_path"})
+        return
+
     prepared = await _prepare_chat(request, trace_id, request_id)
     if not prepared.get("ok"):
         response = prepared.get("response") or _fallback(trace_id, request_id, "Insufficient evidence to answer with citations.", "RAG_NO_CHUNKS")

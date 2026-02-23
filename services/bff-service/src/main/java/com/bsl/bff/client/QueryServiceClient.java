@@ -4,6 +4,8 @@ import com.bsl.bff.common.DownstreamException;
 import com.bsl.bff.common.DownstreamHeaders;
 import com.bsl.bff.common.RequestContext;
 import com.bsl.bff.config.DownstreamProperties;
+import com.bsl.bff.security.AuthContext;
+import com.bsl.bff.security.AuthContextHolder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.BufferedReader;
@@ -80,6 +82,7 @@ public class QueryServiceClient {
         body.put("query", query);
 
         HttpHeaders headers = DownstreamHeaders.from(context);
+        enrichAuthHeaders(headers);
         headers.add(HttpHeaders.CONTENT_TYPE, "application/json");
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
@@ -100,6 +103,7 @@ public class QueryServiceClient {
     public JsonNode chat(Map<String, Object> body, RequestContext context) {
         String url = properties.getBaseUrl() + "/chat";
         HttpHeaders headers = DownstreamHeaders.from(context);
+        enrichAuthHeaders(headers);
         headers.add(HttpHeaders.CONTENT_TYPE, "application/json");
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
@@ -120,6 +124,7 @@ public class QueryServiceClient {
     public ChatStreamResult chatStream(Map<String, Object> body, RequestContext context, SseEmitter emitter) {
         String url = properties.getBaseUrl() + "/chat?stream=true";
         HttpHeaders downstreamHeaders = DownstreamHeaders.from(context);
+        enrichAuthHeaders(downstreamHeaders);
         downstreamHeaders.setContentType(MediaType.APPLICATION_JSON);
         downstreamHeaders.setAccept(java.util.List.of(MediaType.TEXT_EVENT_STREAM));
         ChatStreamResult result = new ChatStreamResult();
@@ -223,6 +228,19 @@ public class QueryServiceClient {
             }
         } catch (Exception ignored) {
             // Keep stream passthrough best-effort even when done payload is non-JSON.
+        }
+    }
+
+    private void enrichAuthHeaders(HttpHeaders headers) {
+        AuthContext auth = AuthContextHolder.get();
+        if (auth == null || headers == null) {
+            return;
+        }
+        if (auth.getUserId() != null && !auth.getUserId().isBlank()) {
+            headers.add("x-user-id", auth.getUserId());
+        }
+        if (auth.getAdminId() != null && !auth.getAdminId().isBlank()) {
+            headers.add("x-admin-id", auth.getAdminId());
         }
     }
 }

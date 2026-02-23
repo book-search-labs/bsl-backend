@@ -260,6 +260,8 @@ async def chat(request: Request):
     if isinstance(body.get("request_id"), str) and body.get("request_id"):
         request_id = body.get("request_id")
 
+    _inject_chat_identity(body, request)
+
     options = body.get("options") if isinstance(body.get("options"), dict) else {}
     body_stream = bool(options.get("stream")) if isinstance(options.get("stream"), bool) else False
     query_stream = request.query_params.get("stream")
@@ -376,6 +378,22 @@ def _response_headers(trace_id: str, request_id: str, traceparent: str | None) -
     return headers
 
 
+def _inject_chat_identity(body: dict, request: Request) -> None:
+    if not isinstance(body, dict):
+        return
+    client = body.get("client")
+    if not isinstance(client, dict):
+        client = {}
+        body["client"] = client
+
+    user_id = request.headers.get("x-user-id")
+    if isinstance(user_id, str) and user_id.strip():
+        client["user_id"] = user_id.strip()
+    admin_id = request.headers.get("x-admin-id")
+    if isinstance(admin_id, str) and admin_id.strip():
+        client["admin_id"] = admin_id.strip()
+
+
 def _prepare_analysis(raw: str, body: dict) -> tuple[dict[str, Any], bool]:
     locale = _resolve_locale(body)
     key = _norm_cache_key(raw, locale)
@@ -473,7 +491,7 @@ def _build_qc_v11_response(
     if series_hint and series_hint not in series_entities:
         series_entities.append(series_hint)
 
-    default_preferred = ["title_ko", "series_ko", "author_ko"]
+    default_preferred = ["title_ko", "title_ko.edge", "series_ko", "author_ko"]
     if not preferred_fields:
         preferred_fields = default_preferred
 
@@ -1004,7 +1022,7 @@ def _build_retrieval_hints(plan_id: str, canonical_key: str, tenant_id: str) -> 
             "topKHint": 300,
             "analyzerHint": "ko_search",
             "minimumShouldMatch": "2<75%",
-            "preferredLogicalFields": ["title_ko", "series_ko", "author_ko"],
+            "preferredLogicalFields": ["title_ko", "title_ko.edge", "series_ko", "author_ko"],
         },
         "vector": {
             "enabled": True,
