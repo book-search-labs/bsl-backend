@@ -114,6 +114,22 @@ def _llm_provider_blocklist() -> set[str]:
     return {item.strip() for item in raw.split(",") if item.strip()}
 
 
+def _provider_matches_target(provider: tuple[str, str], target: str) -> bool:
+    name, url = provider
+    return target == name or target == url
+
+
+def _is_forced_provider_blocked(all_providers: List[tuple[str, str]], filtered_providers: List[tuple[str, str]]) -> bool:
+    forced = _llm_forced_provider()
+    if not forced:
+        return False
+    in_all = any(_provider_matches_target(provider, forced) for provider in all_providers)
+    if not in_all:
+        return False
+    in_filtered = any(_provider_matches_target(provider, forced) for provider in filtered_providers)
+    return not in_filtered
+
+
 def _provider_success_ratio(provider: str) -> Optional[float]:
     raw = _CACHE.get_json(_provider_stats_cache_key(provider))
     if not isinstance(raw, dict):
@@ -1028,10 +1044,16 @@ def _build_llm_payload(request: Dict[str, Any], trace_id: str, request_id: str, 
 async def _call_llm_json(payload: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
     headers = {"x-trace-id": trace_id, "x-request-id": request_id}
     started = time.perf_counter()
-    providers = _apply_provider_blocklist(_llm_provider_chain(), mode="json")
+    all_providers = _llm_provider_chain()
+    providers = _apply_provider_blocklist(all_providers, mode="json")
+    forced = _llm_forced_provider()
+    forced_blocked = _is_forced_provider_blocked(all_providers, providers)
+    if forced_blocked and forced:
+        metrics.inc("chat_provider_forced_route_total", {"provider": forced, "reason": "blocked", "mode": "json"})
     providers = _apply_cost_steering(providers, payload, mode="json")
     providers = _apply_provider_health(providers, mode="json")
-    providers = _apply_provider_override(providers, mode="json")
+    if not forced_blocked:
+        providers = _apply_provider_override(providers, mode="json")
     last_error: Exception | None = None
     async with httpx.AsyncClient() as client:
         for idx, (provider, base_url) in enumerate(providers):
@@ -1100,10 +1122,16 @@ async def _stream_llm(
 
     async def generator() -> AsyncIterator[str]:
         nonlocal first_token_reported
-        providers = _apply_provider_blocklist(_llm_provider_chain(), mode="stream")
+        all_providers = _llm_provider_chain()
+        providers = _apply_provider_blocklist(all_providers, mode="stream")
+        forced = _llm_forced_provider()
+        forced_blocked = _is_forced_provider_blocked(all_providers, providers)
+        if forced_blocked and forced:
+            metrics.inc("chat_provider_forced_route_total", {"provider": forced, "reason": "blocked", "mode": "stream"})
         providers = _apply_cost_steering(providers, payload, mode="stream")
         providers = _apply_provider_health(providers, mode="stream")
-        providers = _apply_provider_override(providers, mode="stream")
+        if not forced_blocked:
+            providers = _apply_provider_override(providers, mode="stream")
         last_error: Optional[Exception] = None
         async with httpx.AsyncClient() as client:
             for idx, (provider, base_url) in enumerate(providers):

@@ -158,3 +158,10 @@ Implement multi-provider LLM routing for chat:
 - [x] 회귀 테스트 추가
   - blocklist 적용 시 fallback provider 우선 호출 검증
   - health score 우위 provider 선호 호출 검증
+
+## Implementation Update (2026-02-23, Bundle 21)
+- [x] 강제 라우팅 vs blocklist 충돌 처리 보강
+  - 강제 provider가 blocklist로 제외된 경우 override를 건너뛰고 안전 경로로 라우팅
+  - `chat_provider_forced_route_total{reason=blocked}`로 운영자 가시성 확보
+- [x] 회귀 테스트 추가
+  - `QS_LLM_FORCE_PROVIDER`와 `QS_LLM_PROVIDER_BLOCKLIST` 충돌 시 fallback provider로 정상 우회되는지 검증

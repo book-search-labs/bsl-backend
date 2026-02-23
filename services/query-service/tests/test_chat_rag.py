@@ -782,6 +782,45 @@ def test_call_llm_json_prefers_higher_health_score_provider(monkeypatch):
     assert call_urls == ["http://llm-secondary/v1/generate"]
 
 
+def test_call_llm_json_marks_forced_provider_blocked(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    call_urls = []
+
+    class FakeResponse:
+        def __init__(self, payload):
+            self.status_code = 200
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url, json=None, headers=None, timeout=None):
+            call_urls.append(url)
+            return FakeResponse({"content": "강제 차단 우회", "citations": ["chunk-1"]})
+
+    before = dict(chat.metrics.snapshot())
+    monkeypatch.setenv("QS_LLM_URL", "http://llm-primary")
+    monkeypatch.setenv("QS_LLM_FALLBACK_URLS", "http://llm-secondary")
+    monkeypatch.setenv("QS_LLM_PROVIDER_BLOCKLIST", "primary")
+    monkeypatch.setenv("QS_LLM_FORCE_PROVIDER", "primary")
+    monkeypatch.setattr(chat.httpx, "AsyncClient", FakeAsyncClient)
+
+    data = asyncio.run(chat._call_llm_json({"model": "toy"}, "trace_test", "req_test"))
+
+    assert data["content"] == "강제 차단 우회"
+    assert call_urls == ["http://llm-secondary/v1/generate"]
+    after = chat.metrics.snapshot()
+    blocked_key = "chat_provider_forced_route_total{mode=json,provider=primary,reason=blocked}"
+    assert after.get(blocked_key, 0) >= before.get(blocked_key, 0) + 1
+
+
 def test_stream_llm_fails_over_before_first_token(monkeypatch):
     chat._CACHE = CacheClient(None)
     call_urls = []
