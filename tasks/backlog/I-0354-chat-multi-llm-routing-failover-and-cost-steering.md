@@ -128,3 +128,11 @@ Implement multi-provider LLM routing for chat:
 - [x] 회귀 테스트 추가
   - failover 시 provider health score 갱신 검증
   - 저비용 라우팅 시 provider cost metric 노출 검증
+
+## Implementation Update (2026-02-23, Bundle 17)
+- [x] 스트리밍 경로 failover 회귀 테스트 추가
+  - 첫 provider가 `503`을 반환하면 첫 토큰 이전에 fallback provider로 자동 전환되는지 검증
+  - 스트리밍 응답(`delta`, `done.citations`)이 fallback provider 기준으로 정상 수집되는지 확인
+- [x] stream failover 메트릭 검증
+  - `chat_provider_failover_total{mode=stream}` 증가 확인
+  - fallback provider `chat_provider_route_total{result=ok}` 증가 확인

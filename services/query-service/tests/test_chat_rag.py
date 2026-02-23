@@ -653,6 +653,89 @@ def test_call_llm_json_skips_provider_on_cooldown(monkeypatch):
     assert after.get(route_key, 0) >= before.get(route_key, 0) + 1
 
 
+def test_stream_llm_fails_over_before_first_token(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    call_urls = []
+
+    class FakeStreamResponse:
+        def __init__(self, status_code, lines):
+            self.status_code = status_code
+            self._lines = lines
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def aiter_lines(self):
+            for line in self._lines:
+                yield line
+
+        def raise_for_status(self):
+            if int(self.status_code) >= 400:
+                raise RuntimeError(f"http_{self.status_code}")
+
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def stream(self, method, url, json=None, headers=None, timeout=None):
+            call_urls.append(url)
+            if len(call_urls) == 1:
+                return FakeStreamResponse(503, [])
+            return FakeStreamResponse(
+                200,
+                [
+                    "event: delta",
+                    'data: {"delta":"안녕하세요"}',
+                    "",
+                    "event: done",
+                    'data: {"status":"ok","citations":["chunk-1"]}',
+                    "",
+                ],
+            )
+
+    async def _run():
+        stream_iter, state = await chat._stream_llm(
+            {
+                "model": "toy",
+                "messages": [{"role": "user", "content": "배송 안내 알려줘"}],
+            },
+            "trace_test",
+            "req_test",
+        )
+        events = []
+        async for event in stream_iter:
+            events.append(event)
+        return events, state
+
+    before = dict(chat.metrics.snapshot())
+    monkeypatch.setenv("QS_LLM_URL", "http://llm-primary")
+    monkeypatch.setenv("QS_LLM_FALLBACK_URLS", "http://llm-secondary")
+    monkeypatch.setattr(chat.httpx, "AsyncClient", FakeAsyncClient)
+
+    events, state = asyncio.run(_run())
+
+    assert call_urls == [
+        "http://llm-primary/v1/generate?stream=true",
+        "http://llm-secondary/v1/generate?stream=true",
+    ]
+    assert state["llm_error"] is None
+    assert state["answer"] == "안녕하세요"
+    assert state["citations"] == ["chunk-1"]
+    assert any("event: delta" in event for event in events)
+
+    after = chat.metrics.snapshot()
+    failover_key = "chat_provider_failover_total{from=primary,mode=stream,reason=http_503,to=fallback_1}"
+    route_key = "chat_provider_route_total{mode=stream,provider=fallback_1,result=ok}"
+    assert after.get(failover_key, 0) >= before.get(failover_key, 0) + 1
+    assert after.get(route_key, 0) >= before.get(route_key, 0) + 1
+
+
 def test_run_chat_provider_timeout_emits_timeout_metric(monkeypatch):
     chat._CACHE = CacheClient(None)
     before = dict(chat.metrics.snapshot())
