@@ -79,7 +79,8 @@ curl -s -XPOST http://localhost:8088/chat \
 1. Primary provider 429/5xx/timeout 증가 시 `QS_LLM_FALLBACK_URLS` 경로로 자동 failover 되는지 확인한다.
 2. 품질/지연 이슈 시 `QS_LLM_FORCE_PROVIDER`로 임시 우회한다.
 3. 비용 경보 시 `QS_LLM_COST_STEERING_ENABLED=1`, `QS_LLM_LOW_COST_PROVIDER`를 적용한다.
-4. 이슈 종료 후 `QS_LLM_FORCE_PROVIDER`를 해제해 기본 정책으로 복귀한다.
+4. `QS_LLM_PROVIDER_BLOCKLIST`는 부분 차단으로만 사용하고, 전체 차단 오설정 여부를 점검한다.
+5. 이슈 종료 후 `QS_LLM_FORCE_PROVIDER`를 해제해 기본 정책으로 복귀한다.
 
 ### Key metrics (labels)
 - `chat_provider_route_total{provider,result,mode}`

@@ -997,6 +997,108 @@ def test_stream_llm_fails_over_before_first_token(monkeypatch):
     assert after.get(route_key, 0) >= before.get(route_key, 0) + 1
 
 
+def test_stream_llm_applies_intent_provider_policy(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    call_urls = []
+
+    class FakeStreamResponse:
+        def __init__(self):
+            self.status_code = 200
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def aiter_lines(self):
+            lines = [
+                "event: delta",
+                'data: {"delta":"배송 안내"}',
+                "",
+                "event: done",
+                'data: {"status":"ok","citations":["chunk-1"]}',
+                "",
+            ]
+            for line in lines:
+                yield line
+
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def stream(self, method, url, json=None, headers=None, timeout=None):
+            call_urls.append(url)
+            return FakeStreamResponse()
+
+    async def _run():
+        stream_iter, state = await chat._stream_llm(
+            {
+                "model": "toy",
+                "messages": [{"role": "user", "content": "배송 도착 언제야?"}],
+            },
+            "trace_test",
+            "req_test",
+        )
+        events = []
+        async for event in stream_iter:
+            events.append(event)
+        return events, state
+
+    before = dict(chat.metrics.snapshot())
+    monkeypatch.setenv("QS_LLM_URL", "http://llm-primary")
+    monkeypatch.setenv("QS_LLM_FALLBACK_URLS", "http://llm-secondary")
+    monkeypatch.setenv("QS_LLM_PROVIDER_BY_INTENT_JSON", '{"SHIPPING":"fallback_1"}')
+    monkeypatch.setattr(chat.httpx, "AsyncClient", FakeAsyncClient)
+
+    events, state = asyncio.run(_run())
+
+    assert call_urls == ["http://llm-secondary/v1/generate?stream=true"]
+    assert state["answer"] == "배송 안내"
+    assert state["citations"] == ["chunk-1"]
+    assert any("event: delta" in event for event in events)
+    after = chat.metrics.snapshot()
+    key = "chat_provider_intent_route_total{intent=SHIPPING,mode=stream,provider=fallback_1,reason=selected}"
+    assert after.get(key, 0) >= before.get(key, 0) + 1
+
+
+def test_call_llm_json_keeps_availability_when_all_blocked(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    call_urls = []
+
+    class FakeResponse:
+        def __init__(self, payload):
+            self.status_code = 200
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url, json=None, headers=None, timeout=None):
+            call_urls.append(url)
+            return FakeResponse({"content": "가용성 유지", "citations": ["chunk-1"]})
+
+    monkeypatch.setenv("QS_LLM_URL", "http://llm-primary")
+    monkeypatch.setenv("QS_LLM_FALLBACK_URLS", "http://llm-secondary")
+    monkeypatch.setenv("QS_LLM_PROVIDER_BLOCKLIST", "primary,fallback_1")
+    monkeypatch.setattr(chat.httpx, "AsyncClient", FakeAsyncClient)
+
+    data = asyncio.run(chat._call_llm_json({"model": "toy"}, "trace_test", "req_test"))
+
+    assert data["content"] == "가용성 유지"
+    assert call_urls == ["http://llm-primary/v1/generate"]
+
+
 def test_run_chat_provider_timeout_emits_timeout_metric(monkeypatch):
     chat._CACHE = CacheClient(None)
     before = dict(chat.metrics.snapshot())

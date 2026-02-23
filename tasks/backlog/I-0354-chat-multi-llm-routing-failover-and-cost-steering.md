@@ -185,3 +185,9 @@ Implement multi-provider LLM routing for chat:
   - 기존 `chat_provider_health_score{provider}`는 effective score를 노출
 - [x] 회귀 테스트 추가
   - base ratio가 높은 provider라도 연속 실패가 크면 우선순위가 내려가는지 검증
+
+## Implementation Update (2026-02-23, Bundle 24)
+- [x] stream 인텐트 라우팅 회귀 테스트 추가
+  - 스트리밍 질의(`SHIPPING`)에서도 인텐트 정책 provider가 선행 적용되는지 검증
+- [x] blocklist 안전장치 회귀 테스트 추가
+  - provider 전부 차단 오설정 시에도 기본 체인으로 복귀하여 가용성이 유지되는지 검증
