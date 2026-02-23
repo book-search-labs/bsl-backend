@@ -14,8 +14,14 @@ commerce:
   cart:
     max-qty-per-item: ${CART_MAX_QTY_PER_ITEM:20}
     max-distinct-items: ${CART_MAX_DISTINCT_ITEMS:200}
+    free-shipping-threshold: ${CART_FREE_SHIPPING_THRESHOLD:20000}
+    bonus-point-threshold: ${CART_BONUS_POINT_THRESHOLD:50000}
+    base-shipping-fee: ${CART_BASE_SHIPPING_FEE:3000}
+    fast-shipping-fee: ${CART_FAST_SHIPPING_FEE:5000}
   inventory:
     default-seller-id: ${INVENTORY_DEFAULT_SELLER_ID:1}
+  loyalty:
+    earn-rate-percent: ${LOYALTY_EARN_RATE_PERCENT:5}
 
 app:
   cors:

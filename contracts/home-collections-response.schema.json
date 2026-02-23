@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "home-collections-response.schema.json",
+  "title": "HomeCollectionsResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "trace_id",
+    "request_id",
+    "sections",
+    "limit_per_section",
+    "count"
+  ],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": ["string", "null"] },
+    "request_id": { "type": ["string", "null"] },
+    "limit_per_section": { "type": "integer", "minimum": 1, "maximum": 24 },
+    "count": { "type": "integer", "minimum": 0 },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "title", "note", "link", "items"],
+        "properties": {
+          "key": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "note": { "type": "string" },
+          "link": { "type": "string", "minLength": 1 },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["doc_id", "title_ko", "authors", "edition_labels"],
+              "properties": {
+                "doc_id": { "type": ["string", "null"] },
+                "title_ko": { "type": ["string", "null"] },
+                "authors": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "publisher_name": { "type": ["string", "null"] },
+                "issued_year": { "type": ["integer", "null"] },
+                "edition_labels": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

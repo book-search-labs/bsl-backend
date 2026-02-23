@@ -38,7 +38,7 @@ public class ApiExceptionHandler {
         RequestContext context = RequestContextHolder.get();
         ErrorResponse response = new ErrorResponse(
             "bad_request",
-            "invalid JSON",
+            "요청 본문 형식이 올바르지 않습니다.",
             context == null ? null : context.getTraceId(),
             context == null ? null : context.getRequestId()
         );
@@ -50,7 +50,7 @@ public class ApiExceptionHandler {
         RequestContext context = RequestContextHolder.get();
         ErrorResponse response = new ErrorResponse(
             "internal_error",
-            "Unexpected error",
+            "서버 내부 오류가 발생했습니다.",
             context == null ? null : context.getTraceId(),
             context == null ? null : context.getRequestId()
         );

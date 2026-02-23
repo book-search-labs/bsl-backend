@@ -453,12 +453,185 @@
 
 ---
 
+## Phase 11 — Chatbot 안정화/고도화 (NEW Backlog)
+
+**Goal:** “동작은 한다” 수준이 아니라, 실제 운영에서 장애 재현 가능/근거 신뢰 가능/비용 통제 가능 상태로 챗봇 완성
+
+### 11-A) Core reliability / API contracts
+- 🟡 **B-0350** Chat 장애 재현 키트 (failure taxonomy + replay seed + deterministic test harness)
+  - DoD: 재현 불가 이슈를 `request_id/trace_id + replay payload`로 1회 재현 가능
+- 🟡 **B-0351** `/chat` 요청 유효성/한도/타임아웃 표준화 (validation envelope + graceful timeout)
+  - DoD: 잘못된 요청/초과 요청/타임아웃이 일관된 오류 코드와 메시지로 반환
+- 🟡 **B-0352** Chat degrade 정책 명시화 (LLM 장애 시 search-only fallback + 사유 코드)
+  - DoD: LLM/MIS 장애 상황에서도 “빈 응답” 없이 근거 기반 축약 응답 반환
+
+### 11-B) Groundedness / retrieval quality
+- 🟡 **B-0353** 근거 강제 게이트 강화 (citation coverage threshold + insufficient-evidence block)
+  - DoD: 근거 부족 답변은 차단하고 “근거 부족” 상태로 응답
+- 🟡 **B-0354** 다국어 질의 품질 보강 (한글 우선 + CJK 혼합 질의 normalize/rewrite 룰)
+  - DoD: 한국어 질의에서 한국어 문서 우선, 혼합 질의 회귀셋 통과
+- 🟡 **B-0355** 대화 메모리 정책 v1 (세션 메모리 TTL + PII 최소화 + 요약 저장)
+  - DoD: 세션 맥락 유지와 만료가 예측 가능하고 개인정보가 로그/메모리에 과다 저장되지 않음
+
+### 11-C) Safety / policy / evaluation
+- 🟡 **B-0356** Prompt injection/jailbreak 방어 체인 (input/output policy + risky tool denylist)
+  - DoD: 레드팀 프롬프트셋 기준 차단율 목표 달성, 정상 질의 오탐율 기준 이내
+- 🟡 **B-0357** Chat 품질 지표 게이트 (groundedness, hallucination, answer usefulness, abstain precision)
+  - DoD: CI에서 핵심 지표 하락 시 배포 차단
+- 🟡 **B-0358** 도메인 평가셋 확장 (도서검색/주문/환불/배송/이벤트 안내 시나리오)
+  - DoD: 실제 사용자 질문 분포를 반영한 평가셋 버전 관리 + 주기 리포트 자동화
+
+### 11-D) UX / Admin / Ops
+- 🟡 **U-0140** Chat UX 안정화 (재시도/중단/이어쓰기/네트워크 복구/스트리밍 끊김 복원)
+  - DoD: 브라우저 새로고침/일시 네트워크 단절 후에도 사용자 체감 실패율 감소
+- 🟡 **U-0141** 근거 UX 개선 (출처 클릭 점프, 인용 구간 하이라이트, 근거-답변 불일치 경고)
+  - DoD: 답변-근거 검증 가능성이 UI에서 명확히 보임
+- 🟡 **A-0140** Chat Ops 대시보드 (실패율/타임아웃/근거부족률/할루시네이션 신고율/비용)
+  - DoD: 운영자가 5분 내 이상징후 원인 범주를 식별 가능
+- 🟡 **A-0141** Prompt/Policy 버전 운영 UI (승인 플로우 + 롤백 + 감사 로그)
+  - DoD: 무중단 정책 변경과 즉시 롤백 가능
+- 🟡 **I-0350** LLM 비용/쿼터/속도 가드레일 (tenant/user/day budget + alert + auto-throttle)
+  - DoD: 비용 폭증/트래픽 급증 상황에서 자동 보호 동작
+- 🟡 **I-0351** Chat 장애 런북/온콜 시나리오 강화 (LLM 장애, 벡터 인덱스 장애, Kafka 지연)
+  - DoD: 장애 유형별 대응 절차와 복구 검증 체크리스트 문서화/리허설 완료
+
+### 11-E) Advanced Intelligence / Release Safety (추가)
+- 🟡 **B-0359** Chat Tool Calling (주문/배송/환불 인텐트는 백엔드 조회형 응답 강제)
+  - DoD: 커머스 질의에서 추측 답변 대신 실제 데이터 기반 응답
+- 🟡 **B-0360** Answer-Citation Entailment Verifier (2차 정합성 검증)
+  - DoD: citation 존재하지만 의미 불일치하는 문장 자동 검출/강등
+- 🟡 **B-0361** Query Decomposition + Multi-hop Retrieval (복합질의 분해 검색)
+  - DoD: 복합 질문 평가셋에서 recall/groundedness 개선
+- 🟡 **B-0362** Consent 기반 개인화 + Explainability 라벨
+  - DoD: opt-in 사용자군 usefulness 개선, opt-out 미사용 보장
+- 🟡 **U-0142** Chat Quick Actions UX (주문/배송/환불/이벤트 버튼형 처리)
+  - DoD: 자주 쓰는 지원 시나리오 완료율 개선
+- 🟡 **A-0142** Chat Failure Triage Workbench (Replay + Diff + RCA)
+  - DoD: 실패 케이스 RCA 시간 단축
+- 🟡 **I-0352** Chat Canary/Shadow/Auto-rollback 게이트
+  - DoD: 회귀 배포 자동 차단/롤백
+
+### 11-F) Stateful AI / Governance / Continuous Improvement (추가)
+- 🟡 **B-0363** Conversation State Store (checkpoint summary + recovery)
+  - DoD: 새로고침/네트워크 단절 후 세션 문맥 복원 성공률 개선
+- 🟡 **B-0364** Tool Schema Registry + Permission Policy
+  - DoD: 모든 tool 호출 전/후 schema 검증 + 권한 매트릭스 차단 보장
+- 🟡 **B-0365** Knowledge Freshness Pipeline (이벤트/공지/정책 최신화)
+  - DoD: 변경 반영 SLA 충족, stale answer rate 감소
+- 🟡 **B-0366** Real-time Feedback Triage + Prompt Improvement Loop
+  - DoD: 고심각도 피드백 triage SLA 충족 + 재발률 개선
+- 🟡 **U-0143** Chat Agent Handoff + Guided Forms UX
+  - DoD: 챗봇 미해결 케이스에서 상담 전환 이탈률 감소
+- 🟡 **A-0143** Chat Experiment Studio (Prompt/Policy A-B)
+  - DoD: 안전한 실험-승격-롤백 의사결정 로그를 end-to-end 보존
+- 🟡 **I-0353** Chat SLO Guardrails + Auto Remediation
+  - DoD: SLO 위반 시 자동 완화/롤백 동작 검증 및 리포트 자동화
+
+### 11-G) Enterprise Reliability / Safety Automation (추가)
+- 🟡 **B-0367** Chat Workflow Engine (멀티스텝 커머스 지원)
+  - DoD: 주문취소/환불/배송지변경 등 단계형 요청 완료율 개선 + 오실행 감소
+- 🟡 **B-0368** Source Trust Scoring + Answer Reliability Label
+  - DoD: 저신뢰/오래된 근거 기반 오답률 감소 + 신뢰 레이블 제공
+- 🟡 **B-0369** Sensitive Action Guard (이중 확인 + 리스크 정책)
+  - DoD: 고위험 액션 무확인 실행 0건, 감사추적 100% 확보
+- 🟡 **B-0370** Chat Ticket Integration (접수/상태추적/후속안내)
+  - DoD: 챗 미해결 이슈의 티켓 연계 및 상태 조회 end-to-end 제공
+- 🟡 **U-0144** Chat Transparency & Reliability Panel UX
+  - DoD: 사용자가 답변 신뢰상태/복구상태를 UI에서 즉시 이해 가능
+- 🟡 **A-0144** Chat Governance Console (예외/정책 검토)
+  - DoD: 정책 예외/차단 사례 triage + 승인/롤백 감사흔적 일원화
+- 🟡 **I-0354** Chat Multi-LLM Routing (Failover + Cost Steering)
+  - DoD: 제공자 장애/비용 급등 시 자동 라우팅으로 가용성·비용 안정화
+
+### 11-H) Policy Runtime / Scale Resilience / Advanced Safety (추가)
+- 🟡 **B-0371** Chat Policy Engine DSL (Intent/Risk/Compliance)
+  - DoD: 정책을 선언형 DSL로 관리하고, 요청별 정책평가 trace 재현 가능
+- 🟡 **B-0372** Chat Tool Result Cache + Consistency Invalidation
+  - DoD: 반복 조회 지연 감소 + stale 캐시 오답 방지
+- 🟡 **B-0373** Adversarial Evalset + Korean Safety Regression Gate
+  - DoD: 한국어 안전성 회귀를 PR/릴리즈 게이트에서 자동 차단
+- 🟡 **B-0374** Reasoning Budget Controller (step/token/tool limits)
+  - DoD: 에이전트형 실행의 비용 폭증/무한루프 위험을 제어
+- 🟡 **U-0145** Chat Incident Recovery & User Guidance UX
+  - DoD: 장애 상황에서 사용자 이탈률 감소 + 재시도/티켓 전환율 개선
+- 🟡 **A-0145** Chat Red-team Lab + Safety Campaign Manager
+  - DoD: 정기 레드팀 캠페인 실행 및 취약점 대응 리드타임 단축
+- 🟡 **I-0355** Chat Priority Queue + Load Shedding + Backpressure
+  - DoD: 피크 트래픽에서도 핵심 커머스 인텐트 성공률 유지
+
+### 11-I) Ticket Intelligence / Deterministic Debug / Reliability Ops (추가)
+- 🟡 **B-0375** Chat Ticket Triage Classifier + SLA Estimator
+  - DoD: 티켓 자동분류 정확도와 SLA 위험 예측 품질을 측정/개선
+- 🟡 **B-0376** Chat Case Evidence Pack Generator
+  - DoD: 티켓 처리자가 즉시 활용 가능한 증거 패키지 자동 생성
+- 🟡 **B-0377** Source Conflict Resolution + Safe Abstention
+  - DoD: 상충 출처 상황에서 오답 단정 대신 안전 보류/확인 유도
+- 🟡 **B-0378** Deterministic Agent Replay Sandbox + Debug Snapshots
+  - DoD: 에이전트형 실패 케이스 재현 시간 단축 + RCA 품질 향상
+- 🟡 **U-0146** Chat Ticket Lifecycle Timeline + Escalation UX
+  - DoD: 티켓 상태 문의 반복 감소, 에스컬레이션 사용성 개선
+- 🟡 **A-0146** Chat Ticket Ops Quality + SLA Command Center
+  - DoD: 운영자가 오분류/SLA위험/증거누락을 한 화면에서 관리
+- 🟡 **I-0356** Chat Synthetic Journey Monitoring + Auto Drill
+  - DoD: 핵심 챗 여정의 조기 장애 탐지 및 자동완화 검증 체계 확보
+
+### 11-J) Privacy Governance / Temporal Reasoning / Transaction Safety (추가)
+- 🟡 **B-0379** Chat Conversation Privacy DLP + Retention Enforcement
+  - DoD: 실시간 PII 보호 및 보존주기 강제로 개인정보 리스크 감소
+- 🟡 **B-0380** Effective-date-aware Policy Answering
+  - DoD: 정책/공지 변경 시점 오답률 감소 및 기준일 투명성 확보
+- 🟡 **B-0381** Operator-approved Correction Memory
+  - DoD: 승인된 교정지식 기반으로 반복 오류 재발률 감소
+- 🟡 **B-0382** Tool Transaction Fence + Compensation Orchestrator
+  - DoD: 다단계 tool 실행의 부분반영/중복반영 위험 감소
+- 🟡 **U-0147** Chat Privacy/Memory/Action Consent Controls UX
+  - DoD: 사용자가 개인정보·메모리·민감액션 정책을 직접 제어 가능
+- 🟡 **A-0147** Chat Policy Simulator + Blast-radius Lab
+  - DoD: 정책 변경 전 영향 시뮬레이션으로 위험 배포 사전 차단
+- 🟡 **I-0357** Chat Control-plane Backup/Restore + DR Drills
+  - DoD: 정책/설정/세션메타 복구체계 확립 및 DR 목표(RTO/RPO) 검증
+
+### 11-K) Compliance-grade Delivery / Explainability / Drift Safety (추가)
+- 🟡 **B-0383** Chat Output Contract Guard + Claim Verifier
+  - DoD: 정책/형식/claim 정합성 위반 출력의 사전 차단
+- 🟡 **B-0384** Korean Terminology + Style Governance Engine
+  - DoD: 한국어 용어/문체 일관성 및 운영 승인 기반 변경 관리
+- 🟡 **B-0385** Resolution Knowledge Ingestion from Closed Tickets
+  - DoD: 해결 완료 티켓 지식의 안전한 반영으로 반복문의 감소
+- 🟡 **B-0386** Prompt Supply-chain Integrity + Signature Verification
+  - DoD: 변조 프롬프트/정책 번들 로딩 차단 및 무결성 추적
+- 🟡 **U-0148** Chat Decision Explainability + Denial Reason UX
+  - DoD: 거절/제한 응답의 사용자 이해도 및 대체경로 전환율 개선
+- 🟡 **A-0148** Chat Compliance Evidence Hub + Audit Export
+  - DoD: 준수 증빙 집계/내보내기/감사추적을 단일 콘솔에서 제공
+- 🟡 **I-0358** Chat Config Drift Detection + Immutable Release Bundles
+  - DoD: 환경 드리프트 조기탐지 및 재현 가능한 릴리즈 보장
+
+### 11-L) Risk-adaptive Intelligence / Localized Resilience (추가)
+- 🟡 **B-0387** Intent Calibration + Confidence Reliability Model
+  - DoD: 과신/과소신뢰 분기 감소 및 confidence 기반 라우팅 품질 향상
+- 🟡 **B-0388** Cross-lingual Query Bridge + Korean-priority Grounding
+  - DoD: 다국어 혼합 질의에서 한국어 우선 grounded 응답 품질 개선
+- 🟡 **B-0389** Tool Health Score + Capability Routing
+  - DoD: 건강도/능력 기반 라우팅으로 tool 실패 전파 감소
+- 🟡 **B-0390** Answer Risk Banding + Tiered Approval Flow
+  - DoD: 고위험 답변 무검증 노출 감소 및 승인 흐름 정착
+- 🟡 **U-0149** Chat Risk-state Visualization + User-safe Flow UX
+  - DoD: 위험상태 이해도 개선 및 안전 대체경로 전환율 향상
+- 🟡 **A-0149** Chat Risk Ops Cockpit + Weekly Governance Review
+  - DoD: 주간 거버넌스 루틴으로 위험 대응 리드타임 단축
+- 🟡 **I-0359** Traffic Partitioning + Fail-safe Isolation Mode
+  - DoD: 국소 장애 격리로 전체 서비스 영향 최소화
+
+---
+
 ## “Does this plan cover it?” checklist summary
 
 - ✅ **Launchable search** (Data→OS→Serving) + ✅ **Production BFF/contracts/auth**
 - ✅ **Autocomplete ops loop** (Redis/Kafka/Aggregation) + ✅ **Ranking/MIS**
 - ✅ **LTR + offline eval gate** (deployment quality assurance)
-- ✅ **RAG chatbot (product-grade)** + ✅ **Commerce** + ✅ **Observability/Release/Security**
+- ✅ **RAG chatbot (product-grade) baseline** + ✅ **Commerce** + ✅ **Observability/Release/Security**
+- ➕ **Phase 11** adds reliability/safety + privacy/compliance + risk-adaptive routing + localized resilience 티켓
 - ➕ Phase 10 is optional pro-level hardening
 
 ---

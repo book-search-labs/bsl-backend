@@ -17,6 +17,7 @@ public class SearchServiceResponse {
     private boolean rankingApplied;
 
     private String strategy;
+    private Integer total;
     private List<BookHit> hits;
 
     @JsonProperty("experiment_bucket")
@@ -60,6 +61,14 @@ public class SearchServiceResponse {
 
     public void setStrategy(String strategy) {
         this.strategy = strategy;
+    }
+
+    public Integer getTotal() {
+        return total;
+    }
+
+    public void setTotal(Integer total) {
+        this.total = total;
     }
 
     public List<BookHit> getHits() {

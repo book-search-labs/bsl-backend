@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { createOrder } from '../../api/orders'
 import { createAddress, fetchCheckoutSummary, type Address } from '../../api/checkout'
@@ -10,11 +10,16 @@ function generateIdempotencyKey() {
 
 export default function CheckoutPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [summary, setSummary] = useState<Awaited<ReturnType<typeof fetchCheckoutSummary>> | null>(null)
   const [selectedAddress, setSelectedAddress] = useState<number | null>(null)
+  const [shippingMode, setShippingMode] = useState<'STANDARD' | 'FAST'>(
+    searchParams.get('shipping_mode')?.toUpperCase() === 'FAST' ? 'FAST' : 'STANDARD',
+  )
   const [paymentMethod, setPaymentMethod] = useState('CARD')
   const [loading, setLoading] = useState(true)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null)
+  const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null)
   const [creatingOrder, setCreatingOrder] = useState(false)
   const [idempotencyKey] = useState(generateIdempotencyKey())
 
@@ -27,6 +32,7 @@ export default function CheckoutPage() {
       .then((data) => {
         if (!active) return
         setSummary(data)
+        setLoadErrorMessage(null)
         const defaultAddress = data.addresses?.find((address) => Boolean(address.is_default))
         if (defaultAddress) {
           setSelectedAddress(defaultAddress.address_id)
@@ -36,7 +42,7 @@ export default function CheckoutPage() {
       })
       .catch((err) => {
         if (!active) return
-        setErrorMessage(err instanceof Error ? err.message : 'Failed to load checkout')
+        setLoadErrorMessage(err instanceof Error ? err.message : '주문/결제 정보를 불러오지 못했습니다.')
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -49,6 +55,13 @@ export default function CheckoutPage() {
 
   const cart = summary?.cart
   const addresses = summary?.addresses ?? []
+  const baseShippingFee = useMemo(() => cart?.benefits?.base_shipping_fee ?? cart?.totals.shipping_fee ?? 3000, [cart])
+  const fastShippingFee = useMemo(() => cart?.benefits?.fast_shipping_fee ?? 5000, [cart])
+  const checkoutShippingFee = shippingMode === 'FAST' ? fastShippingFee : baseShippingFee
+  const checkoutTotal = useMemo(() => {
+    if (!cart) return 0
+    return cart.totals.subtotal + checkoutShippingFee - cart.totals.discount
+  }, [cart, checkoutShippingFee])
   const cartIssues = useMemo(() => {
     if (!cart?.items) return []
     return cart.items.filter((item) => item.price_changed || item.out_of_stock)
@@ -56,7 +69,7 @@ export default function CheckoutPage() {
 
   const handleCreateAddress = async () => {
     if (!newAddress.name || !newAddress.phone) {
-      setErrorMessage('Name and phone are required for address')
+      setActionErrorMessage('받는 분 이름과 연락처를 입력해주세요.')
       return
     }
     try {
@@ -71,36 +84,39 @@ export default function CheckoutPage() {
       )
       setSelectedAddress(address.address_id)
       setNewAddress({ name: '', phone: '', zip: '', addr1: '', addr2: '' })
+      setActionErrorMessage(null)
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Failed to add address')
+      setActionErrorMessage(err instanceof Error ? err.message : '배송지 추가에 실패했습니다.')
     }
   }
 
   const handleSubmit = async () => {
     if (!cart?.cart_id) {
-      setErrorMessage('Cart is empty')
+      setActionErrorMessage('장바구니가 비어 있습니다.')
       return
     }
     if (!selectedAddress) {
-      setErrorMessage('Please select an address')
+      setActionErrorMessage('배송지를 선택해주세요.')
       return
     }
     if (cartIssues.length > 0) {
-      setErrorMessage('Please resolve price or stock changes before ordering')
+      setActionErrorMessage('가격 또는 재고 변동 상품을 확인한 뒤 주문해주세요.')
       return
     }
+    setActionErrorMessage(null)
     setCreatingOrder(true)
     try {
       const response = await createOrder({
         cartId: cart.cart_id,
         shippingAddressId: selectedAddress,
+        shippingMode,
         paymentMethod,
         idempotencyKey,
       })
       const orderId = response.order.order_id
       navigate(`/payment/process/${orderId}`)
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Failed to create order')
+      setActionErrorMessage(err instanceof Error ? err.message : '주문 생성에 실패했습니다.')
     } finally {
       setCreatingOrder(false)
     }
@@ -109,15 +125,15 @@ export default function CheckoutPage() {
   if (loading) {
     return (
       <div className="container py-5">
-        <div className="card p-4">Loading checkout...</div>
+        <div className="card p-4">주문/결제 정보를 불러오는 중입니다...</div>
       </div>
     )
   }
 
-  if (errorMessage) {
+  if (loadErrorMessage) {
     return (
       <div className="container py-5">
-        <div className="alert alert-danger">{errorMessage}</div>
+        <div className="alert alert-danger">{loadErrorMessage}</div>
       </div>
     )
   }
@@ -125,17 +141,18 @@ export default function CheckoutPage() {
   if (!cart) {
     return (
       <div className="container py-5">
-        <div className="card p-4">No cart found. Return to cart.</div>
+        <div className="card p-4">장바구니 정보가 없습니다. 장바구니에서 다시 확인해주세요.</div>
       </div>
     )
   }
 
   return (
     <div className="container py-5">
+      {actionErrorMessage ? <div className="alert alert-danger">{actionErrorMessage}</div> : null}
       <div className="checkout-grid">
         <div className="checkout-main">
           <section className="card p-4 mb-4">
-            <h3 className="mb-3">Shipping Address</h3>
+            <h3 className="mb-3">배송지 선택</h3>
             <div className="address-list d-flex flex-column gap-3">
               {addresses.map((address: Address) => (
                 <label key={address.address_id} className="address-card d-flex gap-3">
@@ -156,12 +173,12 @@ export default function CheckoutPage() {
               ))}
             </div>
             <div className="mt-4">
-              <h6>Add new address</h6>
+              <h6>신규 배송지 추가</h6>
               <div className="row g-2">
                 <div className="col-md-6">
                   <input
                     className="form-control"
-                    placeholder="Name"
+                    placeholder="받는 분"
                     value={newAddress.name}
                     onChange={(event) => setNewAddress({ ...newAddress, name: event.target.value })}
                   />
@@ -169,7 +186,7 @@ export default function CheckoutPage() {
                 <div className="col-md-6">
                   <input
                     className="form-control"
-                    placeholder="Phone"
+                    placeholder="연락처"
                     value={newAddress.phone}
                     onChange={(event) => setNewAddress({ ...newAddress, phone: event.target.value })}
                   />
@@ -177,7 +194,7 @@ export default function CheckoutPage() {
                 <div className="col-md-4">
                   <input
                     className="form-control"
-                    placeholder="Zip"
+                    placeholder="우편번호"
                     value={newAddress.zip}
                     onChange={(event) => setNewAddress({ ...newAddress, zip: event.target.value })}
                   />
@@ -185,7 +202,7 @@ export default function CheckoutPage() {
                 <div className="col-md-8">
                   <input
                     className="form-control"
-                    placeholder="Address line 1"
+                    placeholder="기본 주소"
                     value={newAddress.addr1}
                     onChange={(event) => setNewAddress({ ...newAddress, addr1: event.target.value })}
                   />
@@ -193,20 +210,44 @@ export default function CheckoutPage() {
                 <div className="col-12">
                   <input
                     className="form-control"
-                    placeholder="Address line 2"
+                    placeholder="상세 주소"
                     value={newAddress.addr2}
                     onChange={(event) => setNewAddress({ ...newAddress, addr2: event.target.value })}
                   />
                 </div>
               </div>
               <button className="btn btn-outline-primary mt-3" onClick={handleCreateAddress}>
-                Save address
+                배송지 저장
               </button>
             </div>
           </section>
 
           <section className="card p-4 mb-4">
-            <h3 className="mb-3">Payment Method</h3>
+            <h3 className="mb-3">배송 옵션</h3>
+            <div className="d-flex gap-3">
+              <label className="payment-option">
+                <input
+                  type="radio"
+                  name="shipping_mode"
+                  checked={shippingMode === 'STANDARD'}
+                  onChange={() => setShippingMode('STANDARD')}
+                />
+                <span>기본배송 (₩{baseShippingFee.toLocaleString()})</span>
+              </label>
+              <label className="payment-option">
+                <input
+                  type="radio"
+                  name="shipping_mode"
+                  checked={shippingMode === 'FAST'}
+                  onChange={() => setShippingMode('FAST')}
+                />
+                <span>빠른배송 (₩{fastShippingFee.toLocaleString()})</span>
+              </label>
+            </div>
+          </section>
+
+          <section className="card p-4 mb-4">
+            <h3 className="mb-3">결제 수단</h3>
             <div className="d-flex gap-3">
               {['CARD', 'TRANSFER', 'EASY_PAY'].map((method) => (
                 <label key={method} className="payment-option">
@@ -216,7 +257,7 @@ export default function CheckoutPage() {
                     checked={paymentMethod === method}
                     onChange={() => setPaymentMethod(method)}
                   />
-                  <span>{method}</span>
+                  <span>{method === 'CARD' ? '카드' : method === 'TRANSFER' ? '계좌이체' : '간편결제'}</span>
                 </label>
               ))}
             </div>
@@ -224,37 +265,37 @@ export default function CheckoutPage() {
 
           {cartIssues.length > 0 ? (
             <div className="alert alert-warning">
-              Some items changed price or have limited stock. Please review your cart before ordering.
+              일부 상품의 가격 또는 재고가 변경되었습니다. 주문 전에 장바구니를 확인해주세요.
             </div>
           ) : null}
         </div>
 
         <aside className="checkout-summary card p-4">
-          <h3 className="mb-3">Order Summary</h3>
+          <h3 className="mb-3">주문 요약</h3>
           <div className="d-flex flex-column gap-2">
             {cart.items.map((item) => (
               <div key={item.cart_item_id} className="d-flex justify-content-between">
-                <span>SKU #{item.sku_id} × {item.qty}</span>
+                <span>{item.title ?? `도서 SKU #${item.sku_id}`} × {item.qty}</span>
                 <span>₩{(item.item_amount ?? 0).toLocaleString()}</span>
               </div>
             ))}
           </div>
           <div className="border-top mt-3 pt-3">
             <div className="d-flex justify-content-between">
-              <span>Subtotal</span>
+              <span>상품 금액</span>
               <span>₩{cart.totals.subtotal.toLocaleString()}</span>
             </div>
             <div className="d-flex justify-content-between">
-              <span>Shipping</span>
-              <span>₩{cart.totals.shipping_fee.toLocaleString()}</span>
+              <span>배송비</span>
+              <span>₩{checkoutShippingFee.toLocaleString()}</span>
             </div>
             <div className="d-flex justify-content-between">
-              <span>Discount</span>
+              <span>할인</span>
               <span>-₩{cart.totals.discount.toLocaleString()}</span>
             </div>
             <div className="d-flex justify-content-between fw-semibold fs-5 mt-2">
-              <span>Total</span>
-              <span>₩{cart.totals.total.toLocaleString()}</span>
+              <span>총 결제금액</span>
+              <span>₩{checkoutTotal.toLocaleString()}</span>
             </div>
           </div>
           <button
@@ -262,7 +303,7 @@ export default function CheckoutPage() {
             onClick={handleSubmit}
             disabled={creatingOrder || cartIssues.length > 0}
           >
-            {creatingOrder ? 'Creating order...' : 'Place order'}
+            {creatingOrder ? '주문 생성 중...' : '주문하기'}
           </button>
         </aside>
       </div>

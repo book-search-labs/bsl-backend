@@ -75,6 +75,12 @@ public class BookDetailServiceResponse {
         @JsonProperty("edition_labels")
         private List<String> editionLabels;
 
+        @JsonProperty("kdc_code")
+        private String kdcCode;
+
+        @JsonProperty("kdc_path_codes")
+        private List<String> kdcPathCodes;
+
         public String getTitleKo() {
             return titleKo;
         }
@@ -121,6 +127,22 @@ public class BookDetailServiceResponse {
 
         public void setEditionLabels(List<String> editionLabels) {
             this.editionLabels = editionLabels;
+        }
+
+        public String getKdcCode() {
+            return kdcCode;
+        }
+
+        public void setKdcCode(String kdcCode) {
+            this.kdcCode = kdcCode;
+        }
+
+        public List<String> getKdcPathCodes() {
+            return kdcPathCodes;
+        }
+
+        public void setKdcPathCodes(List<String> kdcPathCodes) {
+            this.kdcPathCodes = kdcPathCodes;
         }
     }
 }

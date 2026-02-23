@@ -1,0 +1,18 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1200" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D9F2FF"/>
+      <stop offset="1" stop-color="#9ED8FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg2)"/>
+  <rect x="760" y="0" width="440" height="420" fill="#0E7490" fill-opacity="0.14"/>
+  <path d="M790 360C860 250 980 180 1160 170V420H760C762 399 771 380 790 360Z" fill="#FFFFFF" fill-opacity="0.35"/>
+  <rect x="70" y="58" rx="14" ry="14" width="126" height="34" fill="#0E7490"/>
+  <text x="133" y="80" fill="#FFFFFF" text-anchor="middle" font-size="18" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">신학기</text>
+  <text x="70" y="160" fill="#0F172A" font-size="52" font-weight="800" font-family="Pretendard, Noto Sans KR, sans-serif">초등 · 중등 학습 기획전</text>
+  <text x="70" y="218" fill="#0F172A" font-size="34" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">영어교육 · 수학 · 사회탐구 추천 큐레이션</text>
+  <text x="70" y="274" fill="#334155" font-size="25" font-weight="600" font-family="Pretendard, Noto Sans KR, sans-serif">신학기 필수 도서와 교재를 빠르게 비교해보세요.</text>
+  <rect x="70" y="310" rx="12" ry="12" width="250" height="56" fill="#0E7490"/>
+  <text x="195" y="346" fill="#FFFFFF" text-anchor="middle" font-size="24" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">기획전 바로가기</text>
+</svg>

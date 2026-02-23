@@ -1,0 +1,57 @@
+{
+  "version": "v1",
+  "trace_id": "trace_7db4fcb90a0f",
+  "request_id": "req_7db4fcb90a0f_01",
+  "limit_per_section": 8,
+  "count": 3,
+  "sections": [
+    {
+      "key": "bestseller",
+      "title": "이번 주 베스트셀러",
+      "note": "지금 가장 많이 찾는 도서를 모았습니다.",
+      "link": "/search?q=베스트셀러",
+      "items": [
+        {
+          "doc_id": "nlk:CDM0000000006",
+          "title_ko": "중공對韓半島政策之硏究: 一九六九年至一九七五年",
+          "authors": ["지재운"],
+          "publisher_name": "私立中國文化大學",
+          "issued_year": 1983,
+          "edition_labels": []
+        }
+      ]
+    },
+    {
+      "key": "new",
+      "title": "신간 · 예약 판매",
+      "note": "새로운 출간 소식을 가장 먼저 만나보세요.",
+      "link": "/search?q=신간",
+      "items": [
+        {
+          "doc_id": "nlk:CDM200900003",
+          "title_ko": "초등영어교육의 영미문화지도에 관한 연구",
+          "authors": ["한은경"],
+          "publisher_name": "釜山外國語大學校",
+          "issued_year": 2008,
+          "edition_labels": []
+        }
+      ]
+    },
+    {
+      "key": "editor",
+      "title": "에디터 추천",
+      "note": "감성적인 에세이와 문학 작품을 큐레이션했습니다.",
+      "link": "/search?q=에세이",
+      "items": [
+        {
+          "doc_id": "nlk:CDM0000000003",
+          "title_ko": "社會科學整合論文集",
+          "authors": ["강응용", "진관정"],
+          "publisher_name": "서울출판사",
+          "issued_year": 1990,
+          "edition_labels": []
+        }
+      ]
+    }
+  ]
+}

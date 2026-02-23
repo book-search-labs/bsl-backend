@@ -29,7 +29,9 @@ public class AutocompleteService {
     public AutocompleteResponse autocomplete(String query, int size, String traceId, String requestId) {
         long started = System.nanoTime();
 
-        List<AutocompleteResponse.Suggestion> suggestions = buildSuggestions(query, size);
+        List<AutocompleteResponse.Suggestion> suggestions = query == null || query.isBlank()
+            ? buildTrendingSuggestions(size)
+            : buildSuggestions(query, size);
 
         AutocompleteResponse response = new AutocompleteResponse();
         response.setVersion(VERSION);
@@ -94,6 +96,46 @@ public class AutocompleteService {
             suggestions.add(suggestion);
         }
         cacheService.put(query, suggestions);
+        return suggestions;
+    }
+
+    private List<AutocompleteResponse.Suggestion> buildTrendingSuggestions(int size) {
+        if (size <= 0) {
+            return List.of();
+        }
+
+        List<OpenSearchGateway.SuggestionHit> hits = openSearchGateway.searchTrendingSuggestions(size);
+        if (hits == null || hits.isEmpty()) {
+            return List.of();
+        }
+
+        List<AutocompleteResponse.Suggestion> suggestions = new ArrayList<>();
+        Map<String, Boolean> dedup = new LinkedHashMap<>();
+        for (OpenSearchGateway.SuggestionHit hit : hits) {
+            String text = hit.getText();
+            if (text == null || text.isBlank()) {
+                continue;
+            }
+            String key = text.trim().toLowerCase(Locale.ROOT);
+            if (dedup.containsKey(key)) {
+                continue;
+            }
+            dedup.put(key, true);
+
+            AutocompleteResponse.Suggestion suggestion = new AutocompleteResponse.Suggestion();
+            suggestion.setText(text);
+            suggestion.setScore(hit.getScore());
+            suggestion.setSource(SOURCE_OS);
+            suggestion.setSuggestId(hit.getSuggestId());
+            suggestion.setType(hit.getType());
+            suggestion.setTargetDocId(hit.getTargetDocId());
+            suggestion.setTargetId(hit.getTargetId());
+            suggestions.add(suggestion);
+
+            if (suggestions.size() >= size) {
+                break;
+            }
+        }
         return suggestions;
     }
 }

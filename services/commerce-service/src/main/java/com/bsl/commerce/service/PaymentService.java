@@ -8,16 +8,22 @@ import com.bsl.commerce.repository.PaymentRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PaymentService {
+    private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
+
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
     private final OrderService orderService;
     private final InventoryService inventoryService;
+    private final ShipmentService shipmentService;
+    private final LoyaltyPointService loyaltyPointService;
     private final ObjectMapper objectMapper;
 
     public PaymentService(
@@ -25,12 +31,16 @@ public class PaymentService {
         OrderRepository orderRepository,
         OrderService orderService,
         InventoryService inventoryService,
+        ShipmentService shipmentService,
+        LoyaltyPointService loyaltyPointService,
         ObjectMapper objectMapper
     ) {
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
         this.orderService = orderService;
         this.inventoryService = inventoryService;
+        this.shipmentService = shipmentService;
+        this.loyaltyPointService = loyaltyPointService;
         this.objectMapper = objectMapper;
     }
 
@@ -45,15 +55,15 @@ public class PaymentService {
 
         Map<String, Object> order = orderRepository.findOrderById(orderId);
         if (order == null) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "order not found");
+            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "주문 정보를 찾을 수 없습니다.");
         }
         String status = JdbcUtils.asString(order.get("status"));
         if (!"PAYMENT_PENDING".equals(status) && !"CREATED".equals(status)) {
-            throw new ApiException(HttpStatus.CONFLICT, "invalid_state", "order not ready for payment");
+            throw new ApiException(HttpStatus.CONFLICT, "invalid_state", "현재 상태에서는 결제를 진행할 수 없습니다.");
         }
         int totalAmount = JdbcUtils.asInt(order.get("total_amount")) == null ? 0 : JdbcUtils.asInt(order.get("total_amount"));
         if (amount != totalAmount) {
-            throw new ApiException(HttpStatus.CONFLICT, "amount_mismatch", "amount does not match order total");
+            throw new ApiException(HttpStatus.CONFLICT, "amount_mismatch", "결제 금액이 주문 금액과 일치하지 않습니다.");
         }
 
         String currency = JdbcUtils.asString(order.get("currency"));
@@ -79,7 +89,7 @@ public class PaymentService {
     public Map<String, Object> mockComplete(long paymentId, String result) {
         Map<String, Object> payment = paymentRepository.findPayment(paymentId);
         if (payment == null) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "payment not found");
+            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "결제 정보를 찾을 수 없습니다.");
         }
         String status = JdbcUtils.asString(payment.get("status"));
         if ("CAPTURED".equals(status) || "FAILED".equals(status) || "CANCELED".equals(status)) {
@@ -102,6 +112,26 @@ public class PaymentService {
                 long orderItemId = JdbcUtils.asLong(item.get("order_item_id"));
                 String deductKey = "payment_" + paymentId + "_deduct_" + orderItemId;
                 inventoryService.deduct(skuId, sellerId, qty, deductKey, "ORDER", String.valueOf(orderId));
+            }
+
+            try {
+                shipmentService.ensureShipmentForOrder(orderId);
+            } catch (ApiException ex) {
+                logger.warn(
+                    "shipment_auto_create_failed payment_id={} order_id={} code={}",
+                    paymentId,
+                    orderId,
+                    ex.getCode()
+                );
+            }
+
+            Map<String, Object> order = orderRepository.findOrderById(orderId);
+            if (order != null) {
+                long userId = JdbcUtils.asLong(order.get("user_id"));
+                int totalAmount = JdbcUtils.asInt(order.get("total_amount")) == null
+                    ? 0
+                    : JdbcUtils.asInt(order.get("total_amount"));
+                loyaltyPointService.earnForOrder(userId, orderId, totalAmount, "ORDER_PAYMENT_COMPLETED");
             }
         } else {
             paymentRepository.updatePaymentStatus(paymentId, "FAILED", null, "mock_failed");
@@ -132,7 +162,7 @@ public class PaymentService {
     public Map<String, Object> getPayment(long paymentId) {
         Map<String, Object> payment = paymentRepository.findPayment(paymentId);
         if (payment == null) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "payment not found");
+            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "결제 정보를 찾을 수 없습니다.");
         }
         return payment;
     }
@@ -141,7 +171,7 @@ public class PaymentService {
     public Map<String, Object> cancelPayment(long paymentId, String reason) {
         Map<String, Object> payment = paymentRepository.findPayment(paymentId);
         if (payment == null) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "payment not found");
+            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "결제 정보를 찾을 수 없습니다.");
         }
         String status = JdbcUtils.asString(payment.get("status"));
         if ("CANCELED".equals(status)) {

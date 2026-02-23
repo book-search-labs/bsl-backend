@@ -27,7 +27,7 @@ public class PaymentController {
     @PostMapping("/payments")
     public Map<String, Object> createPayment(@RequestBody PaymentCreateRequest request) {
         if (request == null || request.orderId == null || request.amount == null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "bad_request", "order_id and amount are required");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "bad_request", "order_id와 amount는 필수입니다.");
         }
         Map<String, Object> payment = paymentService.createPayment(
             request.orderId,

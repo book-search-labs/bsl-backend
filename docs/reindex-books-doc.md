@@ -4,7 +4,7 @@ This doc describes the **local-only** reindex flow that reads from the canonical
 
 ## What it does
 - Optionally deletes existing `books_doc_*` indices and aliases.
-- Creates a fresh books index from `infra/opensearch/books_doc_v1.mapping.json`.
+- Creates a fresh books index from `infra/opensearch/books_doc_v2.mapping.json`.
 - Reads Canonical tables (`material`, `material_agent`, `agent`, `material_identifier`, `material_concept`, `concept`, overrides/merges).
 - Denormalizes to books search documents and bulk-indexes into OpenSearch.
 - Verifies index count and runs a few sample queries.
@@ -26,8 +26,8 @@ python3 -m pip install -r scripts/ingest/requirements.txt
 - `OS_URL` (default `http://localhost:9200`)
 - `BOOKS_DOC_ALIAS` (default `books_doc_write`)
 - `BOOKS_DOC_READ_ALIAS` (default `books_doc_read`)
-- `BOOKS_DOC_INDEX_PREFIX` (default `books_doc_v1_local`)
-- `BOOKS_DOC_MAPPING` (default `infra/opensearch/books_doc_v1.mapping.json`)
+- `BOOKS_DOC_INDEX_PREFIX` (default `books_doc_v2_local`)
+- `BOOKS_DOC_MAPPING` (default `infra/opensearch/books_doc_v2.mapping.json`)
 - `DELETE_EXISTING` (default `1`) — delete `books_doc_*` indices before reindex
 - `OS_BULK_SIZE` (default `1000`)
 - `OS_RETRY_MAX` (default `3`)

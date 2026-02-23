@@ -776,6 +776,7 @@ If supported, the server should treat it as:
 - `GET /api/v1/skus/{skuId}/current-offer`
 - `GET /api/v1/materials/{materialId}/current-offer`
 - `GET /api/v1/home/panels?limit=31&type=EVENT|NOTICE`
+- `GET /api/v1/home/collections?limit_per_section=8`
 - `GET /api/v1/cart`
 - `POST /api/v1/cart/items`
 - `PATCH /api/v1/cart/items/{cartItemId}`
@@ -815,6 +816,19 @@ If supported, the server should treat it as:
   - Response fields
     - `items[]`: `item_id`, `type`, `banner_image_url`, `badge`, `title`, `subtitle`, `summary`, `link_url`, `cta_label`, `starts_at`, `ends_at`, `sort_order`
     - `count`, `total_count`
+
+### Home Collections (실데이터 섹션)
+- `GET /api/v1/home/collections`
+  - Query params
+    - `limit_per_section` (optional, default `8`, max `24`)
+  - Response fields
+    - `sections[]`: `key`(`bestseller|new|editor`), `title`, `note`, `link`, `items[]`
+    - `items[]`: `doc_id`, `title_ko`, `authors[]`, `publisher_name`, `issued_year`, `edition_labels[]`
+    - `limit_per_section`, `count`
+  - Data source
+    - `bestseller`: 최근 주문/결제 데이터 집계(order_item + orders + sku)
+    - `new`: 발행연도/발행일 기반 최신 도서
+    - `editor`: 인문/문학/에세이 계열 주제 신호 + KDC 기반 큐레이션
 
 ### Orders (User)
 - `GET /api/v1/orders`

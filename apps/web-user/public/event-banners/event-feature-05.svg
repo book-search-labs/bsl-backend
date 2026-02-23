@@ -1,0 +1,19 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg5" x1="0" y1="0" x2="1200" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5F3FF"/>
+      <stop offset="1" stop-color="#C4B5FD"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg5)"/>
+  <circle cx="940" cy="90" r="145" fill="#FFFFFF" fill-opacity="0.28"/>
+  <path d="M780 390C870 300 970 260 1130 246L1200 420H760C760 409 766 400 780 390Z" fill="#FFFFFF" fill-opacity="0.24"/>
+  <rect x="70" y="58" rx="14" ry="14" width="120" height="34" fill="#4338CA"/>
+  <text x="130" y="80" fill="#FFFFFF" text-anchor="middle" font-size="18" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">자기계발</text>
+  <text x="70" y="160" fill="#1E1B4B" font-size="52" font-weight="800" font-family="Pretendard, Noto Sans KR, sans-serif">성장 루틴 집중전</text>
+  <text x="70" y="220" fill="#1E1B4B" font-size="34" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">커리어 · 습관 · 생산성 핵심 도서 추천</text>
+  <text x="70" y="275" fill="#3730A3" font-size="25" font-weight="600" font-family="Pretendard, Noto Sans KR, sans-serif">실행 가능한 변화에 집중한 도서를 모았습니다.</text>
+  <rect x="70" y="310" rx="12" ry="12" width="246" height="56" fill="#4338CA"/>
+  <text x="193" y="346" fill="#FFFFFF" text-anchor="middle" font-size="24" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">큐레이션 보기</text>
+</svg>
+

@@ -44,7 +44,7 @@ public class AddressController {
         @RequestBody AddressRequest request
     ) {
         if (request == null || request.name == null || request.phone == null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "bad_request", "name and phone are required");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "bad_request", "받는 분 이름과 연락처는 필수입니다.");
         }
         long userId = RequestUtils.resolveUserId(userIdHeader, 1L);
         if (Boolean.TRUE.equals(request.isDefault)) {
@@ -74,7 +74,7 @@ public class AddressController {
         long userId = RequestUtils.resolveUserId(userIdHeader, 1L);
         Map<String, Object> address = addressRepository.findAddress(addressId);
         if (address == null || com.bsl.commerce.common.JdbcUtils.asLong(address.get("user_id")) != userId) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "address not found");
+            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "배송지를 찾을 수 없습니다.");
         }
         addressRepository.clearDefault(userId);
         addressRepository.setDefault(addressId);

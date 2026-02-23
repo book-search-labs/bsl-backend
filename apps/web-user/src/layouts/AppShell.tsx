@@ -12,6 +12,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from
 
 import { fetchAutocomplete, postAutocompleteSelect, type AutocompleteSuggestion } from '../api/autocomplete'
 import { fetchKdcCategories, type KdcCategoryNode } from '../api/categories'
+import FloatingChatWidget from '../components/chat/FloatingChatWidget'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { useOutsideClick } from '../hooks/useOutsideClick'
 import { getTopLevelKdc } from '../utils/kdc'
@@ -22,14 +23,6 @@ const MIN_QUERY_LENGTH = 1
 const AUTOCOMPLETE_LISTBOX_ID = 'global-search-suggestions'
 const RECENT_STORAGE_KEY = 'bsl.recentSearches'
 const MAX_RECENT = 6
-const DEFAULT_RECOMMENDED = [
-  '베스트셀러',
-  '신간',
-  '에세이',
-  '자기계발',
-  '해리포터',
-  '어린이',
-]
 
 type SelectableItem = {
   kind: 'suggestion' | 'recent' | 'recommended'
@@ -58,13 +51,12 @@ function saveRecentQueries(items: string[]) {
   }
 }
 
-function resolveRecommendedQueries() {
-  const raw = import.meta.env.VITE_AUTOCOMPLETE_RECOMMENDED ?? ''
-  const parsed = raw
+function resolveEnvRecommendedQueries(): string[] {
+  const raw = String(import.meta.env.VITE_AUTOCOMPLETE_RECOMMENDED ?? '')
+  return raw
     .split(',')
     .map((item) => item.trim())
     .filter((item) => item.length > 0)
-  return parsed.length > 0 ? parsed : DEFAULT_RECOMMENDED
 }
 
 export default function AppShell() {
@@ -73,6 +65,7 @@ export default function AppShell() {
   const [searchParams] = useSearchParams()
   const [query, setQuery] = useState('')
   const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([])
+  const [recommendedQueries, setRecommendedQueries] = useState<string[]>(() => resolveEnvRecommendedQueries())
   const [recentQueries, setRecentQueries] = useState<string[]>(() => loadRecentQueries())
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -85,7 +78,6 @@ export default function AppShell() {
   const formRef = useRef<HTMLFormElement>(null)
   const shouldSuggestRef = useRef(false)
   const debouncedQuery = useDebouncedValue(query, AUTOCOMPLETE_DEBOUNCE_MS)
-  const recommendedQueries = useMemo(() => resolveRecommendedQueries(), [])
   const topCategories = useMemo(() => getTopLevelKdc(kdcCategories), [kdcCategories])
   const categoryLinks = useMemo(() => {
     if (topCategories.length > 0) {
@@ -281,6 +273,22 @@ export default function AppShell() {
 
   useEffect(() => {
     let active = true
+    fetchAutocomplete('', AUTOCOMPLETE_SIZE)
+      .then((response) => {
+        if (!active) return
+        const fromBackend = Array.isArray(response?.suggestions)
+          ? response.suggestions
+              .map((item) => item.text?.trim())
+              .filter((item): item is string => Boolean(item))
+          : []
+        if (fromBackend.length > 0) {
+          setRecommendedQueries(fromBackend.slice(0, MAX_RECENT))
+        }
+      })
+      .catch(() => {
+        // keep env fallback
+      })
+
     fetchKdcCategories()
       .then((categories) => {
         if (!active) return
@@ -585,9 +593,9 @@ export default function AppShell() {
                   <span className="utility-icon">MY</span>
                   주문/배송
                 </NavLink>
-                <NavLink to="/chat" className={utilityLinkClassName}>
-                  <span className="utility-icon">BOT</span>
-                  책봇
+                <NavLink to="/events" className={utilityLinkClassName}>
+                  <span className="utility-icon">EVT</span>
+                  이벤트/공지
                 </NavLink>
               </div>
             </div>
@@ -701,6 +709,7 @@ export default function AppShell() {
       <main className="app-main">
         <Outlet context={{ kdcCategories }} />
       </main>
+      <FloatingChatWidget />
 
       <footer className="app-footer mt-auto">
         <div className="container py-4">

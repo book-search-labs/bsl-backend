@@ -255,6 +255,7 @@ public class HybridSearchService {
             traceId,
             requestId,
             finalHits,
+            retrieval.fused == null ? finalHits.size() : retrieval.fused.size(),
             rerankOutcome.rankingApplied,
             resolveLegacyStrategy(plan),
             debug
@@ -386,6 +387,7 @@ public class HybridSearchService {
             traceId,
             requestId,
             finalHits,
+            retrieval.fused == null ? finalHits.size() : retrieval.fused.size(),
             rerankOutcome.rankingApplied,
             strategy,
             debug
@@ -622,8 +624,109 @@ public class HybridSearchService {
                 sources = Collections.emptyMap();
             }
         }
+        if (shouldPrioritizeKoreanTitles(plan)) {
+            fused = prioritizeKoreanTitles(fused, sources);
+        }
 
         return new RetrievalResult(fused, sources, lexicalResult, vectorResult, fusionTookMs);
+    }
+
+    private boolean shouldPrioritizeKoreanTitles(ExecutionPlan plan) {
+        return plan != null
+            && isBlank(plan.queryText)
+            && containsKdcFilter(plan.filters);
+    }
+
+    private boolean containsKdcFilter(List<Map<String, Object>> filters) {
+        if (filters == null || filters.isEmpty()) {
+            return false;
+        }
+        for (Map<String, Object> filter : filters) {
+            if (containsKdcFilterNode(filter)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    private boolean containsKdcFilterNode(Object node) {
+        if (node instanceof Map<?, ?> raw) {
+            Map<Object, Object> map = (Map<Object, Object>) raw;
+            Object term = map.get("term");
+            if (term instanceof Map<?, ?> termMap && hasKdcField(termMap)) {
+                return true;
+            }
+            Object terms = map.get("terms");
+            if (terms instanceof Map<?, ?> termsMap && hasKdcField(termsMap)) {
+                return true;
+            }
+            for (Object value : map.values()) {
+                if (containsKdcFilterNode(value)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (node instanceof List<?> list) {
+            for (Object item : list) {
+                if (containsKdcFilterNode(item)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return false;
+    }
+
+    private boolean hasKdcField(Map<?, ?> map) {
+        for (Object key : map.keySet()) {
+            if (key instanceof String text && text.toLowerCase(Locale.ROOT).startsWith("kdc_")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<RrfFusion.Candidate> prioritizeKoreanTitles(List<RrfFusion.Candidate> fused, Map<String, JsonNode> sources) {
+        if (fused == null || fused.isEmpty() || sources == null || sources.isEmpty()) {
+            return fused;
+        }
+        List<RrfFusion.Candidate> korean = new ArrayList<>();
+        List<RrfFusion.Candidate> other = new ArrayList<>();
+        for (RrfFusion.Candidate candidate : fused) {
+            JsonNode source = sources.get(candidate.getDocId());
+            String title = readText(source, "title_ko");
+            if (containsHangul(title)) {
+                korean.add(candidate);
+            } else {
+                other.add(candidate);
+            }
+        }
+        if (korean.isEmpty() || other.isEmpty()) {
+            return fused;
+        }
+        List<RrfFusion.Candidate> reordered = new ArrayList<>(fused.size());
+        reordered.addAll(korean);
+        reordered.addAll(other);
+        return reordered;
+    }
+
+    private boolean containsHangul(String text) {
+        if (text == null || text.isBlank()) {
+            return false;
+        }
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if ((ch >= 0x1100 && ch <= 0x11FF)
+                || (ch >= 0x3130 && ch <= 0x318F)
+                || (ch >= 0xA960 && ch <= 0xA97F)
+                || (ch >= 0xD7B0 && ch <= 0xD7FF)
+                || (ch >= 0xAC00 && ch <= 0xD7AF)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private EnhanceOutcome maybeRetryWithEnhance(
@@ -1092,6 +1195,7 @@ public class HybridSearchService {
         String traceId,
         String requestId,
         List<BookHit> hits,
+        int total,
         boolean rankingApplied,
         String strategy,
         SearchResponse.Debug debug
@@ -1103,6 +1207,7 @@ public class HybridSearchService {
         response.setTookMs(tookMs);
         response.setRankingApplied(rankingApplied);
         response.setStrategy(strategy);
+        response.setTotal(Math.max(total, hits == null ? 0 : hits.size()));
         response.setHits(hits);
         response.setDebug(debug);
         return response;
@@ -1567,6 +1672,7 @@ public class HybridSearchService {
         stripped.setTookMs(response.getTookMs());
         stripped.setRankingApplied(response.isRankingApplied());
         stripped.setStrategy(response.getStrategy());
+        stripped.setTotal(response.getTotal());
         stripped.setHits(response.getHits());
         stripped.setExperimentBucket(response.getExperimentBucket());
         stripped.setDebug(null);
@@ -1581,6 +1687,7 @@ public class HybridSearchService {
         if (response != null) {
             copied.setRankingApplied(response.isRankingApplied());
             copied.setStrategy(response.getStrategy());
+            copied.setTotal(response.getTotal());
             copied.setHits(response.getHits());
             copied.setExperimentBucket(response.getExperimentBucket());
         }
@@ -1790,14 +1897,21 @@ public class HybridSearchService {
             String normalized = field.trim().toLowerCase(Locale.ROOT);
             if ("title_ko".equals(normalized)) {
                 mapped.add("title_ko");
+                mapped.add("title_ko.edge");
+                mapped.add("title_ko.ngram");
             } else if ("title_ko.edge".equals(normalized)) {
                 mapped.add("title_ko.edge");
+            } else if ("title_ko.ngram".equals(normalized)) {
+                mapped.add("title_ko.ngram");
             } else if ("author_ko".equals(normalized)) {
                 mapped.add("authors.name_ko");
+                mapped.add("authors.name_ko.ngram");
             } else if ("series_ko".equals(normalized)) {
                 mapped.add("series_name");
+                mapped.add("series_name.ngram");
             } else if ("publisher".equals(normalized) || "publisher_name".equals(normalized)) {
                 mapped.add("publisher_name");
+                mapped.add("publisher_name.ngram");
             } else if ("isbn13".equals(normalized) || "isbn".equals(normalized)) {
                 mapped.add("identifiers.isbn13");
             }
@@ -1837,9 +1951,13 @@ public class HybridSearchService {
 
         List<Map<String, Object>> must = new ArrayList<>();
         addBoostedMatch(must, "authors.name_ko", firstValue(entities.getAuthor()), 3.0d);
+        addBoostedMatch(must, "authors.name_ko.ngram", firstValue(entities.getAuthor()), 2.0d);
         addBoostedMatch(must, "title_ko", firstValue(entities.getTitle()), 3.0d);
+        addBoostedMatch(must, "title_ko.ngram", firstValue(entities.getTitle()), 2.2d);
         addBoostedMatch(must, "series_name", firstValue(entities.getSeries()), 2.5d);
+        addBoostedMatch(must, "series_name.ngram", firstValue(entities.getSeries()), 1.9d);
         addBoostedMatch(must, "publisher_name", firstValue(entities.getPublisher()), 2.0d);
+        addBoostedMatch(must, "publisher_name.ngram", firstValue(entities.getPublisher()), 1.5d);
 
         if (must.isEmpty()) {
             return null;
@@ -1860,7 +1978,16 @@ public class HybridSearchService {
                 "query",
                 query,
                 "fields",
-                List.of("title_ko^2", "series_name^1.5", "publisher_name^1.2")
+                List.of(
+                    "title_ko^2",
+                    "title_ko.ngram^1.6",
+                    "title_en^1.4",
+                    "title_en.ngram^1.2",
+                    "series_name^1.5",
+                    "series_name.ngram^1.2",
+                    "publisher_name^1.2",
+                    "publisher_name.ngram^1.0"
+                )
             )
         );
     }
@@ -2357,6 +2484,8 @@ public class HybridSearchService {
         mapped.setIssuedYear(readInteger(source, "issued_year"));
         mapped.setVolume(readInteger(source, "volume"));
         mapped.setEditionLabels(extractEditionLabels(source));
+        mapped.setKdcCode(readText(source, "kdc_code"));
+        mapped.setKdcPathCodes(extractTextArray(source, "kdc_path_codes"));
         mapped.setAuthors(extractAuthors(source));
         return mapped;
     }
@@ -2370,13 +2499,24 @@ public class HybridSearchService {
     }
 
     private List<String> extractEditionLabels(JsonNode source) {
-        List<String> editionLabels = new ArrayList<>();
-        for (JsonNode labelNode : source.path("edition_labels")) {
-            if (labelNode.isTextual()) {
-                editionLabels.add(labelNode.asText());
+        return extractTextArray(source, "edition_labels");
+    }
+
+    private List<String> extractTextArray(JsonNode source, String fieldName) {
+        List<String> values = new ArrayList<>();
+        if (source == null || source.isMissingNode() || fieldName == null) {
+            return values;
+        }
+        for (JsonNode node : source.path(fieldName)) {
+            if (!node.isTextual()) {
+                continue;
+            }
+            String value = node.asText(null);
+            if (value != null && !value.isBlank()) {
+                values.add(value);
             }
         }
-        return editionLabels;
+        return values;
     }
 
     private String readText(JsonNode source, String fieldName) {

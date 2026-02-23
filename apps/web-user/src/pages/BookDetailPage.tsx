@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 
+import type { KdcCategoryNode } from '../api/categories'
+import { getCurrentOfferByMaterial, type CurrentOffer } from '../api/catalog'
 import { getBookDetail } from '../api/books'
+import { addCartItem } from '../api/cart'
 import { HttpError } from '../api/http'
 import { postSearchDwell, search } from '../api/searchApi'
+import { openFloatingChatWidget } from '../components/chat/chatWidgetEvents'
 import type { Book, BookHit } from '../types/search'
+import { flattenKdcCategories } from '../utils/kdc'
 import { addRecentView } from '../utils/recentViews'
 
 const STORAGE_PREFIX = 'bsl:lastHit:'
@@ -21,6 +26,8 @@ type CachedHit = {
     issued_year?: number
     volume?: number
     edition_labels?: string[]
+    kdc_code?: string
+    kdc_path_codes?: string[]
     [key: string]: unknown
   } | null
   fromQuery?: {
@@ -29,6 +36,10 @@ type CachedHit = {
     vector?: boolean
   }
   ts?: number
+}
+
+type AppShellContext = {
+  kdcCategories?: KdcCategoryNode[]
 }
 
 function readCachedHit(docId?: string) {
@@ -56,6 +67,8 @@ function mapCachedToBook(docId: string, cached: CachedHit): Book {
     issuedYear: source.issued_year ?? null,
     volume: source.volume ?? null,
     editionLabels: Array.isArray(source.edition_labels) ? source.edition_labels : [],
+    kdcCode: source.kdc_code ?? null,
+    kdcPathCodes: Array.isArray(source.kdc_path_codes) ? source.kdc_path_codes : [],
   }
 }
 
@@ -71,6 +84,54 @@ function parseNumberParam(value: string | null) {
   if (value == null) return undefined
   const n = Number(value)
   return Number.isFinite(n) && n > 0 ? n : undefined
+}
+
+function parseJsonText(value?: string | null) {
+  if (!value) return null
+  try {
+    const parsed = JSON.parse(value)
+    if (parsed && typeof parsed === 'object') {
+      return parsed as Record<string, unknown>
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+function normalizeKdcCode(raw: string) {
+  return raw.replace(/[^0-9]/g, '')
+}
+
+function resolveKdcLabelByCode(code: string, kdcMap: Map<string, KdcCategoryNode>) {
+  const normalized = normalizeKdcCode(code)
+  if (!normalized) {
+    return `KDC ${code}`
+  }
+
+  const candidates: string[] = []
+  if (normalized.length >= 3) {
+    const primary = normalized.slice(0, 3)
+    candidates.push(primary)
+    const hundred = `${primary[0]}00`
+    const ten = `${primary.slice(0, 2)}0`
+    if (!candidates.includes(ten)) candidates.push(ten)
+    if (!candidates.includes(hundred)) candidates.push(hundred)
+  } else {
+    const padded = normalized.padEnd(3, '0').slice(0, 3)
+    candidates.push(padded)
+    const hundred = `${padded[0]}00`
+    if (!candidates.includes(hundred)) candidates.push(hundred)
+  }
+
+  for (const candidate of candidates) {
+    const matched = kdcMap.get(candidate)
+    if (matched?.name) {
+      return matched.name
+    }
+  }
+
+  return `KDC ${normalized.slice(0, 3)}`
 }
 
 function writeCachedHit(
@@ -98,7 +159,11 @@ function writeCachedHit(
 
 export default function BookDetailPage() {
   const { docId } = useParams()
+  const navigate = useNavigate()
   const [pageParams] = useSearchParams()
+  const outletContext = useOutletContext<AppShellContext | undefined>()
+  const kdcCategories = Array.isArray(outletContext?.kdcCategories) ? outletContext.kdcCategories : []
+  const kdcMap = useMemo(() => flattenKdcCategories(kdcCategories), [kdcCategories])
 
   const fromParam = pageParams.get('from')
 
@@ -131,6 +196,13 @@ export default function BookDetailPage() {
 
   const [similarHits, setSimilarHits] = useState<BookHit[]>([])
   const [similarLoading, setSimilarLoading] = useState(false)
+  const [currentOffer, setCurrentOffer] = useState<CurrentOffer | null>(null)
+  const [offerLoading, setOfferLoading] = useState(false)
+  const [offerError, setOfferError] = useState<string | null>(null)
+  const [qty, setQty] = useState(1)
+  const [cartSubmitting, setCartSubmitting] = useState(false)
+  const [buySubmitting, setBuySubmitting] = useState(false)
+  const [commerceMessage, setCommerceMessage] = useState<string | null>(null)
 
   useEffect(() => {
     let isActive = true
@@ -199,6 +271,8 @@ export default function BookDetailPage() {
           issuedYear: result.source.issued_year ?? null,
           volume: result.source.volume ?? null,
           editionLabels: Array.isArray(result.source.edition_labels) ? result.source.edition_labels : [],
+          kdcCode: result.source.kdc_code ?? null,
+          kdcPathCodes: Array.isArray(result.source.kdc_path_codes) ? result.source.kdc_path_codes : [],
         }
 
         setBook(nextBook)
@@ -273,6 +347,49 @@ export default function BookDetailPage() {
       isActive = false
     }
   }, [docId, retryToken, fromQueryFromUrl])
+
+  const materialId = book?.docId ?? docId
+  useEffect(() => {
+    if (!materialId) {
+      setCurrentOffer(null)
+      setOfferError(null)
+      return
+    }
+    let active = true
+    setOfferLoading(true)
+    setOfferError(null)
+    setCommerceMessage(null)
+
+    getCurrentOfferByMaterial(materialId)
+      .then((offer) => {
+        if (!active) return
+        setCurrentOffer(offer)
+        const available = typeof offer?.available_qty === 'number' ? offer.available_qty : null
+        if (available !== null && available > 0) {
+          setQty((prev) => Math.min(Math.max(prev, 1), available))
+        } else {
+          setQty(1)
+        }
+      })
+      .catch((err) => {
+        if (!active) return
+        setCurrentOffer(null)
+        if (err instanceof HttpError && err.status === 404) {
+          setOfferError('현재 판매 가능한 상품 정보가 없습니다.')
+          return
+        }
+        setOfferError(err instanceof Error ? err.message : '판매 정보를 불러오지 못했습니다.')
+      })
+      .finally(() => {
+        if (active) {
+          setOfferLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [materialId, retryToken])
 
   useEffect(() => {
     if (!docId) return
@@ -352,6 +469,79 @@ export default function BookDetailPage() {
   const issuedYear = book?.issuedYear ?? cachedHit?.source?.issued_year ?? '-'
   const volume = book?.volume ?? cachedHit?.source?.volume ?? '-'
   const editionLabels = book?.editionLabels ?? (cachedHit?.source?.edition_labels ?? [])
+  const kdcCode = book?.kdcCode ?? cachedHit?.source?.kdc_code ?? null
+  const kdcPathCodes = book?.kdcPathCodes ?? (cachedHit?.source?.kdc_path_codes ?? [])
+  const categoryCodes = useMemo(() => {
+    const candidates = kdcPathCodes.length > 0 ? kdcPathCodes : kdcCode ? [kdcCode] : []
+    const uniqueCodes = new Set(
+      candidates
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0),
+    )
+    return Array.from(uniqueCodes)
+  }, [kdcCode, kdcPathCodes])
+  const categories = useMemo(
+    () =>
+      categoryCodes.map((code) => ({
+        code,
+        name: resolveKdcLabelByCode(code, kdcMap),
+      })),
+    [categoryCodes, kdcMap],
+  )
+  const availableQty = typeof currentOffer?.available_qty === 'number' ? currentOffer.available_qty : null
+  const maxQty = useMemo(() => {
+    if (availableQty === null) return 20
+    return Math.max(1, Math.min(availableQty, 20))
+  }, [availableQty])
+  const normalizedQty = Math.min(Math.max(qty, 1), maxQty)
+
+  const shippingPolicy = useMemo(() => parseJsonText(currentOffer?.shipping_policy_json), [currentOffer?.shipping_policy_json])
+  const freeShippingThreshold = Number(shippingPolicy?.free_shipping_threshold)
+  const returnsDays = Number(shippingPolicy?.returns_days)
+  const inStock = currentOffer?.is_in_stock ?? (availableQty !== null ? availableQty > 0 : null)
+  const canPurchase = Boolean(currentOffer && !offerLoading && inStock !== false && availableQty !== 0)
+
+  const handleAddToCart = async () => {
+    if (!currentOffer) return
+    try {
+      setCartSubmitting(true)
+      setCommerceMessage(null)
+      await addCartItem({
+        skuId: currentOffer.sku_id,
+        sellerId: currentOffer.seller_id,
+        qty: normalizedQty,
+      })
+      setCommerceMessage('장바구니에 담았습니다.')
+    } catch (err) {
+      setCommerceMessage(err instanceof Error ? err.message : '장바구니 담기에 실패했습니다.')
+    } finally {
+      setCartSubmitting(false)
+    }
+  }
+
+  const handleBuyNow = async () => {
+    if (!currentOffer) return
+    try {
+      setBuySubmitting(true)
+      setCommerceMessage(null)
+      await addCartItem({
+        skuId: currentOffer.sku_id,
+        sellerId: currentOffer.seller_id,
+        qty: normalizedQty,
+      })
+      navigate('/checkout')
+    } catch (err) {
+      setCommerceMessage(err instanceof Error ? err.message : '구매 진행에 실패했습니다.')
+    } finally {
+      setBuySubmitting(false)
+    }
+  }
+
+  const handleOpenBookbot = () => {
+    const prompt = title ? `도서 '${title}' 기준으로 비슷한 책을 추천해줘` : '이 책과 비슷한 도서를 추천해줘'
+    openFloatingChatWidget({ prompt })
+  }
 
   const showNotFound = !loading && !error && notFound && !book && !(cachedHit && cachedHit.source)
   const showDetail = !loading && !showNotFound && (book || (cachedHit && cachedHit.source))
@@ -425,9 +615,9 @@ export default function BookDetailPage() {
                 <Link className="btn btn-primary" to={similarLink}>
                   비슷한 책 찾기
                 </Link>
-                <Link className="btn btn-outline-secondary" to="/chat">
+                <button type="button" className="btn btn-outline-secondary" onClick={handleOpenBookbot}>
                   책봇 추천 받기
-                </Link>
+                </button>
               </div>
             </div>
             <div className="detail-info">
@@ -460,23 +650,106 @@ export default function BookDetailPage() {
                   <span className="detail-info-label">Doc ID</span>
                   <span className="detail-info-value">{docId ?? '-'}</span>
                 </div>
+                <div>
+                  <span className="detail-info-label">카테고리</span>
+                  {categories.length > 0 ? (
+                    <div className="detail-category-list">
+                      {categories.map((item) => (
+                        <Link
+                          key={`kdc-${item.code}`}
+                          className="detail-category-chip"
+                          to={`/search?kdc=${encodeURIComponent(item.code)}`}
+                        >
+                          {item.name}
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="detail-info-value">-</span>
+                  )}
+                </div>
+              </div>
+              <div className="detail-commerce">
+                <div className="detail-commerce-price">
+                  <span className="detail-info-label">판매가</span>
+                  {offerLoading ? (
+                    <span className="detail-info-value">판매 정보 확인 중...</span>
+                  ) : currentOffer ? (
+                    <span className="detail-commerce-value">₩{currentOffer.effective_price.toLocaleString()}</span>
+                  ) : (
+                    <span className="detail-info-value">판매 정보 없음</span>
+                  )}
+                </div>
+                {currentOffer ? (
+                  <div className="detail-commerce-stock">
+                    재고 {availableQty === null ? '확인 중' : `${availableQty}권`}
+                  </div>
+                ) : null}
+                {currentOffer ? (
+                  <div className="detail-commerce-qty">
+                    <label htmlFor="detail-qty" className="detail-info-label">
+                      수량
+                    </label>
+                    <input
+                      id="detail-qty"
+                      type="number"
+                      min={1}
+                      max={maxQty}
+                      value={normalizedQty}
+                      onChange={(event) => {
+                        const next = Number(event.target.value)
+                        if (!Number.isFinite(next)) return
+                        setQty(Math.min(Math.max(next, 1), maxQty))
+                      }}
+                      className="form-control form-control-sm"
+                    />
+                  </div>
+                ) : null}
+                <div className="detail-commerce-actions">
+                  <button
+                    type="button"
+                    className="btn btn-outline-dark btn-sm"
+                    disabled={!canPurchase || cartSubmitting || buySubmitting}
+                    onClick={handleAddToCart}
+                  >
+                    {cartSubmitting ? '담는 중...' : '장바구니 담기'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    disabled={!canPurchase || cartSubmitting || buySubmitting}
+                    onClick={handleBuyNow}
+                  >
+                    {buySubmitting ? '진행 중...' : '바로 구매'}
+                  </button>
+                </div>
+                {offerError ? <div className="text-muted small">{offerError}</div> : null}
+                {commerceMessage ? <div className="small">{commerceMessage}</div> : null}
               </div>
             </div>
             <aside className="detail-aside">
               <div className="detail-aside-card">
                 <div className="detail-aside-title">배송/혜택</div>
                 <ul>
-                  <li>2만원 이상 주문 시 무료배송</li>
+                  <li>
+                    {Number.isFinite(freeShippingThreshold) && freeShippingThreshold > 0
+                      ? `${freeShippingThreshold.toLocaleString()}원 이상 주문 시 무료배송`
+                      : '2만원 이상 주문 시 무료배송'}
+                  </li>
                   <li>밤 11시 전 주문 시 내일 도착</li>
-                  <li>7일 무료 반품</li>
+                  <li>
+                    {Number.isFinite(returnsDays) && returnsDays > 0
+                      ? `${returnsDays}일 무료 반품`
+                      : '7일 무료 반품'}
+                  </li>
                 </ul>
               </div>
               <div className="detail-aside-card">
                 <div className="detail-aside-title">추천 기능</div>
                 <p>책봇에게 취향을 알려주면 맞춤 도서를 추천해드립니다.</p>
-                <Link to="/chat" className="btn btn-outline-dark btn-sm">
+                <button type="button" className="btn btn-outline-dark btn-sm" onClick={handleOpenBookbot}>
                   책봇 바로가기
-                </Link>
+                </button>
               </div>
             </aside>
           </div>

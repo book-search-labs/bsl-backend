@@ -166,6 +166,45 @@ class SearchControllerQcV11Test {
     }
 
     @Test
+    void prioritizesKoreanTitlesForCategoryBrowse() throws Exception {
+        when(openSearchGateway.searchMatchAllDetailed(anyInt(), any(), any(), anyBoolean()))
+            .thenReturn(new OpenSearchQueryResult(List.of("hanja", "korean"), Map.of(), Map.of()));
+        when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSourcesForCategoryOrdering());
+
+        Map<String, Object> payload = qcV11Payload(
+            Map.of("raw", "", "norm", "", "final", ""),
+            Map.of(
+                "queryTextSource", "query.final",
+                "lexical", Map.of("enabled", true),
+                "vector", Map.of("enabled", false),
+                "filters", List.of(
+                    Map.of(
+                        "and", List.of(
+                            Map.of(
+                                "scope",
+                                "CATALOG",
+                                "logicalField",
+                                "kdc_path_codes",
+                                "op",
+                                "eq",
+                                "value",
+                                List.of("200", "210")
+                            )
+                        )
+                    )
+                )
+            )
+        );
+
+        mockMvc.perform(post("/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(payload)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.hits[0].doc_id").value("korean"))
+            .andExpect(jsonPath("$.hits[1].doc_id").value("hanja"));
+    }
+
+    @Test
     void mapsKdcNodeFilterIntoLexicalQuery() throws Exception {
         when(openSearchGateway.searchLexicalDetailed(eq("harry"), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean()))
             .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of(), Map.of()));
@@ -208,6 +247,45 @@ class SearchControllerQcV11Test {
         boolean hasKdc = filtersCaptor.getValue().stream()
             .anyMatch(entry -> entry.containsKey("terms") && ((Map<String, Object>) entry.get("terms")).containsKey("kdc_node_id"));
         org.junit.jupiter.api.Assertions.assertTrue(hasKdc);
+    }
+
+    @Test
+    void expandsPreferredLogicalFieldsWithNgramFallbacks() throws Exception {
+        when(openSearchGateway.searchLexicalDetailed(eq("문화지도"), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean()))
+            .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of(), Map.of()));
+        when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
+
+        Map<String, Object> payload = qcV11Payload(
+            Map.of("raw", "문화지도", "norm", "문화지도", "final", "문화지도"),
+            Map.of(
+                "queryTextSource", "query.final",
+                "lexical", Map.of("enabled", true, "topKHint", 50, "preferredLogicalFields", List.of("title_ko", "author_ko")),
+                "vector", Map.of("enabled", false),
+                "rerank", Map.of("enabled", false)
+            )
+        );
+
+        mockMvc.perform(post("/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(payload)))
+            .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<String>> fieldsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(openSearchGateway).searchLexicalDetailed(
+            eq("문화지도"),
+            anyInt(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            fieldsCaptor.capture(),
+            anyBoolean()
+        );
+        List<String> fields = fieldsCaptor.getValue();
+        org.junit.jupiter.api.Assertions.assertTrue(fields.contains("title_ko.ngram"));
+        org.junit.jupiter.api.Assertions.assertTrue(fields.contains("authors.name_ko.ngram"));
     }
 
     @Test
@@ -346,6 +424,22 @@ class SearchControllerQcV11Test {
         node.put("title_ko", "Harry");
         node.putArray("authors").add("Author");
         sources.put("b1", node);
+        return sources;
+    }
+
+    private Map<String, com.fasterxml.jackson.databind.JsonNode> buildSourcesForCategoryOrdering() {
+        Map<String, com.fasterxml.jackson.databind.JsonNode> sources = new LinkedHashMap<>();
+        ObjectNode hanja = objectMapper.createObjectNode();
+        hanja.put("doc_id", "hanja");
+        hanja.put("title_ko", "周易辭典");
+        hanja.putArray("authors").add("Author A");
+        sources.put("hanja", hanja);
+
+        ObjectNode korean = objectMapper.createObjectNode();
+        korean.put("doc_id", "korean");
+        korean.put("title_ko", "한국철학 입문");
+        korean.putArray("authors").add("Author B");
+        sources.put("korean", korean);
         return sources;
     }
 }

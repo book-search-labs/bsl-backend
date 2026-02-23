@@ -1,5 +1,5 @@
 import { createRequestContext, resolveApiMode, resolveBffBaseUrl, resolveCommerceBaseUrl, routeRequest } from './client'
-import { fetchJson } from './http'
+import { fetchJson, type JsonInit } from './http'
 
 export type Shipment = {
   shipment_id: number
@@ -21,7 +21,7 @@ function joinUrl(base: string, path: string) {
   return `${base.replace(/\/$/, '')}${path}`
 }
 
-async function callApi<T>(path: string, init?: RequestInit) {
+async function callApi<T>(path: string, init?: JsonInit) {
   const requestContext = createRequestContext()
   return routeRequest<T>({
     route: path,

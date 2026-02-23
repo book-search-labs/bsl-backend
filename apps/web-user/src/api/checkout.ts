@@ -1,5 +1,6 @@
 import { createRequestContext, resolveApiMode, resolveBffBaseUrl, resolveCommerceBaseUrl, routeRequest } from './client'
-import { fetchJson } from './http'
+import { fetchJson, type JsonInit } from './http'
+import type { CartBenefits, CartItem, CartLoyalty } from './cart'
 
 export type Address = {
   address_id: number
@@ -14,21 +15,15 @@ export type Address = {
 export type CheckoutSummary = {
   cart: {
     cart_id: number
-    items: Array<{
-      cart_item_id: number
-      sku_id: number
-      qty: number
-      unit_price?: number | null
-      item_amount?: number
-      price_changed?: boolean
-      out_of_stock?: boolean | null
-    }>
+    items: CartItem[]
     totals: {
       subtotal: number
       shipping_fee: number
       discount: number
       total: number
     }
+    benefits?: CartBenefits
+    loyalty?: CartLoyalty
   } | null
   addresses: Address[]
 }
@@ -37,7 +32,7 @@ function joinUrl(base: string, path: string) {
   return `${base.replace(/\/$/, '')}${path}`
 }
 
-async function callApi<T>(path: string, init?: RequestInit) {
+async function callApi<T>(path: string, init?: JsonInit) {
   const requestContext = createRequestContext()
   return routeRequest<T>({
     route: path,

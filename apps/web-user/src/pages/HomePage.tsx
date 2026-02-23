@@ -1,18 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
 
-import { search } from '../api/searchApi'
+import { fetchAutocomplete } from '../api/autocomplete'
+import { fetchHomeCollections, type HomeCollectionSection } from '../api/homeCollections'
+import { fetchHomePanels, type HomePanelItem } from '../api/homePanels'
 import type { KdcCategoryNode } from '../api/categories'
-import type { BookHit } from '../types/search'
 import { clearRecentViews, getRecentViews } from '../utils/recentViews'
 import type { RecentView } from '../utils/recentViews'
 import { getTopLevelKdc } from '../utils/kdc'
-
-const HERO_STATS = [
-  { label: '빠른 배송', value: '내일 도착' },
-  { label: '도서 데이터', value: '1.2M+' },
-  { label: '고객 만족', value: '4.8/5' },
-]
+import { resolvePanelBannerUrl } from '../utils/homePanels'
 
 const FALLBACK_CATEGORY_TILES = [
   { label: '베스트셀러', description: '이번 주 인기 도서', query: '베스트셀러' },
@@ -25,47 +21,37 @@ const FALLBACK_CATEGORY_TILES = [
   { label: '취미/실용', description: '라이프스타일', query: '취미' },
 ]
 
-const TRENDING_QUERIES = ['해리포터', '에세이', 'UX 디자인', '투자 입문', '아이와 읽는 책', '일러스트']
-
 const HOME_SECTIONS = [
   {
     key: 'bestseller',
     title: '이번 주 베스트셀러',
     note: '지금 가장 많이 찾는 도서를 모았습니다.',
-    query: '베스트셀러',
     link: '/search?q=베스트셀러',
   },
   {
     key: 'new',
     title: '신간 · 예약 판매',
     note: '새로운 출간 소식을 가장 먼저 만나보세요.',
-    query: '신간',
     link: '/search?q=신간',
   },
   {
     key: 'editor',
     title: '에디터 추천',
     note: '감성적인 에세이와 문학 작품을 큐레이션했습니다.',
-    query: '에세이',
     link: '/search?q=에세이',
   },
 ]
 
-type SectionState = {
-  hits: BookHit[]
-  isLoading: boolean
-  error?: string
+const EVENT_BANNER_ROTATE_MS = 5500
+
+const SECTION_DECOR: Record<string, { icon: string; badge: string; tone: string }> = {
+  bestseller: { icon: '🔥', badge: '이번 주', tone: 'bestseller' },
+  new: { icon: '🆕', badge: '신규', tone: 'new' },
+  editor: { icon: '✍️', badge: '큐레이션', tone: 'editor' },
 }
 
 type AppShellContext = {
   kdcCategories: KdcCategoryNode[]
-}
-
-function buildInitialSectionState() {
-  return HOME_SECTIONS.reduce((acc, section) => {
-    acc[section.key] = { hits: [], isLoading: true }
-    return acc
-  }, {} as Record<string, SectionState>)
 }
 
 function formatAuthors(authors: string[]) {
@@ -89,9 +75,23 @@ export default function HomePage() {
           to: `/search?q=${encodeURIComponent(tile.query)}`,
         }))
   const [recentViews, setRecentViews] = useState<RecentView[]>([])
-  const [sectionState, setSectionState] = useState<Record<string, SectionState>>(() =>
-    buildInitialSectionState(),
+  const [trendingQueries, setTrendingQueries] = useState<string[]>([])
+  const [homePanels, setHomePanels] = useState<HomePanelItem[]>([])
+  const [homePanelLoading, setHomePanelLoading] = useState(true)
+  const [homePanelError, setHomePanelError] = useState<string | null>(null)
+  const [activePanelIndex, setActivePanelIndex] = useState(0)
+  const [isPanelPaused, setIsPanelPaused] = useState(false)
+  const [homeSections, setHomeSections] = useState<HomeCollectionSection[]>(
+    HOME_SECTIONS.map((section) => ({
+      key: section.key,
+      title: section.title,
+      note: section.note,
+      link: section.link,
+      items: [],
+    })),
   )
+  const [homeSectionsLoading, setHomeSectionsLoading] = useState(true)
+  const [homeSectionsError, setHomeSectionsError] = useState<string | null>(null)
 
   useEffect(() => {
     setRecentViews(getRecentViews().slice(0, 6))
@@ -99,31 +99,107 @@ export default function HomePage() {
 
   useEffect(() => {
     let active = true
+    fetchAutocomplete('', 8)
+      .then((response) => {
+        if (!active) return
+        const queries = Array.isArray(response?.suggestions)
+          ? response.suggestions
+              .map((item) => item.text?.trim())
+              .filter((item): item is string => Boolean(item))
+          : []
+        setTrendingQueries(queries.slice(0, 8))
+      })
+      .catch(() => {
+        if (active) {
+          setTrendingQueries([])
+        }
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
-    HOME_SECTIONS.forEach((section) => {
-      search(section.query, { size: 8, from: 0, vector: true })
-        .then((response) => {
-          if (!active) return
-          setSectionState((prev) => ({
-            ...prev,
-            [section.key]: {
-              hits: Array.isArray(response.hits) ? response.hits : [],
-              isLoading: false,
-            },
-          }))
+  useEffect(() => {
+    let active = true
+    setHomePanelLoading(true)
+    setHomePanelError(null)
+
+    fetchHomePanels(31)
+      .then((response) => {
+        if (!active) return
+        setHomePanels(response.items)
+        setActivePanelIndex(0)
+        setIsPanelPaused(false)
+      })
+      .catch(() => {
+        if (!active) return
+        setHomePanels([])
+        setActivePanelIndex(0)
+        setHomePanelError('이벤트/공지 정보를 불러오지 못했습니다.')
+      })
+      .finally(() => {
+        if (active) {
+          setHomePanelLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (homePanels.length <= 1 || isPanelPaused) {
+      return
+    }
+    const timer = window.setInterval(() => {
+      setActivePanelIndex((prev) => (prev + 1) % homePanels.length)
+    }, EVENT_BANNER_ROTATE_MS)
+    return () => {
+      window.clearInterval(timer)
+    }
+  }, [homePanels.length, isPanelPaused])
+
+  useEffect(() => {
+    let active = true
+
+    setHomeSectionsLoading(true)
+    setHomeSectionsError(null)
+
+    fetchHomeCollections(8)
+      .then((response) => {
+        if (!active) return
+        const byKey = new Map((response.sections ?? []).map((section) => [section.key, section]))
+        const merged = HOME_SECTIONS.map((section) => {
+          const server = byKey.get(section.key)
+          return {
+            key: section.key,
+            title: server?.title ?? section.title,
+            note: server?.note ?? section.note,
+            link: server?.link ?? section.link,
+            items: Array.isArray(server?.items) ? server.items : [],
+          }
         })
-        .catch(() => {
-          if (!active) return
-          setSectionState((prev) => ({
-            ...prev,
-            [section.key]: {
-              hits: [],
-              isLoading: false,
-              error: '추천 도서를 불러오지 못했습니다.',
-            },
-          }))
-        })
-    })
+        setHomeSections(merged)
+      })
+      .catch(() => {
+        if (!active) return
+        setHomeSections(
+          HOME_SECTIONS.map((section) => ({
+            key: section.key,
+            title: section.title,
+            note: section.note,
+            link: section.link,
+            items: [],
+          })),
+        )
+        setHomeSectionsError('추천 도서를 불러오지 못했습니다.')
+      })
+      .finally(() => {
+        if (active) {
+          setHomeSectionsLoading(false)
+        }
+      })
 
     return () => {
       active = false
@@ -142,57 +218,78 @@ export default function HomePage() {
     }))
   }, [recentViews])
 
+  const activePanel = homePanels.length > 0 ? homePanels[activePanelIndex % homePanels.length] : null
+  const activePanelDisplayIndex = homePanels.length > 0 ? (activePanelIndex % homePanels.length) + 1 : 0
+  const canSlidePanels = homePanels.length > 1
+  const moveToPreviousPanel = () => {
+    if (homePanels.length === 0) return
+    setActivePanelIndex((prev) => (prev - 1 + homePanels.length) % homePanels.length)
+  }
+  const moveToNextPanel = () => {
+    if (homePanels.length === 0) return
+    setActivePanelIndex((prev) => (prev + 1) % homePanels.length)
+  }
+
   return (
     <section className="home-page">
       <div className="home-hero">
         <div className="container">
-          <div className="hero-grid">
-            <div className="hero-copy">
-              <p className="hero-badge">BOOK COMMERCE</p>
-              <h1 className="hero-title">지금 필요한 책, 더 빠르고 믿을 수 있게</h1>
-              <p className="hero-lead">
-                BSL 검색 기술과 커머스 경험을 결합해, 원하는 책을 빠르게 찾고 안전하게
-                주문할 수 있습니다.
-              </p>
-              <div className="hero-actions">
-                <Link className="btn btn-primary btn-lg" to={sampleLink}>
-                  베스트셀러 보러가기
-                </Link>
-                <Link className="btn btn-outline-secondary btn-lg" to="/search">
-                  통합검색
-                </Link>
-              </div>
-              <div className="hero-stats">
-                {HERO_STATS.map((stat) => (
-                  <div key={stat.label} className="hero-stat">
-                    <span className="hero-stat-number">{stat.value}</span>
-                    <span className="hero-stat-label">{stat.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="hero-panels">
-              <div className="promo-card promo-card--strong">
-                <span className="promo-tag">이번 주 혜택</span>
-                <span className="promo-title">멤버십 전용 가격 + 무료배송</span>
-                <span className="promo-meta">장바구니에서 멤버십 혜택을 확인하세요.</span>
-                <span className="promo-link">혜택 보기</span>
-              </div>
-              <div className="promo-card">
-                <span className="promo-tag">추천 컬렉션</span>
-                <span className="promo-title">감성 에세이 베스트 10</span>
-                <span className="promo-meta">하루를 채우는 따뜻한 문장들</span>
-                <Link className="promo-link" to="/search?q=에세이">
-                  바로가기
-                </Link>
-              </div>
-              <div className="promo-card">
-                <span className="promo-tag">AI 큐레이션</span>
-                <span className="promo-title">책봇에게 추천을 받아보세요</span>
-                <span className="promo-meta">읽고 싶은 분위기를 말하면 추천해드려요.</span>
-                <Link className="promo-link" to="/chat">
-                  책봇 열기
-                </Link>
+          <div className="hero-grid hero-grid--banner-only">
+            <div className="hero-panels hero-panels--full">
+              <div className="event-panel" aria-label="이벤트/공지 배너">
+                <div className="event-panel-toolbar">
+                  <Link className="event-panel-button" to="/events">
+                    이벤트/공지
+                  </Link>
+                </div>
+                {homePanelLoading ? (
+                  <div className="event-banner-skeleton event-banner-skeleton--single" aria-label="이벤트 배너 로딩" />
+                ) : homePanelError || !activePanel ? (
+                  <div className="event-panel-empty">{homePanelError ?? '진행 중인 이벤트/공지가 없습니다.'}</div>
+                ) : (
+                  <>
+                    <Link className="event-carousel-link" to={`/events/${encodeURIComponent(String(activePanel.item_id))}`}>
+                      <img
+                        className="event-banner-image"
+                        src={resolvePanelBannerUrl(activePanel)}
+                        alt={`${activePanel.type === 'NOTICE' ? '공지' : '이벤트'} 배너`}
+                        loading="eager"
+                      />
+                    </Link>
+                    <div className="event-carousel-controls">
+                      <button
+                        type="button"
+                        className="event-control-btn"
+                        aria-label="이전 이벤트/공지"
+                        onClick={moveToPreviousPanel}
+                        disabled={!canSlidePanels}
+                      >
+                        &lt;
+                      </button>
+                      <button
+                        type="button"
+                        className="event-control-btn"
+                        aria-label={isPanelPaused ? '이벤트/공지 자동 넘김 재생' : '이벤트/공지 자동 넘김 정지'}
+                        onClick={() => setIsPanelPaused((prev) => !prev)}
+                        disabled={!canSlidePanels}
+                      >
+                        {isPanelPaused ? '>' : '||'}
+                      </button>
+                      <button
+                        type="button"
+                        className="event-control-btn"
+                        aria-label="다음 이벤트/공지"
+                        onClick={moveToNextPanel}
+                        disabled={!canSlidePanels}
+                      >
+                        &gt;
+                      </button>
+                      <span className="event-carousel-index">
+                        {activePanelDisplayIndex} / {homePanels.length}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -235,171 +332,202 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="container home-section">
-        <div className="section-header">
-          <div>
-            <p className="section-kicker">트렌드</p>
-            <h2 className="section-title">지금 많이 찾는 키워드</h2>
-            <p className="section-note">인기 검색어로 빠르게 탐색하세요.</p>
-          </div>
-        </div>
-        <div className="chip-list">
-          {TRENDING_QUERIES.map((query) => (
-            <Link key={query} to={`/search?q=${encodeURIComponent(query)}`} className="trend-chip">
-              {query}
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {HOME_SECTIONS.map((section) => {
-        const state = sectionState[section.key]
-        return (
-          <div key={section.key} className="container home-section">
-            <div className="section-header">
+      <div className="container home-feed-layout">
+        <div className="home-feed-main">
+          <div className="home-block home-block--trend">
+            <div className="home-block-header">
               <div>
-                <h2 className="section-title">{section.title}</h2>
-                <p className="section-note">{section.note}</p>
+                <p className="section-kicker">트렌드</p>
+                <h2 className="section-title">지금 많이 찾는 키워드</h2>
+                <p className="section-note">인기 검색어와 추천 흐름을 빠르게 확인하세요.</p>
               </div>
-              <Link to={section.link} className="section-link">
-                전체 보기
+              <Link to="/search" className="section-link-btn">
+                통합검색
               </Link>
             </div>
-            {state?.isLoading ? (
-              <div className="shelf-grid">
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <div key={`skeleton-${section.key}-${index}`} className="book-tile skeleton" />
+            <div className="trend-rank-grid">
+              {trendingQueries.length > 0
+                ? trendingQueries.map((query, index) => (
+                    <Link key={query} to={`/search?q=${encodeURIComponent(query)}`} className="trend-rank-card">
+                      <span className="trend-rank-no">{String(index + 1).padStart(2, '0')}</span>
+                      <span className="trend-rank-text">{query}</span>
+                      <span className={`trend-rank-state ${index < 3 ? 'up' : 'steady'}`}>
+                        {index < 3 ? '급상승' : '인기'}
+                      </span>
+                    </Link>
+                  ))
+                : Array.from({ length: 8 }).map((_, index) => (
+                    <div key={`trend-skeleton-${index}`} className="trend-rank-card trend-rank-card--skeleton" />
+                  ))}
+            </div>
+          </div>
+
+          {homeSections.map((section) => {
+            const hits = Array.isArray(section.items) ? section.items : []
+            const decor = SECTION_DECOR[section.key] ?? { icon: '📚', badge: '컬렉션', tone: 'default' }
+            return (
+              <div key={section.key} className={`home-block home-block--${decor.tone}`}>
+                <div className="home-block-header">
+                  <div>
+                    <div className="section-title-row">
+                      <span className={`section-badge section-badge--${decor.tone}`}>{decor.badge}</span>
+                      <h2 className="section-title section-title--with-icon">
+                        <span className="section-title-icon" aria-hidden="true">
+                          {decor.icon}
+                        </span>
+                        {section.title}
+                      </h2>
+                    </div>
+                    <p className="section-note">{section.note}</p>
+                  </div>
+                  <Link to={section.link ?? '/search'} className="section-link-btn">
+                    전체 보기
+                  </Link>
+                </div>
+                {homeSectionsLoading ? (
+                  <div className="shelf-row">
+                    {Array.from({ length: 6 }).map((_, index) => (
+                      <article key={`skeleton-${section.key}-${index}`} className="book-tile book-tile--compact skeleton" />
+                    ))}
+                  </div>
+                ) : homeSectionsError ? (
+                  <div className="placeholder-card empty-state">
+                    <div className="empty-title">추천 도서를 불러오지 못했습니다</div>
+                    <div className="empty-copy">잠시 후 다시 시도해주세요.</div>
+                  </div>
+                ) : hits.length === 0 ? (
+                  <div className="shelf-row">
+                    {Array.from({ length: 6 }).map((_, index) => (
+                      <article key={`empty-skeleton-${section.key}-${index}`} className="book-tile book-tile--compact skeleton" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="shelf-row">
+                    {hits.map((hit, index) => {
+                      const title = hit.title_ko ?? '제목 없음'
+                      const authors = Array.isArray(hit.authors) ? hit.authors : []
+                      const publisher = hit.publisher_name ?? '출판사 정보 없음'
+                      const year = hit.issued_year ?? '-'
+                      const docId = hit.doc_id
+                      const detailLink = docId
+                        ? `/book/${encodeURIComponent(docId)}?from=home`
+                        : `/search?q=${encodeURIComponent(title)}`
+                      const searchLink = `/search?q=${encodeURIComponent(title)}`
+                      const labels = Array.isArray(hit.edition_labels)
+                        ? hit.edition_labels.slice(0, 2)
+                        : []
+
+                      return (
+                        <article key={docId ?? `${section.key}-${index}`} className="book-tile book-tile--compact">
+                          <div className={`book-tile-cover book-tile-cover--${decor.tone}`}>
+                            <span className="book-tile-rank">#{index + 1}</span>
+                            <span className="book-tile-cover-title">{title}</span>
+                          </div>
+                          <div className="book-tile-body">
+                            <h3 className="book-tile-title">{title}</h3>
+                            <p className="book-tile-meta">{formatAuthors(authors)}</p>
+                            <p className="book-tile-meta">{publisher} · {year}</p>
+                            <div className="book-tile-tags">
+                              {labels.length > 0 ? (
+                                labels.map((label) => (
+                                  <span key={label} className="tag-chip">
+                                    {label}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="tag-chip muted">판형 정보 없음</span>
+                              )}
+                            </div>
+                            <div className="book-tile-actions">
+                              <Link className="btn btn-outline-dark btn-sm" to={detailLink}>
+                                상세보기
+                              </Link>
+                              <Link className="btn btn-outline-secondary btn-sm" to={searchLink}>
+                                비슷한 책
+                              </Link>
+                            </div>
+                          </div>
+                        </article>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        <aside className="home-feed-side">
+          <div className="home-block side-block">
+            <div className="home-block-header">
+              <div>
+                <h2 className="section-title">최근 본 도서</h2>
+                <p className="section-note">방금 확인한 책을 바로 이어서 보세요.</p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm"
+                onClick={handleClear}
+                disabled={recentViews.length === 0}
+              >
+                기록 삭제
+              </button>
+            </div>
+            {recentLinks.length > 0 ? (
+              <div className="recent-list">
+                {recentLinks.map((item) => (
+                  <Link key={item.docId} to={item.to} className="recent-card">
+                    <div className="recent-card-title">{item.titleKo ?? 'Untitled'}</div>
+                    <div className="recent-card-meta">{formatAuthors(item.authors)}</div>
+                  </Link>
                 ))}
               </div>
-            ) : state?.error ? (
-              <div className="placeholder-card empty-state">
-                <div className="empty-title">추천 도서를 불러오지 못했습니다</div>
-                <div className="empty-copy">잠시 후 다시 시도해주세요.</div>
-              </div>
             ) : (
-              <div className="shelf-grid">
-                {(state?.hits ?? []).map((hit, index) => {
-                  const source = hit.source ?? {}
-                  const title = source.title_ko ?? '제목 없음'
-                  const authors = Array.isArray(source.authors) ? source.authors : []
-                  const publisher = source.publisher_name ?? '출판사 정보 없음'
-                  const year = source.issued_year ?? '-'
-                  const docId = hit.doc_id
-                  const detailLink = docId
-                    ? `/book/${encodeURIComponent(docId)}?from=home`
-                    : `/search?q=${encodeURIComponent(title)}`
-                  const searchLink = `/search?q=${encodeURIComponent(title)}`
-                  const labels = Array.isArray(source.edition_labels)
-                    ? source.edition_labels.slice(0, 2)
-                    : []
-
-                  return (
-                    <article key={docId ?? `${section.key}-${index}`} className="book-tile">
-                      <div className="book-tile-cover">
-                        <span className="book-tile-rank">#{index + 1}</span>
-                        <span className="book-tile-cover-title">{title}</span>
-                      </div>
-                      <div className="book-tile-body">
-                        <h3 className="book-tile-title">{title}</h3>
-                        <p className="book-tile-meta">{formatAuthors(authors)}</p>
-                        <p className="book-tile-meta">{publisher} · {year}</p>
-                        <div className="book-tile-tags">
-                          {labels.length > 0 ? (
-                            labels.map((label) => (
-                              <span key={label} className="tag-chip">
-                                {label}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="tag-chip muted">판형 정보 없음</span>
-                          )}
-                        </div>
-                        <div className="book-tile-actions">
-                          <Link className="btn btn-outline-dark btn-sm" to={detailLink}>
-                            상세보기
-                          </Link>
-                          <Link className="btn btn-outline-secondary btn-sm" to={searchLink}>
-                            비슷한 책
-                          </Link>
-                        </div>
-                      </div>
-                    </article>
-                  )
-                })}
+              <div className="placeholder-card empty-state">
+                <div className="empty-title">최근 본 도서가 없습니다</div>
+                <div className="empty-copy">지금 베스트셀러를 둘러보세요.</div>
+                <Link to={sampleLink} className="btn btn-outline-dark btn-sm">
+                  베스트셀러 보기
+                </Link>
               </div>
             )}
           </div>
-        )
-      })}
 
-      <div className="container home-section">
-        <div className="section-header">
-          <div>
-            <h2 className="section-title">최근 본 도서</h2>
-            <p className="section-note">최근에 확인한 책을 다시 찾아보세요.</p>
-          </div>
-          <button
-            type="button"
-            className="btn btn-outline-secondary btn-sm"
-            onClick={handleClear}
-            disabled={recentViews.length === 0}
-          >
-            기록 삭제
-          </button>
-        </div>
-        {recentLinks.length > 0 ? (
-          <div className="recent-grid">
-            {recentLinks.map((item) => (
-              <Link key={item.docId} to={item.to} className="recent-card">
-                <div className="recent-card-title">{item.titleKo ?? 'Untitled'}</div>
-                <div className="recent-card-meta">{formatAuthors(item.authors)}</div>
+          <div className="home-block side-block">
+            <div className="home-block-header">
+              <div>
+                <h2 className="section-title">필요한 정보를 빠르게</h2>
+                <p className="section-note">배송, 환불, 주문 문의를 빠르게 이동하세요.</p>
+              </div>
+              <Link to="/chat" className="section-link-btn">
+                책봇 상담
               </Link>
-            ))}
+            </div>
+            <div className="help-grid help-grid--side">
+              <div className="help-card">
+                <div className="help-title">배송/반품 안내</div>
+                <p className="help-meta">주문 후 배송 상황과 반품 정책을 확인하세요.</p>
+                <Link to="/about" className="help-link">
+                  자세히 보기
+                </Link>
+              </div>
+              <div className="help-card">
+                <div className="help-title">주문 내역 확인</div>
+                <p className="help-meta">주문 상태와 결제 내역을 확인하세요.</p>
+                <Link to="/orders" className="help-link">
+                  주문/배송 보기
+                </Link>
+              </div>
+              <div className="help-card">
+                <div className="help-title">장바구니 바로가기</div>
+                <p className="help-meta">담아둔 도서를 한 번에 결제하세요.</p>
+                <Link to="/cart" className="help-link">
+                  장바구니 열기
+                </Link>
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="placeholder-card empty-state">
-            <div className="empty-title">최근 본 도서가 없습니다</div>
-            <div className="empty-copy">지금 베스트셀러를 둘러보세요.</div>
-            <Link to={sampleLink} className="btn btn-outline-dark btn-sm">
-              베스트셀러 보기
-            </Link>
-          </div>
-        )}
-      </div>
-
-      <div className="container home-section">
-        <div className="section-header">
-          <div>
-            <h2 className="section-title">필요한 정보를 빠르게</h2>
-            <p className="section-note">배송, 환불, 주문 문의는 책봇이 도와드립니다.</p>
-          </div>
-          <Link to="/chat" className="section-link">
-            책봇 상담하기
-          </Link>
-        </div>
-        <div className="help-grid">
-          <div className="help-card">
-            <div className="help-title">배송/반품 안내</div>
-            <p className="help-meta">주문 후 배송 상황과 반품 정책을 확인하세요.</p>
-            <Link to="/about" className="help-link">
-              자세히 보기
-            </Link>
-          </div>
-          <div className="help-card">
-            <div className="help-title">주문 내역 확인</div>
-            <p className="help-meta">주문 상태, 결제 내역을 관리할 수 있어요.</p>
-            <Link to="/orders" className="help-link">
-              주문/배송 보기
-            </Link>
-          </div>
-          <div className="help-card">
-            <div className="help-title">장바구니 바로가기</div>
-            <p className="help-meta">담아둔 도서를 한 번에 결제하세요.</p>
-            <Link to="/cart" className="help-link">
-              장바구니 열기
-            </Link>
-          </div>
-        </div>
+        </aside>
       </div>
     </section>
   )

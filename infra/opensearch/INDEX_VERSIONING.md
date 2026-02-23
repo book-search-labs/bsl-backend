@@ -4,6 +4,11 @@
 - Physical index: `books_v1`, `books_v2`, ...
 - Read alias (recommended): `books_current`
 
+Books doc (service alias path):
+- Physical index: `books_doc_v1_*`, `books_doc_v2_*`, ...
+- Read alias: `books_doc_read`
+- Write alias: `books_doc_write`
+
 RAG docs:
 - Physical index: `docs_doc_v1_YYYYMMDD_001`, `docs_vec_v1_YYYYMMDD_001`, ...
 - Read alias: `docs_doc_read`, `docs_vec_read`
@@ -14,6 +19,7 @@ RAG docs:
   - Create a new index version (e.g., `books_v2`) and reindex.
 2. Services should query the alias `books_current` (preferred),
    but MVP can query `books_v1` directly.
+3. For `books_doc_*`, move forward by creating a new mapping file (e.g. `books_doc_v2.mapping.json`) and reindex via aliases.
 
 ## MVP Setup (v1)
 1) Create `books_v1` with `infra/opensearch/books_v1.mapping.json`

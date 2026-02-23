@@ -1,0 +1,74 @@
+# Backlog Tickets
+
+## Chatbot 고도화 (Phase 11)
+- B-0350 chat 장애 재현 키트
+- B-0351 /chat 요청 유효성/한도/타임아웃 표준화 (개정)
+- B-0352 chat degrade 정책 명시화
+- B-0353 citation coverage 게이트 강화 (개정)
+- B-0354 다국어 질의 품질 보강
+- B-0355 대화 메모리 정책 v1
+- B-0356 prompt injection/jailbreak 방어 체인
+- B-0357 chat 품질 지표 게이트 (개정)
+- B-0358 도메인 평가셋 확장
+- B-0359 chat tool calling (주문/배송/환불, 개정)
+- B-0360 answer-citation entailment verifier
+- B-0361 query decomposition + multi-hop retrieval
+- B-0362 consent 기반 개인화 + 설명가능성
+- B-0363 conversation state store (checkpoint/recovery, 개정)
+- B-0364 tool schema registry + permission policy
+- B-0365 knowledge freshness pipeline
+- B-0366 real-time feedback triage loop
+- B-0367 chat workflow engine (multi-step commerce support)
+- B-0368 source trust scoring + reliability label (개정)
+- B-0369 sensitive action guard (double confirmation)
+- B-0370 chat ticket integration + status follow-up
+- B-0371 chat policy engine DSL (intent/risk/compliance, 개정)
+- B-0372 chat tool result cache + consistency invalidation
+- B-0373 adversarial evalset + Korean safety regression gate
+- B-0374 reasoning budget controller (step/token/tool limits)
+- B-0375 chat ticket triage classifier + SLA estimator (개정)
+- B-0376 chat case evidence pack generator
+- B-0377 source conflict resolution + safe abstention
+- B-0378 deterministic agent replay sandbox + debug snapshots
+- B-0379 chat conversation privacy DLP + retention enforcement
+- B-0380 effective-date-aware policy answering (개정)
+- B-0381 operator-approved correction memory
+- B-0382 tool transaction fence + compensation orchestrator
+- B-0383 chat output contract guard + claim verifier (개정)
+- B-0384 Korean terminology + style governance engine
+- B-0385 resolution knowledge ingestion from closed tickets
+- B-0386 prompt supply-chain integrity + signature verification
+- B-0387 chat intent calibration + confidence reliability model
+- B-0388 chat cross-lingual query bridge + Korean-priority grounding
+- B-0389 chat tool health score + capability routing
+- B-0390 chat answer risk banding + tiered approval flow
+- U-0140 chat UX 안정화
+- U-0141 근거 UX 개선
+- U-0142 chat quick actions UX
+- U-0143 chat agent handoff + guided forms UX
+- U-0144 chat transparency + reliability panel UX
+- U-0145 chat incident recovery + user guidance UX
+- U-0146 chat ticket lifecycle timeline + escalation UX
+- U-0147 chat privacy/memory/action consent controls UX
+- U-0148 chat decision explainability + denial reason UX
+- U-0149 chat risk-state visualization + user-safe flow UX
+- A-0140 chat ops 대시보드
+- A-0141 prompt/policy 버전 운영 UI
+- A-0142 chat triage workbench
+- A-0143 chat experiment studio (prompt/policy A-B)
+- A-0144 chat governance console (exceptions/policy review)
+- A-0145 chat red-team lab + safety campaign manager
+- A-0146 chat ticket ops quality + SLA command center
+- A-0147 chat policy simulator + blast-radius lab
+- A-0148 chat compliance evidence hub + audit export
+- A-0149 chat risk ops cockpit + weekly governance review
+- I-0350 LLM 비용/쿼터/속도 가드레일
+- I-0351 chat 장애 런북/리허설 강화
+- I-0352 chat canary/shadow/auto-rollback (개정)
+- I-0353 chat SLO guardrails + auto remediation (개정)
+- I-0354 chat multi-LLM routing failover + cost steering (개정)
+- I-0355 chat priority queue + load shedding + backpressure control (개정)
+- I-0356 chat synthetic journey monitoring + auto drill (개정)
+- I-0357 chat control-plane backup/restore + DR drills (개정)
+- I-0358 chat config drift detection + immutable release bundles (개정)
+- I-0359 chat traffic partitioning + fail-safe isolation mode

@@ -27,6 +27,7 @@ SCHEMA_FILES = {
     "autocomplete-admin-update-response.sample.json": CONTRACTS_DIR / "autocomplete-admin-update-response.schema.json",
     "autocomplete-admin-trends-response.sample.json": CONTRACTS_DIR / "autocomplete-admin-trends-response.schema.json",
     "book-detail-response.sample.json": CONTRACTS_DIR / "book-detail-response.schema.json",
+    "home-collections-response.sample.json": CONTRACTS_DIR / "home-collections-response.schema.json",
     "error.sample.json": CONTRACTS_DIR / "error.schema.json",
     "reindex-job-create-request.sample.json": CONTRACTS_DIR / "reindex-job-create-request.schema.json",
     "reindex-job-response.sample.json": CONTRACTS_DIR / "reindex-job-response.schema.json",

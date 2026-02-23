@@ -22,9 +22,9 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 OS_URL = os.environ.get("OS_URL", "http://localhost:9200")
 DOC_ALIAS = os.environ.get("BOOKS_DOC_ALIAS", "books_doc_write")
 DOC_READ_ALIAS = os.environ.get("BOOKS_DOC_READ_ALIAS", "books_doc_read")
-INDEX_PREFIX = os.environ.get("BOOKS_DOC_INDEX_PREFIX", "books_doc_v1_local")
+INDEX_PREFIX = os.environ.get("BOOKS_DOC_INDEX_PREFIX", "books_doc_v2_local")
 MAPPING_FILE = Path(
-    os.environ.get("BOOKS_DOC_MAPPING", ROOT_DIR / "infra/opensearch/books_doc_v1.mapping.json")
+    os.environ.get("BOOKS_DOC_MAPPING", ROOT_DIR / "infra/opensearch/books_doc_v2.mapping.json")
 )
 DELETE_EXISTING = os.environ.get("DELETE_EXISTING", "1") == "1"
 

@@ -79,6 +79,15 @@ public class ShipmentService {
     }
 
     @Transactional
+    public Map<String, Object> ensureShipmentForOrder(long orderId) {
+        List<Map<String, Object>> existing = shipmentRepository.listShipmentsByOrder(orderId);
+        if (!existing.isEmpty()) {
+            return existing.get(0);
+        }
+        return createShipment(orderId, null);
+    }
+
+    @Transactional
     public Map<String, Object> assignTracking(long shipmentId, String carrier, String trackingNumber) {
         Map<String, Object> shipment = shipmentRepository.findShipment(shipmentId);
         if (shipment == null) {

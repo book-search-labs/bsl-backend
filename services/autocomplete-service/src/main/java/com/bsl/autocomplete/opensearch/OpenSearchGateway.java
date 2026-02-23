@@ -41,6 +41,10 @@ public class OpenSearchGateway {
         return searchSuggestionsInternal(query, size, false);
     }
 
+    public List<SuggestionHit> searchTrendingSuggestions(int size) {
+        return searchTrendingSuggestionsInternal(size, false);
+    }
+
     public List<SuggestionHit> searchAdminSuggestions(String query, int size, boolean includeBlocked) {
         return searchSuggestionsInternal(query, size, includeBlocked);
     }
@@ -86,6 +90,53 @@ public class OpenSearchGateway {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("size", size);
         body.put("query", Map.of("function_score", functionScore));
+        body.put("_source", List.of(
+            "suggest_id",
+            "type",
+            "lang",
+            "text",
+            "value",
+            "target_id",
+            "target_doc_id",
+            "weight",
+            "ctr_7d",
+            "popularity_7d",
+            "is_blocked"
+        ));
+
+        JsonNode response = postJson("/" + properties.getIndex() + "/_search", body);
+        return extractSuggestions(response);
+    }
+
+    private List<SuggestionHit> searchTrendingSuggestionsInternal(int size, boolean includeBlocked) {
+        Map<String, Object> boolQuery = new LinkedHashMap<>();
+        boolQuery.put("must", List.of(Map.of("match_all", Map.of())));
+        if (!includeBlocked) {
+            boolQuery.put("must_not", List.of(Map.of("term", Map.of("is_blocked", true))));
+        }
+
+        Map<String, Object> functionScore = new LinkedHashMap<>();
+        functionScore.put("query", Map.of("bool", boolQuery));
+        functionScore.put("score_mode", "sum");
+        functionScore.put("boost_mode", "sum");
+        functionScore.put(
+            "functions",
+            List.of(
+                Map.of("field_value_factor", Map.of("field", "weight", "factor", WEIGHT_FACTOR, "missing", 1)),
+                Map.of("field_value_factor", Map.of("field", "ctr_7d", "factor", CTR_FACTOR, "missing", 0)),
+                Map.of("field_value_factor", Map.of("field", "popularity_7d", "factor", POPULARITY_FACTOR, "missing", 0))
+            )
+        );
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("size", size);
+        body.put("query", Map.of("function_score", functionScore));
+        body.put("sort", List.of(
+            Map.of("_score", Map.of("order", "desc")),
+            Map.of("popularity_7d", Map.of("order", "desc", "missing", "_last")),
+            Map.of("ctr_7d", Map.of("order", "desc", "missing", "_last")),
+            Map.of("weight", Map.of("order", "desc", "missing", "_last"))
+        ));
         body.put("_source", List.of(
             "suggest_id",
             "type",

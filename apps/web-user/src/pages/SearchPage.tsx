@@ -11,6 +11,7 @@ import { collectKdcDescendantCodes, flattenKdcCategories, getTopLevelKdc } from 
 const DEFAULT_SIZE = 10
 const SIZE_MIN = 1
 const SIZE_MAX = 50
+const PAGE_WINDOW_SIZE = 3
 const EXAMPLE_QUERIES = ['베스트셀러', '에세이', '자기계발', '한강', '어린이 그림책']
 const REFINE_TAGS = ['세트', '양장본', '에디션', '개정판', '작가 인터뷰']
 const CATEGORY_QUICK = ['문학', '경제 경영', '자기계발', '어린이', '외국어', '취미']
@@ -59,6 +60,13 @@ function parseVectorParam(value: string | null) {
   if (normalized === 'false' || normalized === '0' || normalized === 'no') return false
   if (normalized === 'true' || normalized === '1' || normalized === 'yes') return true
   return true
+}
+
+function parsePageParam(value: string | null) {
+  if (!value) return 1
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return 1
+  return Math.max(1, Math.floor(parsed))
 }
 
 function emptyAdvancedFilters(): AdvancedFilters {
@@ -173,6 +181,8 @@ export default function SearchPage() {
 
   const sizeValue = parseSizeParam(searchParams.get('size'))
   const vectorEnabled = parseVectorParam(searchParams.get('vector'))
+  const pageValue = parsePageParam(searchParams.get('page'))
+  const fromValue = (pageValue - 1) * sizeValue
 
   const [searchInput, setSearchInput] = useState(query)
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -280,7 +290,7 @@ export default function SearchPage() {
     try {
       const result = await search(trimmedQuery, {
         size: sizeValue,
-        from: 0,
+        from: fromValue,
         debug: debugEnabled,
         vector: trimmedQuery.length > 0 ? vectorEnabled : false,
         filters: hasCategoryFilter
@@ -320,6 +330,7 @@ export default function SearchPage() {
     selectedCategory,
     selectedCategoryCodes,
     sizeValue,
+    fromValue,
     trimmedQuery,
     vectorEnabled,
   ])
@@ -329,7 +340,7 @@ export default function SearchPage() {
   }, [executeSearch])
 
   const updateParams = useCallback(
-    (updates: { q?: string; size?: number; vector?: boolean; kdc?: string }) => {
+    (updates: { q?: string; size?: number; vector?: boolean; kdc?: string; page?: number }) => {
       const params = new URLSearchParams(searchParams)
 
       if (updates.q !== undefined) {
@@ -356,6 +367,11 @@ export default function SearchPage() {
         }
       }
 
+      if (updates.page !== undefined) {
+        const nextPage = Math.max(1, Math.floor(updates.page))
+        params.set('page', String(nextPage))
+      }
+
       setSearchParams(params)
     },
     [searchParams, setSearchParams],
@@ -369,13 +385,15 @@ export default function SearchPage() {
       q: nextQuery,
       size: sizeValue,
       vector: vectorEnabled,
+      kdc: nextQuery.trim().length > 0 ? '' : undefined,
+      page: 1,
     })
   }
 
   const handleSizeChange = (event: ChangeEvent<HTMLInputElement>) => {
     const rawValue = Number(event.target.value)
     if (!Number.isFinite(rawValue)) return
-    updateParams({ size: clampSize(rawValue) })
+    updateParams({ size: clampSize(rawValue), page: 1 })
   }
 
   const handleVectorToggle = (event: ChangeEvent<HTMLInputElement>) => {
@@ -384,13 +402,19 @@ export default function SearchPage() {
 
   const handleExampleClick = (value: string) => {
     setAdvancedFilters(emptyAdvancedFilters())
-    updateParams({ q: value, size: sizeValue, vector: vectorEnabled, kdc: '' })
+    updateParams({ q: value, size: sizeValue, vector: vectorEnabled, kdc: '', page: 1 })
   }
 
   const handleRefine = (value: string) => {
     const base = trimmedQuery || searchInput.trim()
     const next = base ? `${base} ${value}` : value
-    updateParams({ q: next, size: sizeValue, vector: vectorEnabled })
+    updateParams({
+      q: next,
+      size: sizeValue,
+      vector: vectorEnabled,
+      kdc: next.trim().length > 0 ? '' : undefined,
+      page: 1,
+    })
   }
 
   const handleFilterChip = (key: ExplicitFilterKey) => {
@@ -413,18 +437,24 @@ export default function SearchPage() {
 
   const applyAdvancedFilters = () => {
     const nextQuery = composeQueryWithAdvancedFilters(searchInput, advancedFilters)
-    updateParams({ q: nextQuery, size: sizeValue, vector: vectorEnabled })
+    updateParams({
+      q: nextQuery,
+      size: sizeValue,
+      vector: vectorEnabled,
+      kdc: nextQuery.trim().length > 0 ? '' : undefined,
+      page: 1,
+    })
   }
 
   const clearAdvancedFilters = () => {
     setAdvancedFilters(emptyAdvancedFilters())
-    updateParams({ q: stripExplicitSyntax(searchInput), size: sizeValue, vector: vectorEnabled })
+    updateParams({ q: stripExplicitSyntax(searchInput), size: sizeValue, vector: vectorEnabled, page: 1 })
   }
 
   const handleCategoryClick = (code?: string) => {
     if (!code) return
     setAdvancedFilters(emptyAdvancedFilters())
-    updateParams({ kdc: code, q: '', size: sizeValue, vector: vectorEnabled })
+    updateParams({ kdc: code, q: '', size: sizeValue, vector: vectorEnabled, page: 1 })
   }
 
   const handleSelectHit = useCallback(
@@ -480,6 +510,15 @@ export default function SearchPage() {
 
   const viewLabel = viewMode === 'card' ? 'Grid view' : 'List view'
   const totalCount = response?.total ?? hits.length
+  const totalPages = Math.max(1, Math.ceil(totalCount / sizeValue))
+  const hasPrevPage = pageValue > 1
+  const hasNextPage = pageValue < totalPages
+  const pageWindowStart = Math.floor((pageValue - 1) / PAGE_WINDOW_SIZE) * PAGE_WINDOW_SIZE + 1
+  const pageStart = Math.max(1, pageWindowStart)
+  const pageEnd = Math.min(totalPages, pageStart + PAGE_WINDOW_SIZE - 1)
+  const pageNumbers = Array.from({ length: pageEnd - pageStart + 1 }, (_, idx) => pageStart + idx)
+  const currentStart = totalCount > 0 ? fromValue + 1 : 0
+  const currentEnd = totalCount > 0 ? fromValue + hits.length : 0
   const displayQuery = stripExplicitSyntax(trimmedQuery) || trimmedQuery
   const resultsTitle = trimmedQuery
     ? `"${displayQuery}" 검색 결과`
@@ -626,7 +665,7 @@ export default function SearchPage() {
                 <div>
                   <h2 className="section-title">{resultsTitle}</h2>
                   <div className="text-muted small">
-                    {totalCount.toLocaleString()}개 결과 · 정확도순
+                    {totalCount.toLocaleString()}개 결과 · {currentStart.toLocaleString()}-{currentEnd.toLocaleString()} 표시
                   </div>
                 </div>
                 <div className="results-toolbar">
@@ -805,8 +844,10 @@ export default function SearchPage() {
               ) : null}
 
               {!loading && !error && hits.length > 0 ? (
-                <div className={`results-list ${viewMode}-view`} aria-label={viewLabel}>
-                  {hits.map((hit, index) => {
+                <>
+                  <div className={`results-list ${viewMode}-view`} aria-label={viewLabel}>
+                    {hits.map((hit, index) => {
+                      const itemPosition = fromValue + index + 1
                     const source = hit.source ?? {}
                     const title = source.title_ko ?? 'Untitled'
                     const authors = Array.isArray(source.authors) ? source.authors.join(', ') : '-'
@@ -824,11 +865,11 @@ export default function SearchPage() {
 
                     return (
                       <article
-                        key={docId ?? `${title}-${index}`}
+                        key={docId ?? `${title}-${itemPosition}`}
                         className={viewMode === 'card' ? 'result-tile' : 'result-tile compact'}
                       >
                         <div className="result-cover">
-                          <span className="result-rank">#{hit.rank ?? index + 1}</span>
+                          <span className="result-rank">#{hit.rank ?? itemPosition}</span>
                           <span className="result-cover-title">{title}</span>
                         </div>
                         <div className="result-content">
@@ -837,7 +878,7 @@ export default function SearchPage() {
                               <Link
                                 className="result-title"
                                 to={docLink}
-                                onClick={() => handleSelectHit(hit, index + 1)}
+                                onClick={() => handleSelectHit(hit, itemPosition)}
                               >
                                 {title}
                               </Link>
@@ -877,7 +918,7 @@ export default function SearchPage() {
                               <Link
                                 to={docLink}
                                 className="btn btn-outline-dark btn-sm"
-                                onClick={() => handleSelectHit(hit, index + 1)}
+                                onClick={() => handleSelectHit(hit, itemPosition)}
                               >
                                 상세보기
                               </Link>
@@ -889,8 +930,47 @@ export default function SearchPage() {
                         </div>
                       </article>
                     )
-                  })}
-                </div>
+                    })}
+                  </div>
+                  {totalPages > 1 ? (
+                    <nav className="mt-4" aria-label="검색 결과 페이지네이션">
+                      <ul className="pagination pagination-sm mb-0">
+                        <li className={`page-item ${hasPrevPage ? '' : 'disabled'}`}>
+                          <button
+                            type="button"
+                            className="page-link"
+                            onClick={() => updateParams({ page: pageValue - 1 })}
+                            disabled={!hasPrevPage || loading}
+                          >
+                            이전
+                          </button>
+                        </li>
+                        {pageNumbers.map((pageNum) => (
+                          <li key={pageNum} className={`page-item ${pageNum === pageValue ? 'active' : ''}`}>
+                            <button
+                              type="button"
+                              className="page-link"
+                              onClick={() => updateParams({ page: pageNum })}
+                              disabled={loading}
+                            >
+                              {pageNum}
+                            </button>
+                          </li>
+                        ))}
+                        <li className={`page-item ${hasNextPage ? '' : 'disabled'}`}>
+                          <button
+                            type="button"
+                            className="page-link"
+                            onClick={() => updateParams({ page: pageValue + 1 })}
+                            disabled={!hasNextPage || loading}
+                          >
+                            다음
+                          </button>
+                        </li>
+                      </ul>
+                    </nav>
+                  ) : null}
+                </>
               ) : null}
             </div>
           </div>

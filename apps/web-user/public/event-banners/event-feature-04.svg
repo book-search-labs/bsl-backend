@@ -1,0 +1,19 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg4" x1="0" y1="0" x2="1200" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DCFCE7"/>
+      <stop offset="1" stop-color="#86EFAC"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg4)"/>
+  <rect x="760" y="24" width="360" height="372" rx="34" fill="#14532D" fill-opacity="0.18"/>
+  <rect x="808" y="56" width="264" height="308" rx="24" fill="#14532D" fill-opacity="0.18"/>
+  <rect x="70" y="58" rx="14" ry="14" width="90" height="34" fill="#166534"/>
+  <text x="115" y="80" fill="#FFFFFF" text-anchor="middle" font-size="18" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">신간</text>
+  <text x="70" y="160" fill="#052E16" font-size="54" font-weight="800" font-family="Pretendard, Noto Sans KR, sans-serif">금주 신간 300선</text>
+  <text x="70" y="220" fill="#052E16" font-size="34" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">문학 · 인문 · 경제 분야 신규 출간 모음</text>
+  <text x="70" y="275" fill="#14532D" font-size="25" font-weight="600" font-family="Pretendard, Noto Sans KR, sans-serif">요즘 가장 빠르게 반응하는 신간을 확인해보세요.</text>
+  <rect x="70" y="310" rx="12" ry="12" width="220" height="56" fill="#166534"/>
+  <text x="180" y="346" fill="#FFFFFF" text-anchor="middle" font-size="24" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">신간 보기</text>
+</svg>
+

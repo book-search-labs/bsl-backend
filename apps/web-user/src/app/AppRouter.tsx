@@ -4,6 +4,8 @@ import AppShell from '../layouts/AppShell'
 import AboutPage from '../pages/AboutPage'
 import BookDetailPage from '../pages/BookDetailPage'
 import ChatPage from '../pages/ChatPage'
+import EventDetailPage from '../pages/EventDetailPage'
+import EventsPage from '../pages/EventsPage'
 import HomePage from '../pages/HomePage'
 import NotFoundPage from '../pages/NotFoundPage'
 import SearchPage from '../pages/SearchPage'
@@ -22,6 +24,8 @@ export default function AppRouter() {
         <Route index element={<HomePage />} />
         <Route path="search" element={<SearchPage />} />
         <Route path="chat" element={<ChatPage />} />
+        <Route path="events" element={<EventsPage />} />
+        <Route path="events/:itemId" element={<EventDetailPage />} />
         <Route path="book/:docId" element={<BookDetailPage />} />
         <Route path="cart" element={<CartPage />} />
         <Route path="checkout" element={<CheckoutPage />} />

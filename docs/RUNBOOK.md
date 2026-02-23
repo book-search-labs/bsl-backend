@@ -132,6 +132,27 @@ Notes:
 - `latest_version` is the highest `V*.sql` file in `db/migration`.
 - On Linux, replace `host.docker.internal` with your host IP or use `--network host`.
 
+## Commerce Offer Backfill (Local)
+
+When book detail shows `판매 정보 없음` for many existing materials, run offer backfill once.
+This calls `GET /api/v1/materials/{materialId}/current-offer` for materials missing active offers,
+and lets commerce-service auto-provision `seller/sku/offer/inventory`.
+
+Dry run:
+```bash
+python3 scripts/commerce/backfill_current_offers.py --dry-run
+```
+
+Run backfill:
+```bash
+python3 scripts/commerce/backfill_current_offers.py --workers 12
+```
+
+Optional: process all materials again (not only missing ones):
+```bash
+python3 scripts/commerce/backfill_current_offers.py --all-materials --workers 12
+```
+
 ## Local OpenSearch v1.1 (Full Set)
 
 ### Start / Stop

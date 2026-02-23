@@ -2,7 +2,7 @@
 set -euo pipefail
 
 OS_URL="${OS_URL:-http://localhost:9200}"
-DOC_INDEX="${DOC_INDEX:-books_doc_v1_20260116_001}"
+DOC_INDEX="${DOC_INDEX:-books_doc_v2_20260222_001}"
 VEC_INDEX="${VEC_INDEX:-books_vec_v2_20260201_001}"
 CHUNK_INDEX="${CHUNK_INDEX:-book_chunks_v1}"
 DOCS_DOC_INDEX="${DOCS_DOC_INDEX:-docs_doc_v1_20260116_001}"
@@ -16,7 +16,7 @@ ENABLE_CHUNK_INDEX="${ENABLE_CHUNK_INDEX:-0}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-DOC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/books_doc_v1.mapping.json"
+DOC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/books_doc_v2.mapping.json"
 VEC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/books_vec_v2.mapping.json"
 CHUNK_MAPPING_FILE="$ROOT_DIR/infra/opensearch/book_chunks_v1.mapping.json"
 DOCS_DOC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/docs_doc_v1.mapping.json"
@@ -324,8 +324,8 @@ add_alias() {
   fi
 }
 
-remove_alias "books_doc_read" "books_doc_v1_*"
-remove_alias "books_doc_write" "books_doc_v1_*"
+remove_alias "books_doc_read" "books_doc_v*"
+remove_alias "books_doc_write" "books_doc_v*"
 remove_alias "books_vec_read" "books_vec_v*"
 remove_alias "books_vec_write" "books_vec_v*"
 remove_alias "docs_doc_read" "docs_doc_v1_*"

@@ -1,0 +1,2 @@
+ALTER TABLE orders
+  ADD COLUMN shipping_mode VARCHAR(16) NOT NULL DEFAULT 'STANDARD' AFTER shipping_fee;

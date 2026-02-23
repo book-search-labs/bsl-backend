@@ -4,7 +4,6 @@ import com.bsl.autocomplete.api.dto.AutocompleteResponse;
 import com.bsl.autocomplete.api.dto.ErrorResponse;
 import com.bsl.autocomplete.opensearch.OpenSearchUnavailableException;
 import com.bsl.autocomplete.service.AutocompleteService;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,10 +38,11 @@ public class AutocompleteController {
         int resolvedSize = clampSize(size);
 
         try {
-            if (trimmed.isEmpty()) {
-                return ResponseEntity.ok(emptyResponse(traceId, requestId, started));
+            AutocompleteResponse response = autocompleteService.autocomplete(trimmed, resolvedSize, traceId, requestId);
+            if (response.getTookMs() <= 0) {
+                response.setTookMs((System.nanoTime() - started) / 1_000_000L);
             }
-            return ResponseEntity.ok(autocompleteService.autocomplete(trimmed, resolvedSize, traceId, requestId));
+            return ResponseEntity.ok(response);
         } catch (OpenSearchUnavailableException e) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(
                 new ErrorResponse("opensearch_unavailable", "OpenSearch is unavailable", traceId, requestId)
@@ -63,15 +63,5 @@ public class AutocompleteController {
             return MAX_SIZE;
         }
         return resolved;
-    }
-
-    private AutocompleteResponse emptyResponse(String traceId, String requestId, long started) {
-        AutocompleteResponse response = new AutocompleteResponse();
-        response.setVersion("v1");
-        response.setTraceId(traceId);
-        response.setRequestId(requestId);
-        response.setTookMs((System.nanoTime() - started) / 1_000_000L);
-        response.setSuggestions(List.of());
-        return response;
     }
 }

@@ -2,7 +2,9 @@ package com.bsl.commerce.service;
 
 import com.bsl.commerce.common.ApiException;
 import com.bsl.commerce.common.JdbcUtils;
+import com.bsl.commerce.common.PriceUtils;
 import com.bsl.commerce.config.CommerceProperties;
+import com.bsl.commerce.repository.CartContentRepository;
 import com.bsl.commerce.repository.CartRepository;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,17 +19,23 @@ public class CartService {
     private final CartRepository cartRepository;
     private final CatalogService catalogService;
     private final InventoryService inventoryService;
+    private final LoyaltyPointService loyaltyPointService;
+    private final CartContentRepository cartContentRepository;
     private final CommerceProperties properties;
 
     public CartService(
         CartRepository cartRepository,
         CatalogService catalogService,
         InventoryService inventoryService,
+        LoyaltyPointService loyaltyPointService,
+        CartContentRepository cartContentRepository,
         CommerceProperties properties
     ) {
         this.cartRepository = cartRepository;
         this.catalogService = catalogService;
         this.inventoryService = inventoryService;
+        this.loyaltyPointService = loyaltyPointService;
+        this.cartContentRepository = cartContentRepository;
         this.properties = properties;
     }
 
@@ -71,7 +79,7 @@ public class CartService {
             throw new ApiException(HttpStatus.CONFLICT, "seller_mismatch", "offer seller mismatch");
         }
         Long offerId = JdbcUtils.asLong(currentOffer.get("offer_id"));
-        Integer unitPrice = JdbcUtils.asInt(currentOffer.get("effective_price"));
+        Integer unitPrice = PriceUtils.normalizeBookPrice(JdbcUtils.asInt(currentOffer.get("effective_price")));
         String currency = JdbcUtils.asString(currentOffer.get("currency"));
         java.time.Instant capturedAt = java.time.Instant.now();
 
@@ -98,7 +106,7 @@ public class CartService {
         long skuId = JdbcUtils.asLong(cartItem.get("sku_id"));
         Map<String, Object> currentOffer = catalogService.requireCurrentOfferBySkuId(skuId);
         Long offerId = JdbcUtils.asLong(currentOffer.get("offer_id"));
-        Integer unitPrice = JdbcUtils.asInt(currentOffer.get("effective_price"));
+        Integer unitPrice = PriceUtils.normalizeBookPrice(JdbcUtils.asInt(currentOffer.get("effective_price")));
         String currency = JdbcUtils.asString(currentOffer.get("currency"));
         java.time.Instant capturedAt = java.time.Instant.now();
 
@@ -150,7 +158,7 @@ public class CartService {
             long skuId = JdbcUtils.asLong(item.get("sku_id"));
             long sellerId = JdbcUtils.asLong(item.get("seller_id"));
             int qty = JdbcUtils.asInt(item.get("qty"));
-            Integer unitPrice = JdbcUtils.asInt(item.get("unit_price"));
+            Integer unitPrice = PriceUtils.normalizeBookPrice(JdbcUtils.asInt(item.get("unit_price")));
             int itemAmount = (unitPrice == null ? 0 : unitPrice) * qty;
             subtotal += itemAmount;
 
@@ -166,13 +174,18 @@ public class CartService {
             mapped.put("added_at", JdbcUtils.asIsoString(item.get("added_at")));
             mapped.put("updated_at", JdbcUtils.asIsoString(item.get("updated_at")));
 
+            Map<String, Object> skuDisplayInfo = catalogService.getSkuDisplayInfo(skuId, sellerId);
+            if (skuDisplayInfo != null) {
+                mapped.putAll(skuDisplayInfo);
+            }
+
             Map<String, Object> currentOffer = catalogService.getCurrentOfferBySkuId(skuId);
             if (currentOffer == null) {
                 mapped.put("price_changed", true);
                 mapped.put("current_price", null);
                 mapped.put("offer_active", false);
             } else {
-                Integer currentPrice = JdbcUtils.asInt(currentOffer.get("effective_price"));
+                Integer currentPrice = PriceUtils.normalizeBookPrice(JdbcUtils.asInt(currentOffer.get("effective_price")));
                 Long currentOfferId = JdbcUtils.asLong(currentOffer.get("offer_id"));
                 mapped.put("current_price", currentPrice);
                 boolean priceChanged = currentPrice != null && unitPrice != null && !currentPrice.equals(unitPrice);
@@ -196,12 +209,35 @@ public class CartService {
         }
 
         response.put("items", mappedItems);
+        int shippingFee = items.isEmpty() ? 0 : properties.getCart().getBaseShippingFee();
+        int discount = 0;
+        int total = subtotal + shippingFee - discount;
         Map<String, Object> totals = new HashMap<>();
         totals.put("subtotal", subtotal);
-        totals.put("shipping_fee", 0);
-        totals.put("discount", 0);
-        totals.put("total", subtotal);
+        totals.put("shipping_fee", shippingFee);
+        totals.put("discount", discount);
+        totals.put("total", total);
         response.put("totals", totals);
+
+        long userId = JdbcUtils.asLong(cart.get("user_id"));
+        int pointBalance = loyaltyPointService.getBalance(userId);
+        int expectedPoints = loyaltyPointService.estimateEarnPoints(total);
+
+        Map<String, Object> loyalty = new HashMap<>();
+        loyalty.put("point_balance", pointBalance);
+        loyalty.put("expected_earn_points", expectedPoints);
+        loyalty.put("earn_rate_percent", properties.getLoyalty().getEarnRatePercent());
+        response.put("loyalty", loyalty);
+
+        Map<String, Object> benefits = new HashMap<>();
+        benefits.put("free_shipping_threshold", properties.getCart().getFreeShippingThreshold());
+        benefits.put("bonus_point_threshold", properties.getCart().getBonusPointThreshold());
+        benefits.put("base_shipping_fee", properties.getCart().getBaseShippingFee());
+        benefits.put("fast_shipping_fee", properties.getCart().getFastShippingFee());
+        response.put("benefits", benefits);
+
+        response.put("promotions", cartContentRepository.listActiveByType("PROMOTION", 20));
+        response.put("notices", cartContentRepository.listActiveByType("NOTICE", 20));
         return response;
     }
 }

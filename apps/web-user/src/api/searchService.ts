@@ -13,6 +13,8 @@ export type BookDetailResponse = {
     issued_year?: number
     volume?: number
     edition_labels?: string[]
+    kdc_code?: string
+    kdc_path_codes?: string[]
     [key: string]: unknown
   }
   trace_id?: string

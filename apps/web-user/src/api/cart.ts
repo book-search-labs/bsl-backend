@@ -1,7 +1,7 @@
 import { createRequestContext, resolveApiMode, resolveBffBaseUrl, resolveCommerceBaseUrl, routeRequest } from './client'
-import { fetchJson } from './http'
+import { fetchJson, type JsonInit } from './http'
 
-type CartItem = {
+export type CartItem = {
   cart_item_id: number
   sku_id: number
   seller_id: number
@@ -14,6 +14,16 @@ type CartItem = {
   current_price?: number | null
   available_qty?: number | null
   out_of_stock?: boolean | null
+  material_id?: string | null
+  title?: string | null
+  subtitle?: string | null
+  author?: string | null
+  publisher?: string | null
+  issued_year?: number | null
+  seller_name?: string | null
+  format?: string | null
+  edition?: string | null
+  pack_size?: number | null
 }
 
 type CartTotals = {
@@ -23,12 +33,37 @@ type CartTotals = {
   total: number
 }
 
-type Cart = {
+export type CartLoyalty = {
+  point_balance: number
+  expected_earn_points: number
+  earn_rate_percent: number
+}
+
+export type CartBenefits = {
+  free_shipping_threshold: number
+  bonus_point_threshold: number
+  base_shipping_fee: number
+  fast_shipping_fee: number
+}
+
+export type CartContentItem = {
+  item_id: number
+  content_type: string
+  title: string
+  description?: string | null
+  sort_order?: number
+}
+
+export type Cart = {
   cart_id: number
   user_id: number
   status: string
   items: CartItem[]
   totals: CartTotals
+  loyalty?: CartLoyalty
+  benefits?: CartBenefits
+  promotions?: CartContentItem[]
+  notices?: CartContentItem[]
 }
 
 type CartResponse = {
@@ -39,7 +74,7 @@ function joinUrl(base: string, path: string) {
   return `${base.replace(/\/$/, '')}${path}`
 }
 
-async function callBff<T>(path: string, init?: RequestInit) {
+async function callBff<T>(path: string, init?: JsonInit) {
   const requestContext = createRequestContext()
   return routeRequest<T>({
     route: path,

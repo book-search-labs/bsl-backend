@@ -4,8 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
@@ -21,6 +23,9 @@ import org.springframework.web.client.RestTemplate;
 
 @Component
 public class OpenSearchGateway {
+    private static final int WILDCARD_FALLBACK_MIN_LENGTH = 2;
+    private static final int WILDCARD_FALLBACK_MAX_LENGTH = 48;
+
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final OpenSearchProperties properties;
@@ -80,18 +85,21 @@ public class OpenSearchGateway {
     ) {
         List<String> fields = buildFields(boost, fieldsOverride);
 
-        Map<String, Object> multiMatch = new LinkedHashMap<>();
-        multiMatch.put("query", query);
-        multiMatch.put("fields", fields);
-        if (operator != null && !operator.isBlank()) {
-            multiMatch.put("operator", operator);
+        List<Map<String, Object>> shouldQueries = new ArrayList<>();
+        shouldQueries.add(Map.of("multi_match", buildPrimaryMultiMatch(query, fields, operator, minimumShouldMatch)));
+        Map<String, Object> phraseBoost = buildPhraseBoostClause(query);
+        if (phraseBoost != null) {
+            shouldQueries.add(phraseBoost);
         }
-        if (minimumShouldMatch != null && !minimumShouldMatch.isBlank()) {
-            multiMatch.put("minimum_should_match", minimumShouldMatch);
+        Map<String, Object> ngramFallback = buildNgramFallbackClause(query);
+        if (ngramFallback != null) {
+            shouldQueries.add(ngramFallback);
         }
+        shouldQueries.addAll(buildContainsWildcardClauses(query));
 
         Map<String, Object> boolQuery = new LinkedHashMap<>();
-        boolQuery.put("must", List.of(Map.of("multi_match", multiMatch)));
+        boolQuery.put("should", shouldQueries);
+        boolQuery.put("minimum_should_match", 1);
         boolQuery.put("must_not", List.of(Map.of("term", Map.of("is_hidden", true))));
         if (filters != null && !filters.isEmpty()) {
             boolQuery.put("filter", filters);
@@ -106,6 +114,172 @@ public class OpenSearchGateway {
 
         JsonNode response = postJson("/" + properties.getDocIndex() + "/_search", body, timeBudgetMs);
         return new OpenSearchQueryResult(extractDocIds(response), body, extractScoresByDocId(response));
+    }
+
+    private Map<String, Object> buildPrimaryMultiMatch(
+        String query,
+        List<String> fields,
+        String operator,
+        String minimumShouldMatch
+    ) {
+        Map<String, Object> multiMatch = new LinkedHashMap<>();
+        multiMatch.put("query", query);
+        multiMatch.put("fields", fields);
+        multiMatch.put("lenient", true);
+        if (operator != null && !operator.isBlank()) {
+            multiMatch.put("operator", operator);
+        }
+        if (minimumShouldMatch != null && !minimumShouldMatch.isBlank()) {
+            multiMatch.put("minimum_should_match", minimumShouldMatch);
+        }
+        return multiMatch;
+    }
+
+    private Map<String, Object> buildPhraseBoostClause(String query) {
+        String trimmed = trimToNull(query);
+        if (trimmed == null || trimmed.length() < WILDCARD_FALLBACK_MIN_LENGTH) {
+            return null;
+        }
+        return Map.of(
+            "dis_max",
+            Map.of(
+                "tie_breaker",
+                0.1d,
+                "queries",
+                List.of(
+                    Map.of("match_phrase", Map.of("title_ko", Map.of("query", trimmed, "boost", 2.6d))),
+                    Map.of("match_phrase", Map.of("title_en", Map.of("query", trimmed, "boost", 2.2d)))
+                )
+            )
+        );
+    }
+
+    private Map<String, Object> buildNgramFallbackClause(String query) {
+        String trimmed = trimToNull(query);
+        if (trimmed == null || trimmed.length() < WILDCARD_FALLBACK_MIN_LENGTH) {
+            return null;
+        }
+
+        Map<String, Object> multiMatch = new LinkedHashMap<>();
+        multiMatch.put("query", trimmed);
+        multiMatch.put(
+            "fields",
+            List.of(
+                "title_ko.ngram^1.8",
+                "title_en.ngram^1.6",
+                "authors.name_ko.ngram^1.4",
+                "authors.name_en.ngram^1.3",
+                "series_name.ngram^1.3",
+                "publisher_name.ngram^1.1"
+            )
+        );
+        multiMatch.put("type", "most_fields");
+        multiMatch.put("operator", "or");
+        multiMatch.put("lenient", true);
+        return Map.of("multi_match", multiMatch);
+    }
+
+    private List<Map<String, Object>> buildContainsWildcardClauses(String query) {
+        String wildcardPattern = buildContainsPattern(query);
+        if (wildcardPattern == null) {
+            return List.of();
+        }
+        return List.of(
+            wildcardClause("title_ko.raw", wildcardPattern, 4.2d),
+            wildcardClause("title_en.raw", wildcardPattern, 3.0d),
+            wildcardClause("publisher_name", wildcardPattern, 1.2d)
+        );
+    }
+
+    private Map<String, Object> wildcardClause(String field, String pattern, double boost) {
+        return Map.of(
+            "wildcard",
+            Map.of(
+                field,
+                Map.of(
+                    "value",
+                    pattern,
+                    "case_insensitive",
+                    true,
+                    "boost",
+                    boost
+                )
+            )
+        );
+    }
+
+    private String buildContainsPattern(String query) {
+        String trimmed = trimToNull(query);
+        if (trimmed == null) {
+            return null;
+        }
+        if (!containsHangul(trimmed)) {
+            return null;
+        }
+        List<String> tokens = Arrays.stream(trimmed.split("\\s+"))
+            .map(String::trim)
+            .filter(token -> !token.isEmpty())
+            .toList();
+        if (tokens.isEmpty()) {
+            return null;
+        }
+
+        List<String> accepted = new ArrayList<>();
+        int length = 0;
+        for (String token : tokens) {
+            if (!isWildcardToken(token)) {
+                continue;
+            }
+            String normalized = token.toLowerCase(Locale.ROOT);
+            accepted.add(normalized);
+            length += normalized.length();
+        }
+        if (accepted.isEmpty()) {
+            return null;
+        }
+        if (length < WILDCARD_FALLBACK_MIN_LENGTH || length > WILDCARD_FALLBACK_MAX_LENGTH) {
+            return null;
+        }
+
+        String joined = String.join("*", accepted.stream().map(this::escapeWildcardToken).toList());
+        return "*" + joined + "*";
+    }
+
+    private boolean isWildcardToken(String token) {
+        for (int i = 0; i < token.length(); i++) {
+            char ch = token.charAt(i);
+            if (Character.isLetterOrDigit(ch)) {
+                continue;
+            }
+            return false;
+        }
+        return true;
+    }
+
+    private boolean containsHangul(String text) {
+        for (int i = 0; i < text.length(); i++) {
+            Character.UnicodeBlock block = Character.UnicodeBlock.of(text.charAt(i));
+            if (block == Character.UnicodeBlock.HANGUL_JAMO
+                || block == Character.UnicodeBlock.HANGUL_COMPATIBILITY_JAMO
+                || block == Character.UnicodeBlock.HANGUL_JAMO_EXTENDED_A
+                || block == Character.UnicodeBlock.HANGUL_JAMO_EXTENDED_B
+                || block == Character.UnicodeBlock.HANGUL_SYLLABLES) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String escapeWildcardToken(String token) {
+        return token.replace("\\", "\\\\").replace("*", "\\*").replace("?", "\\?");
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     public OpenSearchQueryResult searchLexicalByDslDetailed(
@@ -442,9 +616,17 @@ public class OpenSearchGateway {
         List<String> baseFields = fieldsOverride == null || fieldsOverride.isEmpty()
             ? List.of(
                 "title_ko",
+                "title_ko.edge",
+                "title_ko.ngram",
                 "title_en",
+                "title_en.ngram",
                 "authors.name_ko",
+                "authors.name_ko.ngram",
+                "authors.name_en",
+                "authors.name_en.ngram",
                 "series_name",
+                "series_name.ngram",
+                "publisher_name.ngram",
                 "publisher_name"
             )
             : fieldsOverride;
