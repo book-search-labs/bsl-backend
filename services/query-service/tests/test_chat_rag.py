@@ -465,6 +465,7 @@ def test_run_chat_blocks_when_citation_coverage_is_too_low(monkeypatch):
 
 
 def test_call_llm_json_fails_over_to_secondary_provider(monkeypatch):
+    chat._CACHE = CacheClient(None)
     call_urls = []
 
     class FakeResponse:
@@ -508,9 +509,14 @@ def test_call_llm_json_fails_over_to_secondary_provider(monkeypatch):
     route_fail_key = "chat_provider_route_total{mode=json,provider=primary,result=http_500}"
     failover_key = "chat_provider_failover_total{from=primary,mode=json,reason=http_500,to=fallback_1}"
     route_ok_key = "chat_provider_route_total{mode=json,provider=fallback_1,result=ok}"
+    primary_health_key = "chat_provider_health_score{provider=primary}"
+    fallback_health_key = "chat_provider_health_score{provider=fallback_1}"
     assert after.get(route_fail_key, 0) >= before.get(route_fail_key, 0) + 1
     assert after.get(failover_key, 0) >= before.get(failover_key, 0) + 1
     assert after.get(route_ok_key, 0) >= before.get(route_ok_key, 0) + 1
+    assert isinstance(after.get(primary_health_key), float)
+    assert isinstance(after.get(fallback_health_key), float)
+    assert float(after.get(fallback_health_key, 0.0)) > float(after.get(primary_health_key, 0.0))
 
 
 def test_call_llm_json_respects_forced_provider(monkeypatch):
@@ -553,6 +559,7 @@ def test_call_llm_json_respects_forced_provider(monkeypatch):
 
 
 def test_call_llm_json_uses_low_cost_provider_for_low_risk_query(monkeypatch):
+    chat._CACHE = CacheClient(None)
     call_urls = []
 
     class FakeResponse:
@@ -579,6 +586,7 @@ def test_call_llm_json_uses_low_cost_provider_for_low_risk_query(monkeypatch):
     monkeypatch.setenv("QS_LLM_FALLBACK_URLS", "http://llm-secondary")
     monkeypatch.setenv("QS_LLM_COST_STEERING_ENABLED", "1")
     monkeypatch.setenv("QS_LLM_LOW_COST_PROVIDER", "fallback_1")
+    monkeypatch.setenv("QS_LLM_PROVIDER_COSTS_JSON", '{"fallback_1": 0.14}')
     monkeypatch.delenv("QS_LLM_FORCE_PROVIDER", raising=False)
     monkeypatch.setattr(chat.httpx, "AsyncClient", FakeAsyncClient)
 
@@ -596,8 +604,10 @@ def test_call_llm_json_uses_low_cost_provider_for_low_risk_query(monkeypatch):
     after = chat.metrics.snapshot()
     steer_key = "chat_provider_cost_steer_total{mode=json,provider=fallback_1,reason=selected}"
     route_key = "chat_provider_route_total{mode=json,provider=fallback_1,result=ok}"
+    cost_key = "chat_provider_cost_per_1k{provider=fallback_1}"
     assert after.get(steer_key, 0) >= before.get(steer_key, 0) + 1
     assert after.get(route_key, 0) >= before.get(route_key, 0) + 1
+    assert float(after.get(cost_key, 0.0)) == 0.14
 
 
 def test_call_llm_json_skips_provider_on_cooldown(monkeypatch):

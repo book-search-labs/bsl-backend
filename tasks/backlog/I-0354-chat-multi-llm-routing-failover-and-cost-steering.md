@@ -115,3 +115,16 @@ Implement multi-provider LLM routing for chat:
 - [x] 회귀 테스트 추가
   - primary provider 쿨다운 상태에서 fallback provider가 선행 호출되는지 검증
   - `chat_provider_route_total{result=cooldown_skip}` 메트릭 검증
+
+## Implementation Update (2026-02-23, Bundle 16)
+- [x] provider health score 집계 추가
+  - provider별 성공/실패 카운트를 캐시에 누적하고 health score를 계산
+  - `chat_provider_health_score{provider}` gauge 갱신
+- [x] provider 비용 계측 추가
+  - `QS_LLM_PROVIDER_COSTS_JSON`(alias/url → cost per 1k) 설정 파싱
+  - provider 성공/실패 처리 시 `chat_provider_cost_per_1k{provider}` gauge 갱신
+- [x] stream/json 공통 반영
+  - JSON/스트리밍 모두 provider 결과에 health/cost telemetry를 기록
+- [x] 회귀 테스트 추가
+  - failover 시 provider health score 갱신 검증
+  - 저비용 라우팅 시 provider cost metric 노출 검증

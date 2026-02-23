@@ -22,6 +22,10 @@ def _llm_provider_cooldown_sec() -> int:
     return max(0, int(os.getenv("QS_LLM_PROVIDER_COOLDOWN_SEC", "15")))
 
 
+def _llm_provider_stats_ttl_sec() -> int:
+    return max(300, int(os.getenv("QS_LLM_PROVIDER_STATS_TTL_SEC", "86400")))
+
+
 def _llm_url() -> str:
     return os.getenv("QS_LLM_URL", "http://localhost:8010").rstrip("/")
 
@@ -91,6 +95,63 @@ def _apply_cost_steering(providers: List[tuple[str, str]], payload: Dict[str, An
 
 def _provider_health_cache_key(provider: str) -> str:
     return f"chat:provider:cooldown:{provider}"
+
+
+def _provider_stats_cache_key(provider: str) -> str:
+    return f"chat:provider:stats:{provider}"
+
+
+def _llm_provider_costs() -> Dict[str, float]:
+    raw = os.getenv("QS_LLM_PROVIDER_COSTS_JSON", "").strip()
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except Exception:
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    costs: Dict[str, float] = {}
+    for key, value in parsed.items():
+        if not isinstance(key, str):
+            continue
+        try:
+            costs[key.strip()] = float(value)
+        except Exception:
+            continue
+    return costs
+
+
+def _record_provider_telemetry(provider: str, base_url: str, success: bool) -> None:
+    cost_map = _llm_provider_costs()
+    cost = cost_map.get(provider)
+    if cost is None:
+        cost = cost_map.get(base_url)
+    if cost is not None:
+        metrics.set("chat_provider_cost_per_1k", {"provider": provider}, value=float(cost))
+
+    key = _provider_stats_cache_key(provider)
+    raw = _CACHE.get_json(key)
+    ok = 0
+    fail = 0
+    if isinstance(raw, dict):
+        raw_ok = raw.get("ok")
+        raw_fail = raw.get("fail")
+        if isinstance(raw_ok, int) and raw_ok >= 0:
+            ok = raw_ok
+        if isinstance(raw_fail, int) and raw_fail >= 0:
+            fail = raw_fail
+    if success:
+        ok += 1
+    else:
+        fail += 1
+    _CACHE.set_json(
+        key,
+        {"ok": ok, "fail": fail, "updated_at": int(time.time())},
+        ttl=_llm_provider_stats_ttl_sec(),
+    )
+    score = float(ok + 1) / float(ok + fail + 2)
+    metrics.set("chat_provider_health_score", {"provider": provider}, value=score)
 
 
 def _mark_provider_unhealthy(provider: str, reason: str) -> None:
@@ -919,6 +980,7 @@ async def _call_llm_json(payload: Dict[str, Any], trace_id: str, request_id: str
             except (httpx.TimeoutException, httpx.NetworkError) as exc:
                 last_error = exc
                 metrics.inc("chat_provider_route_total", {"provider": provider, "result": "timeout", "mode": "json"})
+                _record_provider_telemetry(provider, base_url, success=False)
                 _mark_provider_unhealthy(provider, "timeout")
                 if idx + 1 < len(providers):
                     metrics.inc(
@@ -930,11 +992,13 @@ async def _call_llm_json(payload: Dict[str, Any], trace_id: str, request_id: str
             except Exception as exc:
                 last_error = exc
                 metrics.inc("chat_provider_route_total", {"provider": provider, "result": "error", "mode": "json"})
+                _record_provider_telemetry(provider, base_url, success=False)
                 raise
             status_code = int(response.status_code)
             if status_code >= 400:
                 reason = f"http_{status_code}"
                 metrics.inc("chat_provider_route_total", {"provider": provider, "result": reason, "mode": "json"})
+                _record_provider_telemetry(provider, base_url, success=False)
                 if _is_failover_status(status_code) and idx + 1 < len(providers):
                     _mark_provider_unhealthy(provider, reason)
                     metrics.inc(
@@ -948,8 +1012,10 @@ async def _call_llm_json(payload: Dict[str, Any], trace_id: str, request_id: str
             except Exception as exc:
                 last_error = exc
                 metrics.inc("chat_provider_route_total", {"provider": provider, "result": "invalid_json", "mode": "json"})
+                _record_provider_telemetry(provider, base_url, success=False)
                 raise
             metrics.inc("chat_provider_route_total", {"provider": provider, "result": "ok", "mode": "json"})
+            _record_provider_telemetry(provider, base_url, success=True)
             _clear_provider_unhealthy(provider)
             took_ms = int((time.perf_counter() - started) * 1000)
             metrics.inc("llm_generate_latency_ms", value=max(0, took_ms))
@@ -997,6 +1063,7 @@ async def _stream_llm(
                                 "chat_provider_route_total",
                                 {"provider": provider, "result": reason, "mode": "stream"},
                             )
+                            _record_provider_telemetry(provider, base_url, success=False)
                             if _is_failover_status(status_code) and idx + 1 < len(providers):
                                 _mark_provider_unhealthy(provider, reason)
                                 metrics.inc(
@@ -1046,6 +1113,7 @@ async def _stream_llm(
                                 data_lines = []
                                 event_name = "message"
                     metrics.inc("chat_provider_route_total", {"provider": provider, "result": "ok", "mode": "stream"})
+                    _record_provider_telemetry(provider, base_url, success=True)
                     _clear_provider_unhealthy(provider)
                     took_ms = int((time.perf_counter() - started) * 1000)
                     metrics.inc("llm_generate_latency_ms", value=max(0, took_ms))
@@ -1053,6 +1121,7 @@ async def _stream_llm(
                 except (httpx.TimeoutException, httpx.NetworkError) as exc:
                     last_error = exc
                     metrics.inc("chat_provider_route_total", {"provider": provider, "result": "timeout", "mode": "stream"})
+                    _record_provider_telemetry(provider, base_url, success=False)
                     _mark_provider_unhealthy(provider, "timeout")
                     if idx + 1 < len(providers) and not stream_state.get("answer"):
                         metrics.inc(
@@ -1066,6 +1135,7 @@ async def _stream_llm(
                     last_error = exc
                     stream_state["llm_error"] = str(exc)
                     metrics.inc("chat_provider_route_total", {"provider": provider, "result": "error", "mode": "stream"})
+                    _record_provider_telemetry(provider, base_url, success=False)
                     break
 
         if stream_state.get("llm_error") is None and last_error is not None:
