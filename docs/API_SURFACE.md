@@ -165,7 +165,7 @@ All structured responses that follow `contracts/*` must include:
 **Purpose**: return query suggestions for a prefix.
 
 ### Request (Query Params)
-- `q` (string, required): prefix
+- `q` (string, optional): prefix. empty value returns trending/recommended suggestions.
 - `size` (int, optional, default=10)
 
 ### Response (Planned MVP Shape)
@@ -558,6 +558,7 @@ If supported, the server should treat it as:
 - Primary query text should be `query_context.query.canonical`
 - Pagination maps to OpenSearch `from/size`
 - If `options.debug == true`, include `debug.query_dsl`
+- Lexical retrieval should include multilingual fallback paths (phrase + ngram + contains fallback) so Korean compound-word substrings such as `영어교육`/`문화지도` can still match titles like `초등영어교육의 영미문화지도에 관한 연구`.
 
 ## POST `/internal/explain`
 **Purpose**: Internal debug variant of search (forces explain/debug flags).
@@ -774,6 +775,7 @@ If supported, the server should treat it as:
 - `GET /api/v1/skus/{skuId}/offers`
 - `GET /api/v1/skus/{skuId}/current-offer`
 - `GET /api/v1/materials/{materialId}/current-offer`
+- `GET /api/v1/home/panels?limit=31&type=EVENT|NOTICE`
 - `GET /api/v1/cart`
 - `POST /api/v1/cart/items`
 - `PATCH /api/v1/cart/items/{cartItemId}`
@@ -799,6 +801,53 @@ If supported, the server should treat it as:
 - `POST /api/v1/refunds`
 - `GET /api/v1/refunds/{refundId}`
 - `GET /api/v1/refunds/by-order/{orderId}`
+- `POST /api/v1/support/tickets`
+- `GET /api/v1/support/tickets`
+- `GET /api/v1/support/tickets/{ticketId}`
+- `GET /api/v1/support/tickets/by-number/{ticketNo}`
+- `GET /api/v1/support/tickets/{ticketId}/events`
+
+### Home Events/Notices
+- `GET /api/v1/home/panels`
+  - Query params
+    - `limit` (optional, default `31`, max `100`)
+    - `type` (optional: `EVENT` or `NOTICE`)
+  - Response fields
+    - `items[]`: `item_id`, `type`, `banner_image_url`, `badge`, `title`, `subtitle`, `summary`, `link_url`, `cta_label`, `starts_at`, `ends_at`, `sort_order`
+    - `count`, `total_count`
+
+### Orders (User)
+- `GET /api/v1/orders`
+  - Response fields
+    - `items[]`: base order fields + `item_count`, `primary_item_title`, `primary_item_author`, `primary_item_material_id`, `primary_item_sku_id`
+- `GET /api/v1/orders/{orderId}`
+  - Response fields
+    - `items[]`: base order item fields + `material_id`, `title`, `subtitle`, `author`, `publisher`, `issued_year`, `seller_name`, `format`, `edition`, `pack_size`
+- `POST /api/v1/refunds`
+  - Refund amount is policy-driven by order status and reason code.
+  - Response fields (`refund`):
+    - `item_amount`, `shipping_refund_amount`, `return_fee_amount`, `amount`, `policy_code`
+  - Current policy summary:
+    - `PAID` / `READY_TO_SHIP`: full refund request refunds shipping fee (partial refunds: shipping fee not refunded).
+    - `SHIPPED` / `DELIVERED`: seller-fault reasons (`DAMAGED`, `DEFECTIVE`, `WRONG_ITEM`, `LATE_DELIVERY`) waive return fee; customer-remorse reasons apply return fee.
+    - Return fee defaults to base/fast shipping fee by shipping mode.
+
+### Support Tickets (User)
+- `POST /api/v1/support/tickets`
+  - Request fields
+    - `orderId` (optional): 문의와 연결할 주문 ID
+    - `category` (`GENERAL|ORDER|SHIPPING|REFUND|PAYMENT|ACCOUNT`)
+    - `severity` (`LOW|MEDIUM|HIGH|CRITICAL`)
+    - `summary` (required)
+    - `details` (optional object)
+    - `errorCode`, `chatSessionId`, `chatRequestId` (optional)
+  - Response fields
+    - `ticket`: `ticket_id`, `ticket_no`, `status`, `severity`, `expected_response_at`
+    - `expected_response_minutes`
+- `GET /api/v1/support/tickets/by-number/{ticketNo}`
+  - Returns latest ticket state for owner only.
+- `GET /api/v1/support/tickets/{ticketId}/events`
+  - Returns lifecycle events (received/status changed, etc.)
 
 ## Admin (v1)
 - `GET /admin/sellers`
@@ -825,6 +874,7 @@ If supported, the server should treat it as:
 - `GET /admin/shipments/{shipmentId}`
 - `POST /admin/shipments/{shipmentId}/label`
 - `POST /admin/shipments/{shipmentId}/status`
+- `POST /admin/support/tickets/{ticketId}/status`
 
 ---
 
