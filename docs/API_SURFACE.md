@@ -537,9 +537,21 @@ If supported, the server should treat it as:
     "took_ms": 12,
     "degraded": false
   },
+  "llm_routing": {
+    "mode": "json",
+    "query_intent": "GENERAL",
+    "final_chain": ["primary", "fallback_1"]
+  },
   "reason_codes": ["RAG_RERANK_DISABLED"]
 }
 ```
+
+## GET `/internal/chat/providers`
+**Purpose**: Internal chat provider routing snapshot (policy + provider stats + cooldown state).
+
+### Response
+- Contract: `contracts/chat-provider-snapshot-response.schema.json`
+- Example: `contracts/examples/chat-provider-snapshot-response.sample.json`
 
 ## GET `/internal/qc/rewrite/failures`
 **Purpose**: List curated rewrite failure cases for replay/analysis.

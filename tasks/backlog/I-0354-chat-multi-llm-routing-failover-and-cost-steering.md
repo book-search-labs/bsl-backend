@@ -205,3 +205,13 @@ Implement multi-provider LLM routing for chat:
   - invalid JSON body 요청 시 500 대신 표준 `invalid_request` 400으로 응답
 - [x] 회귀 테스트 추가
   - explain endpoint invalid JSON 요청 시 에러 코드/상태값 검증
+
+## Implementation Update (2026-02-23, Bundle 27)
+- [x] chat provider 운영 스냅샷 endpoint 추가
+  - `GET /internal/chat/providers`에서 현재 라우팅 정책/최종 체인/provider 통계를 제공
+  - explain endpoint의 `llm_routing` 디버그 블록과 같은 판단 기준 공유
+- [x] SSOT 반영
+  - `docs/API_SURFACE.md`에 endpoint 추가
+  - `contracts/chat-provider-snapshot-response.schema.json` 및 sample 추가
+- [x] 회귀 테스트 추가
+  - `/internal/chat/providers` 응답 shape 검증

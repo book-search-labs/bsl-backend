@@ -2290,3 +2290,41 @@ async def explain_chat_rag(request: Dict[str, Any], trace_id: str, request_id: s
         "llm_routing": llm_routing,
         "reason_codes": reason_codes,
     }
+
+
+def get_chat_provider_snapshot(trace_id: str, request_id: str) -> Dict[str, Any]:
+    providers = _llm_provider_chain()
+    preview = _preview_provider_routing(
+        {
+            "version": "v1",
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "messages": [{"role": "user", "content": ""}],
+            "context": {"chunks": []},
+            "citations_required": True,
+        },
+        mode="json",
+    )
+    details: List[Dict[str, Any]] = []
+    for name, url in providers:
+        details.append(
+            {
+                "name": name,
+                "url": url,
+                "cooldown": _is_provider_unhealthy(name),
+                "stats": _provider_stats_view(name),
+            }
+        )
+    return {
+        "routing": preview,
+        "providers": details,
+        "config": {
+            "forced_provider": _llm_forced_provider() or None,
+            "blocklist": sorted(_llm_provider_blocklist()),
+            "health_routing_enabled": _llm_health_routing_enabled(),
+            "health_min_sample": _llm_health_min_sample(),
+            "cost_steering_enabled": _llm_cost_steering_enabled(),
+            "low_cost_provider": _llm_low_cost_provider() or None,
+            "intent_policy": _llm_provider_by_intent(),
+        },
+    }

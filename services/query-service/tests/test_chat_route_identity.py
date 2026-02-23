@@ -57,3 +57,24 @@ def test_rag_explain_route_rejects_invalid_json_body():
     assert response.status_code == 400
     payload = response.json()
     assert payload["error"]["code"] == "invalid_request"
+
+
+def test_chat_provider_snapshot_route_returns_payload(monkeypatch):
+    async_payload = {
+        "routing": {"final_chain": ["primary", "fallback_1"]},
+        "providers": [{"name": "primary", "url": "http://llm-primary", "cooldown": False, "stats": {}}],
+        "config": {"forced_provider": None},
+    }
+
+    def fake_snapshot(trace_id, request_id):
+        return async_payload
+
+    monkeypatch.setattr(routes, "get_chat_provider_snapshot", fake_snapshot)
+
+    client = TestClient(app)
+    response = client.get("/internal/chat/providers")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["snapshot"]["routing"]["final_chain"][0] == "primary"

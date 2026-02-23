@@ -101,6 +101,12 @@ curl -s -XPOST http://localhost:8001/internal/rag/explain \
 ```
 응답의 `llm_routing` 필드에서 `forced_blocked`, `intent_policy_selected`, `final_chain`, `provider_stats`를 확인한다.
 
+Provider 전체 스냅샷은:
+```bash
+curl -s http://localhost:8001/internal/chat/providers
+```
+응답의 `snapshot.providers[]`에서 provider별 `cooldown`/`stats`를, `snapshot.routing.final_chain`에서 현재 우선순위를 확인한다.
+
 ## Sample Dev Bootstrap (Recommended)
 
 For team onboarding / fresh clone, use this exact flow:

@@ -16,7 +16,7 @@ from app.core.rewrite import run_rewrite
 from app.core.metrics import metrics
 from app.core.rewrite_log import get_rewrite_log, now_iso
 from app.core.spell import run_spell
-from app.core.chat import explain_chat_rag, run_chat, run_chat_stream
+from app.core.chat import explain_chat_rag, get_chat_provider_snapshot, run_chat, run_chat_stream
 from app.core.understanding import parse_understanding
 
 router = APIRouter()
@@ -314,6 +314,19 @@ async def rag_explain(request: Request):
 
     response = await explain_chat_rag(body, trace_id, request_id)
     return JSONResponse(content=response, headers=_response_headers(trace_id, request_id, traceparent))
+
+
+@router.get("/internal/chat/providers")
+async def chat_provider_snapshot(request: Request):
+    trace_id, request_id, _, traceparent = _extract_ids(request)
+    payload = {
+        "version": "v1",
+        "trace_id": trace_id,
+        "request_id": request_id,
+        "status": "ok",
+        "snapshot": get_chat_provider_snapshot(trace_id, request_id),
+    }
+    return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
 
 
 @router.get("/internal/qc/rewrite/failures")

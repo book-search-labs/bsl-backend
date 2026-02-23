@@ -120,6 +120,21 @@ def test_internal_rag_explain_includes_provider_routing_debug(monkeypatch):
     assert routing["final_chain"][0] == "fallback_1"
 
 
+def test_get_chat_provider_snapshot_contains_config_and_stats(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_LLM_URL", "http://llm-primary")
+    monkeypatch.setenv("QS_LLM_FALLBACK_URLS", "http://llm-secondary")
+    monkeypatch.setenv("QS_LLM_PROVIDER_BLOCKLIST", "primary")
+    chat._CACHE.set_json(chat._provider_stats_cache_key("fallback_1"), {"ok": 3, "fail": 1, "streak_fail": 0}, ttl=300)
+
+    snapshot = chat.get_chat_provider_snapshot("trace_test", "req_test")
+
+    assert "routing" in snapshot
+    assert "providers" in snapshot
+    assert snapshot["config"]["blocklist"] == ["primary"]
+    assert any(item["name"] == "fallback_1" for item in snapshot["providers"])
+
+
 def test_run_chat_stream_emits_done_with_validated_citations(monkeypatch):
     chat._CACHE = CacheClient(None)
 
