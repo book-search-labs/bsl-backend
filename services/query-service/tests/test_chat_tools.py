@@ -1,5 +1,8 @@
 import asyncio
 
+import httpx
+import pytest
+
 from app.core import chat
 from app.core import chat_tools
 
@@ -401,6 +404,40 @@ def test_build_response_emits_recovery_hint_metric():
         "reason_code=MISSING_INPUT,source=tool}"
     )
     assert response["next_action"] == "PROVIDE_REQUIRED_INFO"
+    assert after.get(key, 0) >= before.get(key, 0) + 1
+
+
+def test_call_commerce_timeout_emits_chat_timeout_metric(monkeypatch):
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def request(self, method, url, headers=None, json=None, timeout=None):
+            raise httpx.TimeoutException("timeout")
+
+    before = dict(chat_tools.metrics.snapshot())
+    monkeypatch.setattr(chat_tools.httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(chat_tools, "_tool_lookup_retry_count", lambda: 0)
+
+    with pytest.raises(chat_tools.ToolCallError) as exc_info:
+        asyncio.run(
+            chat_tools._call_commerce(
+                "GET",
+                "/orders/12",
+                user_id="1",
+                trace_id="trace_test",
+                request_id="req_test",
+                tool_name="order_lookup",
+                intent="ORDER_LOOKUP",
+            )
+        )
+
+    assert exc_info.value.code == "tool_timeout"
+    after = chat_tools.metrics.snapshot()
+    key = "chat_timeout_total{stage=tool_lookup}"
     assert after.get(key, 0) >= before.get(key, 0) + 1
 
 

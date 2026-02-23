@@ -462,3 +462,55 @@ def test_run_chat_blocks_when_citation_coverage_is_too_low(monkeypatch):
     assert result["status"] == "insufficient_evidence"
     assert result["reason_code"] == "LLM_LOW_CITATION_COVERAGE"
     assert result["next_action"] == "REFINE_QUERY"
+
+
+def test_run_chat_provider_timeout_emits_timeout_metric(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    before = dict(chat.metrics.snapshot())
+
+    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
+        return {
+            "ok": True,
+            "query": "배송 조회",
+            "canonical_key": "ck:timeout",
+            "locale": "ko-KR",
+            "selected": [
+                {
+                    "chunk_id": "chunk-1",
+                    "citation_key": "chunk-1",
+                    "doc_id": "doc-1",
+                    "title": "배송 안내",
+                    "url": "https://example.com/ship",
+                    "snippet": "배송 정보",
+                    "score": 0.9,
+                }
+            ],
+        }
+
+    async def fake_call_llm_json(payload, trace_id, request_id):
+        raise TimeoutError("llm timeout")
+
+    async def fake_tool_chat(request, trace_id, request_id):
+        return None
+
+    monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
+    monkeypatch.setattr(chat, "_call_llm_json", fake_call_llm_json)
+    monkeypatch.setattr(chat, "run_tool_chat", fake_tool_chat)
+    monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
+
+    result = asyncio.run(
+        chat.run_chat(
+            {
+                "session_id": "sess-timeout-1",
+                "message": {"role": "user", "content": "배송 상태 알려줘"},
+                "client": {"user_id": "1", "locale": "ko-KR"},
+            },
+            "trace_test",
+            "req_test",
+        )
+    )
+
+    assert result["reason_code"] == "PROVIDER_TIMEOUT"
+    after = chat.metrics.snapshot()
+    key = "chat_timeout_total{stage=llm_generate}"
+    assert after.get(key, 0) >= before.get(key, 0) + 1

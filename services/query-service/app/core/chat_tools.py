@@ -512,6 +512,7 @@ async def _call_commerce(
                 await asyncio.sleep(0.12 * (attempt + 1))
                 continue
             _record_tool_metrics(intent, tool_name, "timeout")
+            metrics.inc("chat_timeout_total", {"stage": "tool_lookup"})
             metrics.inc("chat_tool_fallback_total", {"reason_code": "tool_timeout"})
             raise last_error
         except ToolCallError as exc:

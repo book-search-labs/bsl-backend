@@ -94,6 +94,10 @@ def _chat_high_risk_min_citation_coverage_ratio() -> float:
     return min(1.0, max(0.0, float(os.getenv("QS_CHAT_HIGH_RISK_MIN_CITATION_COVERAGE_RATIO", "0.5"))))
 
 
+def _record_chat_timeout(stage: str) -> None:
+    metrics.inc("chat_timeout_total", {"stage": stage})
+
+
 def _chat_max_message_chars() -> int:
     return max(100, int(os.getenv("QS_CHAT_MAX_MESSAGE_CHARS", "1200")))
 
@@ -858,6 +862,7 @@ async def _stream_llm(
         except Exception as exc:
             stream_state["llm_error"] = str(exc)
             metrics.inc("chat_fallback_total", {"reason": "PROVIDER_TIMEOUT"})
+            _record_chat_timeout("llm_stream")
             yield _sse_event("error", {"code": "PROVIDER_TIMEOUT", "message": "LLM 응답 지연으로 처리하지 못했습니다."})
             yield _sse_event("done", {"status": "error", "citations": []})
 
@@ -957,6 +962,7 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
         data = await _call_llm_json(payload, trace_id, request_id)
     except Exception:
         metrics.inc("chat_requests_total", {"decision": "fallback"})
+        _record_chat_timeout("llm_generate")
         response = _fallback(trace_id, request_id, None, "PROVIDER_TIMEOUT", session_id=session_id, user_id=user_id)
         _save_unresolved_context(session_id, query, "PROVIDER_TIMEOUT", trace_id=trace_id, request_id=request_id)
         return response
@@ -1432,6 +1438,7 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
         except Exception:
             yield _sse_event("error", {"code": "PROVIDER_TIMEOUT", "message": "LLM 응답 지연으로 처리하지 못했습니다."})
             risk_band = _compute_risk_band(query, "error", [], "PROVIDER_TIMEOUT")
+            _record_chat_timeout("llm_generate")
             fallback_response = _fallback(
                 trace_id,
                 request_id,
@@ -1485,6 +1492,7 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
 
     if stream_state.get("llm_error"):
         risk_band = _compute_risk_band(query, "error", [], "PROVIDER_TIMEOUT")
+        _record_chat_timeout("llm_stream")
         fallback_response = _fallback(
             trace_id,
             request_id,
