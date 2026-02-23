@@ -14,6 +14,8 @@
     "recoverable": { "type": "boolean" },
     "next_action": { "type": "string", "minLength": 1 },
     "retry_after_ms": { "type": ["integer", "null"], "minimum": 0 },
+    "fallback_count": { "type": "integer", "minimum": 0 },
+    "escalated": { "type": "boolean" },
     "answer": { "$ref": "#/$defs/message" },
     "sources": {
       "type": "array",

@@ -17,6 +17,9 @@ public class BffChatResponse {
     private String nextAction;
     @JsonProperty("retry_after_ms")
     private Integer retryAfterMs;
+    @JsonProperty("fallback_count")
+    private Integer fallbackCount;
+    private Boolean escalated;
     private BffChatMessage answer;
     private List<BffChatSource> sources;
     private List<String> citations;
@@ -83,6 +86,22 @@ public class BffChatResponse {
 
     public void setRetryAfterMs(Integer retryAfterMs) {
         this.retryAfterMs = retryAfterMs;
+    }
+
+    public Integer getFallbackCount() {
+        return fallbackCount;
+    }
+
+    public void setFallbackCount(Integer fallbackCount) {
+        this.fallbackCount = fallbackCount;
+    }
+
+    public Boolean getEscalated() {
+        return escalated;
+    }
+
+    public void setEscalated(Boolean escalated) {
+        this.escalated = escalated;
     }
 
     public BffChatMessage getAnswer() {

@@ -21,6 +21,8 @@ type ChatBubble = {
   recoverable?: boolean
   nextAction?: string
   retryAfterMs?: number | null
+  fallbackCount?: number
+  escalated?: boolean
 }
 
 function uuid() {
@@ -66,6 +68,13 @@ function nextActionHint(action?: string, retryAfterMs?: number | null) {
   if (action === 'PROVIDE_REQUIRED_INFO') return '주문번호/티켓번호 같은 필수 정보를 입력해 주세요.'
   if (action === 'CONFIRM_ACTION') return '확인 코드를 포함해 승인 메시지를 입력해 주세요.'
   if (action === 'OPEN_SUPPORT_TICKET') return '상담 문의 접수로 전환해 주세요.'
+  return null
+}
+
+function nextActionPrompt(action?: string) {
+  if (action === 'OPEN_SUPPORT_TICKET') return '문의 접수해줘'
+  if (action === 'RETRY') return '다시 시도해줘'
+  if (action === 'REFINE_QUERY') return '질문을 더 구체적으로 다시 입력할게'
   return null
 }
 
@@ -115,6 +124,8 @@ export default function ChatPage() {
                         typeof response.retry_after_ms === 'number' || response.retry_after_ms === null
                           ? response.retry_after_ms
                           : item.retryAfterMs,
+                      fallbackCount: typeof response.fallback_count === 'number' ? response.fallback_count : item.fallbackCount,
+                      escalated: typeof response.escalated === 'boolean' ? response.escalated : item.escalated,
                     }
                   : item,
               ),
@@ -145,6 +156,8 @@ export default function ChatPage() {
                         typeof done.retry_after_ms === 'number' || done.retry_after_ms === null
                           ? done.retry_after_ms
                           : item.retryAfterMs,
+                      fallbackCount: typeof done.fallback_count === 'number' ? done.fallback_count : item.fallbackCount,
+                      escalated: typeof done.escalated === 'boolean' ? done.escalated : item.escalated,
                     }
                   : item,
               ),
@@ -212,7 +225,23 @@ export default function ChatPage() {
                         ) : null}
                         <div className="chat-content">{message.content || (message.role === 'assistant' ? '...' : '')}</div>
                         {message.role === 'assistant' && nextActionHint(message.nextAction, message.retryAfterMs) ? (
-                          <div className="chat-note">{nextActionHint(message.nextAction, message.retryAfterMs)}</div>
+                          <div className="chat-note">
+                            {nextActionHint(message.nextAction, message.retryAfterMs)}
+                            {typeof message.fallbackCount === 'number' && message.fallbackCount > 0
+                              ? ` · 실패 누적 ${message.fallbackCount}회`
+                              : ''}
+                          </div>
+                        ) : null}
+                        {message.role === 'assistant' && message.escalated && nextActionPrompt(message.nextAction) ? (
+                          <div className="chat-feedback">
+                            <Button
+                              size="sm"
+                              variant="outline-primary"
+                              onClick={() => setInput(nextActionPrompt(message.nextAction) ?? '')}
+                            >
+                              상담 전환 진행
+                            </Button>
+                          </div>
                         ) : null}
                         {message.role === 'assistant' && message.sources && message.sources.length > 0 ? (
                           <div className="chat-sources">

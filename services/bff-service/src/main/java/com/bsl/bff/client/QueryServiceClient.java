@@ -37,6 +37,8 @@ public class QueryServiceClient {
         private Boolean recoverable = Boolean.FALSE;
         private String nextAction = "NONE";
         private Integer retryAfterMs;
+        private Integer fallbackCount;
+        private Boolean escalated = Boolean.FALSE;
         private final List<String> citations = new ArrayList<>();
 
         public String getStatus() {
@@ -86,6 +88,22 @@ public class QueryServiceClient {
 
         public void setRetryAfterMs(Integer retryAfterMs) {
             this.retryAfterMs = retryAfterMs;
+        }
+
+        public Integer getFallbackCount() {
+            return fallbackCount;
+        }
+
+        public void setFallbackCount(Integer fallbackCount) {
+            this.fallbackCount = fallbackCount;
+        }
+
+        public Boolean getEscalated() {
+            return escalated;
+        }
+
+        public void setEscalated(Boolean escalated) {
+            this.escalated = escalated;
         }
 
         public List<String> getCitations() {
@@ -287,6 +305,14 @@ public class QueryServiceClient {
             JsonNode retryAfterMsNode = node.get("retry_after_ms");
             if (retryAfterMsNode != null && retryAfterMsNode.isInt()) {
                 result.setRetryAfterMs(retryAfterMsNode.asInt());
+            }
+            JsonNode fallbackCountNode = node.get("fallback_count");
+            if (fallbackCountNode != null && fallbackCountNode.isInt()) {
+                result.setFallbackCount(fallbackCountNode.asInt());
+            }
+            JsonNode escalatedNode = node.get("escalated");
+            if (escalatedNode != null && escalatedNode.isBoolean()) {
+                result.setEscalated(escalatedNode.asBoolean());
             }
             JsonNode citationsNode = node.get("citations");
             if (citationsNode != null && citationsNode.isArray()) {

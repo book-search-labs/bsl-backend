@@ -62,7 +62,7 @@ def test_internal_rag_explain_returns_trace(monkeypatch):
 def test_run_chat_stream_emits_done_with_validated_citations(monkeypatch):
     chat._CACHE = CacheClient(None)
 
-    async def fake_prepare_chat(request, trace_id, request_id):
+    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
         return {
             "ok": True,
             "query": "harry potter",
@@ -102,7 +102,7 @@ def test_run_chat_stream_emits_done_with_validated_citations(monkeypatch):
 def test_run_chat_stream_emits_error_when_citation_mapping_fails(monkeypatch):
     chat._CACHE = CacheClient(None)
 
-    async def fake_prepare_chat(request, trace_id, request_id):
+    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
         return {
             "ok": True,
             "query": "harry potter",
@@ -147,7 +147,7 @@ def test_run_chat_stream_emits_error_when_citation_mapping_fails(monkeypatch):
 def test_run_chat_blocks_forbidden_claim_on_high_risk_query(monkeypatch):
     chat._CACHE = CacheClient(None)
 
-    async def fake_prepare_chat(request, trace_id, request_id):
+    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
         return {
             "ok": True,
             "query": "환불 정책 알려줘",
@@ -191,3 +191,32 @@ def test_compute_risk_band_high_risk_with_citations():
 def test_compute_risk_band_error_path():
     band = chat._compute_risk_band("배송 상태", "error", [], "PROVIDER_TIMEOUT")
     assert band == "R3"
+
+
+def test_fallback_escalates_after_repeated_failures(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_FALLBACK_ESCALATE_THRESHOLD", "2")
+
+    first = chat._fallback(
+        "trace_test",
+        "req_1",
+        None,
+        "RAG_NO_CHUNKS",
+        session_id="sess-escalate-1",
+        user_id="1",
+    )
+    assert first["next_action"] == "REFINE_QUERY"
+    assert first["fallback_count"] == 1
+    assert first["escalated"] is False
+
+    second = chat._fallback(
+        "trace_test",
+        "req_2",
+        None,
+        "RAG_NO_CHUNKS",
+        session_id="sess-escalate-1",
+        user_id="1",
+    )
+    assert second["next_action"] == "OPEN_SUPPORT_TICKET"
+    assert second["fallback_count"] == 2
+    assert second["escalated"] is True

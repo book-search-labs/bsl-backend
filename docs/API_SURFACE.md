@@ -147,6 +147,8 @@ All structured responses that follow `contracts/*` must include:
 - `recoverable`: 재시도/수정으로 복구 가능한지 여부
 - `next_action`: 권장 사용자 다음 행동 (`RETRY`, `REFINE_QUERY`, `LOGIN_REQUIRED`, `PROVIDE_REQUIRED_INFO`, `CONFIRM_ACTION`, `OPEN_SUPPORT_TICKET`, `NONE`)
 - `retry_after_ms`: 재시도 권장 지연(ms), 없으면 `null`
+- `fallback_count`: 현재 세션 fallback 누적 횟수
+- `escalated`: 반복 실패로 상담 전환 권고 상태인지 여부
 
 ### Streaming (optional)
 - `POST /chat?stream=true` returns `text/event-stream`

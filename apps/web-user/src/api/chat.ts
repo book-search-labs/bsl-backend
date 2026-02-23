@@ -31,6 +31,8 @@ export type ChatResponse = {
   recoverable?: boolean
   next_action?: string
   retry_after_ms?: number | null
+  fallback_count?: number
+  escalated?: boolean
   answer: ChatMessage
   sources: ChatSource[]
   citations: string[]
@@ -48,6 +50,8 @@ export type ChatStreamDone = {
   recoverable?: boolean
   next_action?: string
   retry_after_ms?: number | null
+  fallback_count?: number
+  escalated?: boolean
 }
 
 export type ChatStreamError = {

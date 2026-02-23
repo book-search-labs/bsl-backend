@@ -2399,6 +2399,17 @@
   font-weight: 700;
 }
 
+.floating-chat-action-btn {
+  margin-top: 0.42rem;
+  border: 1px solid rgba(11, 79, 108, 0.28);
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.26rem 0.5rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #073249;
+}
+
 .floating-chat-sources {
   margin-top: 0.45rem;
 }

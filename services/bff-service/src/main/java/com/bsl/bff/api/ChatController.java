@@ -144,6 +144,8 @@ public class ChatController {
             response.setRecoverable(streamResult.getRecoverable());
             response.setNextAction(streamResult.getNextAction());
             response.setRetryAfterMs(streamResult.getRetryAfterMs());
+            response.setFallbackCount(streamResult.getFallbackCount());
+            response.setEscalated(streamResult.getEscalated());
             response.setSources(List.of());
             response.setCitations(streamResult.getCitations());
             recordChatResponseEvent(response, context, conversationId, turnId, canonicalKey, true, streamResult.getCitations(), queryText);
@@ -156,6 +158,8 @@ public class ChatController {
             response.setRecoverable(Boolean.TRUE);
             response.setNextAction("RETRY");
             response.setRetryAfterMs(3000);
+            response.setFallbackCount(null);
+            response.setEscalated(Boolean.FALSE);
             response.setSources(List.of());
             response.setCitations(List.of());
             recordChatResponseEvent(response, context, conversationId, turnId, canonicalKey, true, null, queryText);
@@ -219,6 +223,8 @@ public class ChatController {
         payload.put("recoverable", response == null ? null : response.getRecoverable());
         payload.put("next_action", response == null ? null : response.getNextAction());
         payload.put("retry_after_ms", response == null ? null : response.getRetryAfterMs());
+        payload.put("fallback_count", response == null ? null : response.getFallbackCount());
+        payload.put("escalated", response == null ? null : response.getEscalated());
         payload.put("stream", stream);
         payload.put("citations", response == null ? List.of() : response.getCitations());
         payload.put("risk_band", computeRiskBand(queryText, response == null ? "error" : response.getStatus(), response == null ? List.of() : response.getCitations()));

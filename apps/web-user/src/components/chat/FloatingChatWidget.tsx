@@ -16,6 +16,8 @@ type ChatBubble = {
   recoverable?: boolean
   nextAction?: string
   retryAfterMs?: number | null
+  fallbackCount?: number
+  escalated?: boolean
 }
 
 const CHAT_HISTORY_LIMIT = 8
@@ -61,6 +63,14 @@ function nextActionLabel(action?: string) {
   if (action === 'PROVIDE_REQUIRED_INFO') return '주문번호/티켓번호 같은 필수 정보를 입력해 주세요.'
   if (action === 'CONFIRM_ACTION') return '확인 코드를 포함해 승인 메시지를 입력해 주세요.'
   if (action === 'OPEN_SUPPORT_TICKET') return '상담 문의 접수로 전환해 주세요.'
+  return null
+}
+
+function nextActionPrompt(action?: string) {
+  if (!action) return null
+  if (action === 'OPEN_SUPPORT_TICKET') return '문의 접수해줘'
+  if (action === 'REFINE_QUERY') return '질문을 더 구체적으로 다시 입력할게'
+  if (action === 'RETRY') return '다시 시도해줘'
   return null
 }
 
@@ -125,6 +135,8 @@ export default function FloatingChatWidget() {
                       recoverable: typeof meta.recoverable === 'boolean' ? meta.recoverable : item.recoverable,
                       nextAction: typeof meta.next_action === 'string' ? meta.next_action : item.nextAction,
                       retryAfterMs: typeof meta.retry_after_ms === 'number' || meta.retry_after_ms === null ? meta.retry_after_ms : item.retryAfterMs,
+                      fallbackCount: typeof meta.fallback_count === 'number' ? meta.fallback_count : item.fallbackCount,
+                      escalated: typeof meta.escalated === 'boolean' ? meta.escalated : item.escalated,
                     }
                   : item,
               ),
@@ -154,6 +166,8 @@ export default function FloatingChatWidget() {
                   nextAction: typeof done.next_action === 'string' ? done.next_action : item.nextAction,
                   retryAfterMs:
                     typeof done.retry_after_ms === 'number' || done.retry_after_ms === null ? done.retry_after_ms : item.retryAfterMs,
+                  fallbackCount: typeof done.fallback_count === 'number' ? done.fallback_count : item.fallbackCount,
+                  escalated: typeof done.escalated === 'boolean' ? done.escalated : item.escalated,
                   content: nextContent,
                 }
               }),
@@ -249,7 +263,13 @@ export default function FloatingChatWidget() {
                       <div className="floating-chat-action-hint">
                         {nextActionLabel(message.nextAction)}
                         {message.retryAfterMs && message.retryAfterMs > 0 ? ` (${Math.ceil(message.retryAfterMs / 1000)}초 후)` : ''}
+                        {typeof message.fallbackCount === 'number' && message.fallbackCount > 0 ? ` · 실패 누적 ${message.fallbackCount}회` : ''}
                       </div>
+                    ) : null}
+                    {message.role === 'assistant' && message.escalated && nextActionPrompt(message.nextAction) ? (
+                      <button type="button" className="floating-chat-action-btn" onClick={() => setInput(nextActionPrompt(message.nextAction) ?? '')}>
+                        상담 전환 진행
+                      </button>
                     ) : null}
                     {message.role === 'assistant' && message.sources && message.sources.length > 0 ? (
                       <details className="floating-chat-sources">
