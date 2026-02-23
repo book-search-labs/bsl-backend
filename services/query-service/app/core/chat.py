@@ -40,6 +40,51 @@ def _llm_forced_provider() -> str:
     return os.getenv("QS_LLM_FORCE_PROVIDER", "").strip()
 
 
+def _llm_cost_steering_enabled() -> bool:
+    return str(os.getenv("QS_LLM_COST_STEERING_ENABLED", "0")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _llm_low_cost_provider() -> str:
+    return os.getenv("QS_LLM_LOW_COST_PROVIDER", "").strip()
+
+
+def _extract_user_query_from_llm_payload(payload: Dict[str, Any]) -> str:
+    messages = payload.get("messages")
+    if not isinstance(messages, list):
+        return ""
+    for item in reversed(messages):
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("role") or "").strip().lower() != "user":
+            continue
+        content = item.get("content")
+        if isinstance(content, str) and content.strip():
+            return content.strip()
+    return ""
+
+
+def _apply_cost_steering(providers: List[tuple[str, str]], payload: Dict[str, Any], mode: str) -> List[tuple[str, str]]:
+    if not _llm_cost_steering_enabled():
+        return providers
+    query = _extract_user_query_from_llm_payload(payload)
+    if query and _is_high_risk_query(query):
+        metrics.inc("chat_provider_cost_steer_total", {"provider": "none", "reason": "high_risk_bypass", "mode": mode})
+        return providers
+    target = _llm_low_cost_provider()
+    if not target:
+        metrics.inc("chat_provider_cost_steer_total", {"provider": "none", "reason": "not_configured", "mode": mode})
+        return providers
+    for idx, (name, url) in enumerate(providers):
+        if target == name or target == url:
+            metrics.inc("chat_provider_cost_steer_total", {"provider": name, "reason": "selected", "mode": mode})
+            if idx == 0:
+                return providers
+            selected = providers[idx]
+            return [selected] + [item for pos, item in enumerate(providers) if pos != idx]
+    metrics.inc("chat_provider_cost_steer_total", {"provider": "unknown", "reason": "not_found", "mode": mode})
+    return providers
+
+
 def _apply_provider_override(providers: List[tuple[str, str]], mode: str) -> List[tuple[str, str]]:
     forced = _llm_forced_provider()
     if not forced:
@@ -816,7 +861,8 @@ def _build_llm_payload(request: Dict[str, Any], trace_id: str, request_id: str, 
 async def _call_llm_json(payload: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
     headers = {"x-trace-id": trace_id, "x-request-id": request_id}
     started = time.perf_counter()
-    providers = _apply_provider_override(_llm_provider_chain(), mode="json")
+    providers = _apply_cost_steering(_llm_provider_chain(), payload, mode="json")
+    providers = _apply_provider_override(providers, mode="json")
     last_error: Exception | None = None
     async with httpx.AsyncClient() as client:
         for idx, (provider, base_url) in enumerate(providers):
@@ -877,7 +923,8 @@ async def _stream_llm(
 
     async def generator() -> AsyncIterator[str]:
         nonlocal first_token_reported
-        providers = _apply_provider_override(_llm_provider_chain(), mode="stream")
+        providers = _apply_cost_steering(_llm_provider_chain(), payload, mode="stream")
+        providers = _apply_provider_override(providers, mode="stream")
         last_error: Optional[Exception] = None
         async with httpx.AsyncClient() as client:
             for idx, (provider, base_url) in enumerate(providers):

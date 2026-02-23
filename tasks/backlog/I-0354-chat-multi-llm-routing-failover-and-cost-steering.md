@@ -93,3 +93,13 @@ Implement multi-provider LLM routing for chat:
   - reason: `selected`(적용), `not_found`(미존재 provider 지정)
 - [x] 회귀 테스트 추가
   - 강제 provider 지정 시 실제 호출 URL이 fallback provider로 선행되는지 검증
+
+## Implementation Update (2026-02-23, Bundle 14)
+- [x] 비용 스티어링(초기형) 추가
+  - `QS_LLM_COST_STEERING_ENABLED=1`일 때 `QS_LLM_LOW_COST_PROVIDER`를 체인 선두로 재정렬
+  - 단, 주문/결제/환불/배송 등 고위험 질의는 비용 스티어링을 우회하고 기본 체인을 유지
+- [x] 비용 스티어링 메트릭 추가
+  - `chat_provider_cost_steer_total{provider,reason,mode}`
+  - reason: `selected`, `high_risk_bypass`, `not_configured`, `not_found`
+- [x] 회귀 테스트 추가
+  - 저위험 질의에서 저비용 provider 우선 호출 및 메트릭 증가 검증

@@ -552,6 +552,54 @@ def test_call_llm_json_respects_forced_provider(monkeypatch):
     assert after.get(route_key, 0) >= before.get(route_key, 0) + 1
 
 
+def test_call_llm_json_uses_low_cost_provider_for_low_risk_query(monkeypatch):
+    call_urls = []
+
+    class FakeResponse:
+        def __init__(self, payload):
+            self.status_code = 200
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url, json=None, headers=None, timeout=None):
+            call_urls.append(url)
+            return FakeResponse({"content": "저비용 라우팅", "citations": ["chunk-1"]})
+
+    before = dict(chat.metrics.snapshot())
+    monkeypatch.setenv("QS_LLM_URL", "http://llm-primary")
+    monkeypatch.setenv("QS_LLM_FALLBACK_URLS", "http://llm-secondary")
+    monkeypatch.setenv("QS_LLM_COST_STEERING_ENABLED", "1")
+    monkeypatch.setenv("QS_LLM_LOW_COST_PROVIDER", "fallback_1")
+    monkeypatch.delenv("QS_LLM_FORCE_PROVIDER", raising=False)
+    monkeypatch.setattr(chat.httpx, "AsyncClient", FakeAsyncClient)
+
+    payload = {
+        "model": "toy",
+        "messages": [
+            {"role": "system", "content": "system"},
+            {"role": "user", "content": "오늘 읽을 책 추천해줘"},
+        ],
+    }
+    data = asyncio.run(chat._call_llm_json(payload, "trace_test", "req_test"))
+
+    assert data["content"] == "저비용 라우팅"
+    assert call_urls == ["http://llm-secondary/v1/generate"]
+    after = chat.metrics.snapshot()
+    steer_key = "chat_provider_cost_steer_total{mode=json,provider=fallback_1,reason=selected}"
+    route_key = "chat_provider_route_total{mode=json,provider=fallback_1,result=ok}"
+    assert after.get(steer_key, 0) >= before.get(steer_key, 0) + 1
+    assert after.get(route_key, 0) >= before.get(route_key, 0) + 1
+
+
 def test_run_chat_provider_timeout_emits_timeout_metric(monkeypatch):
     chat._CACHE = CacheClient(None)
     before = dict(chat.metrics.snapshot())
