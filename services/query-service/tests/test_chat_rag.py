@@ -281,3 +281,102 @@ def test_run_chat_stream_rejects_invalid_session_id():
     )
 
     assert any("event: done" in event and '"CHAT_INVALID_SESSION_ID"' in event for event in events)
+
+
+def test_run_chat_clears_unresolved_context_on_success(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    session_id = "sess-clear-success-1"
+    chat._CACHE.set_json(
+        f"chat:unresolved:{session_id}",
+        {"query": "이전 실패", "reason_code": "RAG_NO_CHUNKS"},
+        ttl=300,
+    )
+
+    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
+        return {
+            "ok": True,
+            "query": "환불 정책",
+            "canonical_key": "ck:clear",
+            "locale": "ko-KR",
+            "selected": [
+                {
+                    "chunk_id": "chunk-1",
+                    "citation_key": "chunk-1",
+                    "doc_id": "doc-1",
+                    "title": "환불 정책",
+                    "url": "https://example.com/refund",
+                    "snippet": "환불 정책 안내",
+                    "score": 0.9,
+                }
+            ],
+        }
+
+    async def fake_call_llm_json(payload, trace_id, request_id):
+        return {"content": "환불은 주문 상태에 따라 가능합니다.", "citations": ["chunk-1"]}
+
+    async def fake_tool_chat(request, trace_id, request_id):
+        return None
+
+    monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
+    monkeypatch.setattr(chat, "_call_llm_json", fake_call_llm_json)
+    monkeypatch.setattr(chat, "run_tool_chat", fake_tool_chat)
+    monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
+
+    result = asyncio.run(
+        chat.run_chat(
+            {
+                "session_id": session_id,
+                "message": {"role": "user", "content": "환불 정책 알려줘"},
+                "client": {"user_id": "1", "locale": "ko-KR"},
+            },
+            "trace_test",
+            "req_test",
+        )
+    )
+
+    assert result["status"] == "ok"
+    cached = chat._CACHE.get_json(f"chat:unresolved:{session_id}")
+    assert cached is None or cached.get("cleared") is True
+
+
+def test_run_chat_clears_unresolved_context_on_tool_path(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    session_id = "sess-clear-tool-1"
+    chat._CACHE.set_json(
+        f"chat:unresolved:{session_id}",
+        {"query": "이전 실패", "reason_code": "PROVIDER_TIMEOUT"},
+        ttl=300,
+    )
+
+    async def fake_tool_chat(request, trace_id, request_id):
+        return {
+            "version": "v1",
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "status": "ok",
+            "reason_code": "OK",
+            "recoverable": False,
+            "next_action": "NONE",
+            "retry_after_ms": None,
+            "answer": {"role": "assistant", "content": "주문 상태는 결제 완료입니다."},
+            "sources": [],
+            "citations": ["tool:order_lookup:1"],
+        }
+
+    monkeypatch.setattr(chat, "run_tool_chat", fake_tool_chat)
+
+    result = asyncio.run(
+        chat.run_chat(
+            {
+                "session_id": session_id,
+                "message": {"role": "user", "content": "주문 상태 확인"},
+                "client": {"user_id": "1", "locale": "ko-KR"},
+            },
+            "trace_test",
+            "req_test",
+        )
+    )
+
+    assert result["status"] == "ok"
+    cached = chat._CACHE.get_json(f"chat:unresolved:{session_id}")
+    assert cached is None or cached.get("cleared") is True

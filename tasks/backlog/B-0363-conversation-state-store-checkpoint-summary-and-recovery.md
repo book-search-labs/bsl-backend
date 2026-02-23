@@ -1,4 +1,4 @@
-# B-0363 — Conversation State Store (checkpoint summary + recovery)
+# B-0363 — Conversation State Store (checkpoint summary + recovery, 개정 v2)
 
 ## Priority
 - P1
@@ -6,6 +6,7 @@
 ## Dependencies
 - B-0355, U-0140
 - I-0353 (SLO guardrails)
+- I-0364 (session gateway durability)
 
 ## Goal
 대화 상태를 안정적으로 저장/복원해 챗 세션 유실과 문맥 붕괴를 줄인다.
@@ -42,6 +43,11 @@
 - p95 상태 조회/복원 지연 목표 설정
 - checkpoint 생성 주기와 context window budget 연계
 
+### 6) Session continuity contract (신규)
+- resume token 기반 재연결 계약 정의(웹/모바일 공통)
+- 멀티탭/멀티디바이스 동시 접속 시 active writer 1개 보장
+- 요약 checkpoint 손상/누락 시 event log 재구성 경로 제공
+
 ## Data / Schema
 - `chat_session_state` (new): session_id, user_id, status, locale, version, last_turn_at, expires_at
 - `chat_session_turn` (new): session_id, turn_id, role, content_hash, tool_call_ref, created_at
@@ -65,6 +71,7 @@
 - 중복 답변/문맥 손실 케이스 감소
 - 상태 저장 계층 장애 시 degrade 동작(최소 응답) 확인
 - 핵심 관측지표 대시보드에서 session health 추적 가능
+- 재연결 토큰 기반 세션 연속성 검증 시나리오 통과
 
 ## Codex Prompt
 Implement durable conversation state store:
@@ -72,3 +79,11 @@ Implement durable conversation state store:
 - Support session recovery and idempotent retries.
 - Enforce TTL and PII-minimized persistence.
 - Add conflict-safe writes and recovery observability metrics.
+
+## Implementation Update (2026-02-23, Bundle 7)
+- [x] 세션 단기 상태 저장(경량) 보강
+  - `chat:unresolved:{session_id}` 캐시에 직전 실패 질의/reason_code/trace를 저장
+  - 성공 응답(LLM 정상/툴 정상/캐시 히트) 시 unresolved 상태 자동 정리
+- [x] 회귀 테스트 추가
+  - 성공 경로에서 unresolved 상태가 정리되는지 검증
+  - tool-path 성공 경로에서 unresolved 상태가 정리되는지 검증
