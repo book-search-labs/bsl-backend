@@ -289,6 +289,51 @@ def test_run_tool_chat_ticket_create_and_status_lookup(monkeypatch):
     assert "처리 중" in status_result["answer"]["content"]
 
 
+def test_run_tool_chat_ticket_create_uses_unresolved_context(monkeypatch):
+    captured = {}
+
+    async def fake_call_commerce(method, path, **kwargs):
+        if method == "POST" and path == "/support/tickets":
+            captured["payload"] = kwargs.get("payload")
+            return {
+                "ticket": {
+                    "ticket_id": 12,
+                    "ticket_no": "STK202602230124",
+                    "status": "RECEIVED",
+                    "severity": "MEDIUM",
+                },
+                "expected_response_minutes": 120,
+            }
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    session_id = "sess-ticket-ctx-1"
+    chat_tools._CACHE.set_json(
+        f"chat:unresolved:{session_id}",
+        {
+            "query": "환불 조건을 정리해줘",
+            "reason_code": "OUTPUT_GUARD_FORBIDDEN_CLAIM",
+            "trace_id": "trace_prev",
+            "request_id": "req_prev",
+        },
+        ttl=600,
+    )
+
+    payload = {
+        "session_id": session_id,
+        "message": {"role": "user", "content": "문의 접수해줘"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_create_ctx"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert "직전 실패 사유" in result["answer"]["content"]
+    assert captured["payload"]["summary"] == "환불 조건을 정리해줘"
+    assert captured["payload"]["details"]["effectiveQuery"] == "환불 조건을 정리해줘"
+    assert captured["payload"]["details"]["unresolvedReasonCode"] == "OUTPUT_GUARD_FORBIDDEN_CLAIM"
+
+
 def test_run_tool_chat_executes_refund_after_confirmation(monkeypatch):
     async def fake_call_commerce(method, path, **kwargs):
         if method == "GET" and path == "/orders/12":

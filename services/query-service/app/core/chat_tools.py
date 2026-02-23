@@ -303,6 +303,34 @@ def _load_last_ticket_no(session_id: str) -> str | None:
     return None
 
 
+def _unresolved_context_cache_key(session_id: str) -> str:
+    return f"chat:unresolved:{session_id}"
+
+
+def _load_unresolved_context(session_id: str) -> dict[str, Any] | None:
+    cached = _CACHE.get_json(_unresolved_context_cache_key(session_id))
+    if isinstance(cached, dict):
+        return cached
+    return None
+
+
+def _is_generic_ticket_create_message(query: str) -> bool:
+    q = _normalize_text(query)
+    if not q:
+        return False
+    generic_keywords = [
+        "문의 접수",
+        "문의해줘",
+        "문의 남겨줘",
+        "티켓 생성",
+        "상담원 연결",
+        "상담 전환",
+        "support ticket",
+        "create ticket",
+    ]
+    return any(keyword in q for keyword in generic_keywords)
+
+
 def _is_confirmation_message(query: str) -> bool:
     q = _normalize_text(query)
     return any(keyword in q for keyword in ["확인", "동의", "진행", "승인", "yes", "confirm"])
@@ -757,9 +785,17 @@ async def _handle_ticket_create(
     trace_id: str,
     request_id: str,
 ) -> dict[str, Any]:
-    category = _infer_ticket_category(query)
-    severity = _infer_ticket_severity(query)
-    order_ref = _extract_order_ref(query)
+    unresolved = _load_unresolved_context(session_id)
+    unresolved_query = str(unresolved.get("query") or "").strip() if isinstance(unresolved, dict) else ""
+    unresolved_reason = str(unresolved.get("reason_code") or "").strip() if isinstance(unresolved, dict) else ""
+    effective_query = query
+    if _is_generic_ticket_create_message(query) and unresolved_query:
+        effective_query = unresolved_query
+        metrics.inc("chat_ticket_create_with_context_total", {"source": "unresolved_context"})
+
+    category = _infer_ticket_category(effective_query)
+    severity = _infer_ticket_severity(effective_query)
+    order_ref = _extract_order_ref(effective_query)
     order_id: int | None = None
     if order_ref.order_id is not None or order_ref.order_no is not None:
         try:
@@ -776,8 +812,14 @@ async def _handle_ticket_create(
         "orderId": order_id,
         "category": category,
         "severity": severity,
-        "summary": query[:255],
-        "details": {"query": query},
+        "summary": effective_query[:255],
+        "details": {
+            "query": query,
+            "effectiveQuery": effective_query,
+            "unresolvedReasonCode": unresolved_reason or None,
+            "unresolvedTraceId": (unresolved or {}).get("trace_id") if isinstance(unresolved, dict) else None,
+            "unresolvedRequestId": (unresolved or {}).get("request_id") if isinstance(unresolved, dict) else None,
+        },
         "errorCode": "CHAT_UNRESOLVED",
         "chatSessionId": session_id,
         "chatRequestId": request_id,
@@ -812,6 +854,8 @@ async def _handle_ticket_create(
         f"문의가 접수되었습니다. 접수번호는 {ticket_no}, 현재 상태는 '{status_ko}'입니다. "
         f"예상 첫 응답 시간은 약 {eta_minutes}분입니다."
     )
+    if unresolved_reason:
+        content += f" 직전 실패 사유({unresolved_reason})도 함께 전달했습니다."
     return _build_response(
         trace_id,
         request_id,

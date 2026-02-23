@@ -1,4 +1,4 @@
-# B-0359 — Chat Tool Calling v2 (주문/배송/환불 인텐트 연동 고도화)
+# B-0359 — Chat Tool Calling v3 (주문/배송/환불 인텐트 연동 고도화)
 
 ## Priority
 - P1
@@ -41,6 +41,20 @@
 - 상태/날짜/금액/수수료는 tool 값만 주입
 - 인용(citation)은 tool name + endpoint + timestamp를 포함
 
+### 6) Multi-tool orchestration for real service (신규)
+- 단일 질의에서 복수 tool 호출을 지원:
+  - 주문 상태 조회 → 배송 상태 조회 → 환불 가능 여부 산출
+- tool 호출 순서/의존성을 워크플로우로 명시하고 partial failure 시 단계별 fallback
+- 상태 불일치(예: 주문 취소인데 배송 완료 응답) 검출 시 안전 중단 + 운영 티켓 자동 생성(옵션)
+
+### 7) SLA and completion contract (신규)
+- 커머스 인텐트 SLA:
+  - p95 응답시간 <= 2.5s (tool timeout 제외)
+  - tool 성공률 >= 99%
+- task completion 정의:
+  - 사용자 질의 목적(조회/정책안내/다음행동 제시)이 충족되었을 때만 success 집계
+- completion 실패는 reason_code와 함께 평가 파이프라인으로 전송
+
 ## Interfaces
 - `POST /v1/chat`
 - `GET /api/v1/orders/{orderId}`
@@ -59,6 +73,8 @@
 - `chat_tool_authz_denied_total{intent}`
 - `chat_tool_schema_violation_total{tool}`
 - `chat_tool_fallback_total{reason_code}`
+- `chat_tool_completion_total{intent,completed}`
+- `chat_tool_sla_breach_total{intent}`
 
 ## Test / Validation
 - 정상: 주문/배송/환불 인텐트별 golden test
@@ -72,6 +88,8 @@
 - tool 실패 시 fallback 응답 표준화 및 reason_code 노출
 - 일반 LLM 경로와 tool 경로가 로그/대시보드에서 분리 집계
 - 한국어 템플릿 응답 스냅샷 테스트 통과
+- 복수 tool 오케스트레이션 시나리오(주문→배송→환불) 회귀 테스트 통과
+- completion/SLA 지표가 운영 대시보드에서 실시간 확인 가능
 
 ## Codex Prompt
 Upgrade chat tool-calling for commerce intents:
@@ -79,3 +97,15 @@ Upgrade chat tool-calling for commerce intents:
 - Enforce per-user authorization context for all tool calls.
 - Add timeout/retry/fallback behavior and deterministic Korean response templates.
 - Emit full audit telemetry for tool route, failures, and auth denials.
+
+## Implementation Update (2026-02-23, Bundle 4)
+- [x] 상담 전환 흐름 강화
+  - `chat:unresolved:{session_id}` 캐시에 직전 실패 질의/사유(`reason_code`) 저장
+  - 사용자가 `문의 접수해줘`처럼 짧게 입력해도 직전 실패 컨텍스트를 티켓 payload에 자동 첨부
+- [x] 티켓 생성 payload 보강
+  - `details.effectiveQuery`, `details.unresolvedReasonCode`, `details.unresolvedTraceId`, `details.unresolvedRequestId` 추가
+  - 접수 완료 메시지에 직전 실패 사유 전달 여부를 명시
+- [x] 메트릭 추가
+  - `chat_ticket_create_with_context_total{source}`
+- [x] 테스트 추가
+  - generic 문의 문구에서 unresolved context를 활용해 티켓 생성하는 회귀 테스트 추가

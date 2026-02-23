@@ -110,6 +110,10 @@ def _chat_session_id_pattern() -> re.Pattern[str]:
     return re.compile(os.getenv("QS_CHAT_SESSION_ID_PATTERN", r"^[A-Za-z0-9:_-]+$"))
 
 
+def _unresolved_context_ttl_sec() -> int:
+    return max(300, int(os.getenv("QS_CHAT_UNRESOLVED_CONTEXT_TTL_SEC", "1800")))
+
+
 def _extract_citations_from_text(text: str) -> List[str]:
     matches = re.findall(r"\[([a-zA-Z0-9_\-:#]+)\]", text or "")
     seen: set[str] = set()
@@ -547,6 +551,40 @@ def _reset_fallback_count(session_id: Optional[str]) -> None:
     _CACHE.set_json(_fallback_counter_key(session_id), {"count": 0}, ttl=5)
 
 
+def _unresolved_context_key(session_id: str) -> str:
+    return f"chat:unresolved:{session_id}"
+
+
+def _save_unresolved_context(
+    session_id: Optional[str],
+    query: str,
+    reason_code: str,
+    *,
+    trace_id: str,
+    request_id: str,
+) -> None:
+    if not session_id:
+        return
+    trimmed_query = (query or "").strip()
+    _CACHE.set_json(
+        _unresolved_context_key(session_id),
+        {
+            "query": trimmed_query,
+            "reason_code": reason_code,
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "updated_at": int(time.time()),
+        },
+        ttl=_unresolved_context_ttl_sec(),
+    )
+
+
+def _clear_unresolved_context(session_id: Optional[str]) -> None:
+    if not session_id:
+        return
+    _CACHE.set_json(_unresolved_context_key(session_id), {"cleared": True}, ttl=1)
+
+
 def _resolve_top_k(request: Dict[str, Any]) -> int:
     options = request.get("options") if isinstance(request.get("options"), dict) else {}
     top_k = options.get("top_k")
@@ -811,21 +849,34 @@ async def _prepare_chat(
 async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
     user_id = _extract_user_id(request)
     session_id = _resolve_session_id(request, user_id)
+    query_text = _extract_query_text(request)
     validation_reason = _validate_chat_request(request)
     if validation_reason:
         metrics.inc("chat_validation_fail_total", {"reason": validation_reason})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
-        return _fallback(trace_id, request_id, None, validation_reason, session_id=session_id, user_id=user_id)
+        response = _fallback(trace_id, request_id, None, validation_reason, session_id=session_id, user_id=user_id)
+        _save_unresolved_context(session_id, query_text, validation_reason, trace_id=trace_id, request_id=request_id)
+        return response
     tool_response = await run_tool_chat(request, trace_id, request_id)
     if tool_response is not None:
         _reset_fallback_count(session_id)
+        _clear_unresolved_context(session_id)
         metrics.inc("chat_requests_total", {"decision": "tool_path"})
         return tool_response
 
     prepared = await _prepare_chat(request, trace_id, request_id, session_id=session_id, user_id=user_id)
     if not prepared.get("ok"):
         metrics.inc("chat_requests_total", {"decision": "fallback"})
-        return prepared.get("response")
+        response = prepared.get("response")
+        if isinstance(response, dict):
+            _save_unresolved_context(
+                session_id,
+                query_text,
+                str(response.get("reason_code") or str(prepared.get("reason") or "RAG_NO_CHUNKS")),
+                trace_id=trace_id,
+                request_id=request_id,
+            )
+        return response
 
     query = prepared.get("query") or ""
     canonical_key = prepared.get("canonical_key")
@@ -837,6 +888,7 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
         cached = _CACHE.get_json(answer_cache_key)
         if isinstance(cached, dict) and cached.get("response"):
             _reset_fallback_count(session_id)
+            _clear_unresolved_context(session_id)
             metrics.inc("chat_requests_total", {"decision": "answer_cache_hit"})
             return cached.get("response")
 
@@ -845,14 +897,18 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
         data = await _call_llm_json(payload, trace_id, request_id)
     except Exception:
         metrics.inc("chat_requests_total", {"decision": "fallback"})
-        return _fallback(trace_id, request_id, None, "PROVIDER_TIMEOUT", session_id=session_id, user_id=user_id)
+        response = _fallback(trace_id, request_id, None, "PROVIDER_TIMEOUT", session_id=session_id, user_id=user_id)
+        _save_unresolved_context(session_id, query, "PROVIDER_TIMEOUT", trace_id=trace_id, request_id=request_id)
+        return response
 
     answer_text = str(data.get("content") or "")
     raw_citations = data.get("citations") if isinstance(data.get("citations"), list) else _extract_citations_from_text(answer_text)
     citations = _validate_citations([str(item) for item in raw_citations if isinstance(item, str)], selected)
     if not citations:
         metrics.inc("chat_requests_total", {"decision": "fallback"})
-        return _fallback(trace_id, request_id, None, "LLM_NO_CITATIONS", session_id=session_id, user_id=user_id)
+        response = _fallback(trace_id, request_id, None, "LLM_NO_CITATIONS", session_id=session_id, user_id=user_id)
+        _save_unresolved_context(session_id, query, "LLM_NO_CITATIONS", trace_id=trace_id, request_id=request_id)
+        return response
 
     guarded_response, guard_reason = _guard_answer(
         query,
@@ -870,6 +926,13 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
             {"band": _compute_risk_band(query, guarded_response.get("status", "insufficient_evidence"), [], guard_reason)},
         )
         metrics.inc("chat_requests_total", {"decision": "fallback"})
+        _save_unresolved_context(
+            session_id,
+            query,
+            str(guarded_response.get("reason_code") or guard_reason or "OUTPUT_GUARD_BLOCKED"),
+            trace_id=trace_id,
+            request_id=request_id,
+        )
         return guarded_response
 
     response = {
@@ -893,6 +956,7 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
         _CACHE.set_json(answer_cache_key, {"response": response}, ttl=max(1, _answer_cache_ttl_sec()))
 
     _reset_fallback_count(session_id)
+    _clear_unresolved_context(session_id)
     metrics.inc("chat_requests_total", {"decision": "ok"})
     return response
 
@@ -900,10 +964,12 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
 async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: str) -> AsyncIterator[str]:
     user_id = _extract_user_id(request)
     session_id = _resolve_session_id(request, user_id)
+    query_text = _extract_query_text(request)
     validation_reason = _validate_chat_request(request)
     if validation_reason:
         metrics.inc("chat_validation_fail_total", {"reason": validation_reason})
         response = _fallback(trace_id, request_id, None, validation_reason, session_id=session_id, user_id=user_id)
+        _save_unresolved_context(session_id, query_text, validation_reason, trace_id=trace_id, request_id=request_id)
         risk_band = _compute_risk_band("", response.get("status", "insufficient_evidence"), [], validation_reason)
         yield _sse_event(
             "meta",
@@ -941,6 +1007,7 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
     tool_response = await run_tool_chat(request, trace_id, request_id)
     if tool_response is not None:
         _reset_fallback_count(session_id)
+        _clear_unresolved_context(session_id)
         answer = tool_response.get("answer", {}) if isinstance(tool_response.get("answer"), dict) else {}
         citations = [str(item) for item in (tool_response.get("citations") or []) if isinstance(item, str)]
         sources = tool_response.get("sources") if isinstance(tool_response.get("sources"), list) else []
@@ -1038,6 +1105,13 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
                 "escalated": escalated,
             },
         )
+        _save_unresolved_context(
+            session_id,
+            query_text,
+            str(reason_code or str(prepared.get("reason") or "RAG_NO_CHUNKS")),
+            trace_id=trace_id,
+            request_id=request_id,
+        )
         metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return
@@ -1098,6 +1172,7 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
                 },
             )
             _reset_fallback_count(session_id)
+            _clear_unresolved_context(session_id)
             metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
             metrics.inc("chat_requests_total", {"decision": "answer_cache_hit"})
             return
@@ -1134,6 +1209,7 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
                         "escalated": fallback_response.get("escalated"),
                     },
                 )
+                _save_unresolved_context(session_id, query, "LLM_NO_CITATIONS", trace_id=trace_id, request_id=request_id)
                 metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
                 metrics.inc("chat_requests_total", {"decision": "fallback"})
                 return
@@ -1175,6 +1251,13 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
                         "fallback_count": guarded_response.get("fallback_count"),
                         "escalated": guarded_response.get("escalated"),
                     },
+                )
+                _save_unresolved_context(
+                    session_id,
+                    query,
+                    str(guarded_response.get("reason_code") or guard_reason or "OUTPUT_GUARD_BLOCKED"),
+                    trace_id=trace_id,
+                    request_id=request_id,
                 )
                 metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
                 metrics.inc("chat_requests_total", {"decision": "fallback"})
@@ -1232,6 +1315,7 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
             if _answer_cache_enabled():
                 _CACHE.set_json(answer_cache_key, {"response": response}, ttl=max(1, _answer_cache_ttl_sec()))
             _reset_fallback_count(session_id)
+            _clear_unresolved_context(session_id)
             metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
             metrics.inc("chat_requests_total", {"decision": "ok"})
             return
@@ -1260,6 +1344,7 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
                     "escalated": fallback_response.get("escalated"),
                 },
             )
+            _save_unresolved_context(session_id, query, "PROVIDER_TIMEOUT", trace_id=trace_id, request_id=request_id)
             metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
             metrics.inc("chat_requests_total", {"decision": "fallback"})
             return
@@ -1312,6 +1397,7 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
                 "escalated": fallback_response.get("escalated"),
             },
         )
+        _save_unresolved_context(session_id, query, "PROVIDER_TIMEOUT", trace_id=trace_id, request_id=request_id)
         metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return
@@ -1345,6 +1431,7 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
                 "escalated": fallback_response.get("escalated"),
             },
         )
+        _save_unresolved_context(session_id, query, "LLM_NO_CITATIONS", trace_id=trace_id, request_id=request_id)
         metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return
@@ -1376,6 +1463,13 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
                 "escalated": guarded_response.get("escalated"),
             },
         )
+        _save_unresolved_context(
+            session_id,
+            query,
+            str(guarded_response.get("reason_code") or guard_reason or "OUTPUT_GUARD_BLOCKED"),
+            trace_id=trace_id,
+            request_id=request_id,
+        )
         metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return
@@ -1401,6 +1495,7 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
     metrics.inc("chat_output_guard_total", {"result": "pass", "reason": "ok"})
     metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
     _reset_fallback_count(session_id)
+    _clear_unresolved_context(session_id)
     yield _sse_event(
         "done",
         {
