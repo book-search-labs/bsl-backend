@@ -17,6 +17,10 @@ type ChatBubble = {
   citations?: string[]
   status?: string
   riskBand?: string
+  reasonCode?: string
+  recoverable?: boolean
+  nextAction?: string
+  retryAfterMs?: number | null
 }
 
 function uuid() {
@@ -51,6 +55,18 @@ function riskBandLabel(riskBand?: string) {
   if (riskBand === 'R2') return '위험도 주의'
   if (riskBand === 'R3') return '위험도 높음'
   return `위험도 ${riskBand}`
+}
+
+function nextActionHint(action?: string, retryAfterMs?: number | null) {
+  if (!action || action === 'NONE' || action === 'WAIT') return null
+  const retryText = retryAfterMs && retryAfterMs > 0 ? ` (${Math.ceil(retryAfterMs / 1000)}초 후)` : ''
+  if (action === 'RETRY') return `잠시 후 다시 시도해 주세요.${retryText}`
+  if (action === 'REFINE_QUERY') return '질문을 더 구체적으로 입력해 주세요.'
+  if (action === 'LOGIN_REQUIRED') return '로그인 후 다시 시도해 주세요.'
+  if (action === 'PROVIDE_REQUIRED_INFO') return '주문번호/티켓번호 같은 필수 정보를 입력해 주세요.'
+  if (action === 'CONFIRM_ACTION') return '확인 코드를 포함해 승인 메시지를 입력해 주세요.'
+  if (action === 'OPEN_SUPPORT_TICKET') return '상담 문의 접수로 전환해 주세요.'
+  return null
 }
 
 export default function ChatPage() {
@@ -92,6 +108,13 @@ export default function ChatPage() {
                       citations: Array.isArray(response.citations) ? response.citations : item.citations,
                       status: typeof response.status === 'string' ? response.status : item.status,
                       riskBand: typeof response.risk_band === 'string' ? response.risk_band : item.riskBand,
+                      reasonCode: typeof response.reason_code === 'string' ? response.reason_code : item.reasonCode,
+                      recoverable: typeof response.recoverable === 'boolean' ? response.recoverable : item.recoverable,
+                      nextAction: typeof response.next_action === 'string' ? response.next_action : item.nextAction,
+                      retryAfterMs:
+                        typeof response.retry_after_ms === 'number' || response.retry_after_ms === null
+                          ? response.retry_after_ms
+                          : item.retryAfterMs,
                     }
                   : item,
               ),
@@ -115,6 +138,13 @@ export default function ChatPage() {
                       status: typeof done.status === 'string' ? done.status : item.status,
                       citations: Array.isArray(done.citations) ? done.citations : item.citations,
                       riskBand: typeof done.risk_band === 'string' ? done.risk_band : item.riskBand,
+                      reasonCode: typeof done.reason_code === 'string' ? done.reason_code : item.reasonCode,
+                      recoverable: typeof done.recoverable === 'boolean' ? done.recoverable : item.recoverable,
+                      nextAction: typeof done.next_action === 'string' ? done.next_action : item.nextAction,
+                      retryAfterMs:
+                        typeof done.retry_after_ms === 'number' || done.retry_after_ms === null
+                          ? done.retry_after_ms
+                          : item.retryAfterMs,
                     }
                   : item,
               ),
@@ -181,6 +211,9 @@ export default function ChatPage() {
                           </div>
                         ) : null}
                         <div className="chat-content">{message.content || (message.role === 'assistant' ? '...' : '')}</div>
+                        {message.role === 'assistant' && nextActionHint(message.nextAction, message.retryAfterMs) ? (
+                          <div className="chat-note">{nextActionHint(message.nextAction, message.retryAfterMs)}</div>
+                        ) : null}
                         {message.role === 'assistant' && message.sources && message.sources.length > 0 ? (
                           <div className="chat-sources">
                             <div className="chat-sources-title">근거 출처</div>

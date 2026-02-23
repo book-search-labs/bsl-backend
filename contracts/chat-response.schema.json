@@ -10,6 +10,10 @@
     "trace_id": { "type": "string", "minLength": 1 },
     "request_id": { "type": "string", "minLength": 1 },
     "status": { "type": "string", "minLength": 1 },
+    "reason_code": { "type": "string", "minLength": 1 },
+    "recoverable": { "type": "boolean" },
+    "next_action": { "type": "string", "minLength": 1 },
+    "retry_after_ms": { "type": ["integer", "null"], "minimum": 0 },
     "answer": { "$ref": "#/$defs/message" },
     "sources": {
       "type": "array",

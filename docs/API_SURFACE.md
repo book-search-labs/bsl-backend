@@ -142,13 +142,19 @@ All structured responses that follow `contracts/*` must include:
 - Contract: `contracts/chat-response.schema.json`
 - Example: `contracts/examples/chat-response.sample.json`
 
+### Recovery Hints (optional)
+- `reason_code`: 실패/제한 사유 코드
+- `recoverable`: 재시도/수정으로 복구 가능한지 여부
+- `next_action`: 권장 사용자 다음 행동 (`RETRY`, `REFINE_QUERY`, `LOGIN_REQUIRED`, `PROVIDE_REQUIRED_INFO`, `CONFIRM_ACTION`, `OPEN_SUPPORT_TICKET`, `NONE`)
+- `retry_after_ms`: 재시도 권장 지연(ms), 없으면 `null`
+
 ### Streaming (optional)
 - `POST /chat?stream=true` returns `text/event-stream`
 - Events:
   - `meta` (trace/request metadata)
   - `delta` (token chunk payload)
   - `error` (reason code/message when degraded)
-  - `done` (final status + citations)
+  - `done` (final status + citations + optional recovery hints)
 
 ## POST `/chat/feedback`
 **Purpose**: user feedback for chat answers (👍/👎 + flags).  
@@ -207,7 +213,11 @@ All structured responses that follow `contracts/*` must include:
 ```json
 {
   "doc_id": "string",
-  "source": {},
+  "source": {
+    "title_ko": "string",
+    "authors": ["string"],
+    "isbn13": "string"
+  },
   "trace_id": "string",
   "request_id": "string",
   "took_ms": 1

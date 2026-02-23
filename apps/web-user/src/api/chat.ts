@@ -27,6 +27,10 @@ export type ChatResponse = {
   trace_id: string
   request_id: string
   status: string
+  reason_code?: string
+  recoverable?: boolean
+  next_action?: string
+  retry_after_ms?: number | null
   answer: ChatMessage
   sources: ChatSource[]
   citations: string[]
@@ -40,11 +44,17 @@ export type ChatStreamDone = {
   status?: string
   citations?: string[]
   risk_band?: string
+  reason_code?: string
+  recoverable?: boolean
+  next_action?: string
+  retry_after_ms?: number | null
 }
 
 export type ChatStreamError = {
   code?: string
   message?: string
+  next_action?: string
+  retry_after_ms?: number | null
 }
 
 export type ChatFeedbackRequest = {

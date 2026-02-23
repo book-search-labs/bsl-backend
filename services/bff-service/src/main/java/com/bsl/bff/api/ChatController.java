@@ -140,6 +140,10 @@ public class ChatController {
             BffChatResponse response = new BffChatResponse();
             response.setVersion("v1");
             response.setStatus(streamResult.getStatus());
+            response.setReasonCode(streamResult.getReasonCode());
+            response.setRecoverable(streamResult.getRecoverable());
+            response.setNextAction(streamResult.getNextAction());
+            response.setRetryAfterMs(streamResult.getRetryAfterMs());
             response.setSources(List.of());
             response.setCitations(streamResult.getCitations());
             recordChatResponseEvent(response, context, conversationId, turnId, canonicalKey, true, streamResult.getCitations(), queryText);
@@ -148,6 +152,10 @@ public class ChatController {
             BffChatResponse response = new BffChatResponse();
             response.setVersion("v1");
             response.setStatus("error");
+            response.setReasonCode("stream_error");
+            response.setRecoverable(Boolean.TRUE);
+            response.setNextAction("RETRY");
+            response.setRetryAfterMs(3000);
             response.setSources(List.of());
             response.setCitations(List.of());
             recordChatResponseEvent(response, context, conversationId, turnId, canonicalKey, true, null, queryText);
@@ -207,6 +215,10 @@ public class ChatController {
         payload.put("turn_id", turnId);
         payload.put("canonical_key", canonicalKey);
         payload.put("status", response == null ? "error" : response.getStatus());
+        payload.put("reason_code", response == null ? null : response.getReasonCode());
+        payload.put("recoverable", response == null ? null : response.getRecoverable());
+        payload.put("next_action", response == null ? null : response.getNextAction());
+        payload.put("retry_after_ms", response == null ? null : response.getRetryAfterMs());
         payload.put("stream", stream);
         payload.put("citations", response == null ? List.of() : response.getCitations());
         payload.put("risk_band", computeRiskBand(queryText, response == null ? "error" : response.getStatus(), response == null ? List.of() : response.getCitations()));

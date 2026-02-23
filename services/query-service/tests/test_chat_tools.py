@@ -14,6 +14,9 @@ def test_run_tool_chat_requires_login_for_commerce_queries():
 
     assert result is not None
     assert result["status"] == "needs_auth"
+    assert result["reason_code"] == "AUTH_REQUIRED"
+    assert result["next_action"] == "LOGIN_REQUIRED"
+    assert result["recoverable"] is True
     assert "로그인" in result["answer"]["content"]
 
 
@@ -43,6 +46,8 @@ def test_run_tool_chat_order_lookup_success(monkeypatch):
 
     assert result is not None
     assert result["status"] == "ok"
+    assert result["reason_code"] == "OK"
+    assert result["next_action"] == "NONE"
     assert "ORD202602220001" in result["answer"]["content"]
     assert result["citations"]
     assert result["sources"][0]["url"] == "GET /api/v1/orders/{orderId}"
@@ -76,6 +81,7 @@ def test_run_tool_chat_shipment_lookup_without_registered_shipment(monkeypatch):
 
     assert result is not None
     assert result["status"] == "ok"
+    assert result["reason_code"] == "OK"
     assert "배송 정보가 등록되지 않았습니다" in result["answer"]["content"]
 
 
@@ -141,6 +147,8 @@ def test_run_tool_chat_starts_sensitive_cancel_workflow(monkeypatch):
 
     assert result is not None
     assert result["status"] == "pending_confirmation"
+    assert result["reason_code"] == "CONFIRMATION_REQUIRED"
+    assert result["next_action"] == "CONFIRM_ACTION"
     assert "확인 코드" in result["answer"]["content"]
     assert result["citations"]
 
@@ -190,6 +198,7 @@ def test_run_tool_chat_executes_cancel_after_confirmation(monkeypatch):
 
     assert confirmed is not None
     assert confirmed["status"] == "ok"
+    assert confirmed["reason_code"] == "OK"
     assert "취소가 완료" in confirmed["answer"]["content"]
 
 

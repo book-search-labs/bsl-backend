@@ -12,6 +12,10 @@ type ChatBubble = {
   citations?: string[]
   status?: string
   riskBand?: string
+  reasonCode?: string
+  recoverable?: boolean
+  nextAction?: string
+  retryAfterMs?: number | null
 }
 
 const CHAT_HISTORY_LIMIT = 8
@@ -47,6 +51,17 @@ function looksLikeInsufficientMessage(value: string) {
   const normalized = value.trim().toLowerCase()
   if (!normalized) return true
   return normalized.includes('insufficient evidence')
+}
+
+function nextActionLabel(action?: string) {
+  if (!action || action === 'NONE' || action === 'WAIT') return null
+  if (action === 'RETRY') return '잠시 후 다시 시도해 주세요.'
+  if (action === 'REFINE_QUERY') return '질문을 더 구체적으로 입력해 주세요.'
+  if (action === 'LOGIN_REQUIRED') return '로그인 후 다시 시도해 주세요.'
+  if (action === 'PROVIDE_REQUIRED_INFO') return '주문번호/티켓번호 같은 필수 정보를 입력해 주세요.'
+  if (action === 'CONFIRM_ACTION') return '확인 코드를 포함해 승인 메시지를 입력해 주세요.'
+  if (action === 'OPEN_SUPPORT_TICKET') return '상담 문의 접수로 전환해 주세요.'
+  return null
 }
 
 export default function FloatingChatWidget() {
@@ -106,6 +121,10 @@ export default function FloatingChatWidget() {
                       sources: Array.isArray(meta.sources) ? meta.sources : item.sources,
                       citations: Array.isArray(meta.citations) ? meta.citations : item.citations,
                       riskBand: typeof meta.risk_band === 'string' ? meta.risk_band : item.riskBand,
+                      reasonCode: typeof meta.reason_code === 'string' ? meta.reason_code : item.reasonCode,
+                      recoverable: typeof meta.recoverable === 'boolean' ? meta.recoverable : item.recoverable,
+                      nextAction: typeof meta.next_action === 'string' ? meta.next_action : item.nextAction,
+                      retryAfterMs: typeof meta.retry_after_ms === 'number' || meta.retry_after_ms === null ? meta.retry_after_ms : item.retryAfterMs,
                     }
                   : item,
               ),
@@ -130,6 +149,11 @@ export default function FloatingChatWidget() {
                   status: nextStatus,
                   citations: Array.isArray(done.citations) ? done.citations : item.citations,
                   riskBand: typeof done.risk_band === 'string' ? done.risk_band : item.riskBand,
+                  reasonCode: typeof done.reason_code === 'string' ? done.reason_code : item.reasonCode,
+                  recoverable: typeof done.recoverable === 'boolean' ? done.recoverable : item.recoverable,
+                  nextAction: typeof done.next_action === 'string' ? done.next_action : item.nextAction,
+                  retryAfterMs:
+                    typeof done.retry_after_ms === 'number' || done.retry_after_ms === null ? done.retry_after_ms : item.retryAfterMs,
                   content: nextContent,
                 }
               }),
@@ -221,6 +245,12 @@ export default function FloatingChatWidget() {
                       </div>
                     ) : null}
                     <div className="floating-chat-content">{message.content || '...'}</div>
+                    {message.role === 'assistant' && nextActionLabel(message.nextAction) ? (
+                      <div className="floating-chat-action-hint">
+                        {nextActionLabel(message.nextAction)}
+                        {message.retryAfterMs && message.retryAfterMs > 0 ? ` (${Math.ceil(message.retryAfterMs / 1000)}초 후)` : ''}
+                      </div>
+                    ) : null}
                     {message.role === 'assistant' && message.sources && message.sources.length > 0 ? (
                       <details className="floating-chat-sources">
                         <summary>근거 출처 {message.sources.length}건</summary>

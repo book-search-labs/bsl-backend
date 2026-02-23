@@ -3,6 +3,10 @@
   "trace_id": "trace_demo",
   "request_id": "req_demo",
   "status": "ok",
+  "reason_code": "OK",
+  "recoverable": false,
+  "next_action": "NONE",
+  "retry_after_ms": null,
   "answer": {"role": "assistant", "content": "Returns are accepted within 30 days. [policy#0]"},
   "sources": [
     {

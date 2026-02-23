@@ -178,7 +178,9 @@ def test_run_chat_blocks_forbidden_claim_on_high_risk_query(monkeypatch):
     result = asyncio.run(chat.run_chat({"message": {"role": "user", "content": "환불 정책 알려줘"}}, "trace_test", "req_test"))
 
     assert result["status"] == "insufficient_evidence"
-    assert "확답" in result["answer"]["content"]
+    assert result["reason_code"] == "OUTPUT_GUARD_FORBIDDEN_CLAIM"
+    assert result["next_action"] == "OPEN_SUPPORT_TICKET"
+    assert "정책상" in result["answer"]["content"]
 
 
 def test_compute_risk_band_high_risk_with_citations():

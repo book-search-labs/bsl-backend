@@ -208,16 +208,42 @@ def _build_response(
     tool_name: str | None = None,
     endpoint: str | None = None,
     source_snippet: str | None = None,
+    reason_code: str | None = None,
+    recoverable: bool | None = None,
+    retry_after_ms: int | None = None,
+    next_action: str | None = None,
 ) -> dict[str, Any]:
+    status_defaults: dict[str, dict[str, Any]] = {
+        "ok": {"reason_code": "OK", "recoverable": False, "next_action": "NONE", "retry_after_ms": None},
+        "needs_auth": {"reason_code": "AUTH_REQUIRED", "recoverable": True, "next_action": "LOGIN_REQUIRED", "retry_after_ms": None},
+        "needs_input": {"reason_code": "MISSING_INPUT", "recoverable": True, "next_action": "PROVIDE_REQUIRED_INFO", "retry_after_ms": None},
+        "pending_confirmation": {"reason_code": "CONFIRMATION_REQUIRED", "recoverable": True, "next_action": "CONFIRM_ACTION", "retry_after_ms": None},
+        "tool_fallback": {"reason_code": "TOOL_UNAVAILABLE", "recoverable": True, "next_action": "RETRY", "retry_after_ms": 3000},
+        "not_found": {"reason_code": "RESOURCE_NOT_FOUND", "recoverable": True, "next_action": "PROVIDE_REQUIRED_INFO", "retry_after_ms": None},
+        "forbidden": {"reason_code": "AUTH_FORBIDDEN", "recoverable": False, "next_action": "OPEN_SUPPORT_TICKET", "retry_after_ms": None},
+        "expired": {"reason_code": "CONFIRMATION_EXPIRED", "recoverable": True, "next_action": "RETRY", "retry_after_ms": None},
+        "aborted": {"reason_code": "USER_ABORTED", "recoverable": True, "next_action": "NONE", "retry_after_ms": None},
+        "invalid_state": {"reason_code": "INVALID_WORKFLOW_STATE", "recoverable": True, "next_action": "OPEN_SUPPORT_TICKET", "retry_after_ms": None},
+        "unsupported": {"reason_code": "UNSUPPORTED_WORKFLOW", "recoverable": False, "next_action": "OPEN_SUPPORT_TICKET", "retry_after_ms": None},
+    }
+    defaults = status_defaults.get(status, {"reason_code": "UNKNOWN", "recoverable": True, "next_action": "RETRY", "retry_after_ms": 3000})
     sources: list[dict[str, Any]] = []
     citations: list[str] = []
     if tool_name and endpoint and source_snippet:
         sources, citations = _build_tool_source(tool_name, endpoint, source_snippet)
+    resolved_reason_code = reason_code if isinstance(reason_code, str) and reason_code.strip() else defaults["reason_code"]
+    resolved_recoverable = bool(defaults["recoverable"] if recoverable is None else recoverable)
+    resolved_next_action = next_action if isinstance(next_action, str) and next_action.strip() else defaults["next_action"]
+    resolved_retry_after_ms = defaults["retry_after_ms"] if retry_after_ms is None else retry_after_ms
     return {
         "version": "v1",
         "trace_id": trace_id,
         "request_id": request_id,
         "status": status,
+        "reason_code": resolved_reason_code,
+        "recoverable": resolved_recoverable,
+        "next_action": resolved_next_action,
+        "retry_after_ms": resolved_retry_after_ms,
         "answer": {"role": "assistant", "content": content},
         "sources": sources,
         "citations": citations,

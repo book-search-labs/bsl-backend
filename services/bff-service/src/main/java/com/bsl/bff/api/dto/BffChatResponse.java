@@ -10,6 +10,13 @@ public class BffChatResponse {
     @JsonProperty("request_id")
     private String requestId;
     private String status;
+    @JsonProperty("reason_code")
+    private String reasonCode;
+    private Boolean recoverable;
+    @JsonProperty("next_action")
+    private String nextAction;
+    @JsonProperty("retry_after_ms")
+    private Integer retryAfterMs;
     private BffChatMessage answer;
     private List<BffChatSource> sources;
     private List<String> citations;
@@ -44,6 +51,38 @@ public class BffChatResponse {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getReasonCode() {
+        return reasonCode;
+    }
+
+    public void setReasonCode(String reasonCode) {
+        this.reasonCode = reasonCode;
+    }
+
+    public Boolean getRecoverable() {
+        return recoverable;
+    }
+
+    public void setRecoverable(Boolean recoverable) {
+        this.recoverable = recoverable;
+    }
+
+    public String getNextAction() {
+        return nextAction;
+    }
+
+    public void setNextAction(String nextAction) {
+        this.nextAction = nextAction;
+    }
+
+    public Integer getRetryAfterMs() {
+        return retryAfterMs;
+    }
+
+    public void setRetryAfterMs(Integer retryAfterMs) {
+        this.retryAfterMs = retryAfterMs;
     }
 
     public BffChatMessage getAnswer() {

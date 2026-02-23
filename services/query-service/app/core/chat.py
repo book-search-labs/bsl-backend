@@ -160,7 +160,71 @@ def _format_sources(chunks: List[dict[str, Any]]) -> List[dict[str, Any]]:
     return sources
 
 
-def _fallback(trace_id: str, request_id: str, message: str, reason_code: str) -> Dict[str, Any]:
+def _fallback_defaults(reason_code: str) -> Dict[str, Any]:
+    defaults: Dict[str, Dict[str, Any]] = {
+        "NO_MESSAGES": {
+            "message": "질문을 입력해 주세요.",
+            "recoverable": True,
+            "next_action": "PROVIDE_REQUIRED_INFO",
+            "retry_after_ms": None,
+        },
+        "RAG_NO_CHUNKS": {
+            "message": "현재 근거 문서를 찾지 못해 확정 답변을 드리기 어렵습니다. 키워드나 조건을 조금 더 구체적으로 입력해 주세요.",
+            "recoverable": True,
+            "next_action": "REFINE_QUERY",
+            "retry_after_ms": None,
+        },
+        "RAG_LOW_SCORE": {
+            "message": "관련 근거의 신뢰도가 낮아 확정 답변이 어렵습니다. 질문을 구체화하거나 다른 표현으로 다시 시도해 주세요.",
+            "recoverable": True,
+            "next_action": "REFINE_QUERY",
+            "retry_after_ms": None,
+        },
+        "LLM_NO_CITATIONS": {
+            "message": "생성된 답변과 근거 문서가 일치하지 않아 답변을 보류했습니다. 잠시 후 다시 시도해 주세요.",
+            "recoverable": True,
+            "next_action": "RETRY",
+            "retry_after_ms": 2000,
+        },
+        "PROVIDER_TIMEOUT": {
+            "message": "응답 시간이 지연되어 답변을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+            "recoverable": True,
+            "next_action": "RETRY",
+            "retry_after_ms": 3000,
+        },
+        "OUTPUT_GUARD_EMPTY_ANSWER": {
+            "message": "응답 품질 검증에 실패해 답변을 보류했습니다. 다시 시도해 주세요.",
+            "recoverable": True,
+            "next_action": "RETRY",
+            "retry_after_ms": 2000,
+        },
+        "OUTPUT_GUARD_INSUFFICIENT_CITATIONS": {
+            "message": "근거 확인이 충분하지 않아 확정 답변을 제공할 수 없습니다.",
+            "recoverable": True,
+            "next_action": "REFINE_QUERY",
+            "retry_after_ms": None,
+        },
+        "OUTPUT_GUARD_FORBIDDEN_CLAIM": {
+            "message": "정책상 확정 답변이 어려운 요청입니다. 주문번호/상세 조건을 포함해 다시 질문해 주세요.",
+            "recoverable": True,
+            "next_action": "OPEN_SUPPORT_TICKET",
+            "retry_after_ms": None,
+        },
+    }
+    return defaults.get(
+        reason_code,
+        {
+            "message": "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+            "recoverable": True,
+            "next_action": "RETRY",
+            "retry_after_ms": 3000,
+        },
+    )
+
+
+def _fallback(trace_id: str, request_id: str, message: str | None, reason_code: str) -> Dict[str, Any]:
+    defaults = _fallback_defaults(reason_code)
+    resolved_message = (message or "").strip() or str(defaults["message"])
     metrics.inc("chat_fallback_total", {"reason": reason_code})
     return {
         "version": "v1",
@@ -168,11 +232,15 @@ def _fallback(trace_id: str, request_id: str, message: str, reason_code: str) ->
         "request_id": request_id,
         "answer": {
             "role": "assistant",
-            "content": message,
+            "content": resolved_message,
         },
         "sources": [],
         "citations": [],
         "status": "insufficient_evidence",
+        "reason_code": reason_code,
+        "recoverable": bool(defaults["recoverable"]),
+        "next_action": str(defaults["next_action"]),
+        "retry_after_ms": defaults["retry_after_ms"],
     }
 
 
@@ -217,25 +285,15 @@ def _guard_answer(
         return None, None
     answer = (answer_text or "").strip()
     if not answer:
-        return _fallback(trace_id, request_id, "응답 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.", "OUTPUT_GUARD_EMPTY_ANSWER"), "OUTPUT_GUARD_EMPTY_ANSWER"
+        return _fallback(trace_id, request_id, None, "OUTPUT_GUARD_EMPTY_ANSWER"), "OUTPUT_GUARD_EMPTY_ANSWER"
 
     high_risk = _is_high_risk_query(query)
     min_citations = _guard_high_risk_min_citations() if high_risk else 1
     if len(citations or []) < min_citations:
-        return _fallback(
-            trace_id,
-            request_id,
-            "근거 확인이 충분하지 않아 확정 답변을 제공할 수 없습니다.",
-            "OUTPUT_GUARD_INSUFFICIENT_CITATIONS",
-        ), "OUTPUT_GUARD_INSUFFICIENT_CITATIONS"
+        return _fallback(trace_id, request_id, None, "OUTPUT_GUARD_INSUFFICIENT_CITATIONS"), "OUTPUT_GUARD_INSUFFICIENT_CITATIONS"
 
     if high_risk and _contains_forbidden_claim(answer):
-        return _fallback(
-            trace_id,
-            request_id,
-            "정확한 근거가 확인되지 않아 확답할 수 없습니다. 주문/배송/환불 정보를 다시 확인해 주세요.",
-            "OUTPUT_GUARD_FORBIDDEN_CLAIM",
-        ), "OUTPUT_GUARD_FORBIDDEN_CLAIM"
+        return _fallback(trace_id, request_id, None, "OUTPUT_GUARD_FORBIDDEN_CLAIM"), "OUTPUT_GUARD_FORBIDDEN_CLAIM"
     return None, None
 
 
@@ -498,7 +556,7 @@ async def _stream_llm(
         except Exception as exc:
             stream_state["llm_error"] = str(exc)
             metrics.inc("chat_fallback_total", {"reason": "PROVIDER_TIMEOUT"})
-            yield _sse_event("error", {"code": "PROVIDER_TIMEOUT", "message": "LLM gateway unavailable"})
+            yield _sse_event("error", {"code": "PROVIDER_TIMEOUT", "message": "LLM 응답 지연으로 처리하지 못했습니다."})
             yield _sse_event("done", {"status": "error", "citations": []})
 
     return generator(), stream_state
@@ -514,7 +572,7 @@ async def _prepare_chat(
         return {
             "ok": False,
             "reason": "NO_MESSAGES",
-            "response": _fallback(trace_id, request_id, "Missing user message.", "NO_MESSAGES"),
+            "response": _fallback(trace_id, request_id, None, "NO_MESSAGES"),
         }
 
     locale = _locale_from_request(request)
@@ -525,7 +583,7 @@ async def _prepare_chat(
         return {
             "ok": False,
             "reason": "RAG_NO_CHUNKS",
-            "response": _fallback(trace_id, request_id, "Insufficient evidence to answer with citations.", "RAG_NO_CHUNKS"),
+            "response": _fallback(trace_id, request_id, None, "RAG_NO_CHUNKS"),
             "canonical_key": canonical_key,
             "locale": locale,
             "trace": trace,
@@ -571,14 +629,14 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
         data = await _call_llm_json(payload, trace_id, request_id)
     except Exception:
         metrics.inc("chat_requests_total", {"decision": "fallback"})
-        return _fallback(trace_id, request_id, "LLM gateway unavailable.", "PROVIDER_TIMEOUT")
+        return _fallback(trace_id, request_id, None, "PROVIDER_TIMEOUT")
 
     answer_text = str(data.get("content") or "")
     raw_citations = data.get("citations") if isinstance(data.get("citations"), list) else _extract_citations_from_text(answer_text)
     citations = _validate_citations([str(item) for item in raw_citations if isinstance(item, str)], selected)
     if not citations:
         metrics.inc("chat_requests_total", {"decision": "fallback"})
-        return _fallback(trace_id, request_id, "Insufficient evidence to answer with citations.", "LLM_NO_CITATIONS")
+        return _fallback(trace_id, request_id, None, "LLM_NO_CITATIONS")
 
     guarded_response, guard_reason = _guard_answer(query, answer_text, citations, trace_id, request_id)
     if guarded_response is not None:
@@ -598,6 +656,10 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
         "sources": _format_sources(selected),
         "citations": citations,
         "status": "ok",
+        "reason_code": "OK",
+        "recoverable": False,
+        "next_action": "NONE",
+        "retry_after_ms": None,
     }
     metrics.inc("chat_output_guard_total", {"result": "pass", "reason": "ok"})
     metrics.inc("chat_answer_risk_band_total", {"band": _compute_risk_band(query, "ok", citations, None)})
@@ -615,6 +677,10 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
         citations = [str(item) for item in (tool_response.get("citations") or []) if isinstance(item, str)]
         sources = tool_response.get("sources") if isinstance(tool_response.get("sources"), list) else []
         status = str(tool_response.get("status") or "ok")
+        reason_code = str(tool_response.get("reason_code") or "OK")
+        recoverable = bool(tool_response.get("recoverable")) if isinstance(tool_response.get("recoverable"), bool) else False
+        next_action = str(tool_response.get("next_action") or "NONE")
+        retry_after_ms = tool_response.get("retry_after_ms")
         risk_band = _compute_risk_band(_extract_query_text(request), status, citations, None)
         yield _sse_event(
             "meta",
@@ -625,25 +691,66 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
                 "sources": sources,
                 "citations": citations,
                 "risk_band": risk_band,
+                "reason_code": reason_code,
+                "recoverable": recoverable,
+                "next_action": next_action,
+                "retry_after_ms": retry_after_ms,
             },
         )
         yield _sse_event("delta", {"delta": str(answer.get("content") or "")})
-        yield _sse_event("done", {"status": status, "citations": citations, "risk_band": risk_band})
+        yield _sse_event(
+            "done",
+            {
+                "status": status,
+                "citations": citations,
+                "risk_band": risk_band,
+                "reason_code": reason_code,
+                "recoverable": recoverable,
+                "next_action": next_action,
+                "retry_after_ms": retry_after_ms,
+            },
+        )
         metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "tool_path"})
         return
 
     prepared = await _prepare_chat(request, trace_id, request_id)
     if not prepared.get("ok"):
-        response = prepared.get("response") or _fallback(trace_id, request_id, "Insufficient evidence to answer with citations.", "RAG_NO_CHUNKS")
+        response = prepared.get("response") or _fallback(trace_id, request_id, None, "RAG_NO_CHUNKS")
         answer = response.get("answer", {}).get("content") if isinstance(response.get("answer"), dict) else ""
+        reason_code = str(response.get("reason_code") or "RAG_NO_CHUNKS")
+        recoverable = bool(response.get("recoverable")) if isinstance(response.get("recoverable"), bool) else True
+        next_action = str(response.get("next_action") or "REFINE_QUERY")
+        retry_after_ms = response.get("retry_after_ms")
         risk_band = _compute_risk_band("", response.get("status", "insufficient_evidence"), [], "RAG_NO_CHUNKS")
         yield _sse_event(
             "meta",
-            {"trace_id": trace_id, "request_id": request_id, "status": "fallback", "sources": [], "citations": [], "risk_band": risk_band},
+            {
+                "trace_id": trace_id,
+                "request_id": request_id,
+                "status": "fallback",
+                "sources": [],
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": reason_code,
+                "recoverable": recoverable,
+                "next_action": next_action,
+                "retry_after_ms": retry_after_ms,
+            },
         )
         yield _sse_event("delta", {"delta": answer})
-        yield _sse_event("done", {"status": response.get("status", "insufficient_evidence"), "citations": [], "risk_band": risk_band})
+        yield _sse_event(
+            "done",
+            {
+                "status": response.get("status", "insufficient_evidence"),
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": reason_code,
+                "recoverable": recoverable,
+                "next_action": next_action,
+                "retry_after_ms": retry_after_ms,
+            },
+        )
         metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return
@@ -662,6 +769,12 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
             cached_answer = cached_response.get("answer") if isinstance(cached_response.get("answer"), dict) else {}
             cached_citations = [str(item) for item in (cached_response.get("citations") or []) if isinstance(item, str)]
             cached_status = str(cached_response.get("status") or "ok")
+            cached_reason_code = str(cached_response.get("reason_code") or "OK")
+            cached_recoverable = (
+                bool(cached_response.get("recoverable")) if isinstance(cached_response.get("recoverable"), bool) else False
+            )
+            cached_next_action = str(cached_response.get("next_action") or "NONE")
+            cached_retry_after_ms = cached_response.get("retry_after_ms")
             risk_band = _compute_risk_band(query, cached_status, cached_citations, None)
             yield _sse_event(
                 "meta",
@@ -672,10 +785,25 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
                     "sources": sources,
                     "citations": cached_citations,
                     "risk_band": risk_band,
+                    "reason_code": cached_reason_code,
+                    "recoverable": cached_recoverable,
+                    "next_action": cached_next_action,
+                    "retry_after_ms": cached_retry_after_ms,
                 },
             )
             yield _sse_event("delta", {"delta": cached_answer.get("content") or ""})
-            yield _sse_event("done", {"status": cached_status, "citations": cached_citations, "risk_band": risk_band})
+            yield _sse_event(
+                "done",
+                {
+                    "status": cached_status,
+                    "citations": cached_citations,
+                    "risk_band": risk_band,
+                    "reason_code": cached_reason_code,
+                    "recoverable": cached_recoverable,
+                    "next_action": cached_next_action,
+                    "retry_after_ms": cached_retry_after_ms,
+                },
+            )
             metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
             metrics.inc("chat_requests_total", {"decision": "answer_cache_hit"})
             return
@@ -688,9 +816,21 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
             raw_citations = data.get("citations") if isinstance(data.get("citations"), list) else _extract_citations_from_text(answer_text)
             citations = _validate_citations([str(item) for item in raw_citations if isinstance(item, str)], selected)
             if not citations:
-                yield _sse_event("error", {"code": "LLM_NO_CITATIONS", "message": "citation mapping failed"})
+                yield _sse_event("error", {"code": "LLM_NO_CITATIONS", "message": "근거 문서 매핑에 실패했습니다."})
                 risk_band = _compute_risk_band(query, "insufficient_evidence", [], "LLM_NO_CITATIONS")
-                yield _sse_event("done", {"status": "insufficient_evidence", "citations": [], "risk_band": risk_band})
+                fallback_response = _fallback(trace_id, request_id, None, "LLM_NO_CITATIONS")
+                yield _sse_event(
+                    "done",
+                    {
+                        "status": "insufficient_evidence",
+                        "citations": [],
+                        "risk_band": risk_band,
+                        "reason_code": fallback_response.get("reason_code"),
+                        "recoverable": fallback_response.get("recoverable"),
+                        "next_action": fallback_response.get("next_action"),
+                        "retry_after_ms": fallback_response.get("retry_after_ms"),
+                    },
+                )
                 metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
                 metrics.inc("chat_requests_total", {"decision": "fallback"})
                 return
@@ -711,7 +851,18 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
                     },
                 )
                 yield _sse_event("error", {"code": guard_reason or "OUTPUT_GUARD_BLOCKED", "message": "output guard blocked"})
-                yield _sse_event("done", {"status": guarded_response.get("status", "insufficient_evidence"), "citations": [], "risk_band": risk_band})
+                yield _sse_event(
+                    "done",
+                    {
+                        "status": guarded_response.get("status", "insufficient_evidence"),
+                        "citations": [],
+                        "risk_band": risk_band,
+                        "reason_code": guarded_response.get("reason_code"),
+                        "recoverable": guarded_response.get("recoverable"),
+                        "next_action": guarded_response.get("next_action"),
+                        "retry_after_ms": guarded_response.get("retry_after_ms"),
+                    },
+                )
                 metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
                 metrics.inc("chat_requests_total", {"decision": "fallback"})
                 return
@@ -727,10 +878,25 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
                     "sources": sources,
                     "citations": citations,
                     "risk_band": risk_band,
+                    "reason_code": "OK",
+                    "recoverable": False,
+                    "next_action": "NONE",
+                    "retry_after_ms": None,
                 },
             )
             yield _sse_event("delta", {"delta": answer_text})
-            yield _sse_event("done", {"status": "ok", "citations": citations, "risk_band": risk_band})
+            yield _sse_event(
+                "done",
+                {
+                    "status": "ok",
+                    "citations": citations,
+                    "risk_band": risk_band,
+                    "reason_code": "OK",
+                    "recoverable": False,
+                    "next_action": "NONE",
+                    "retry_after_ms": None,
+                },
+            )
             response = {
                 "version": "v1",
                 "trace_id": trace_id,
@@ -739,6 +905,10 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
                 "sources": _format_sources(selected),
                 "citations": citations,
                 "status": "ok",
+                "reason_code": "OK",
+                "recoverable": False,
+                "next_action": "NONE",
+                "retry_after_ms": None,
             }
             if _answer_cache_enabled():
                 _CACHE.set_json(answer_cache_key, {"response": response}, ttl=max(1, _answer_cache_ttl_sec()))
@@ -746,9 +916,21 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
             metrics.inc("chat_requests_total", {"decision": "ok"})
             return
         except Exception:
-            yield _sse_event("error", {"code": "PROVIDER_TIMEOUT", "message": "LLM gateway unavailable"})
+            yield _sse_event("error", {"code": "PROVIDER_TIMEOUT", "message": "LLM 응답 지연으로 처리하지 못했습니다."})
             risk_band = _compute_risk_band(query, "error", [], "PROVIDER_TIMEOUT")
-            yield _sse_event("done", {"status": "error", "citations": [], "risk_band": risk_band})
+            fallback_response = _fallback(trace_id, request_id, None, "PROVIDER_TIMEOUT")
+            yield _sse_event(
+                "done",
+                {
+                    "status": "error",
+                    "citations": [],
+                    "risk_band": risk_band,
+                    "reason_code": fallback_response.get("reason_code"),
+                    "recoverable": fallback_response.get("recoverable"),
+                    "next_action": fallback_response.get("next_action"),
+                    "retry_after_ms": fallback_response.get("retry_after_ms"),
+                },
+            )
             metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
             metrics.inc("chat_requests_total", {"decision": "fallback"})
             return
@@ -761,6 +943,10 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
             "status": "streaming",
             "sources": sources,
             "citations": [],
+            "reason_code": "IN_PROGRESS",
+            "recoverable": True,
+            "next_action": "WAIT",
+            "retry_after_ms": None,
         },
     )
     stream_iter, stream_state = await _stream_llm(payload, trace_id, request_id)
@@ -773,7 +959,19 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
 
     if stream_state.get("llm_error"):
         risk_band = _compute_risk_band(query, "error", [], "PROVIDER_TIMEOUT")
-        yield _sse_event("done", {"status": "error", "citations": [], "risk_band": risk_band})
+        fallback_response = _fallback(trace_id, request_id, None, "PROVIDER_TIMEOUT")
+        yield _sse_event(
+            "done",
+            {
+                "status": "error",
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": fallback_response.get("reason_code"),
+                "recoverable": fallback_response.get("recoverable"),
+                "next_action": fallback_response.get("next_action"),
+                "retry_after_ms": fallback_response.get("retry_after_ms"),
+            },
+        )
         metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return
@@ -783,9 +981,21 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
     citations = _validate_citations([str(item) for item in raw_citations if isinstance(item, str)], selected)
     if not citations:
         metrics.inc("chat_fallback_total", {"reason": "LLM_NO_CITATIONS"})
-        yield _sse_event("error", {"code": "LLM_NO_CITATIONS", "message": "citation mapping failed"})
+        yield _sse_event("error", {"code": "LLM_NO_CITATIONS", "message": "근거 문서 매핑에 실패했습니다."})
         risk_band = _compute_risk_band(query, "insufficient_evidence", [], "LLM_NO_CITATIONS")
-        yield _sse_event("done", {"status": "insufficient_evidence", "citations": [], "risk_band": risk_band})
+        fallback_response = _fallback(trace_id, request_id, None, "LLM_NO_CITATIONS")
+        yield _sse_event(
+            "done",
+            {
+                "status": "insufficient_evidence",
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": fallback_response.get("reason_code"),
+                "recoverable": fallback_response.get("recoverable"),
+                "next_action": fallback_response.get("next_action"),
+                "retry_after_ms": fallback_response.get("retry_after_ms"),
+            },
+        )
         metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return
@@ -795,7 +1005,18 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
         metrics.inc("chat_output_guard_total", {"result": "blocked", "reason": guard_reason or "unknown"})
         risk_band = _compute_risk_band(query, guarded_response.get("status", "insufficient_evidence"), [], guard_reason)
         yield _sse_event("error", {"code": guard_reason or "OUTPUT_GUARD_BLOCKED", "message": "output guard blocked"})
-        yield _sse_event("done", {"status": guarded_response.get("status", "insufficient_evidence"), "citations": [], "risk_band": risk_band})
+        yield _sse_event(
+            "done",
+            {
+                "status": guarded_response.get("status", "insufficient_evidence"),
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": guarded_response.get("reason_code"),
+                "recoverable": guarded_response.get("recoverable"),
+                "next_action": guarded_response.get("next_action"),
+                "retry_after_ms": guarded_response.get("retry_after_ms"),
+            },
+        )
         metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return
@@ -808,6 +1029,10 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
         "sources": _format_sources(selected),
         "citations": citations,
         "status": "ok",
+        "reason_code": "OK",
+        "recoverable": False,
+        "next_action": "NONE",
+        "retry_after_ms": None,
     }
     if _answer_cache_enabled():
         _CACHE.set_json(answer_cache_key, {"response": response}, ttl=max(1, _answer_cache_ttl_sec()))
@@ -816,7 +1041,18 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
     risk_band = _compute_risk_band(query, final_status, citations, None)
     metrics.inc("chat_output_guard_total", {"result": "pass", "reason": "ok"})
     metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
-    yield _sse_event("done", {"status": final_status, "citations": citations, "risk_band": risk_band})
+    yield _sse_event(
+        "done",
+        {
+            "status": final_status,
+            "citations": citations,
+            "risk_band": risk_band,
+            "reason_code": "OK",
+            "recoverable": False,
+            "next_action": "NONE",
+            "retry_after_ms": None,
+        },
+    )
     metrics.inc("chat_requests_total", {"decision": "ok"})
 
 

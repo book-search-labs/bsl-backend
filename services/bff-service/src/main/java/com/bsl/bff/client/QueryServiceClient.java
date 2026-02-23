@@ -33,6 +33,10 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class QueryServiceClient {
     public static class ChatStreamResult {
         private String status = "ok";
+        private String reasonCode = "OK";
+        private Boolean recoverable = Boolean.FALSE;
+        private String nextAction = "NONE";
+        private Integer retryAfterMs;
         private final List<String> citations = new ArrayList<>();
 
         public String getStatus() {
@@ -44,6 +48,44 @@ public class QueryServiceClient {
                 return;
             }
             this.status = status;
+        }
+
+        public String getReasonCode() {
+            return reasonCode;
+        }
+
+        public void setReasonCode(String reasonCode) {
+            if (reasonCode == null || reasonCode.isBlank()) {
+                return;
+            }
+            this.reasonCode = reasonCode;
+        }
+
+        public Boolean getRecoverable() {
+            return recoverable;
+        }
+
+        public void setRecoverable(Boolean recoverable) {
+            this.recoverable = recoverable;
+        }
+
+        public String getNextAction() {
+            return nextAction;
+        }
+
+        public void setNextAction(String nextAction) {
+            if (nextAction == null || nextAction.isBlank()) {
+                return;
+            }
+            this.nextAction = nextAction;
+        }
+
+        public Integer getRetryAfterMs() {
+            return retryAfterMs;
+        }
+
+        public void setRetryAfterMs(Integer retryAfterMs) {
+            this.retryAfterMs = retryAfterMs;
         }
 
         public List<String> getCitations() {
@@ -207,6 +249,18 @@ public class QueryServiceClient {
         }
         if ("error".equals(eventName)) {
             result.setStatus("error");
+            try {
+                JsonNode node = objectMapper.readTree(payload);
+                JsonNode reasonCodeNode = node.get("code");
+                JsonNode messageNode = node.get("message");
+                if (reasonCodeNode != null && reasonCodeNode.isTextual()) {
+                    result.setReasonCode(reasonCodeNode.asText());
+                } else if (messageNode != null && messageNode.isTextual()) {
+                    result.setReasonCode(messageNode.asText());
+                }
+            } catch (Exception ignored) {
+                // ignore parse error for best-effort pass-through
+            }
             return;
         }
         if (!"done".equals(eventName)) {
@@ -217,6 +271,22 @@ public class QueryServiceClient {
             JsonNode statusNode = node.get("status");
             if (statusNode != null && statusNode.isTextual()) {
                 result.setStatus(statusNode.asText());
+            }
+            JsonNode reasonCodeNode = node.get("reason_code");
+            if (reasonCodeNode != null && reasonCodeNode.isTextual()) {
+                result.setReasonCode(reasonCodeNode.asText());
+            }
+            JsonNode recoverableNode = node.get("recoverable");
+            if (recoverableNode != null && recoverableNode.isBoolean()) {
+                result.setRecoverable(recoverableNode.asBoolean());
+            }
+            JsonNode nextActionNode = node.get("next_action");
+            if (nextActionNode != null && nextActionNode.isTextual()) {
+                result.setNextAction(nextActionNode.asText());
+            }
+            JsonNode retryAfterMsNode = node.get("retry_after_ms");
+            if (retryAfterMsNode != null && retryAfterMsNode.isInt()) {
+                result.setRetryAfterMs(retryAfterMsNode.asInt());
             }
             JsonNode citationsNode = node.get("citations");
             if (citationsNode != null && citationsNode.isArray()) {
