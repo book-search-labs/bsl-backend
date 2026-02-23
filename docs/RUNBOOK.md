@@ -92,6 +92,15 @@ curl -s -XPOST http://localhost:8088/chat \
 - `chat_provider_health_penalty{provider}`
 - `chat_provider_cost_per_1k{provider}`
 
+### Debug endpoint
+운영 중 라우팅 의사결정을 빠르게 확인하려면:
+```bash
+curl -s -XPOST http://localhost:8001/internal/rag/explain \
+  -H 'Content-Type: application/json' \
+  -d '{"message":{"role":"user","content":"배송 조회"},"client":{"locale":"ko-KR"}}'
+```
+응답의 `llm_routing` 필드에서 `forced_blocked`, `intent_policy_selected`, `final_chain`, `provider_stats`를 확인한다.
+
 ## Sample Dev Bootstrap (Recommended)
 
 For team onboarding / fresh clone, use this exact flow:

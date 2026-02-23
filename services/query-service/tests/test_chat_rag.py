@@ -55,8 +55,69 @@ def test_internal_rag_explain_returns_trace(monkeypatch):
     assert data["status"] == "ok"
     assert data["retrieval"]["lexical"][0]["chunk_id"] == "chunk-1"
     assert data["retrieval"]["selected"][0]["chunk_id"] == "chunk-1"
+    assert data["llm_routing"]["mode"] == "json"
+    assert isinstance(data["llm_routing"]["final_chain"], list)
     assert "REWRITE_APPLIED" in data["reason_codes"]
     assert "RAG_LOW_SCORE" in data["reason_codes"]
+
+
+def test_internal_rag_explain_includes_provider_routing_debug(monkeypatch):
+    chat._CACHE = CacheClient(None)
+
+    async def fake_retrieve_with_optional_rewrite(request, query, canonical_key, locale, trace_id, request_id):
+        return (
+            {
+                "top_n": 5,
+                "top_k": 2,
+                "lexical": [],
+                "vector": [],
+                "fused": [],
+                "selected": [
+                    {
+                        "chunk_id": "chunk-1",
+                        "doc_id": "doc-1",
+                        "score": 0.9,
+                        "title": "배송 안내",
+                        "snippet": "배송",
+                    }
+                ],
+                "reason_codes": [],
+                "rerank": {"enabled": False, "applied": False},
+                "took_ms": 5,
+                "degraded": False,
+            },
+            {
+                "rewrite_applied": False,
+                "rewrite_reason": None,
+                "rewritten_query": "배송 조회",
+            },
+        )
+
+    monkeypatch.setattr(chat, "_retrieve_with_optional_rewrite", fake_retrieve_with_optional_rewrite)
+    monkeypatch.setenv("QS_LLM_URL", "http://llm-primary")
+    monkeypatch.setenv("QS_LLM_FALLBACK_URLS", "http://llm-secondary")
+    monkeypatch.setenv("QS_LLM_PROVIDER_BLOCKLIST", "primary")
+    monkeypatch.setenv("QS_LLM_FORCE_PROVIDER", "primary")
+    monkeypatch.setenv("QS_LLM_PROVIDER_BY_INTENT_JSON", '{"SHIPPING":"fallback_1"}')
+    monkeypatch.setenv("QS_LLM_HEALTH_ROUTING_ENABLED", "1")
+    chat._CACHE.set_json(chat._provider_stats_cache_key("fallback_1"), {"ok": 8, "fail": 1, "streak_fail": 0}, ttl=300)
+
+    client = TestClient(app)
+    response = client.post(
+        "/internal/rag/explain",
+        json={
+            "message": {"role": "user", "content": "배송 조회"},
+            "client": {"locale": "ko-KR"},
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    routing = data["llm_routing"]
+    assert routing["forced_blocked"] is True
+    assert routing["intent_policy_selected"] == "fallback_1"
+    assert "primary" in routing["blocked_providers"]
+    assert routing["final_chain"][0] == "fallback_1"
 
 
 def test_run_chat_stream_emits_done_with_validated_citations(monkeypatch):

@@ -191,3 +191,11 @@ Implement multi-provider LLM routing for chat:
   - 스트리밍 질의(`SHIPPING`)에서도 인텐트 정책 provider가 선행 적용되는지 검증
 - [x] blocklist 안전장치 회귀 테스트 추가
   - provider 전부 차단 오설정 시에도 기본 체인으로 복귀하여 가용성이 유지되는지 검증
+
+## Implementation Update (2026-02-23, Bundle 25)
+- [x] 운영 진단용 라우팅 디버그 추가
+  - `/internal/rag/explain` 응답에 `llm_routing` 블록 포함
+  - blocklist/forced/intent/cost/health/final_chain/provider_stats를 한 번에 확인 가능
+- [x] 회귀 테스트 추가
+  - explain 응답에 라우팅 디버그 필드 존재 검증
+  - 강제 라우팅과 blocklist 충돌 시 explain에서 `forced_blocked=true` 확인

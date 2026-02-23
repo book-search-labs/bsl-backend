@@ -368,6 +368,120 @@ def _apply_provider_override(providers: List[tuple[str, str]], mode: str) -> Lis
     return providers
 
 
+def _move_provider_to_front(
+    providers: List[tuple[str, str]],
+    target: str,
+) -> tuple[List[tuple[str, str]], Optional[str]]:
+    for idx, provider in enumerate(providers):
+        if _provider_matches_target(provider, target):
+            if idx == 0:
+                return providers, provider[0]
+            selected = providers[idx]
+            reordered = [selected] + [item for pos, item in enumerate(providers) if pos != idx]
+            return reordered, selected[0]
+    return providers, None
+
+
+def _provider_stats_view(provider: str) -> Dict[str, Any]:
+    raw = _CACHE.get_json(_provider_stats_cache_key(provider))
+    if not isinstance(raw, dict):
+        return {
+            "ok": 0,
+            "fail": 0,
+            "streak_fail": 0,
+            "base_score": None,
+            "effective_score": None,
+            "updated_at": None,
+        }
+    return {
+        "ok": int(raw.get("ok")) if isinstance(raw.get("ok"), int) else 0,
+        "fail": int(raw.get("fail")) if isinstance(raw.get("fail"), int) else 0,
+        "streak_fail": int(raw.get("streak_fail")) if isinstance(raw.get("streak_fail"), int) else 0,
+        "base_score": float(raw.get("base_score")) if isinstance(raw.get("base_score"), (int, float)) else None,
+        "effective_score": float(raw.get("effective_score")) if isinstance(raw.get("effective_score"), (int, float)) else None,
+        "updated_at": int(raw.get("updated_at")) if isinstance(raw.get("updated_at"), int) else None,
+    }
+
+
+def _preview_provider_routing(payload: Dict[str, Any], mode: str) -> Dict[str, Any]:
+    all_providers = _llm_provider_chain()
+    blocklist = _llm_provider_blocklist()
+    blocked: List[str] = []
+    filtered: List[tuple[str, str]] = []
+    for provider in all_providers:
+        name, url = provider
+        if name in blocklist or url in blocklist:
+            blocked.append(name)
+            continue
+        filtered.append(provider)
+    all_blocked_fallback = False
+    providers = filtered
+    if not providers:
+        providers = list(all_providers)
+        all_blocked_fallback = True
+
+    forced_provider = _llm_forced_provider()
+    forced_blocked = _is_forced_provider_blocked(all_providers, providers)
+    query = _extract_user_query_from_llm_payload(payload)
+    intent = _query_intent(query)
+    intent_policy = _llm_provider_by_intent()
+    intent_target = intent_policy.get(intent)
+    intent_selected: Optional[str] = None
+    if intent_target:
+        providers, intent_selected = _move_provider_to_front(providers, intent_target)
+
+    cost_target: Optional[str] = None
+    cost_reason = "disabled"
+    if _llm_cost_steering_enabled():
+        if query and _is_high_risk_query(query):
+            cost_reason = "high_risk_bypass"
+        else:
+            target = _llm_low_cost_provider()
+            if not target:
+                cost_reason = "not_configured"
+            else:
+                providers, cost_target = _move_provider_to_front(providers, target)
+                cost_reason = "selected" if cost_target else "not_found"
+
+    health_enabled = _llm_health_routing_enabled()
+    health_scores: Dict[str, float] = {}
+    if health_enabled:
+        scored: List[tuple[float, int, tuple[str, str]]] = []
+        for idx, provider in enumerate(providers):
+            name = provider[0]
+            score = _provider_effective_score(name)
+            effective = 0.5 if score is None else float(score)
+            scored.append((effective, -idx, provider))
+            health_scores[name] = effective
+        scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
+        providers = [item[2] for item in scored]
+
+    forced_selected: Optional[str] = None
+    if forced_provider and not forced_blocked:
+        providers, forced_selected = _move_provider_to_front(providers, forced_provider)
+
+    return {
+        "mode": mode,
+        "query_intent": intent,
+        "forced_provider": forced_provider or None,
+        "forced_blocked": forced_blocked,
+        "forced_selected": forced_selected,
+        "blocklist": sorted(blocklist),
+        "blocked_providers": blocked,
+        "all_blocked_fallback": all_blocked_fallback,
+        "intent_policy_target": intent_target,
+        "intent_policy_selected": intent_selected,
+        "cost_steering_enabled": _llm_cost_steering_enabled(),
+        "cost_target": _llm_low_cost_provider() or None,
+        "cost_selected": cost_target,
+        "cost_reason": cost_reason,
+        "health_routing_enabled": health_enabled,
+        "health_scores": health_scores,
+        "final_chain": [name for name, _ in providers],
+        "provider_stats": {name: _provider_stats_view(name) for name, _ in all_providers},
+    }
+
+
 def _llm_model() -> str:
     return os.getenv("QS_LLM_MODEL", "toy-rag-v1")
 
@@ -2146,6 +2260,9 @@ async def explain_chat_rag(request: Dict[str, Any], trace_id: str, request_id: s
         reason_codes.append("REWRITE_APPLIED")
     if rewrite_meta.get("rewrite_reason"):
         reason_codes.append(str(rewrite_meta.get("rewrite_reason")))
+    selected = trace.get("selected") or []
+    debug_payload = _build_llm_payload(request, trace_id, request_id, rewrite_meta.get("rewritten_query") or query, selected)
+    llm_routing = _preview_provider_routing(debug_payload, mode="json")
 
     return {
         "version": "v1",
@@ -2170,5 +2287,6 @@ async def explain_chat_rag(request: Dict[str, Any], trace_id: str, request_id: s
             "took_ms": trace.get("took_ms") or 0,
             "degraded": bool(trace.get("degraded")),
         },
+        "llm_routing": llm_routing,
         "reason_codes": reason_codes,
     }
