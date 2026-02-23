@@ -18,6 +18,10 @@ from app.core.rewrite import run_rewrite
 _CACHE = get_cache()
 
 
+def _llm_provider_cooldown_sec() -> int:
+    return max(0, int(os.getenv("QS_LLM_PROVIDER_COOLDOWN_SEC", "15")))
+
+
 def _llm_url() -> str:
     return os.getenv("QS_LLM_URL", "http://localhost:8010").rstrip("/")
 
@@ -83,6 +87,49 @@ def _apply_cost_steering(providers: List[tuple[str, str]], payload: Dict[str, An
             return [selected] + [item for pos, item in enumerate(providers) if pos != idx]
     metrics.inc("chat_provider_cost_steer_total", {"provider": "unknown", "reason": "not_found", "mode": mode})
     return providers
+
+
+def _provider_health_cache_key(provider: str) -> str:
+    return f"chat:provider:cooldown:{provider}"
+
+
+def _mark_provider_unhealthy(provider: str, reason: str) -> None:
+    ttl = _llm_provider_cooldown_sec()
+    if ttl <= 0:
+        return
+    _CACHE.set_json(
+        _provider_health_cache_key(provider),
+        {"reason": reason, "updated_at": int(time.time())},
+        ttl=ttl,
+    )
+
+
+def _clear_provider_unhealthy(provider: str) -> None:
+    _CACHE.set_json(_provider_health_cache_key(provider), {"cleared": True}, ttl=1)
+
+
+def _is_provider_unhealthy(provider: str) -> bool:
+    if _llm_provider_cooldown_sec() <= 0:
+        return False
+    value = _CACHE.get_json(_provider_health_cache_key(provider))
+    return isinstance(value, dict) and not bool(value.get("cleared"))
+
+
+def _apply_provider_health(providers: List[tuple[str, str]], mode: str) -> List[tuple[str, str]]:
+    if _llm_provider_cooldown_sec() <= 0:
+        return providers
+    healthy: List[tuple[str, str]] = []
+    unhealthy: List[tuple[str, str]] = []
+    for provider in providers:
+        name = provider[0]
+        if _is_provider_unhealthy(name):
+            metrics.inc("chat_provider_route_total", {"provider": name, "result": "cooldown_skip", "mode": mode})
+            unhealthy.append(provider)
+            continue
+        healthy.append(provider)
+    if not healthy:
+        return providers
+    return healthy + unhealthy
 
 
 def _apply_provider_override(providers: List[tuple[str, str]], mode: str) -> List[tuple[str, str]]:
@@ -862,6 +909,7 @@ async def _call_llm_json(payload: Dict[str, Any], trace_id: str, request_id: str
     headers = {"x-trace-id": trace_id, "x-request-id": request_id}
     started = time.perf_counter()
     providers = _apply_cost_steering(_llm_provider_chain(), payload, mode="json")
+    providers = _apply_provider_health(providers, mode="json")
     providers = _apply_provider_override(providers, mode="json")
     last_error: Exception | None = None
     async with httpx.AsyncClient() as client:
@@ -871,6 +919,7 @@ async def _call_llm_json(payload: Dict[str, Any], trace_id: str, request_id: str
             except (httpx.TimeoutException, httpx.NetworkError) as exc:
                 last_error = exc
                 metrics.inc("chat_provider_route_total", {"provider": provider, "result": "timeout", "mode": "json"})
+                _mark_provider_unhealthy(provider, "timeout")
                 if idx + 1 < len(providers):
                     metrics.inc(
                         "chat_provider_failover_total",
@@ -887,6 +936,7 @@ async def _call_llm_json(payload: Dict[str, Any], trace_id: str, request_id: str
                 reason = f"http_{status_code}"
                 metrics.inc("chat_provider_route_total", {"provider": provider, "result": reason, "mode": "json"})
                 if _is_failover_status(status_code) and idx + 1 < len(providers):
+                    _mark_provider_unhealthy(provider, reason)
                     metrics.inc(
                         "chat_provider_failover_total",
                         {"from": provider, "to": providers[idx + 1][0], "reason": reason, "mode": "json"},
@@ -900,6 +950,7 @@ async def _call_llm_json(payload: Dict[str, Any], trace_id: str, request_id: str
                 metrics.inc("chat_provider_route_total", {"provider": provider, "result": "invalid_json", "mode": "json"})
                 raise
             metrics.inc("chat_provider_route_total", {"provider": provider, "result": "ok", "mode": "json"})
+            _clear_provider_unhealthy(provider)
             took_ms = int((time.perf_counter() - started) * 1000)
             metrics.inc("llm_generate_latency_ms", value=max(0, took_ms))
             return data
@@ -924,6 +975,7 @@ async def _stream_llm(
     async def generator() -> AsyncIterator[str]:
         nonlocal first_token_reported
         providers = _apply_cost_steering(_llm_provider_chain(), payload, mode="stream")
+        providers = _apply_provider_health(providers, mode="stream")
         providers = _apply_provider_override(providers, mode="stream")
         last_error: Optional[Exception] = None
         async with httpx.AsyncClient() as client:
@@ -946,6 +998,7 @@ async def _stream_llm(
                                 {"provider": provider, "result": reason, "mode": "stream"},
                             )
                             if _is_failover_status(status_code) and idx + 1 < len(providers):
+                                _mark_provider_unhealthy(provider, reason)
                                 metrics.inc(
                                     "chat_provider_failover_total",
                                     {"from": provider, "to": providers[idx + 1][0], "reason": reason, "mode": "stream"},
@@ -993,12 +1046,14 @@ async def _stream_llm(
                                 data_lines = []
                                 event_name = "message"
                     metrics.inc("chat_provider_route_total", {"provider": provider, "result": "ok", "mode": "stream"})
+                    _clear_provider_unhealthy(provider)
                     took_ms = int((time.perf_counter() - started) * 1000)
                     metrics.inc("llm_generate_latency_ms", value=max(0, took_ms))
                     return
                 except (httpx.TimeoutException, httpx.NetworkError) as exc:
                     last_error = exc
                     metrics.inc("chat_provider_route_total", {"provider": provider, "result": "timeout", "mode": "stream"})
+                    _mark_provider_unhealthy(provider, "timeout")
                     if idx + 1 < len(providers) and not stream_state.get("answer"):
                         metrics.inc(
                             "chat_provider_failover_total",

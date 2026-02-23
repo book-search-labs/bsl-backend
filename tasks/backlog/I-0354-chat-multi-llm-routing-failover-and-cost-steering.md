@@ -103,3 +103,15 @@ Implement multi-provider LLM routing for chat:
   - reason: `selected`, `high_risk_bypass`, `not_configured`, `not_found`
 - [x] 회귀 테스트 추가
   - 저위험 질의에서 저비용 provider 우선 호출 및 메트릭 증가 검증
+
+## Implementation Update (2026-02-23, Bundle 15)
+- [x] provider 쿨다운 기반 health 라우팅 추가
+  - `QS_LLM_PROVIDER_COOLDOWN_SEC` 동안 timeout/429/5xx 발생 provider를 임시 비선호 처리
+  - 가용 provider가 있으면 쿨다운 provider를 뒤로 보내 flapping 완화
+  - 전 provider가 쿨다운 상태면 기본 체인을 유지해 전면 차단은 방지
+- [x] health 상태 갱신
+  - 실패 시 provider 쿨다운 마킹
+  - 성공 시 provider 쿨다운 즉시 해제
+- [x] 회귀 테스트 추가
+  - primary provider 쿨다운 상태에서 fallback provider가 선행 호출되는지 검증
+  - `chat_provider_route_total{result=cooldown_skip}` 메트릭 검증
