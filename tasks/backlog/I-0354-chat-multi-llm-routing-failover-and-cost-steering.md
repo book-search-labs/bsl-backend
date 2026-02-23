@@ -83,3 +83,13 @@ Implement multi-provider LLM routing for chat:
   - `chat_provider_failover_total{from,to,reason,mode}`
 - [x] 회귀 테스트 추가
   - primary 500 응답 시 fallback provider 성공 경로 및 메트릭 증가 검증
+
+## Implementation Update (2026-02-23, Bundle 13)
+- [x] 운영자 강제 라우팅(override) 추가
+  - `QS_LLM_FORCE_PROVIDER` 환경변수로 provider alias(`primary`, `fallback_n`) 또는 URL 지정 가능
+  - 강제 provider가 유효하면 해당 provider를 체인 선두로 재정렬
+- [x] 강제 라우팅 관측 지표 추가
+  - `chat_provider_forced_route_total{provider,reason,mode}`
+  - reason: `selected`(적용), `not_found`(미존재 provider 지정)
+- [x] 회귀 테스트 추가
+  - 강제 provider 지정 시 실제 호출 URL이 fallback provider로 선행되는지 검증

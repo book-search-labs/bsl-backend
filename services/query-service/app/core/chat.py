@@ -36,6 +36,25 @@ def _llm_provider_chain() -> List[tuple[str, str]]:
     return providers
 
 
+def _llm_forced_provider() -> str:
+    return os.getenv("QS_LLM_FORCE_PROVIDER", "").strip()
+
+
+def _apply_provider_override(providers: List[tuple[str, str]], mode: str) -> List[tuple[str, str]]:
+    forced = _llm_forced_provider()
+    if not forced:
+        return providers
+    for idx, (name, url) in enumerate(providers):
+        if forced == name or forced == url:
+            metrics.inc("chat_provider_forced_route_total", {"provider": name, "reason": "selected", "mode": mode})
+            if idx == 0:
+                return providers
+            selected = providers[idx]
+            return [selected] + [item for pos, item in enumerate(providers) if pos != idx]
+    metrics.inc("chat_provider_forced_route_total", {"provider": "unknown", "reason": "not_found", "mode": mode})
+    return providers
+
+
 def _llm_model() -> str:
     return os.getenv("QS_LLM_MODEL", "toy-rag-v1")
 
@@ -797,7 +816,7 @@ def _build_llm_payload(request: Dict[str, Any], trace_id: str, request_id: str, 
 async def _call_llm_json(payload: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
     headers = {"x-trace-id": trace_id, "x-request-id": request_id}
     started = time.perf_counter()
-    providers = _llm_provider_chain()
+    providers = _apply_provider_override(_llm_provider_chain(), mode="json")
     last_error: Exception | None = None
     async with httpx.AsyncClient() as client:
         for idx, (provider, base_url) in enumerate(providers):
@@ -858,7 +877,7 @@ async def _stream_llm(
 
     async def generator() -> AsyncIterator[str]:
         nonlocal first_token_reported
-        providers = _llm_provider_chain()
+        providers = _apply_provider_override(_llm_provider_chain(), mode="stream")
         last_error: Optional[Exception] = None
         async with httpx.AsyncClient() as client:
             for idx, (provider, base_url) in enumerate(providers):
