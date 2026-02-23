@@ -351,6 +351,41 @@ def test_run_tool_chat_ticket_create_requires_issue_context():
     assert "조금 더 자세히" in result["answer"]["content"]
 
 
+def test_run_tool_chat_ticket_create_is_idempotent_within_dedup_window(monkeypatch):
+    call_count = {"ticket_create": 0}
+
+    async def fake_call_commerce(method, path, **kwargs):
+        if method == "POST" and path == "/support/tickets":
+            call_count["ticket_create"] += 1
+            return {
+                "ticket": {
+                    "ticket_id": 21,
+                    "ticket_no": "STK202602230201",
+                    "status": "RECEIVED",
+                    "severity": "LOW",
+                },
+                "expected_response_minutes": 180,
+            }
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    session_id = "sess-ticket-dedup-1"
+    payload = {
+        "session_id": session_id,
+        "message": {"role": "user", "content": "문의 접수해줘 결제가 안돼"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+
+    first = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_create_1"))
+    second = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_create_2"))
+
+    assert first is not None and first["status"] == "ok"
+    assert second is not None and second["status"] == "ok"
+    assert "STK202602230201" in second["answer"]["content"]
+    assert "재사용" in second["answer"]["content"]
+    assert call_count["ticket_create"] == 1
+
+
 def test_run_tool_chat_executes_refund_after_confirmation(monkeypatch):
     async def fake_call_commerce(method, path, **kwargs):
         if method == "GET" and path == "/orders/12":

@@ -51,3 +51,15 @@ Implement a production-safe action ledger for chat:
 - Add idempotent workflow state machine per commerce intent.
 - Persist step transitions and compensation outcomes.
 - Auto-detect inconsistent states and trigger ticket escalation.
+
+## Implementation Update (2026-02-23, Bundle 8)
+- [x] 티켓 생성 멱등 처리(경량) 1차 반영
+  - 동일 세션/동일 사용자/동일 문의 텍스트에 대해 짧은 윈도우 내 중복 생성 방지
+  - dedup hit 시 기존 접수번호/상태를 재사용 응답
+- [x] 캐시 키 설계
+  - `chat:ticket-create:dedup:{session_id}:{fingerprint}`
+  - fingerprint: `sha256(user_id + normalized_query)` 기반
+- [x] 관측 지표 추가
+  - `chat_ticket_create_dedup_hit_total{result}`
+- [x] 회귀 테스트 추가
+  - 동일 문의 2회 호출 시 실제 `/support/tickets` 생성 호출은 1회만 수행

@@ -61,6 +61,10 @@ def _confirmation_token_ttl_sec() -> int:
     return max(60, int(os.getenv("QS_CHAT_CONFIRM_TOKEN_TTL_SEC", "300")))
 
 
+def _ticket_create_dedup_ttl_sec() -> int:
+    return max(30, int(os.getenv("QS_CHAT_TICKET_DEDUP_TTL_SEC", "180")))
+
+
 def _extract_query_text(request: dict[str, Any]) -> str:
     message = request.get("message") if isinstance(request.get("message"), dict) else {}
     content = message.get("content") if isinstance(message, dict) else None
@@ -312,6 +316,30 @@ def _load_unresolved_context(session_id: str) -> dict[str, Any] | None:
     if isinstance(cached, dict):
         return cached
     return None
+
+
+def _ticket_create_fingerprint(user_id: str, query: str) -> str:
+    normalized = _normalize_text(query)
+    return hashlib.sha256(f"{user_id}:{normalized}".encode("utf-8")).hexdigest()[:24]
+
+
+def _ticket_create_dedup_cache_key(session_id: str, fingerprint: str) -> str:
+    return f"chat:ticket-create:dedup:{session_id}:{fingerprint}"
+
+
+def _load_ticket_create_dedup(session_id: str, fingerprint: str) -> dict[str, Any] | None:
+    cached = _CACHE.get_json(_ticket_create_dedup_cache_key(session_id, fingerprint))
+    if isinstance(cached, dict):
+        return cached
+    return None
+
+
+def _save_ticket_create_dedup(session_id: str, fingerprint: str, payload: dict[str, Any]) -> None:
+    _CACHE.set_json(
+        _ticket_create_dedup_cache_key(session_id, fingerprint),
+        payload,
+        ttl=_ticket_create_dedup_ttl_sec(),
+    )
 
 
 def _is_generic_ticket_create_message(query: str) -> bool:
@@ -825,6 +853,29 @@ async def _handle_ticket_create(
             next_action="PROVIDE_REQUIRED_INFO",
         )
 
+    dedup_fingerprint = _ticket_create_fingerprint(user_id, effective_query)
+    dedup_cached = _load_ticket_create_dedup(session_id, dedup_fingerprint)
+    if isinstance(dedup_cached, dict):
+        cached_ticket_no = str(dedup_cached.get("ticket_no") or "")
+        cached_status = str(dedup_cached.get("status") or "RECEIVED")
+        cached_status_ko = _ticket_status_ko(cached_status)
+        cached_eta_minutes = int(dedup_cached.get("expected_response_minutes") or 0)
+        if cached_ticket_no:
+            metrics.inc("chat_ticket_create_dedup_hit_total", {"result": "reused"})
+            _save_last_ticket_no(session_id, cached_ticket_no)
+            return _build_response(
+                trace_id,
+                request_id,
+                "ok",
+                (
+                    f"방금 동일한 문의를 접수한 이력이 있어 기존 접수번호 {cached_ticket_no}를 재사용합니다. "
+                    f"현재 상태는 '{cached_status_ko}'이며 예상 첫 응답은 약 {cached_eta_minutes}분입니다."
+                ),
+                tool_name="ticket_create",
+                endpoint="POST /api/v1/support/tickets",
+                source_snippet=f"ticket_no={cached_ticket_no}, dedup=true, status={cached_status}",
+            )
+
     category = _infer_ticket_category(effective_query)
     severity = _infer_ticket_severity(effective_query)
     order_ref = _extract_order_ref(effective_query)
@@ -880,6 +931,15 @@ async def _handle_ticket_create(
     status_ko = _ticket_status_ko(status)
     eta_minutes = int(created.get("expected_response_minutes") or 0)
     _save_last_ticket_no(session_id, ticket_no)
+    _save_ticket_create_dedup(
+        session_id,
+        dedup_fingerprint,
+        {
+            "ticket_no": ticket_no,
+            "status": status,
+            "expected_response_minutes": eta_minutes,
+        },
+    )
     metrics.inc("chat_ticket_created_total", {"category": category})
 
     content = (
