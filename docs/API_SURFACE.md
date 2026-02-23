@@ -138,6 +138,13 @@ All structured responses that follow `contracts/*` must include:
 - Contract: `contracts/chat-request.schema.json`
 - Example: `contracts/examples/chat-request.sample.json`
 
+### Request Guardrails (runtime)
+- `message.content` 최대 길이: `QS_CHAT_MAX_MESSAGE_CHARS` (기본 1200)
+- `history` 최대 턴 수: `QS_CHAT_MAX_HISTORY_TURNS` (기본 12)
+- `message + history` 총 길이: `QS_CHAT_MAX_TOTAL_CHARS` (기본 6000)
+- `session_id` 형식: `QS_CHAT_SESSION_ID_PATTERN` / 길이 `QS_CHAT_SESSION_ID_MAX_LEN` 검증
+- 제한 위반 시 HTTP 200 + `status=insufficient_evidence`와 `reason_code`(`CHAT_MESSAGE_TOO_LONG`, `CHAT_HISTORY_TOO_LONG`, `CHAT_PAYLOAD_TOO_LARGE` 등)로 복구 힌트를 반환
+
 ### Response
 - Contract: `contracts/chat-response.schema.json`
 - Example: `contracts/examples/chat-response.sample.json`

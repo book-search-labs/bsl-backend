@@ -220,3 +220,64 @@ def test_fallback_escalates_after_repeated_failures(monkeypatch):
     assert second["next_action"] == "OPEN_SUPPORT_TICKET"
     assert second["fallback_count"] == 2
     assert second["escalated"] is True
+
+
+def test_run_chat_rejects_too_long_message(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_MAX_MESSAGE_CHARS", "100")
+
+    result = asyncio.run(
+        chat.run_chat(
+            {
+                "session_id": "sess-limits-1",
+                "message": {"role": "user", "content": "가" * 101},
+                "client": {"user_id": "1", "locale": "ko-KR"},
+            },
+            "trace_test",
+            "req_test",
+        )
+    )
+
+    assert result["status"] == "insufficient_evidence"
+    assert result["reason_code"] == "CHAT_MESSAGE_TOO_LONG"
+    assert result["next_action"] == "REFINE_QUERY"
+    assert result["recoverable"] is True
+
+
+def test_run_chat_rejects_history_too_long(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_MAX_HISTORY_TURNS", "1")
+
+    result = asyncio.run(
+        chat.run_chat(
+            {
+                "session_id": "sess-limits-2",
+                "message": {"role": "user", "content": "배송 상태 알려줘"},
+                "history": [
+                    {"role": "assistant", "content": "첫 번째"},
+                    {"role": "user", "content": "두 번째"},
+                ],
+                "client": {"user_id": "1", "locale": "ko-KR"},
+            },
+            "trace_test",
+            "req_test",
+        )
+    )
+
+    assert result["reason_code"] == "CHAT_HISTORY_TOO_LONG"
+    assert result["status"] == "insufficient_evidence"
+
+
+def test_run_chat_stream_rejects_invalid_session_id():
+    chat._CACHE = CacheClient(None)
+
+    events = _collect_stream_events(
+        {
+            "session_id": "bad session!",
+            "message": {"role": "user", "content": "주문 상태 알려줘"},
+            "options": {"stream": True},
+            "client": {"user_id": "1"},
+        }
+    )
+
+    assert any("event: done" in event and '"CHAT_INVALID_SESSION_ID"' in event for event in events)

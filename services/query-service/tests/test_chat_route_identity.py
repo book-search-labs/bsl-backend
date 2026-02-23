@@ -31,3 +31,16 @@ def test_chat_route_injects_auth_identity_into_client_payload(monkeypatch):
     assert response.status_code == 200
     assert captured["body"]["client"]["user_id"] == "101"
     assert captured["body"]["client"]["admin_id"] == "42"
+
+
+def test_chat_route_rejects_invalid_json_body():
+    client = TestClient(app)
+    response = client.post(
+        "/chat",
+        data="{invalid",
+        headers={"content-type": "application/json"},
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_request"

@@ -86,6 +86,30 @@ def _guard_forbidden_answer_keywords() -> List[str]:
     return [item.strip().lower() for item in raw.split(",") if item.strip()]
 
 
+def _chat_max_message_chars() -> int:
+    return max(100, int(os.getenv("QS_CHAT_MAX_MESSAGE_CHARS", "1200")))
+
+
+def _chat_max_history_turns() -> int:
+    return max(1, int(os.getenv("QS_CHAT_MAX_HISTORY_TURNS", "12")))
+
+
+def _chat_max_total_chars() -> int:
+    return max(_chat_max_message_chars(), int(os.getenv("QS_CHAT_MAX_TOTAL_CHARS", "6000")))
+
+
+def _chat_max_top_k() -> int:
+    return max(1, int(os.getenv("QS_CHAT_MAX_TOP_K", "20")))
+
+
+def _chat_session_id_max_len() -> int:
+    return max(16, int(os.getenv("QS_CHAT_SESSION_ID_MAX_LEN", "64")))
+
+
+def _chat_session_id_pattern() -> re.Pattern[str]:
+    return re.compile(os.getenv("QS_CHAT_SESSION_ID_PATTERN", r"^[A-Za-z0-9:_-]+$"))
+
+
 def _extract_citations_from_text(text: str) -> List[str]:
     matches = re.findall(r"\[([a-zA-Z0-9_\-:#]+)\]", text or "")
     seen: set[str] = set()
@@ -164,6 +188,42 @@ def _fallback_defaults(reason_code: str) -> Dict[str, Any]:
     defaults: Dict[str, Dict[str, Any]] = {
         "NO_MESSAGES": {
             "message": "질문을 입력해 주세요.",
+            "recoverable": True,
+            "next_action": "PROVIDE_REQUIRED_INFO",
+            "retry_after_ms": None,
+        },
+        "CHAT_BAD_REQUEST": {
+            "message": "요청 형식이 올바르지 않습니다. 질문 내용을 다시 입력해 주세요.",
+            "recoverable": True,
+            "next_action": "PROVIDE_REQUIRED_INFO",
+            "retry_after_ms": None,
+        },
+        "CHAT_INVALID_SESSION_ID": {
+            "message": "세션 정보 형식이 올바르지 않습니다. 다시 시도해 주세요.",
+            "recoverable": True,
+            "next_action": "RETRY",
+            "retry_after_ms": 1000,
+        },
+        "CHAT_MESSAGE_TOO_LONG": {
+            "message": f"질문이 너무 깁니다. {_chat_max_message_chars()}자 이내로 입력해 주세요.",
+            "recoverable": True,
+            "next_action": "REFINE_QUERY",
+            "retry_after_ms": None,
+        },
+        "CHAT_HISTORY_TOO_LONG": {
+            "message": f"대화 기록이 너무 깁니다. 최근 {_chat_max_history_turns()}개 발화만 남겨 주세요.",
+            "recoverable": True,
+            "next_action": "REFINE_QUERY",
+            "retry_after_ms": None,
+        },
+        "CHAT_PAYLOAD_TOO_LARGE": {
+            "message": f"요청 본문이 너무 큽니다. 총 {_chat_max_total_chars()}자 이하로 줄여 주세요.",
+            "recoverable": True,
+            "next_action": "REFINE_QUERY",
+            "retry_after_ms": None,
+        },
+        "CHAT_TOP_K_TOO_LARGE": {
+            "message": f"요청 옵션 값이 너무 큽니다. top_k를 {_chat_max_top_k()} 이하로 설정해 주세요.",
             "recoverable": True,
             "next_action": "PROVIDE_REQUIRED_INFO",
             "retry_after_ms": None,
@@ -378,6 +438,71 @@ def _extract_query_text(request: Dict[str, Any]) -> str:
     return content if isinstance(content, str) else ""
 
 
+def _is_valid_session_id(raw: Any) -> bool:
+    if not isinstance(raw, str):
+        return False
+    session_id = raw.strip()
+    if not session_id:
+        return False
+    if len(session_id) > _chat_session_id_max_len():
+        return False
+    return _chat_session_id_pattern().fullmatch(session_id) is not None
+
+
+def _validate_chat_request(request: Dict[str, Any]) -> Optional[str]:
+    if not isinstance(request, dict):
+        return "CHAT_BAD_REQUEST"
+    message = request.get("message")
+    if not isinstance(message, dict):
+        return "CHAT_BAD_REQUEST"
+    content = message.get("content")
+    if content is None:
+        return "NO_MESSAGES"
+    if not isinstance(content, str):
+        return "CHAT_BAD_REQUEST"
+    query = content.strip()
+    if not query:
+        return "NO_MESSAGES"
+    if len(query) > _chat_max_message_chars():
+        return "CHAT_MESSAGE_TOO_LONG"
+
+    history = request.get("history")
+    if history is not None and not isinstance(history, list):
+        return "CHAT_BAD_REQUEST"
+    history_items = history if isinstance(history, list) else []
+    if len(history_items) > _chat_max_history_turns():
+        return "CHAT_HISTORY_TOO_LONG"
+
+    total_chars = len(query)
+    for item in history_items:
+        if not isinstance(item, dict):
+            return "CHAT_BAD_REQUEST"
+        text = item.get("content")
+        if not isinstance(text, str):
+            return "CHAT_BAD_REQUEST"
+        if len(text) > _chat_max_message_chars():
+            return "CHAT_MESSAGE_TOO_LONG"
+        total_chars += len(text)
+
+    if total_chars > _chat_max_total_chars():
+        return "CHAT_PAYLOAD_TOO_LARGE"
+
+    options = request.get("options")
+    if options is not None and not isinstance(options, dict):
+        return "CHAT_BAD_REQUEST"
+    if isinstance(options, dict):
+        top_k = options.get("top_k")
+        if top_k is not None and (not isinstance(top_k, int) or top_k < 1):
+            return "CHAT_BAD_REQUEST"
+        if isinstance(top_k, int) and top_k > _chat_max_top_k():
+            return "CHAT_TOP_K_TOO_LARGE"
+
+    session_id = request.get("session_id")
+    if session_id is not None and not _is_valid_session_id(session_id):
+        return "CHAT_INVALID_SESSION_ID"
+    return None
+
+
 def _extract_user_id(request: Dict[str, Any]) -> Optional[str]:
     client = request.get("client") if isinstance(request.get("client"), dict) else {}
     user_id = client.get("user_id") if isinstance(client, dict) else None
@@ -388,8 +513,8 @@ def _extract_user_id(request: Dict[str, Any]) -> Optional[str]:
 
 def _resolve_session_id(request: Dict[str, Any], user_id: Optional[str]) -> str:
     session_id = request.get("session_id")
-    if isinstance(session_id, str) and session_id.strip():
-        return session_id.strip()
+    if _is_valid_session_id(session_id):
+        return str(session_id).strip()
     if user_id:
         return f"u:{user_id}:default"
     return "anon:default"
@@ -426,8 +551,8 @@ def _resolve_top_k(request: Dict[str, Any]) -> int:
     options = request.get("options") if isinstance(request.get("options"), dict) else {}
     top_k = options.get("top_k")
     if isinstance(top_k, int) and top_k > 0:
-        return top_k
-    return int(os.getenv("QS_RAG_TOP_K", "6"))
+        return min(top_k, _chat_max_top_k())
+    return min(int(os.getenv("QS_RAG_TOP_K", "6")), _chat_max_top_k())
 
 
 def _resolve_top_n(request: Dict[str, Any]) -> Optional[int]:
@@ -686,6 +811,11 @@ async def _prepare_chat(
 async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
     user_id = _extract_user_id(request)
     session_id = _resolve_session_id(request, user_id)
+    validation_reason = _validate_chat_request(request)
+    if validation_reason:
+        metrics.inc("chat_validation_fail_total", {"reason": validation_reason})
+        metrics.inc("chat_requests_total", {"decision": "fallback"})
+        return _fallback(trace_id, request_id, None, validation_reason, session_id=session_id, user_id=user_id)
     tool_response = await run_tool_chat(request, trace_id, request_id)
     if tool_response is not None:
         _reset_fallback_count(session_id)
@@ -770,6 +900,44 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
 async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: str) -> AsyncIterator[str]:
     user_id = _extract_user_id(request)
     session_id = _resolve_session_id(request, user_id)
+    validation_reason = _validate_chat_request(request)
+    if validation_reason:
+        metrics.inc("chat_validation_fail_total", {"reason": validation_reason})
+        response = _fallback(trace_id, request_id, None, validation_reason, session_id=session_id, user_id=user_id)
+        risk_band = _compute_risk_band("", response.get("status", "insufficient_evidence"), [], validation_reason)
+        yield _sse_event(
+            "meta",
+            {
+                "trace_id": trace_id,
+                "request_id": request_id,
+                "status": response.get("status"),
+                "risk_band": risk_band,
+                "reason_code": response.get("reason_code"),
+                "recoverable": response.get("recoverable"),
+                "next_action": response.get("next_action"),
+                "retry_after_ms": response.get("retry_after_ms"),
+                "fallback_count": response.get("fallback_count"),
+                "escalated": response.get("escalated"),
+            },
+        )
+        yield _sse_event("delta", {"delta": str(response.get("answer", {}).get("content") if isinstance(response.get("answer"), dict) else "")})
+        yield _sse_event(
+            "done",
+            {
+                "status": response.get("status"),
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": response.get("reason_code"),
+                "recoverable": response.get("recoverable"),
+                "next_action": response.get("next_action"),
+                "retry_after_ms": response.get("retry_after_ms"),
+                "fallback_count": response.get("fallback_count"),
+                "escalated": response.get("escalated"),
+            },
+        )
+        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
+        metrics.inc("chat_requests_total", {"decision": "fallback"})
+        return
     tool_response = await run_tool_chat(request, trace_id, request_id)
     if tool_response is not None:
         _reset_fallback_count(session_id)
