@@ -109,3 +109,12 @@ Upgrade chat tool-calling for commerce intents:
   - `chat_ticket_create_with_context_total{source}`
 - [x] 테스트 추가
   - generic 문의 문구에서 unresolved context를 활용해 티켓 생성하는 회귀 테스트 추가
+
+## Implementation Update (2026-02-23, Bundle 5)
+- [x] 티켓 생성 입력 품질 가드 추가
+  - 컨텍스트 없는 generic 요청(`문의 접수해줘`)은 즉시 접수하지 않고 추가 정보 입력을 요청
+  - 너무 짧은 문의문(8자 미만)은 `MISSING_REQUIRED_INFO`로 가이드
+- [x] 메트릭 추가
+  - `chat_ticket_needs_input_total{reason}`로 입력 부족 케이스 관측
+- [x] 테스트 추가
+  - generic 요청의 `needs_input` 응답 회귀 테스트 추가

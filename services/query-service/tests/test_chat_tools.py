@@ -334,6 +334,23 @@ def test_run_tool_chat_ticket_create_uses_unresolved_context(monkeypatch):
     assert captured["payload"]["details"]["unresolvedReasonCode"] == "OUTPUT_GUARD_FORBIDDEN_CLAIM"
 
 
+def test_run_tool_chat_ticket_create_requires_issue_context():
+    session_id = "sess-ticket-ctx-2"
+    payload = {
+        "session_id": session_id,
+        "message": {"role": "user", "content": "문의 접수해줘"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_missing_ctx"))
+
+    assert result is not None
+    assert result["status"] == "needs_input"
+    assert result["reason_code"] == "MISSING_REQUIRED_INFO"
+    assert result["next_action"] == "PROVIDE_REQUIRED_INFO"
+    assert "조금 더 자세히" in result["answer"]["content"]
+
+
 def test_run_tool_chat_executes_refund_after_confirmation(monkeypatch):
     async def fake_call_commerce(method, path, **kwargs):
         if method == "GET" and path == "/orders/12":

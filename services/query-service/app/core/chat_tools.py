@@ -318,7 +318,7 @@ def _is_generic_ticket_create_message(query: str) -> bool:
     q = _normalize_text(query)
     if not q:
         return False
-    generic_keywords = [
+    generic_phrases = [
         "문의 접수",
         "문의해줘",
         "문의 남겨줘",
@@ -328,7 +328,15 @@ def _is_generic_ticket_create_message(query: str) -> bool:
         "support ticket",
         "create ticket",
     ]
-    return any(keyword in q for keyword in generic_keywords)
+    if q in generic_phrases:
+        return True
+    for phrase in generic_phrases:
+        if not q.startswith(phrase):
+            continue
+        remainder = q[len(phrase) :].strip()
+        if remainder in {"", "해줘", "해주세요", "해 줘", "please"}:
+            return True
+    return False
 
 
 def _is_confirmation_message(query: str) -> bool:
@@ -788,10 +796,34 @@ async def _handle_ticket_create(
     unresolved = _load_unresolved_context(session_id)
     unresolved_query = str(unresolved.get("query") or "").strip() if isinstance(unresolved, dict) else ""
     unresolved_reason = str(unresolved.get("reason_code") or "").strip() if isinstance(unresolved, dict) else ""
+    generic_ticket_request = _is_generic_ticket_create_message(query)
     effective_query = query
-    if _is_generic_ticket_create_message(query) and unresolved_query:
+    if generic_ticket_request and unresolved_query:
         effective_query = unresolved_query
         metrics.inc("chat_ticket_create_with_context_total", {"source": "unresolved_context"})
+    elif generic_ticket_request:
+        metrics.inc("chat_ticket_needs_input_total", {"reason": "missing_issue_context"})
+        return _build_response(
+            trace_id,
+            request_id,
+            "needs_input",
+            "문의 내용을 조금 더 자세히 입력해 주세요. 예: '주문 12 환불이 진행되지 않아요'.",
+            reason_code="MISSING_REQUIRED_INFO",
+            recoverable=True,
+            next_action="PROVIDE_REQUIRED_INFO",
+        )
+
+    if len(effective_query.strip()) < 8:
+        metrics.inc("chat_ticket_needs_input_total", {"reason": "query_too_short"})
+        return _build_response(
+            trace_id,
+            request_id,
+            "needs_input",
+            "문의 내용을 8자 이상으로 구체적으로 입력해 주세요.",
+            reason_code="MISSING_REQUIRED_INFO",
+            recoverable=True,
+            next_action="PROVIDE_REQUIRED_INFO",
+        )
 
     category = _infer_ticket_category(effective_query)
     severity = _infer_ticket_severity(effective_query)
