@@ -304,6 +304,14 @@ def _fallback(
         next_action = "OPEN_SUPPORT_TICKET"
         escalated = True
     metrics.inc("chat_fallback_total", {"reason": reason_code})
+    metrics.inc(
+        "chat_error_recovery_hint_total",
+        {
+            "next_action": next_action,
+            "reason_code": reason_code,
+            "source": "rag",
+        },
+    )
     if escalated:
         metrics.inc("chat_fallback_escalated_total", {"reason": reason_code})
     return {

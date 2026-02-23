@@ -380,3 +380,25 @@ def test_run_chat_clears_unresolved_context_on_tool_path(monkeypatch):
     assert result["status"] == "ok"
     cached = chat._CACHE.get_json(f"chat:unresolved:{session_id}")
     assert cached is None or cached.get("cleared") is True
+
+
+def test_fallback_emits_recovery_hint_metric(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    before = dict(chat.metrics.snapshot())
+
+    response = chat._fallback(
+        "trace_test",
+        "req_test",
+        None,
+        "PROVIDER_TIMEOUT",
+        session_id="sess-metric-1",
+        user_id="1",
+    )
+
+    after = chat.metrics.snapshot()
+    assert response["next_action"] in {"RETRY", "OPEN_SUPPORT_TICKET"}
+    expected_key = (
+        f"chat_error_recovery_hint_total{{next_action={response['next_action']},"
+        "reason_code=PROVIDER_TIMEOUT,source=rag}"
+    )
+    assert after.get(expected_key, 0) >= before.get(expected_key, 0) + 1

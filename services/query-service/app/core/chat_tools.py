@@ -239,6 +239,14 @@ def _build_response(
     resolved_recoverable = bool(defaults["recoverable"] if recoverable is None else recoverable)
     resolved_next_action = next_action if isinstance(next_action, str) and next_action.strip() else defaults["next_action"]
     resolved_retry_after_ms = defaults["retry_after_ms"] if retry_after_ms is None else retry_after_ms
+    metrics.inc(
+        "chat_error_recovery_hint_total",
+        {
+            "next_action": resolved_next_action,
+            "reason_code": resolved_reason_code,
+            "source": "tool",
+        },
+    )
     return {
         "version": "v1",
         "trace_id": trace_id,

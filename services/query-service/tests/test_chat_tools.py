@@ -386,6 +386,24 @@ def test_run_tool_chat_ticket_create_is_idempotent_within_dedup_window(monkeypat
     assert call_count["ticket_create"] == 1
 
 
+def test_build_response_emits_recovery_hint_metric():
+    before = dict(chat_tools.metrics.snapshot())
+    response = chat_tools._build_response(
+        "trace_test",
+        "req_test",
+        "needs_input",
+        "추가 정보가 필요합니다.",
+    )
+    after = chat_tools.metrics.snapshot()
+
+    key = (
+        "chat_error_recovery_hint_total{next_action=PROVIDE_REQUIRED_INFO,"
+        "reason_code=MISSING_INPUT,source=tool}"
+    )
+    assert response["next_action"] == "PROVIDE_REQUIRED_INFO"
+    assert after.get(key, 0) >= before.get(key, 0) + 1
+
+
 def test_run_tool_chat_executes_refund_after_confirmation(monkeypatch):
     async def fake_call_commerce(method, path, **kwargs):
         if method == "GET" and path == "/orders/12":
