@@ -1,4 +1,4 @@
-# B-0353 — 근거 강제 게이트 강화 (citation coverage + insufficient-evidence block)
+# B-0353 — 근거 강제 게이트 강화 v2 (citation coverage + insufficient-evidence block)
 
 ## Priority
 - P0 (환각 억제 핵심)
@@ -34,6 +34,20 @@
 ### 5) 회귀 테스트
 - 근거 없는 질문/애매 질문/오정보 유도 질문 세트 테스트
 
+### 6) 실서비스 컷라인/승격 정책 (신규)
+- 기본 컷라인:
+  - `citation_coverage >= 0.85`
+  - `answer_citation_entailment >= 0.80`
+  - `insufficient_evidence` 오분류율 <= 5%
+- 컷라인 미달 시:
+  - canary 승격 차단
+  - 기존 안정 정책 버전으로 자동 롤백
+- 한국어 커머스 도메인(주문/배송/환불)은 별도 상향 컷라인 적용
+
+### 7) 운영자 가시성 (신규)
+- reason_code를 `INSUFFICIENT_EVIDENCE`, `POLICY_UNKNOWN`, `AUTH_REQUIRED`, `TOOL_UNAVAILABLE`로 표준화
+- reason_code 분포와 증가율을 운영 대시보드에서 즉시 확인 가능해야 함
+
 ## Non-goals
 - 멀티턴 메모리 품질 개선
 
@@ -41,6 +55,8 @@
 - 근거 부족 케이스에서 답변 대신 부족 안내 반환
 - coverage/정합성 지표가 로그/메트릭으로 남음
 - 환각 리포트 상위 케이스 재현셋 통과
+- 릴리스 게이트에서 컷라인 위반 시 fail-closed 동작 확인
+- reason_code별 한국어 안내 템플릿 스냅샷 테스트 통과
 
 ## Interfaces
 - `POST /v1/chat`
@@ -56,3 +72,14 @@ Strengthen groundedness gate:
 - Compute citation coverage and block low-coverage answers.
 - Add answer-to-citation consistency checks.
 - Return insufficient-evidence response when support is weak.
+
+## Implementation Update (2026-02-23, Bundle 10)
+- [x] citation coverage 런타임 게이트 추가
+  - selected 문서 대비 cited 문서 비율을 계산해 임계치 미달 답변 차단
+  - 임계치: `QS_CHAT_MIN_CITATION_COVERAGE_RATIO`(기본 0.2), 고위험 질의는 `QS_CHAT_HIGH_RISK_MIN_CITATION_COVERAGE_RATIO`(기본 0.5)
+- [x] 표준 fallback reason_code 추가
+  - `LLM_LOW_CITATION_COVERAGE`로 insufficient_evidence 반환
+- [x] 관측 지표 추가
+  - `chat_citation_coverage_block_total{risk,threshold}`
+- [x] 회귀 테스트 추가
+  - citation 존재하지만 coverage 부족한 케이스에서 차단되는지 검증

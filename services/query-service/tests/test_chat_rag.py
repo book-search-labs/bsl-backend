@@ -402,3 +402,63 @@ def test_fallback_emits_recovery_hint_metric(monkeypatch):
         "reason_code=PROVIDER_TIMEOUT,source=rag}"
     )
     assert after.get(expected_key, 0) >= before.get(expected_key, 0) + 1
+
+
+def test_run_chat_blocks_when_citation_coverage_is_too_low(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_MIN_CITATION_COVERAGE_RATIO", "0.8")
+
+    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
+        return {
+            "ok": True,
+            "query": "일반 문의",
+            "canonical_key": "ck:coverage",
+            "locale": "ko-KR",
+            "selected": [
+                {
+                    "chunk_id": "chunk-1",
+                    "citation_key": "chunk-1",
+                    "doc_id": "doc-1",
+                    "title": "문서 A",
+                    "url": "https://example.com/a",
+                    "snippet": "A",
+                    "score": 0.9,
+                },
+                {
+                    "chunk_id": "chunk-2",
+                    "citation_key": "chunk-2",
+                    "doc_id": "doc-2",
+                    "title": "문서 B",
+                    "url": "https://example.com/b",
+                    "snippet": "B",
+                    "score": 0.8,
+                },
+            ],
+        }
+
+    async def fake_call_llm_json(payload, trace_id, request_id):
+        return {"content": "답변입니다.", "citations": ["chunk-1"]}
+
+    async def fake_tool_chat(request, trace_id, request_id):
+        return None
+
+    monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
+    monkeypatch.setattr(chat, "_call_llm_json", fake_call_llm_json)
+    monkeypatch.setattr(chat, "run_tool_chat", fake_tool_chat)
+    monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
+
+    result = asyncio.run(
+        chat.run_chat(
+            {
+                "session_id": "sess-coverage-1",
+                "message": {"role": "user", "content": "질문"},
+                "client": {"user_id": "1", "locale": "ko-KR"},
+            },
+            "trace_test",
+            "req_test",
+        )
+    )
+
+    assert result["status"] == "insufficient_evidence"
+    assert result["reason_code"] == "LLM_LOW_CITATION_COVERAGE"
+    assert result["next_action"] == "REFINE_QUERY"

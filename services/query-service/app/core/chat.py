@@ -86,6 +86,14 @@ def _guard_forbidden_answer_keywords() -> List[str]:
     return [item.strip().lower() for item in raw.split(",") if item.strip()]
 
 
+def _chat_min_citation_coverage_ratio() -> float:
+    return min(1.0, max(0.0, float(os.getenv("QS_CHAT_MIN_CITATION_COVERAGE_RATIO", "0.2"))))
+
+
+def _chat_high_risk_min_citation_coverage_ratio() -> float:
+    return min(1.0, max(0.0, float(os.getenv("QS_CHAT_HIGH_RISK_MIN_CITATION_COVERAGE_RATIO", "0.5"))))
+
+
 def _chat_max_message_chars() -> int:
     return max(100, int(os.getenv("QS_CHAT_MAX_MESSAGE_CHARS", "1200")))
 
@@ -249,6 +257,12 @@ def _fallback_defaults(reason_code: str) -> Dict[str, Any]:
             "recoverable": True,
             "next_action": "RETRY",
             "retry_after_ms": 2000,
+        },
+        "LLM_LOW_CITATION_COVERAGE": {
+            "message": "답변이 참조한 근거 범위가 충분하지 않아 확정 답변을 보류했습니다. 질문을 조금 더 구체화해 주세요.",
+            "recoverable": True,
+            "next_action": "REFINE_QUERY",
+            "retry_after_ms": None,
         },
         "PROVIDER_TIMEOUT": {
             "message": "응답 시간이 지연되어 답변을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.",
@@ -418,6 +432,44 @@ def _validate_citations(raw_citations: List[str], chunks: List[dict[str, Any]]) 
         if citation in allowed and citation not in valid:
             valid.append(citation)
     return valid
+
+
+def _citation_doc_coverage(citations: List[str], chunks: List[dict[str, Any]]) -> float:
+    if not chunks:
+        return 0.0
+    citation_to_doc: Dict[str, str] = {}
+    selected_docs: set[str] = set()
+    for chunk in chunks:
+        doc_id = str(chunk.get("doc_id") or "").strip()
+        if not doc_id:
+            continue
+        selected_docs.add(doc_id)
+        citation_key = str(chunk.get("citation_key") or "").strip()
+        chunk_id = str(chunk.get("chunk_id") or "").strip()
+        if citation_key:
+            citation_to_doc[citation_key] = doc_id
+        if chunk_id:
+            citation_to_doc[chunk_id] = doc_id
+    if not selected_docs:
+        return 0.0
+    cited_docs: set[str] = set()
+    for citation in citations:
+        doc_id = citation_to_doc.get(str(citation))
+        if doc_id:
+            cited_docs.add(doc_id)
+    return float(len(cited_docs)) / float(len(selected_docs))
+
+
+def _citation_coverage_threshold(query: str) -> float:
+    if _is_high_risk_query(query):
+        return _chat_high_risk_min_citation_coverage_ratio()
+    return _chat_min_citation_coverage_ratio()
+
+
+def _is_citation_coverage_sufficient(query: str, citations: List[str], chunks: List[dict[str, Any]]) -> tuple[bool, float, float]:
+    coverage = _citation_doc_coverage(citations, chunks)
+    threshold = _citation_coverage_threshold(query)
+    return coverage >= threshold, coverage, threshold
 
 
 def _diversity_ratio(chunks: List[dict[str, Any]]) -> float:
@@ -917,6 +969,19 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
         response = _fallback(trace_id, request_id, None, "LLM_NO_CITATIONS", session_id=session_id, user_id=user_id)
         _save_unresolved_context(session_id, query, "LLM_NO_CITATIONS", trace_id=trace_id, request_id=request_id)
         return response
+    coverage_ok, coverage, coverage_threshold = _is_citation_coverage_sufficient(query, citations, selected)
+    if not coverage_ok:
+        metrics.inc(
+            "chat_citation_coverage_block_total",
+            {
+                "risk": "high" if _is_high_risk_query(query) else "normal",
+                "threshold": f"{coverage_threshold:.2f}",
+            },
+        )
+        metrics.inc("chat_requests_total", {"decision": "fallback"})
+        response = _fallback(trace_id, request_id, None, "LLM_LOW_CITATION_COVERAGE", session_id=session_id, user_id=user_id)
+        _save_unresolved_context(session_id, query, "LLM_LOW_CITATION_COVERAGE", trace_id=trace_id, request_id=request_id)
+        return response
 
     guarded_response, guard_reason = _guard_answer(
         query,
@@ -1221,6 +1286,43 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
                 metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
                 metrics.inc("chat_requests_total", {"decision": "fallback"})
                 return
+            coverage_ok, coverage, coverage_threshold = _is_citation_coverage_sufficient(query, citations, selected)
+            if not coverage_ok:
+                metrics.inc(
+                    "chat_citation_coverage_block_total",
+                    {
+                        "risk": "high" if _is_high_risk_query(query) else "normal",
+                        "threshold": f"{coverage_threshold:.2f}",
+                    },
+                )
+                yield _sse_event("error", {"code": "LLM_LOW_CITATION_COVERAGE", "message": "근거 커버리지가 부족합니다."})
+                risk_band = _compute_risk_band(query, "insufficient_evidence", [], "LLM_LOW_CITATION_COVERAGE")
+                fallback_response = _fallback(
+                    trace_id,
+                    request_id,
+                    None,
+                    "LLM_LOW_CITATION_COVERAGE",
+                    session_id=session_id,
+                    user_id=user_id,
+                )
+                yield _sse_event(
+                    "done",
+                    {
+                        "status": "insufficient_evidence",
+                        "citations": [],
+                        "risk_band": risk_band,
+                        "reason_code": fallback_response.get("reason_code"),
+                        "recoverable": fallback_response.get("recoverable"),
+                        "next_action": fallback_response.get("next_action"),
+                        "retry_after_ms": fallback_response.get("retry_after_ms"),
+                        "fallback_count": fallback_response.get("fallback_count"),
+                        "escalated": fallback_response.get("escalated"),
+                    },
+                )
+                _save_unresolved_context(session_id, query, "LLM_LOW_CITATION_COVERAGE", trace_id=trace_id, request_id=request_id)
+                metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
+                metrics.inc("chat_requests_total", {"decision": "fallback"})
+                return
 
             guarded_response, guard_reason = _guard_answer(
                 query,
@@ -1440,6 +1542,43 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
             },
         )
         _save_unresolved_context(session_id, query, "LLM_NO_CITATIONS", trace_id=trace_id, request_id=request_id)
+        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
+        metrics.inc("chat_requests_total", {"decision": "fallback"})
+        return
+    coverage_ok, coverage, coverage_threshold = _is_citation_coverage_sufficient(query, citations, selected)
+    if not coverage_ok:
+        metrics.inc(
+            "chat_citation_coverage_block_total",
+            {
+                "risk": "high" if _is_high_risk_query(query) else "normal",
+                "threshold": f"{coverage_threshold:.2f}",
+            },
+        )
+        yield _sse_event("error", {"code": "LLM_LOW_CITATION_COVERAGE", "message": "근거 커버리지가 부족합니다."})
+        risk_band = _compute_risk_band(query, "insufficient_evidence", [], "LLM_LOW_CITATION_COVERAGE")
+        fallback_response = _fallback(
+            trace_id,
+            request_id,
+            None,
+            "LLM_LOW_CITATION_COVERAGE",
+            session_id=session_id,
+            user_id=user_id,
+        )
+        yield _sse_event(
+            "done",
+            {
+                "status": "insufficient_evidence",
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": fallback_response.get("reason_code"),
+                "recoverable": fallback_response.get("recoverable"),
+                "next_action": fallback_response.get("next_action"),
+                "retry_after_ms": fallback_response.get("retry_after_ms"),
+                "fallback_count": fallback_response.get("fallback_count"),
+                "escalated": fallback_response.get("escalated"),
+            },
+        )
+        _save_unresolved_context(session_id, query, "LLM_LOW_CITATION_COVERAGE", trace_id=trace_id, request_id=request_id)
         metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return
