@@ -112,3 +112,119 @@ def test_run_chat_stream_tool_path(monkeypatch):
 
     assert any("event: meta" in event and '"tool_path"' in event for event in events)
     assert any("event: done" in event and '"status": "ok"' in event for event in events)
+
+
+def test_run_tool_chat_starts_sensitive_cancel_workflow(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        assert method == "GET"
+        assert path == "/orders/12"
+        return {
+            "order": {
+                "order_id": 12,
+                "order_no": "ORD202602220001",
+                "status": "PAID",
+                "total_amount": 33000,
+                "shipping_fee": 3000,
+                "payment_method": "CARD",
+            }
+        }
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+
+    payload = {
+        "session_id": "sess-cancel-1",
+        "message": {"role": "user", "content": "주문 12 취소해줘"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_test"))
+
+    assert result is not None
+    assert result["status"] == "pending_confirmation"
+    assert "확인 코드" in result["answer"]["content"]
+    assert result["citations"]
+
+
+def test_run_tool_chat_executes_cancel_after_confirmation(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        if method == "GET" and path == "/orders/12":
+            return {
+                "order": {
+                    "order_id": 12,
+                    "order_no": "ORD202602220001",
+                    "status": "PAID",
+                    "total_amount": 33000,
+                    "shipping_fee": 3000,
+                    "payment_method": "CARD",
+                }
+            }
+        if method == "POST" and path == "/orders/12/cancel":
+            return {
+                "order": {
+                    "order_id": 12,
+                    "order_no": "ORD202602220001",
+                    "status": "CANCELED",
+                    "total_amount": 33000,
+                    "shipping_fee": 3000,
+                    "payment_method": "CARD",
+                }
+            }
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    session_id = "sess-cancel-2"
+    start_payload = {
+        "session_id": session_id,
+        "message": {"role": "user", "content": "주문 12 취소해줘"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+    started = asyncio.run(chat_tools.run_tool_chat(start_payload, "trace_test", "req_start"))
+    token = started["answer"]["content"].split("[")[1].split("]")[0]
+
+    confirm_payload = {
+        "session_id": session_id,
+        "message": {"role": "user", "content": f"확인 {token}"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+    confirmed = asyncio.run(chat_tools.run_tool_chat(confirm_payload, "trace_test", "req_confirm"))
+
+    assert confirmed is not None
+    assert confirmed["status"] == "ok"
+    assert "취소가 완료" in confirmed["answer"]["content"]
+
+
+def test_run_tool_chat_blocks_when_confirmation_token_is_wrong(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        assert method == "GET"
+        assert path == "/orders/12"
+        return {
+            "order": {
+                "order_id": 12,
+                "order_no": "ORD202602220001",
+                "status": "PAID",
+                "total_amount": 33000,
+                "shipping_fee": 3000,
+                "payment_method": "CARD",
+            }
+        }
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    session_id = "sess-cancel-3"
+    start_payload = {
+        "session_id": session_id,
+        "message": {"role": "user", "content": "주문 12 취소해줘"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+    started = asyncio.run(chat_tools.run_tool_chat(start_payload, "trace_test", "req_start"))
+    assert started["status"] == "pending_confirmation"
+
+    confirm_payload = {
+        "session_id": session_id,
+        "message": {"role": "user", "content": "확인 AAAAAA"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+    result = asyncio.run(chat_tools.run_tool_chat(confirm_payload, "trace_test", "req_confirm"))
+
+    assert result is not None
+    assert result["status"] == "pending_confirmation"
+    assert "일치하지 않습니다" in result["answer"]["content"]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
 import re
 import time
@@ -10,7 +11,10 @@ from typing import Any
 
 import httpx
 
+from app.core.cache import get_cache
 from app.core.metrics import metrics
+
+_CACHE = get_cache()
 
 
 @dataclass
@@ -49,6 +53,14 @@ def _tool_lookup_retry_count() -> int:
     return max(0, int(os.getenv("QS_CHAT_TOOL_LOOKUP_RETRY", "1")))
 
 
+def _workflow_ttl_sec() -> int:
+    return max(60, int(os.getenv("QS_CHAT_WORKFLOW_TTL_SEC", "900")))
+
+
+def _confirmation_token_ttl_sec() -> int:
+    return max(60, int(os.getenv("QS_CHAT_CONFIRM_TOKEN_TTL_SEC", "300")))
+
+
 def _extract_query_text(request: dict[str, Any]) -> str:
     message = request.get("message") if isinstance(request.get("message"), dict) else {}
     content = message.get("content") if isinstance(message, dict) else None
@@ -79,6 +91,13 @@ def _detect_intent(query: str) -> ToolIntent:
     shipment_keywords = ["배송", "택배", "출고", "shipment", "tracking"]
     refund_keywords = ["환불", "refund", "반품"]
     order_keywords = ["주문", "order", "결제", "payment"]
+    cancel_keywords = ["주문 취소", "취소해", "cancel order", "cancel my order"]
+    refund_create_keywords = ["환불 신청", "환불 접수", "refund request", "환불해"]
+
+    if any(keyword in q for keyword in cancel_keywords) and (has_order_ref or "주문" in q or "order" in q):
+        return ToolIntent("ORDER_CANCEL", 0.96)
+    if any(keyword in q for keyword in refund_create_keywords) and (has_order_ref or "주문" in q or "order" in q):
+        return ToolIntent("REFUND_CREATE", 0.95)
 
     if any(keyword in q for keyword in shipment_keywords) and (has_lookup_word or has_order_ref):
         return ToolIntent("SHIPMENT_LOOKUP", 0.92)
@@ -197,6 +216,59 @@ def _build_response(
         "sources": sources,
         "citations": citations,
     }
+
+
+def _resolve_session_id(request: dict[str, Any], user_id: str | None) -> str:
+    session_id = request.get("session_id")
+    if isinstance(session_id, str) and session_id.strip():
+        return session_id.strip()
+    if user_id:
+        return f"u:{user_id}:default"
+    return "anon:default"
+
+
+def _workflow_cache_key(session_id: str) -> str:
+    return f"chat:workflow:{session_id}"
+
+
+def _build_confirmation_token(trace_id: str, request_id: str, session_id: str) -> str:
+    seed = f"{trace_id}:{request_id}:{session_id}:{time.time_ns()}"
+    digest = hashlib.sha256(seed.encode("utf-8")).hexdigest().upper()
+    return digest[:6]
+
+
+def _save_workflow(session_id: str, workflow: dict[str, Any], ttl_sec: int) -> None:
+    _CACHE.set_json(_workflow_cache_key(session_id), workflow, ttl=max(1, ttl_sec))
+
+
+def _load_workflow(session_id: str) -> dict[str, Any] | None:
+    cached = _CACHE.get_json(_workflow_cache_key(session_id))
+    if isinstance(cached, dict):
+        return cached
+    return None
+
+
+def _clear_workflow(session_id: str) -> None:
+    _CACHE.set_json(_workflow_cache_key(session_id), {"state": "cleared"}, ttl=1)
+
+
+def _is_confirmation_message(query: str) -> bool:
+    q = _normalize_text(query)
+    return any(keyword in q for keyword in ["확인", "동의", "진행", "승인", "yes", "confirm"])
+
+
+def _is_abort_message(query: str) -> bool:
+    q = _normalize_text(query)
+    return any(keyword in q for keyword in ["중단", "그만", "취소", "abort", "stop"])
+
+
+def _extract_confirmation_token(query: str) -> str | None:
+    if not query:
+        return None
+    token_match = re.search(r"\b([A-F0-9]{6})\b", query.upper())
+    if token_match:
+        return token_match.group(1)
+    return None
 
 
 def _record_tool_metrics(intent: str, tool: str, result: str) -> None:
@@ -502,11 +574,244 @@ async def _handle_refund_lookup(
     )
 
 
+async def _start_sensitive_workflow(
+    intent: str,
+    query: str,
+    *,
+    user_id: str,
+    session_id: str,
+    trace_id: str,
+    request_id: str,
+) -> dict[str, Any]:
+    order_ref = _extract_order_ref(query)
+    if order_ref.order_id is None and order_ref.order_no is None:
+        action_label = "주문취소" if intent == "ORDER_CANCEL" else "환불접수"
+        return _build_response(
+            trace_id,
+            request_id,
+            "needs_input",
+            f"{action_label}를 진행하려면 주문번호(예: ORD20260222XXXX) 또는 주문 ID를 먼저 입력해 주세요.",
+        )
+
+    try:
+        order = await _resolve_order(order_ref, user_id=user_id, trace_id=trace_id, request_id=request_id, intent=intent)
+    except ToolCallError as exc:
+        if exc.code == "order_not_found":
+            return _build_response(trace_id, request_id, "not_found", "해당 주문을 찾을 수 없습니다. 주문번호를 다시 확인해 주세요.")
+        if exc.status_code == 403:
+            metrics.inc("chat_sensitive_action_blocked_total", {"reason": "authz_denied"})
+            return _build_response(trace_id, request_id, "forbidden", "본인 주문만 처리할 수 있습니다.")
+        return _build_response(trace_id, request_id, "tool_fallback", "주문 정보를 확인하지 못해 작업을 시작할 수 없습니다.")
+
+    order_id = int(order.get("order_id"))
+    order_no = str(order.get("order_no") or f"#{order_id}")
+    token = _build_confirmation_token(trace_id, request_id, session_id)
+    workflow_type = intent
+    risk = "HIGH"
+    workflow = {
+        "workflow_id": f"wf:{session_id}:{request_id}",
+        "workflow_type": workflow_type,
+        "step": "awaiting_confirmation",
+        "user_id": user_id,
+        "order_id": order_id,
+        "order_no": order_no,
+        "risk": risk,
+        "confirmation_token": token,
+        "created_at": int(time.time()),
+        "expires_at": int(time.time()) + _confirmation_token_ttl_sec(),
+    }
+    _save_workflow(session_id, workflow, ttl_sec=_workflow_ttl_sec())
+    metrics.inc("chat_workflow_started_total", {"type": workflow_type})
+    metrics.inc(
+        "chat_sensitive_action_requested_total",
+        {"action": "order_cancel" if workflow_type == "ORDER_CANCEL" else "refund_create", "risk": risk},
+    )
+
+    action_label = "주문취소" if workflow_type == "ORDER_CANCEL" else "환불접수"
+    content = (
+        f"{order_no} {action_label} 요청을 접수했습니다. "
+        f"민감 작업이므로 확인 코드 [{token}]를 포함해 '확인 {token}'라고 입력해 주세요. "
+        "확인 코드는 5분 후 만료됩니다."
+    )
+    return _build_response(
+        trace_id,
+        request_id,
+        "pending_confirmation",
+        content,
+        tool_name="workflow_confirmation",
+        endpoint="POST /chat/workflow/confirm",
+        source_snippet=f"workflow_type={workflow_type}, order_no={order_no}",
+    )
+
+
+async def _execute_sensitive_workflow(
+    workflow: dict[str, Any],
+    *,
+    user_id: str,
+    session_id: str,
+    trace_id: str,
+    request_id: str,
+) -> dict[str, Any]:
+    workflow_type = str(workflow.get("workflow_type") or "")
+    order_id = int(workflow.get("order_id"))
+    order_no = str(workflow.get("order_no") or f"#{order_id}")
+
+    try:
+        if workflow_type == "ORDER_CANCEL":
+            cancel_result = await _call_commerce(
+                "POST",
+                f"/orders/{order_id}/cancel",
+                payload={"reason": "CHAT_CONFIRMATION"},
+                user_id=user_id,
+                trace_id=trace_id,
+                request_id=request_id,
+                tool_name="order_cancel",
+                intent="ORDER_CANCEL",
+            )
+            order = cancel_result.get("order") if isinstance(cancel_result, dict) else {}
+            status = _order_status_ko(str(order.get("status") or ""))
+            _clear_workflow(session_id)
+            metrics.inc("chat_sensitive_action_confirmed_total", {"action": "order_cancel"})
+            metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "success"})
+            return _build_response(
+                trace_id,
+                request_id,
+                "ok",
+                f"주문 {order_no} 취소가 완료되었습니다. 현재 상태는 '{status}'입니다.",
+                tool_name="order_cancel",
+                endpoint="POST /api/v1/orders/{orderId}/cancel",
+                source_snippet=f"order_no={order_no}, status={status}",
+            )
+
+        if workflow_type == "REFUND_CREATE":
+            refund_result = await _call_commerce(
+                "POST",
+                "/refunds",
+                payload={
+                    "orderId": order_id,
+                    "reasonCode": "OTHER",
+                    "reasonText": "CHAT_REQUEST",
+                    "idempotencyKey": f"chat-refund-{request_id}",
+                },
+                user_id=user_id,
+                trace_id=trace_id,
+                request_id=request_id,
+                tool_name="refund_create",
+                intent="REFUND_CREATE",
+            )
+            refund = refund_result.get("refund") if isinstance(refund_result, dict) else {}
+            refund_id = str(refund.get("refund_id") or "-")
+            refund_status = _refund_status_ko(str(refund.get("status") or ""))
+            refund_amount = _format_krw(refund.get("amount"))
+            _clear_workflow(session_id)
+            metrics.inc("chat_sensitive_action_confirmed_total", {"action": "refund_create"})
+            metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "success"})
+            return _build_response(
+                trace_id,
+                request_id,
+                "ok",
+                f"주문 {order_no} 환불 접수가 완료되었습니다. 접수번호는 {refund_id}, 상태는 '{refund_status}', 예상 환불 금액은 {refund_amount}입니다.",
+                tool_name="refund_create",
+                endpoint="POST /api/v1/refunds",
+                source_snippet=f"order_no={order_no}, refund_id={refund_id}, status={refund_status}",
+            )
+    except ToolCallError as exc:
+        metrics.inc("chat_workflow_step_error_total", {"type": workflow_type, "step": "execute", "error_code": exc.code})
+        if exc.status_code == 403:
+            metrics.inc("chat_sensitive_action_blocked_total", {"reason": "authz_denied"})
+            _clear_workflow(session_id)
+            metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "blocked"})
+            return _build_response(trace_id, request_id, "forbidden", "본인 주문만 처리할 수 있습니다.")
+        if exc.code == "invalid_state":
+            _clear_workflow(session_id)
+            metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "invalid_state"})
+            return _build_response(trace_id, request_id, "invalid_state", "현재 주문 상태에서는 요청한 작업을 진행할 수 없습니다.")
+        return _build_response(trace_id, request_id, "tool_fallback", "작업 실행 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
+
+    metrics.inc("chat_workflow_step_error_total", {"type": workflow_type, "step": "execute", "error_code": "unsupported"})
+    _clear_workflow(session_id)
+    metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "unsupported"})
+    return _build_response(trace_id, request_id, "unsupported", "지원하지 않는 워크플로우입니다.")
+
+
+async def _handle_pending_workflow(
+    query: str,
+    workflow: dict[str, Any],
+    *,
+    user_id: str,
+    session_id: str,
+    trace_id: str,
+    request_id: str,
+) -> dict[str, Any]:
+    token = str(workflow.get("confirmation_token") or "")
+    expected_user_id = str(workflow.get("user_id") or "")
+    workflow_type = str(workflow.get("workflow_type") or "")
+
+    if expected_user_id and expected_user_id != str(user_id):
+        metrics.inc("chat_sensitive_action_blocked_total", {"reason": "user_mismatch"})
+        _clear_workflow(session_id)
+        return _build_response(trace_id, request_id, "forbidden", "다른 사용자 세션의 작업은 확인할 수 없습니다.")
+
+    expires_at = int(workflow.get("expires_at") or 0)
+    if expires_at > 0 and int(time.time()) > expires_at:
+        metrics.inc("chat_sensitive_action_blocked_total", {"reason": "confirmation_expired"})
+        _clear_workflow(session_id)
+        metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "expired"})
+        return _build_response(trace_id, request_id, "expired", "확인 코드가 만료되어 요청이 취소되었습니다. 다시 요청해 주세요.")
+
+    if _is_abort_message(query) and "확인" not in _normalize_text(query):
+        _clear_workflow(session_id)
+        metrics.inc("chat_sensitive_action_blocked_total", {"reason": "user_aborted"})
+        metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "aborted"})
+        return _build_response(trace_id, request_id, "aborted", "요청하신 작업을 취소했습니다.")
+
+    if not _is_confirmation_message(query):
+        return _build_response(
+            trace_id,
+            request_id,
+            "pending_confirmation",
+            f"계속 진행하려면 확인 코드 [{token}]를 포함해 '확인 {token}'라고 입력해 주세요.",
+        )
+
+    provided = _extract_confirmation_token(query)
+    if not provided or provided != token:
+        metrics.inc("chat_sensitive_action_blocked_total", {"reason": "invalid_confirmation_token"})
+        return _build_response(
+            trace_id,
+            request_id,
+            "pending_confirmation",
+            f"확인 코드가 일치하지 않습니다. 코드 [{token}]를 정확히 입력해 주세요.",
+        )
+
+    return await _execute_sensitive_workflow(
+        workflow,
+        user_id=user_id,
+        session_id=session_id,
+        trace_id=trace_id,
+        request_id=request_id,
+    )
+
+
 async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str) -> dict[str, Any] | None:
     if not _tool_enabled():
         return None
 
     query = _extract_query_text(request)
+    user_id = _extract_user_id(request)
+    session_id = _resolve_session_id(request, user_id)
+
+    if user_id:
+        pending_workflow = _load_workflow(session_id)
+        if pending_workflow is not None and str(pending_workflow.get("step") or "") == "awaiting_confirmation":
+            return await _handle_pending_workflow(
+                query,
+                pending_workflow,
+                user_id=user_id,
+                session_id=session_id,
+                trace_id=trace_id,
+                request_id=request_id,
+            )
+
     intent = _detect_intent(query)
     if intent.name == "NONE":
         return None
@@ -519,7 +824,6 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
             "요청을 정확히 구분하지 못했습니다. 주문조회/배송조회/환불조회 중 어떤 도움인지 알려주세요.",
         )
 
-    user_id = _extract_user_id(request)
     if not user_id:
         metrics.inc("chat_tool_authz_denied_total", {"intent": intent.name})
         return _build_response(
@@ -530,6 +834,24 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
         )
 
     try:
+        if intent.name == "ORDER_CANCEL":
+            return await _start_sensitive_workflow(
+                "ORDER_CANCEL",
+                query,
+                user_id=user_id,
+                session_id=session_id,
+                trace_id=trace_id,
+                request_id=request_id,
+            )
+        if intent.name == "REFUND_CREATE":
+            return await _start_sensitive_workflow(
+                "REFUND_CREATE",
+                query,
+                user_id=user_id,
+                session_id=session_id,
+                trace_id=trace_id,
+                request_id=request_id,
+            )
         if intent.name == "ORDER_LOOKUP":
             return await _handle_order_lookup(query, user_id=user_id, trace_id=trace_id, request_id=request_id)
         if intent.name == "SHIPMENT_LOOKUP":
