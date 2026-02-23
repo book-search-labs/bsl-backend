@@ -55,6 +55,8 @@ export QS_LLM_PROVIDER_BLOCKLIST=primary
 # health score 기반 우선순위 라우팅
 export QS_LLM_HEALTH_ROUTING_ENABLED=1
 export QS_LLM_HEALTH_MIN_SAMPLE=3
+export QS_LLM_HEALTH_STREAK_PENALTY_STEP=0.1
+export QS_LLM_HEALTH_STREAK_PENALTY_MAX=0.5
 
 # 인텐트별 부분 정책 (REFUND/SHIPPING/ORDER/GENERAL)
 export QS_LLM_PROVIDER_BY_INTENT_JSON='{"SHIPPING":"fallback_1","REFUND":"primary"}'
@@ -86,6 +88,7 @@ curl -s -XPOST http://localhost:8088/chat \
 - `chat_provider_intent_route_total{intent,provider,reason,mode}`
 - `chat_provider_cost_steer_total{provider,reason,mode}`
 - `chat_provider_health_score{provider}`
+- `chat_provider_health_penalty{provider}`
 - `chat_provider_cost_per_1k{provider}`
 
 ## Sample Dev Bootstrap (Recommended)

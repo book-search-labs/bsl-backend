@@ -34,6 +34,14 @@ def _llm_health_min_sample() -> int:
     return max(1, int(os.getenv("QS_LLM_HEALTH_MIN_SAMPLE", "3")))
 
 
+def _llm_health_streak_penalty_step() -> float:
+    return max(0.0, float(os.getenv("QS_LLM_HEALTH_STREAK_PENALTY_STEP", "0.1")))
+
+
+def _llm_health_streak_penalty_max() -> float:
+    return min(0.95, max(0.0, float(os.getenv("QS_LLM_HEALTH_STREAK_PENALTY_MAX", "0.5"))))
+
+
 def _llm_url() -> str:
     return os.getenv("QS_LLM_URL", "http://localhost:8010").rstrip("/")
 
@@ -183,20 +191,28 @@ def _is_forced_provider_blocked(all_providers: List[tuple[str, str]], filtered_p
     return not in_filtered
 
 
-def _provider_success_ratio(provider: str) -> Optional[float]:
+def _provider_effective_score(provider: str) -> Optional[float]:
     raw = _CACHE.get_json(_provider_stats_cache_key(provider))
     if not isinstance(raw, dict):
         return None
+    effective = raw.get("effective_score")
+    if isinstance(effective, (int, float)):
+        return min(1.0, max(0.0, float(effective)))
     ok = raw.get("ok")
     fail = raw.get("fail")
+    streak_fail = raw.get("streak_fail")
     if not isinstance(ok, int) or not isinstance(fail, int):
         return None
+    if not isinstance(streak_fail, int):
+        streak_fail = 0
     if ok < 0 or fail < 0:
         return None
     total = ok + fail
     if total < _llm_health_min_sample():
         return None
-    return float(ok + 1) / float(total + 2)
+    base_score = float(ok + 1) / float(total + 2)
+    penalty = min(_llm_health_streak_penalty_max(), float(streak_fail) * _llm_health_streak_penalty_step())
+    return max(0.0, base_score - penalty)
 
 
 def _llm_provider_costs() -> Dict[str, float]:
@@ -232,24 +248,40 @@ def _record_provider_telemetry(provider: str, base_url: str, success: bool) -> N
     raw = _CACHE.get_json(key)
     ok = 0
     fail = 0
+    streak_fail = 0
     if isinstance(raw, dict):
         raw_ok = raw.get("ok")
         raw_fail = raw.get("fail")
+        raw_streak = raw.get("streak_fail")
         if isinstance(raw_ok, int) and raw_ok >= 0:
             ok = raw_ok
         if isinstance(raw_fail, int) and raw_fail >= 0:
             fail = raw_fail
+        if isinstance(raw_streak, int) and raw_streak >= 0:
+            streak_fail = raw_streak
     if success:
         ok += 1
+        streak_fail = 0
     else:
         fail += 1
+        streak_fail += 1
+    base_score = float(ok + 1) / float(ok + fail + 2)
+    penalty = min(_llm_health_streak_penalty_max(), float(streak_fail) * _llm_health_streak_penalty_step())
+    effective_score = max(0.0, base_score - penalty)
     _CACHE.set_json(
         key,
-        {"ok": ok, "fail": fail, "updated_at": int(time.time())},
+        {
+            "ok": ok,
+            "fail": fail,
+            "streak_fail": streak_fail,
+            "base_score": base_score,
+            "effective_score": effective_score,
+            "updated_at": int(time.time()),
+        },
         ttl=_llm_provider_stats_ttl_sec(),
     )
-    score = float(ok + 1) / float(ok + fail + 2)
-    metrics.set("chat_provider_health_score", {"provider": provider}, value=score)
+    metrics.set("chat_provider_health_penalty", {"provider": provider}, value=penalty)
+    metrics.set("chat_provider_health_score", {"provider": provider}, value=effective_score)
 
 
 def _apply_provider_blocklist(providers: List[tuple[str, str]], mode: str) -> List[tuple[str, str]]:
@@ -312,7 +344,7 @@ def _apply_provider_health(providers: List[tuple[str, str]], mode: str) -> List[
     scored: List[tuple[float, int, tuple[str, str]]] = []
     for idx, provider in enumerate(active):
         name = provider[0]
-        ratio = _provider_success_ratio(name)
+        ratio = _provider_effective_score(name)
         # keep unknown providers at neutral score to avoid starvation.
         score = 0.5 if ratio is None else ratio
         scored.append((score, -idx, provider))

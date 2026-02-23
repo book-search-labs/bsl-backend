@@ -175,3 +175,13 @@ Implement multi-provider LLM routing for chat:
   - reason: `selected`, `no_policy`, `not_found`
 - [x] 회귀 테스트 추가
   - 배송 질의(`SHIPPING`)에서 지정 provider가 우선 호출되는지 검증
+
+## Implementation Update (2026-02-23, Bundle 23)
+- [x] health score에 최근 연속 실패 페널티 반영
+  - provider 통계에 `streak_fail`를 저장하고 effective health score 계산
+  - `QS_LLM_HEALTH_STREAK_PENALTY_STEP`, `QS_LLM_HEALTH_STREAK_PENALTY_MAX`로 페널티 튜닝
+- [x] 관측 강화
+  - `chat_provider_health_penalty{provider}` gauge 추가
+  - 기존 `chat_provider_health_score{provider}`는 effective score를 노출
+- [x] 회귀 테스트 추가
+  - base ratio가 높은 provider라도 연속 실패가 크면 우선순위가 내려가는지 검증

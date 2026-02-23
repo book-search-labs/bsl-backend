@@ -782,6 +782,52 @@ def test_call_llm_json_prefers_higher_health_score_provider(monkeypatch):
     assert call_urls == ["http://llm-secondary/v1/generate"]
 
 
+def test_call_llm_json_penalizes_recent_failure_streak(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    call_urls = []
+
+    class FakeResponse:
+        def __init__(self, payload):
+            self.status_code = 200
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url, json=None, headers=None, timeout=None):
+            call_urls.append(url)
+            return FakeResponse({"content": "streak penalty routing", "citations": ["chunk-1"]})
+
+    before = dict(chat.metrics.snapshot())
+    monkeypatch.setenv("QS_LLM_URL", "http://llm-primary")
+    monkeypatch.setenv("QS_LLM_FALLBACK_URLS", "http://llm-secondary")
+    monkeypatch.setenv("QS_LLM_HEALTH_ROUTING_ENABLED", "1")
+    monkeypatch.setenv("QS_LLM_HEALTH_MIN_SAMPLE", "3")
+    monkeypatch.setenv("QS_LLM_HEALTH_STREAK_PENALTY_STEP", "0.1")
+    monkeypatch.setenv("QS_LLM_HEALTH_STREAK_PENALTY_MAX", "0.5")
+    monkeypatch.delenv("QS_LLM_PROVIDER_BLOCKLIST", raising=False)
+    monkeypatch.setattr(chat.httpx, "AsyncClient", FakeAsyncClient)
+
+    # primary has better base ratio but severe recent failure streak.
+    chat._CACHE.set_json(chat._provider_stats_cache_key("primary"), {"ok": 20, "fail": 1, "streak_fail": 5}, ttl=300)
+    chat._CACHE.set_json(chat._provider_stats_cache_key("fallback_1"), {"ok": 10, "fail": 1, "streak_fail": 0}, ttl=300)
+
+    data = asyncio.run(chat._call_llm_json({"model": "toy"}, "trace_test", "req_test"))
+
+    assert data["content"] == "streak penalty routing"
+    assert call_urls == ["http://llm-secondary/v1/generate"]
+    after = chat.metrics.snapshot()
+    penalty_key = "chat_provider_health_penalty{provider=primary}"
+    assert float(after.get(penalty_key, 0.0)) >= float(before.get(penalty_key, 0.0))
+
+
 def test_call_llm_json_marks_forced_provider_blocked(monkeypatch):
     chat._CACHE = CacheClient(None)
     call_urls = []
