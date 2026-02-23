@@ -165,3 +165,13 @@ Implement multi-provider LLM routing for chat:
   - `chat_provider_forced_route_total{reason=blocked}`로 운영자 가시성 확보
 - [x] 회귀 테스트 추가
   - `QS_LLM_FORCE_PROVIDER`와 `QS_LLM_PROVIDER_BLOCKLIST` 충돌 시 fallback provider로 정상 우회되는지 검증
+
+## Implementation Update (2026-02-23, Bundle 22)
+- [x] 인텐트별 provider 부분 정책 추가
+  - `QS_LLM_PROVIDER_BY_INTENT_JSON`으로 `REFUND/SHIPPING/ORDER/GENERAL`별 provider 지정
+  - 지정된 인텐트 정책이 유효하면 해당 provider를 우선 라우팅
+- [x] 인텐트 라우팅 메트릭 추가
+  - `chat_provider_intent_route_total{intent,provider,reason,mode}`
+  - reason: `selected`, `no_policy`, `not_found`
+- [x] 회귀 테스트 추가
+  - 배송 질의(`SHIPPING`)에서 지정 provider가 우선 호출되는지 검증

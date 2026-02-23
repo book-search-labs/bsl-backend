@@ -64,6 +64,27 @@ def _llm_low_cost_provider() -> str:
     return os.getenv("QS_LLM_LOW_COST_PROVIDER", "").strip()
 
 
+def _llm_provider_by_intent() -> Dict[str, str]:
+    raw = os.getenv("QS_LLM_PROVIDER_BY_INTENT_JSON", "").strip()
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except Exception:
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    result: Dict[str, str] = {}
+    for key, value in parsed.items():
+        if not isinstance(key, str) or not isinstance(value, str):
+            continue
+        intent = key.strip().upper()
+        target = value.strip()
+        if intent and target:
+            result[intent] = target
+    return result
+
+
 def _extract_user_query_from_llm_payload(payload: Dict[str, Any]) -> str:
     messages = payload.get("messages")
     if not isinstance(messages, list):
@@ -98,6 +119,38 @@ def _apply_cost_steering(providers: List[tuple[str, str]], payload: Dict[str, An
             selected = providers[idx]
             return [selected] + [item for pos, item in enumerate(providers) if pos != idx]
     metrics.inc("chat_provider_cost_steer_total", {"provider": "unknown", "reason": "not_found", "mode": mode})
+    return providers
+
+
+def _query_intent(query: str) -> str:
+    text = (query or "").lower()
+    if not text:
+        return "GENERAL"
+    if any(keyword in text for keyword in ("환불", "취소", "refund", "cancel")):
+        return "REFUND"
+    if any(keyword in text for keyword in ("배송", "shipping", "tracking")):
+        return "SHIPPING"
+    if any(keyword in text for keyword in ("주문", "결제", "order", "payment")):
+        return "ORDER"
+    return "GENERAL"
+
+
+def _apply_intent_routing(providers: List[tuple[str, str]], payload: Dict[str, Any], mode: str) -> List[tuple[str, str]]:
+    query = _extract_user_query_from_llm_payload(payload)
+    intent = _query_intent(query)
+    policy = _llm_provider_by_intent()
+    target = policy.get(intent)
+    if not target:
+        metrics.inc("chat_provider_intent_route_total", {"intent": intent, "provider": "none", "reason": "no_policy", "mode": mode})
+        return providers
+    for idx, (name, url) in enumerate(providers):
+        if target == name or target == url:
+            metrics.inc("chat_provider_intent_route_total", {"intent": intent, "provider": name, "reason": "selected", "mode": mode})
+            if idx == 0:
+                return providers
+            selected = providers[idx]
+            return [selected] + [item for pos, item in enumerate(providers) if pos != idx]
+    metrics.inc("chat_provider_intent_route_total", {"intent": intent, "provider": target, "reason": "not_found", "mode": mode})
     return providers
 
 
@@ -1050,6 +1103,7 @@ async def _call_llm_json(payload: Dict[str, Any], trace_id: str, request_id: str
     forced_blocked = _is_forced_provider_blocked(all_providers, providers)
     if forced_blocked and forced:
         metrics.inc("chat_provider_forced_route_total", {"provider": forced, "reason": "blocked", "mode": "json"})
+    providers = _apply_intent_routing(providers, payload, mode="json")
     providers = _apply_cost_steering(providers, payload, mode="json")
     providers = _apply_provider_health(providers, mode="json")
     if not forced_blocked:
@@ -1128,6 +1182,7 @@ async def _stream_llm(
         forced_blocked = _is_forced_provider_blocked(all_providers, providers)
         if forced_blocked and forced:
             metrics.inc("chat_provider_forced_route_total", {"provider": forced, "reason": "blocked", "mode": "stream"})
+        providers = _apply_intent_routing(providers, payload, mode="stream")
         providers = _apply_cost_steering(providers, payload, mode="stream")
         providers = _apply_provider_health(providers, mode="stream")
         if not forced_blocked:

@@ -56,6 +56,9 @@ export QS_LLM_PROVIDER_BLOCKLIST=primary
 export QS_LLM_HEALTH_ROUTING_ENABLED=1
 export QS_LLM_HEALTH_MIN_SAMPLE=3
 
+# 인텐트별 부분 정책 (REFUND/SHIPPING/ORDER/GENERAL)
+export QS_LLM_PROVIDER_BY_INTENT_JSON='{"SHIPPING":"fallback_1","REFUND":"primary"}'
+
 # 비용 스티어링(고위험 질의는 자동 bypass)
 export QS_LLM_COST_STEERING_ENABLED=1
 export QS_LLM_LOW_COST_PROVIDER=fallback_1
@@ -80,6 +83,7 @@ curl -s -XPOST http://localhost:8088/chat \
 - `chat_provider_route_total{provider,result,mode}`
 - `chat_provider_failover_total{from,to,reason,mode}`
 - `chat_provider_forced_route_total{provider,reason,mode}`
+- `chat_provider_intent_route_total{intent,provider,reason,mode}`
 - `chat_provider_cost_steer_total{provider,reason,mode}`
 - `chat_provider_health_score{provider}`
 - `chat_provider_cost_per_1k{provider}`

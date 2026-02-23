@@ -821,6 +821,53 @@ def test_call_llm_json_marks_forced_provider_blocked(monkeypatch):
     assert after.get(blocked_key, 0) >= before.get(blocked_key, 0) + 1
 
 
+def test_call_llm_json_applies_intent_provider_policy(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    call_urls = []
+
+    class FakeResponse:
+        def __init__(self, payload):
+            self.status_code = 200
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url, json=None, headers=None, timeout=None):
+            call_urls.append(url)
+            return FakeResponse({"content": "인텐트 라우팅", "citations": ["chunk-1"]})
+
+    before = dict(chat.metrics.snapshot())
+    monkeypatch.setenv("QS_LLM_URL", "http://llm-primary")
+    monkeypatch.setenv("QS_LLM_FALLBACK_URLS", "http://llm-secondary")
+    monkeypatch.setenv("QS_LLM_PROVIDER_BY_INTENT_JSON", '{"SHIPPING":"fallback_1"}')
+    monkeypatch.delenv("QS_LLM_FORCE_PROVIDER", raising=False)
+    monkeypatch.delenv("QS_LLM_PROVIDER_BLOCKLIST", raising=False)
+    monkeypatch.setattr(chat.httpx, "AsyncClient", FakeAsyncClient)
+
+    payload = {
+        "model": "toy",
+        "messages": [
+            {"role": "system", "content": "system"},
+            {"role": "user", "content": "배송 현황 알려줘"},
+        ],
+    }
+    data = asyncio.run(chat._call_llm_json(payload, "trace_test", "req_test"))
+
+    assert data["content"] == "인텐트 라우팅"
+    assert call_urls == ["http://llm-secondary/v1/generate"]
+    after = chat.metrics.snapshot()
+    key = "chat_provider_intent_route_total{intent=SHIPPING,mode=json,provider=fallback_1,reason=selected}"
+    assert after.get(key, 0) >= before.get(key, 0) + 1
+
+
 def test_stream_llm_fails_over_before_first_token(monkeypatch):
     chat._CACHE = CacheClient(None)
     call_urls = []
