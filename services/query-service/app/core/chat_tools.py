@@ -91,6 +91,8 @@ def _detect_intent(query: str) -> ToolIntent:
     shipment_keywords = ["배송", "택배", "출고", "shipment", "tracking"]
     refund_keywords = ["환불", "refund", "반품"]
     order_keywords = ["주문", "order", "결제", "payment"]
+    ticket_status_keywords = ["문의 상태", "티켓 상태", "ticket status", "ticket lookup", "내 문의"]
+    ticket_create_keywords = ["문의 접수", "티켓 생성", "상담원 연결", "문의 남길", "ticket create", "support ticket"]
     cancel_keywords = ["주문 취소", "취소해", "cancel order", "cancel my order"]
     refund_create_keywords = ["환불 신청", "환불 접수", "refund request", "환불해"]
 
@@ -98,6 +100,10 @@ def _detect_intent(query: str) -> ToolIntent:
         return ToolIntent("ORDER_CANCEL", 0.96)
     if any(keyword in q for keyword in refund_create_keywords) and (has_order_ref or "주문" in q or "order" in q):
         return ToolIntent("REFUND_CREATE", 0.95)
+    if any(keyword in q for keyword in ticket_status_keywords):
+        return ToolIntent("TICKET_STATUS", 0.95)
+    if any(keyword in q for keyword in ticket_create_keywords):
+        return ToolIntent("TICKET_CREATE", 0.93)
 
     if any(keyword in q for keyword in shipment_keywords) and (has_lookup_word or has_order_ref):
         return ToolIntent("SHIPMENT_LOOKUP", 0.92)
@@ -252,6 +258,25 @@ def _clear_workflow(session_id: str) -> None:
     _CACHE.set_json(_workflow_cache_key(session_id), {"state": "cleared"}, ttl=1)
 
 
+def _last_ticket_cache_key(session_id: str) -> str:
+    return f"chat:last-ticket:{session_id}"
+
+
+def _save_last_ticket_no(session_id: str, ticket_no: str) -> None:
+    if ticket_no:
+        _CACHE.set_json(_last_ticket_cache_key(session_id), {"ticket_no": ticket_no}, ttl=max(600, _workflow_ttl_sec()))
+
+
+def _load_last_ticket_no(session_id: str) -> str | None:
+    cached = _CACHE.get_json(_last_ticket_cache_key(session_id))
+    if not isinstance(cached, dict):
+        return None
+    value = cached.get("ticket_no")
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
+
+
 def _is_confirmation_message(query: str) -> bool:
     q = _normalize_text(query)
     return any(keyword in q for keyword in ["확인", "동의", "진행", "승인", "yes", "confirm"])
@@ -259,7 +284,7 @@ def _is_confirmation_message(query: str) -> bool:
 
 def _is_abort_message(query: str) -> bool:
     q = _normalize_text(query)
-    return any(keyword in q for keyword in ["중단", "그만", "취소", "abort", "stop"])
+    return any(keyword in q for keyword in ["요청 취소", "중단", "그만", "abort", "stop"])
 
 
 def _extract_confirmation_token(query: str) -> str | None:
@@ -269,6 +294,60 @@ def _extract_confirmation_token(query: str) -> str | None:
     if token_match:
         return token_match.group(1)
     return None
+
+
+def _extract_ticket_no(query: str) -> str | None:
+    if not query:
+        return None
+    match = re.search(r"\b(STK[0-9A-Z]+)\b", query.upper())
+    if match:
+        return match.group(1)
+    return None
+
+
+def _ticket_status_ko(status: str | None) -> str:
+    mapping = {
+        "RECEIVED": "접수 완료",
+        "IN_PROGRESS": "처리 중",
+        "WAITING_USER": "사용자 확인 필요",
+        "RESOLVED": "해결 완료",
+        "CLOSED": "종료",
+    }
+    if not status:
+        return "상태 미정"
+    return mapping.get(status, status)
+
+
+def _ticket_followup_message(status: str | None) -> str:
+    normalized = (status or "").upper()
+    mapping = {
+        "RECEIVED": "접수된 순서대로 확인 중입니다. 추가 정보가 있으면 채팅으로 남겨 주세요.",
+        "IN_PROGRESS": "담당자가 확인 중입니다. 처리 완료 시 즉시 안내드리겠습니다.",
+        "WAITING_USER": "추가 정보가 필요합니다. 주문번호/증상 내용을 더 남겨 주세요.",
+        "RESOLVED": "처리가 완료되었습니다. 동일 문제가 재발하면 티켓번호와 함께 말씀해 주세요.",
+        "CLOSED": "티켓이 종료되었습니다. 새 문의가 필요하면 다시 접수해 주세요.",
+    }
+    return mapping.get(normalized, "현재 티켓 상태를 확인했습니다.")
+
+
+def _infer_ticket_category(query: str) -> str:
+    q = _normalize_text(query)
+    if any(keyword in q for keyword in ["환불", "반품", "refund"]):
+        return "REFUND"
+    if any(keyword in q for keyword in ["배송", "택배", "shipment", "tracking"]):
+        return "SHIPPING"
+    if any(keyword in q for keyword in ["주문", "결제", "order", "payment"]):
+        return "ORDER"
+    return "GENERAL"
+
+
+def _infer_ticket_severity(query: str) -> str:
+    q = _normalize_text(query)
+    if any(keyword in q for keyword in ["긴급", "critical", "결제 실패", "오류", "에러", "실패"]):
+        return "HIGH"
+    if any(keyword in q for keyword in ["불편", "지연", "delay"]):
+        return "MEDIUM"
+    return "LOW"
 
 
 def _record_tool_metrics(intent: str, tool: str, result: str) -> None:
@@ -644,6 +723,137 @@ async def _start_sensitive_workflow(
     )
 
 
+async def _handle_ticket_create(
+    query: str,
+    *,
+    user_id: str,
+    session_id: str,
+    trace_id: str,
+    request_id: str,
+) -> dict[str, Any]:
+    category = _infer_ticket_category(query)
+    severity = _infer_ticket_severity(query)
+    order_ref = _extract_order_ref(query)
+    order_id: int | None = None
+    if order_ref.order_id is not None or order_ref.order_no is not None:
+        try:
+            order = await _resolve_order(order_ref, user_id=user_id, trace_id=trace_id, request_id=request_id, intent="TICKET_CREATE")
+            order_id = int(order.get("order_id"))
+        except ToolCallError as exc:
+            if exc.status_code == 403:
+                metrics.inc("chat_ticket_authz_denied_total")
+                return _build_response(trace_id, request_id, "forbidden", "본인 주문 기반 문의만 접수할 수 있습니다.")
+            if exc.code == "order_not_found":
+                return _build_response(trace_id, request_id, "not_found", "문의에 연결할 주문 정보를 찾지 못했습니다. 주문번호를 다시 확인해 주세요.")
+
+    payload = {
+        "orderId": order_id,
+        "category": category,
+        "severity": severity,
+        "summary": query[:255],
+        "details": {"query": query},
+        "errorCode": "CHAT_UNRESOLVED",
+        "chatSessionId": session_id,
+        "chatRequestId": request_id,
+    }
+
+    try:
+        created = await _call_commerce(
+            "POST",
+            "/support/tickets",
+            payload=payload,
+            user_id=user_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            tool_name="ticket_create",
+            intent="TICKET_CREATE",
+        )
+    except ToolCallError as exc:
+        if exc.status_code == 403:
+            metrics.inc("chat_ticket_authz_denied_total")
+            return _build_response(trace_id, request_id, "forbidden", "본인 티켓만 접수할 수 있습니다.")
+        return _build_response(trace_id, request_id, "tool_fallback", "문의 접수 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
+
+    ticket = created.get("ticket") if isinstance(created, dict) else {}
+    ticket_no = str(ticket.get("ticket_no") or "")
+    status = str(ticket.get("status") or "RECEIVED")
+    status_ko = _ticket_status_ko(status)
+    eta_minutes = int(created.get("expected_response_minutes") or 0)
+    _save_last_ticket_no(session_id, ticket_no)
+    metrics.inc("chat_ticket_created_total", {"category": category})
+
+    content = (
+        f"문의가 접수되었습니다. 접수번호는 {ticket_no}, 현재 상태는 '{status_ko}'입니다. "
+        f"예상 첫 응답 시간은 약 {eta_minutes}분입니다."
+    )
+    return _build_response(
+        trace_id,
+        request_id,
+        "ok",
+        content,
+        tool_name="ticket_create",
+        endpoint="POST /api/v1/support/tickets",
+        source_snippet=f"ticket_no={ticket_no}, status={status}",
+    )
+
+
+async def _handle_ticket_status(
+    query: str,
+    *,
+    user_id: str,
+    session_id: str,
+    trace_id: str,
+    request_id: str,
+) -> dict[str, Any]:
+    ticket_no = _extract_ticket_no(query) or _load_last_ticket_no(session_id)
+    if not ticket_no:
+        return _build_response(
+            trace_id,
+            request_id,
+            "needs_input",
+            "티켓 상태 조회를 위해 접수번호(예: STK202602230001)를 입력해 주세요.",
+        )
+
+    try:
+        looked_up = await _call_commerce(
+            "GET",
+            f"/support/tickets/by-number/{ticket_no}",
+            user_id=user_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            tool_name="ticket_status_lookup",
+            intent="TICKET_STATUS",
+        )
+    except ToolCallError as exc:
+        if exc.status_code == 403:
+            metrics.inc("chat_ticket_authz_denied_total")
+            metrics.inc("chat_ticket_status_lookup_total", {"result": "forbidden"})
+            return _build_response(trace_id, request_id, "forbidden", "본인 티켓만 조회할 수 있습니다.")
+        if exc.code == "not_found":
+            metrics.inc("chat_ticket_status_lookup_total", {"result": "not_found"})
+            return _build_response(trace_id, request_id, "not_found", "해당 접수번호의 문의를 찾을 수 없습니다.")
+        metrics.inc("chat_ticket_status_lookup_total", {"result": "error"})
+        return _build_response(trace_id, request_id, "tool_fallback", "티켓 상태를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.")
+
+    ticket = looked_up.get("ticket") if isinstance(looked_up, dict) else {}
+    status = str(ticket.get("status") or "RECEIVED")
+    status_ko = _ticket_status_ko(status)
+    followup = _ticket_followup_message(status)
+    metrics.inc("chat_ticket_status_lookup_total", {"result": "ok"})
+    metrics.inc("chat_ticket_followup_prompt_total", {"status": status})
+
+    content = f"접수번호 {ticket_no}의 현재 상태는 '{status_ko}'입니다. {followup}"
+    return _build_response(
+        trace_id,
+        request_id,
+        "ok",
+        content,
+        tool_name="ticket_status_lookup",
+        endpoint="GET /api/v1/support/tickets/by-number/{ticketNo}",
+        source_snippet=f"ticket_no={ticket_no}, status={status}",
+    )
+
+
 async def _execute_sensitive_workflow(
     workflow: dict[str, Any],
     *,
@@ -846,6 +1056,22 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
         if intent.name == "REFUND_CREATE":
             return await _start_sensitive_workflow(
                 "REFUND_CREATE",
+                query,
+                user_id=user_id,
+                session_id=session_id,
+                trace_id=trace_id,
+                request_id=request_id,
+            )
+        if intent.name == "TICKET_CREATE":
+            return await _handle_ticket_create(
+                query,
+                user_id=user_id,
+                session_id=session_id,
+                trace_id=trace_id,
+                request_id=request_id,
+            )
+        if intent.name == "TICKET_STATUS":
+            return await _handle_ticket_status(
                 query,
                 user_id=user_id,
                 session_id=session_id,

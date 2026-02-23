@@ -33,7 +33,8 @@ public class CommerceProxyController {
             "/admin/inventory/**",
             "/admin/payments/**",
             "/admin/refunds/**",
-            "/admin/shipments/**"
+            "/admin/shipments/**",
+            "/admin/support/**"
         },
         produces = MediaType.APPLICATION_JSON_VALUE
     )

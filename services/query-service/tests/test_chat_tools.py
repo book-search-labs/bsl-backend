@@ -228,3 +228,100 @@ def test_run_tool_chat_blocks_when_confirmation_token_is_wrong(monkeypatch):
     assert result is not None
     assert result["status"] == "pending_confirmation"
     assert "일치하지 않습니다" in result["answer"]["content"]
+
+
+def test_run_tool_chat_ticket_create_and_status_lookup(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        if method == "POST" and path == "/support/tickets":
+            return {
+                "ticket": {
+                    "ticket_id": 11,
+                    "ticket_no": "STK202602230123",
+                    "status": "RECEIVED",
+                    "severity": "LOW",
+                },
+                "expected_response_minutes": 240,
+            }
+        if method == "GET" and path == "/support/tickets/by-number/STK202602230123":
+            return {
+                "ticket": {
+                    "ticket_id": 11,
+                    "ticket_no": "STK202602230123",
+                    "status": "IN_PROGRESS",
+                    "severity": "LOW",
+                },
+                "expected_response_minutes": 240,
+            }
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    session_id = "sess-ticket-1"
+
+    create_payload = {
+        "session_id": session_id,
+        "message": {"role": "user", "content": "문의 접수해줘 결제가 안돼"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+    created = asyncio.run(chat_tools.run_tool_chat(create_payload, "trace_test", "req_create"))
+
+    assert created is not None
+    assert created["status"] == "ok"
+    assert "STK202602230123" in created["answer"]["content"]
+
+    status_payload = {
+        "session_id": session_id,
+        "message": {"role": "user", "content": "내 문의 상태 알려줘"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+    status_result = asyncio.run(chat_tools.run_tool_chat(status_payload, "trace_test", "req_status"))
+
+    assert status_result is not None
+    assert status_result["status"] == "ok"
+    assert "처리 중" in status_result["answer"]["content"]
+
+
+def test_run_tool_chat_executes_refund_after_confirmation(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        if method == "GET" and path == "/orders/12":
+            return {
+                "order": {
+                    "order_id": 12,
+                    "order_no": "ORD202602220001",
+                    "status": "DELIVERED",
+                    "total_amount": 33000,
+                    "shipping_fee": 3000,
+                    "payment_method": "CARD",
+                }
+            }
+        if method == "POST" and path == "/refunds":
+            return {
+                "refund": {
+                    "refund_id": 88,
+                    "order_id": 12,
+                    "status": "REQUESTED",
+                    "amount": 30000,
+                }
+            }
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    session_id = "sess-refund-1"
+
+    start_payload = {
+        "session_id": session_id,
+        "message": {"role": "user", "content": "주문 12 환불 신청해줘"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+    started = asyncio.run(chat_tools.run_tool_chat(start_payload, "trace_test", "req_start"))
+    token = started["answer"]["content"].split("[")[1].split("]")[0]
+
+    confirm_payload = {
+        "session_id": session_id,
+        "message": {"role": "user", "content": f"확인 {token}"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+    confirmed = asyncio.run(chat_tools.run_tool_chat(confirm_payload, "trace_test", "req_confirm"))
+
+    assert confirmed is not None
+    assert confirmed["status"] == "ok"
+    assert "환불 접수가 완료" in confirmed["answer"]["content"]
