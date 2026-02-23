@@ -49,6 +49,13 @@ export QS_LLM_PROVIDER_COOLDOWN_SEC=15
 # 강제 라우팅 (alias: primary|fallback_1|fallback_2... 또는 base URL)
 export QS_LLM_FORCE_PROVIDER=fallback_1
 
+# provider 수동 차단 (alias/url comma-separated)
+export QS_LLM_PROVIDER_BLOCKLIST=primary
+
+# health score 기반 우선순위 라우팅
+export QS_LLM_HEALTH_ROUTING_ENABLED=1
+export QS_LLM_HEALTH_MIN_SAMPLE=3
+
 # 비용 스티어링(고위험 질의는 자동 bypass)
 export QS_LLM_COST_STEERING_ENABLED=1
 export QS_LLM_LOW_COST_PROVIDER=fallback_1

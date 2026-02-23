@@ -147,3 +147,14 @@ Implement multi-provider LLM routing for chat:
 - [x] 비용 스티어링 안전장치 회귀 테스트 추가
   - 고위험 질의(환불/배송 등)에서 비용 스티어링이 bypass 되고 primary provider가 유지되는지 검증
   - `chat_provider_cost_steer_total{reason=high_risk_bypass}` 메트릭 검증
+
+## Implementation Update (2026-02-23, Bundle 20)
+- [x] 운영자 수동 차단(blocklist) 추가
+  - `QS_LLM_PROVIDER_BLOCKLIST`(alias/url comma-separated)로 provider 라우팅 제외
+  - 잘못된 blocklist로 전부 차단된 경우에는 가용성 보존을 위해 기본 체인으로 자동 복귀
+- [x] health score 기반 우선순위 라우팅 추가
+  - `QS_LLM_HEALTH_ROUTING_ENABLED`, `QS_LLM_HEALTH_MIN_SAMPLE` 기반 provider 정렬
+  - provider 통계가 충분하면 높은 성공률 provider를 우선 호출
+- [x] 회귀 테스트 추가
+  - blocklist 적용 시 fallback provider 우선 호출 검증
+  - health score 우위 provider 선호 호출 검증

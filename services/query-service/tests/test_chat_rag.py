@@ -703,6 +703,85 @@ def test_call_llm_json_skips_provider_on_cooldown(monkeypatch):
     assert after.get(route_key, 0) >= before.get(route_key, 0) + 1
 
 
+def test_call_llm_json_applies_provider_blocklist(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    call_urls = []
+
+    class FakeResponse:
+        def __init__(self, payload):
+            self.status_code = 200
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url, json=None, headers=None, timeout=None):
+            call_urls.append(url)
+            return FakeResponse({"content": "blocklist 우회", "citations": ["chunk-1"]})
+
+    before = dict(chat.metrics.snapshot())
+    monkeypatch.setenv("QS_LLM_URL", "http://llm-primary")
+    monkeypatch.setenv("QS_LLM_FALLBACK_URLS", "http://llm-secondary")
+    monkeypatch.setenv("QS_LLM_PROVIDER_BLOCKLIST", "primary")
+    monkeypatch.setattr(chat.httpx, "AsyncClient", FakeAsyncClient)
+
+    data = asyncio.run(chat._call_llm_json({"model": "toy"}, "trace_test", "req_test"))
+
+    assert data["content"] == "blocklist 우회"
+    assert call_urls == ["http://llm-secondary/v1/generate"]
+    after = chat.metrics.snapshot()
+    blocked_key = "chat_provider_block_total{mode=json,provider=primary,reason=blocklist}"
+    route_key = "chat_provider_route_total{mode=json,provider=fallback_1,result=ok}"
+    assert after.get(blocked_key, 0) >= before.get(blocked_key, 0) + 1
+    assert after.get(route_key, 0) >= before.get(route_key, 0) + 1
+
+
+def test_call_llm_json_prefers_higher_health_score_provider(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    call_urls = []
+
+    class FakeResponse:
+        def __init__(self, payload):
+            self.status_code = 200
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url, json=None, headers=None, timeout=None):
+            call_urls.append(url)
+            return FakeResponse({"content": "health 우선 라우팅", "citations": ["chunk-1"]})
+
+    monkeypatch.setenv("QS_LLM_URL", "http://llm-primary")
+    monkeypatch.setenv("QS_LLM_FALLBACK_URLS", "http://llm-secondary")
+    monkeypatch.setenv("QS_LLM_HEALTH_ROUTING_ENABLED", "1")
+    monkeypatch.setenv("QS_LLM_HEALTH_MIN_SAMPLE", "3")
+    monkeypatch.delenv("QS_LLM_PROVIDER_BLOCKLIST", raising=False)
+    monkeypatch.setattr(chat.httpx, "AsyncClient", FakeAsyncClient)
+
+    chat._CACHE.set_json(chat._provider_stats_cache_key("primary"), {"ok": 1, "fail": 8}, ttl=300)
+    chat._CACHE.set_json(chat._provider_stats_cache_key("fallback_1"), {"ok": 8, "fail": 1}, ttl=300)
+
+    data = asyncio.run(chat._call_llm_json({"model": "toy"}, "trace_test", "req_test"))
+
+    assert data["content"] == "health 우선 라우팅"
+    assert call_urls == ["http://llm-secondary/v1/generate"]
+
+
 def test_stream_llm_fails_over_before_first_token(monkeypatch):
     chat._CACHE = CacheClient(None)
     call_urls = []

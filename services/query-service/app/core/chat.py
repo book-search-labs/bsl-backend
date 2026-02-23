@@ -26,6 +26,14 @@ def _llm_provider_stats_ttl_sec() -> int:
     return max(300, int(os.getenv("QS_LLM_PROVIDER_STATS_TTL_SEC", "86400")))
 
 
+def _llm_health_routing_enabled() -> bool:
+    return str(os.getenv("QS_LLM_HEALTH_ROUTING_ENABLED", "1")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _llm_health_min_sample() -> int:
+    return max(1, int(os.getenv("QS_LLM_HEALTH_MIN_SAMPLE", "3")))
+
+
 def _llm_url() -> str:
     return os.getenv("QS_LLM_URL", "http://localhost:8010").rstrip("/")
 
@@ -101,6 +109,27 @@ def _provider_stats_cache_key(provider: str) -> str:
     return f"chat:provider:stats:{provider}"
 
 
+def _llm_provider_blocklist() -> set[str]:
+    raw = os.getenv("QS_LLM_PROVIDER_BLOCKLIST", "")
+    return {item.strip() for item in raw.split(",") if item.strip()}
+
+
+def _provider_success_ratio(provider: str) -> Optional[float]:
+    raw = _CACHE.get_json(_provider_stats_cache_key(provider))
+    if not isinstance(raw, dict):
+        return None
+    ok = raw.get("ok")
+    fail = raw.get("fail")
+    if not isinstance(ok, int) or not isinstance(fail, int):
+        return None
+    if ok < 0 or fail < 0:
+        return None
+    total = ok + fail
+    if total < _llm_health_min_sample():
+        return None
+    return float(ok + 1) / float(total + 2)
+
+
 def _llm_provider_costs() -> Dict[str, float]:
     raw = os.getenv("QS_LLM_PROVIDER_COSTS_JSON", "").strip()
     if not raw:
@@ -154,6 +183,22 @@ def _record_provider_telemetry(provider: str, base_url: str, success: bool) -> N
     metrics.set("chat_provider_health_score", {"provider": provider}, value=score)
 
 
+def _apply_provider_blocklist(providers: List[tuple[str, str]], mode: str) -> List[tuple[str, str]]:
+    blocklist = _llm_provider_blocklist()
+    if not blocklist:
+        return providers
+    kept: List[tuple[str, str]] = []
+    blocked: List[tuple[str, str]] = []
+    for name, url in providers:
+        if name in blocklist or url in blocklist:
+            metrics.inc("chat_provider_block_total", {"provider": name, "reason": "blocklist", "mode": mode})
+            blocked.append((name, url))
+            continue
+        kept.append((name, url))
+    # keep service available if all providers are blocked by mistake
+    return kept or providers
+
+
 def _mark_provider_unhealthy(provider: str, reason: str) -> None:
     ttl = _llm_provider_cooldown_sec()
     if ttl <= 0:
@@ -178,19 +223,33 @@ def _is_provider_unhealthy(provider: str) -> bool:
 
 def _apply_provider_health(providers: List[tuple[str, str]], mode: str) -> List[tuple[str, str]]:
     if _llm_provider_cooldown_sec() <= 0:
-        return providers
-    healthy: List[tuple[str, str]] = []
-    unhealthy: List[tuple[str, str]] = []
-    for provider in providers:
+        active = providers
+    else:
+        healthy: List[tuple[str, str]] = []
+        unhealthy: List[tuple[str, str]] = []
+        for provider in providers:
+            name = provider[0]
+            if _is_provider_unhealthy(name):
+                metrics.inc("chat_provider_route_total", {"provider": name, "result": "cooldown_skip", "mode": mode})
+                unhealthy.append(provider)
+                continue
+            healthy.append(provider)
+        if not healthy:
+            active = providers
+        else:
+            active = healthy + unhealthy
+    if not _llm_health_routing_enabled():
+        return active
+    scored: List[tuple[float, int, tuple[str, str]]] = []
+    for idx, provider in enumerate(active):
         name = provider[0]
-        if _is_provider_unhealthy(name):
-            metrics.inc("chat_provider_route_total", {"provider": name, "result": "cooldown_skip", "mode": mode})
-            unhealthy.append(provider)
-            continue
-        healthy.append(provider)
-    if not healthy:
-        return providers
-    return healthy + unhealthy
+        ratio = _provider_success_ratio(name)
+        # keep unknown providers at neutral score to avoid starvation.
+        score = 0.5 if ratio is None else ratio
+        scored.append((score, -idx, provider))
+        metrics.set("chat_provider_health_score", {"provider": name}, value=score)
+    scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return [item[2] for item in scored]
 
 
 def _apply_provider_override(providers: List[tuple[str, str]], mode: str) -> List[tuple[str, str]]:
@@ -969,7 +1028,8 @@ def _build_llm_payload(request: Dict[str, Any], trace_id: str, request_id: str, 
 async def _call_llm_json(payload: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
     headers = {"x-trace-id": trace_id, "x-request-id": request_id}
     started = time.perf_counter()
-    providers = _apply_cost_steering(_llm_provider_chain(), payload, mode="json")
+    providers = _apply_provider_blocklist(_llm_provider_chain(), mode="json")
+    providers = _apply_cost_steering(providers, payload, mode="json")
     providers = _apply_provider_health(providers, mode="json")
     providers = _apply_provider_override(providers, mode="json")
     last_error: Exception | None = None
@@ -1040,7 +1100,8 @@ async def _stream_llm(
 
     async def generator() -> AsyncIterator[str]:
         nonlocal first_token_reported
-        providers = _apply_cost_steering(_llm_provider_chain(), payload, mode="stream")
+        providers = _apply_provider_blocklist(_llm_provider_chain(), mode="stream")
+        providers = _apply_cost_steering(providers, payload, mode="stream")
         providers = _apply_provider_health(providers, mode="stream")
         providers = _apply_provider_override(providers, mode="stream")
         last_error: Optional[Exception] = None
