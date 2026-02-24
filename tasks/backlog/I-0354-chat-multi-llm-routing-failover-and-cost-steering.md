@@ -469,3 +469,12 @@ Implement multi-provider LLM routing for chat:
 - [x] 회귀 테스트 보강
   - `STK... 확인해줘` 패턴에서 티켓 상태 조회 경로가 정상 실행되는지 검증
   - source metric(`source=query`) 집계 증가 검증
+
+## Implementation Update (2026-02-24, Bundle 59)
+- [x] ticket 생성 시 history 기반 이슈 보강 추가
+  - `문의 접수해줘`처럼 일반 요청만 들어오면 최근 사용자 대화(history)에서 주문/배송/환불 관련 이슈 문장을 자동 추출해 summary/detail에 반영
+  - unresolved context가 없는 상태에서도 ticket 생성 UX 연속성을 확보
+- [x] 운영 관측 지표 반영
+  - `chat_ticket_create_with_context_total{source=history}` 집계로 history 보강 사용량 확인
+- [x] 회귀 테스트 보강
+  - history 이슈 문장 기반 ticket 생성 성공 및 payload(summary/effectiveQuery) 반영 검증

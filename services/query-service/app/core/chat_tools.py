@@ -87,6 +87,27 @@ def _extract_user_id(request: dict[str, Any]) -> str | None:
     return None
 
 
+def _extract_recent_issue_from_history(request: dict[str, Any]) -> str:
+    history = request.get("history")
+    if not isinstance(history, list):
+        return ""
+    for item in reversed(history):
+        if not isinstance(item, dict):
+            continue
+        role = str(item.get("role") or "").strip().lower()
+        if role != "user":
+            continue
+        content = str(item.get("content") or "").strip()
+        if len(content) < 8:
+            continue
+        if _is_generic_ticket_create_message(content):
+            continue
+        normalized = _normalize_text(content)
+        if any(keyword in normalized for keyword in ["주문", "배송", "환불", "반품", "결제", "오류", "문의", "ticket"]):
+            return content
+    return ""
+
+
 def _normalize_text(text: str) -> str:
     return " ".join((text or "").strip().lower().split())
 
@@ -1032,6 +1053,7 @@ async def _handle_ticket_create(
     session_id: str,
     trace_id: str,
     request_id: str,
+    history_issue_context: str = "",
 ) -> dict[str, Any]:
     unresolved = _load_unresolved_context(session_id)
     unresolved_query = str(unresolved.get("query") or "").strip() if isinstance(unresolved, dict) else ""
@@ -1041,6 +1063,9 @@ async def _handle_ticket_create(
     if generic_ticket_request and unresolved_query:
         effective_query = unresolved_query
         metrics.inc("chat_ticket_create_with_context_total", {"source": "unresolved_context"})
+    elif generic_ticket_request and history_issue_context:
+        effective_query = history_issue_context
+        metrics.inc("chat_ticket_create_with_context_total", {"source": "history"})
     elif generic_ticket_request:
         metrics.inc("chat_ticket_needs_input_total", {"reason": "missing_issue_context"})
         return _build_response(
@@ -1518,6 +1543,7 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
     query = _extract_query_text(request)
     user_id = _extract_user_id(request)
     session_id = _resolve_session_id(request, user_id)
+    history_issue_context = _extract_recent_issue_from_history(request)
 
     if user_id:
         pending_workflow = _load_workflow(session_id)
@@ -1578,6 +1604,7 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
                 session_id=session_id,
                 trace_id=trace_id,
                 request_id=request_id,
+                history_issue_context=history_issue_context,
             )
         if intent.name == "TICKET_STATUS":
             return await _handle_ticket_status(

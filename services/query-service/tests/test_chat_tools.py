@@ -884,6 +884,64 @@ def test_run_tool_chat_ticket_create_uses_unresolved_context(monkeypatch):
     assert chat_tools._CACHE.get_json(f"chat:fallback:count:{session_id}") == {"count": 0}
 
 
+def test_run_tool_chat_ticket_create_uses_history_issue_context(monkeypatch):
+    captured = {}
+
+    async def fake_call_commerce(method, path, **kwargs):
+        if method == "GET" and path == "/orders/12":
+            return {
+                "order": {
+                    "order_id": 12,
+                    "order_no": "ORD202602220012",
+                    "status": "PAID",
+                    "total_amount": 33000,
+                    "shipping_fee": 3000,
+                    "payment_method": "CARD",
+                }
+            }
+        if method == "POST" and path == "/support/tickets":
+            captured["payload"] = kwargs.get("payload")
+            return {
+                "ticket": {
+                    "ticket_id": 61,
+                    "ticket_no": "STK202602230610",
+                    "status": "RECEIVED",
+                    "severity": "MEDIUM",
+                },
+                "expected_response_minutes": 130,
+            }
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    before_metrics = dict(chat_tools.metrics.snapshot())
+    result = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": "sess-ticket-history-ctx-1",
+                "message": {"role": "user", "content": "문의 접수해줘"},
+                "history": [
+                    {"role": "user", "content": "주문 12 환불이 진행되지 않고 결제 내역도 다릅니다."},
+                    {"role": "assistant", "content": "확인을 도와드릴게요."},
+                ],
+                "client": {"locale": "ko-KR", "user_id": "1"},
+            },
+            "trace_test",
+            "req_ticket_history_ctx",
+        )
+    )
+    after_metrics = chat_tools.metrics.snapshot()
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert "STK202602230610" in result["answer"]["content"]
+    assert captured["payload"]["summary"] == "주문 12 환불이 진행되지 않고 결제 내역도 다릅니다."
+    assert captured["payload"]["details"]["effectiveQuery"] == "주문 12 환불이 진행되지 않고 결제 내역도 다릅니다."
+    assert after_metrics.get("chat_ticket_create_with_context_total{source=history}", 0) >= before_metrics.get(
+        "chat_ticket_create_with_context_total{source=history}",
+        0,
+    ) + 1
+
+
 def test_run_tool_chat_ticket_create_requires_issue_context():
     session_id = "sess-ticket-ctx-2"
     payload = {
