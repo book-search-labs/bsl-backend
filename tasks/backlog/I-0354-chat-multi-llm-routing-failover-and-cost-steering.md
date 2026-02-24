@@ -313,3 +313,10 @@ Implement multi-provider LLM routing for chat:
   - 차단(`blocked`) 뿐 아니라 정상 통과/중복 재사용 bypass 비율까지 운영 대시보드에서 분리 관측 가능
 - [x] 회귀 테스트 보강
   - 쿨다운 차단 케이스에서 `chat_ticket_create_rate_limited_total{result=blocked}` 증가 검증
+
+## Implementation Update (2026-02-24, Bundle 40)
+- [x] ticket 생성 쿨다운을 사용자 범위로 확장
+  - 기존 `session_id` 캐시 외에 `user_id` 캐시를 함께 저장/조회하여 교차 세션 반복 접수도 제한
+  - 동일 사용자 다중 탭/다중 세션에서 단시간 spam ticket 생성 방지
+- [x] 회귀 테스트 추가
+  - 같은 `user_id`, 다른 `session_id`에서 연속 ticket 생성 시 두 번째 요청이 `RATE_LIMITED`로 차단되는지 검증

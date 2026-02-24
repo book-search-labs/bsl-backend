@@ -7,6 +7,11 @@ from app.core import chat
 from app.core import chat_tools
 
 
+@pytest.fixture(autouse=True)
+def _disable_ticket_create_cooldown_by_default(monkeypatch):
+    monkeypatch.setattr(chat_tools, "_ticket_create_cooldown_sec", lambda: 0)
+
+
 def test_run_tool_chat_requires_login_for_commerce_queries():
     payload = {
         "message": {"role": "user", "content": "주문 12 상태 알려줘"},
@@ -464,12 +469,12 @@ def test_run_tool_chat_ticket_create_applies_cooldown_for_non_dedup_issue(monkey
     first_payload = {
         "session_id": session_id,
         "message": {"role": "user", "content": "문의 접수해줘 결제가 두 번 승인됐어요"},
-        "client": {"locale": "ko-KR", "user_id": "1"},
+        "client": {"locale": "ko-KR", "user_id": "cooldown-user-1"},
     }
     second_payload = {
         "session_id": session_id,
         "message": {"role": "user", "content": "문의 접수해줘 배송지가 잘못 입력됐어요"},
-        "client": {"locale": "ko-KR", "user_id": "1"},
+        "client": {"locale": "ko-KR", "user_id": "cooldown-user-1"},
     }
 
     metric_key = "chat_ticket_create_rate_limited_total{result=blocked}"
@@ -488,6 +493,58 @@ def test_run_tool_chat_ticket_create_applies_cooldown_for_non_dedup_issue(monkey
     assert "다시 시도" in second["answer"]["content"]
     assert call_count["ticket_create"] == 1
     assert after_metrics.get(metric_key, 0) >= before_metrics.get(metric_key, 0) + 1
+
+
+def test_run_tool_chat_ticket_create_applies_cooldown_across_sessions_same_user(monkeypatch):
+    call_count = {"ticket_create": 0}
+
+    async def fake_call_commerce(method, path, **kwargs):
+        if method == "POST" and path == "/support/tickets":
+            call_count["ticket_create"] += 1
+            return {
+                "ticket": {
+                    "ticket_id": 24,
+                    "ticket_no": "STK202602230204",
+                    "status": "RECEIVED",
+                    "severity": "LOW",
+                },
+                "expected_response_minutes": 150,
+            }
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    monkeypatch.setattr(chat_tools, "_ticket_create_cooldown_sec", lambda: 45)
+    monkeypatch.setattr(chat_tools.time, "time", lambda: 1_700_000_100)
+
+    first = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": "sess-ticket-cooldown-user-1",
+                "message": {"role": "user", "content": "문의 접수해줘 결제 내역이 중복 청구됐어요"},
+                "client": {"locale": "ko-KR", "user_id": "cooldown-user-2"},
+            },
+            "trace_test",
+            "req_create_user_1",
+        )
+    )
+    second = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": "sess-ticket-cooldown-user-2",
+                "message": {"role": "user", "content": "문의 접수해줘 배송 예정일이 계속 밀려요"},
+                "client": {"locale": "ko-KR", "user_id": "cooldown-user-2"},
+            },
+            "trace_test",
+            "req_create_user_2",
+        )
+    )
+
+    assert first is not None and first["status"] == "ok"
+    assert second is not None
+    assert second["status"] == "needs_input"
+    assert second["reason_code"] == "RATE_LIMITED"
+    assert second["next_action"] == "RETRY"
+    assert call_count["ticket_create"] == 1
 
 
 def test_build_response_emits_recovery_hint_metric():

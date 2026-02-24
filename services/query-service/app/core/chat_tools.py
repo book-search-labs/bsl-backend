@@ -357,6 +357,10 @@ def _ticket_create_last_cache_key(session_id: str) -> str:
     return f"chat:ticket-create:last:{session_id}"
 
 
+def _ticket_create_last_user_cache_key(user_id: str) -> str:
+    return f"chat:ticket-create:last:user:{user_id}"
+
+
 def _load_ticket_create_dedup(session_id: str, fingerprint: str) -> dict[str, Any] | None:
     cached = _CACHE.get_json(_ticket_create_dedup_cache_key(session_id, fingerprint))
     if isinstance(cached, dict):
@@ -372,20 +376,29 @@ def _save_ticket_create_dedup(session_id: str, fingerprint: str, payload: dict[s
     )
 
 
-def _load_ticket_create_last(session_id: str) -> int | None:
-    cached = _CACHE.get_json(_ticket_create_last_cache_key(session_id))
-    if not isinstance(cached, dict):
-        return None
-    raw_ts = cached.get("created_at")
-    if isinstance(raw_ts, int) and raw_ts > 0:
-        return raw_ts
+def _load_ticket_create_last(session_id: str, user_id: str) -> int | None:
+    candidates = (
+        _CACHE.get_json(_ticket_create_last_cache_key(session_id)),
+        _CACHE.get_json(_ticket_create_last_user_cache_key(user_id)),
+    )
+    timestamps: list[int] = []
+    for cached in candidates:
+        if not isinstance(cached, dict):
+            continue
+        raw_ts = cached.get("created_at")
+        if isinstance(raw_ts, int) and raw_ts > 0:
+            timestamps.append(raw_ts)
+    if timestamps:
+        return max(timestamps)
     return None
 
 
-def _save_ticket_create_last(session_id: str) -> None:
+def _save_ticket_create_last(session_id: str, user_id: str) -> None:
     cooldown = _ticket_create_cooldown_sec()
     ttl = max(60, cooldown * 2 if cooldown > 0 else 60)
-    _CACHE.set_json(_ticket_create_last_cache_key(session_id), {"created_at": int(time.time())}, ttl=ttl)
+    payload = {"created_at": int(time.time())}
+    _CACHE.set_json(_ticket_create_last_cache_key(session_id), payload, ttl=ttl)
+    _CACHE.set_json(_ticket_create_last_user_cache_key(user_id), payload, ttl=ttl)
 
 
 def _is_generic_ticket_create_message(query: str) -> bool:
@@ -911,7 +924,7 @@ async def _handle_ticket_create(
             metrics.inc("chat_ticket_create_dedup_hit_total", {"result": "reused"})
             metrics.inc("chat_ticket_create_rate_limited_total", {"result": "dedup_bypass"})
             _save_last_ticket_no(session_id, cached_ticket_no)
-            _save_ticket_create_last(session_id)
+            _save_ticket_create_last(session_id, user_id)
             _clear_unresolved_context(session_id)
             _reset_fallback_counter(session_id)
             metrics.inc("chat_ticket_context_reset_total", {"reason": "ticket_reused"})
@@ -930,7 +943,7 @@ async def _handle_ticket_create(
 
     cooldown_sec = _ticket_create_cooldown_sec()
     if cooldown_sec > 0:
-        last_created_at = _load_ticket_create_last(session_id)
+        last_created_at = _load_ticket_create_last(session_id, user_id)
         now_ts = int(time.time())
         if isinstance(last_created_at, int):
             remaining_sec = (last_created_at + cooldown_sec) - now_ts
@@ -1003,7 +1016,7 @@ async def _handle_ticket_create(
     status_ko = _ticket_status_ko(status)
     eta_minutes = int(created.get("expected_response_minutes") or 0)
     _save_last_ticket_no(session_id, ticket_no)
-    _save_ticket_create_last(session_id)
+    _save_ticket_create_last(session_id, user_id)
     _save_ticket_create_dedup(
         session_id,
         dedup_fingerprint,
