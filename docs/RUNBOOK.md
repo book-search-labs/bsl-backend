@@ -129,6 +129,7 @@ curl -s -X POST "http://localhost:8001/internal/chat/session/reset" \
 쿨다운 차단 응답에는 최근 접수번호가 있으면 함께 반환되어, 사용자에게 즉시 상태 조회 경로를 안내한다.
 쿨다운 차단 응답은 `POST /api/v1/support/tickets` source citation을 포함해 UI에서 근거 배지를 유지한다.
 쿨다운 관측 지표는 `chat_ticket_create_rate_limited_total{result=blocked|pass|dedup_bypass}`를 사용한다.
+동일 문의 dedup도 사용자 범위로 동작하며 `chat_ticket_create_dedup_scope_total{scope=session|user}`로 세션 내부/교차 세션 재사용 비율을 구분해 본다.
 
 BFF 경유 점검이 필요하면 동일 기능을 아래로 호출한다:
 ```bash

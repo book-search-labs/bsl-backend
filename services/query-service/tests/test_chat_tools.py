@@ -12,6 +12,15 @@ def _disable_ticket_create_cooldown_by_default(monkeypatch):
     monkeypatch.setattr(chat_tools, "_ticket_create_cooldown_sec", lambda: 0)
 
 
+@pytest.fixture(autouse=True)
+def _clear_chat_tools_cache():
+    cache_obj = chat_tools._CACHE
+    local = getattr(cache_obj, "_local", None)
+    store = getattr(local, "_store", None)
+    if isinstance(store, dict):
+        store.clear()
+
+
 def test_run_tool_chat_requires_login_for_commerce_queries():
     payload = {
         "message": {"role": "user", "content": "주문 12 상태 알려줘"},
@@ -455,6 +464,60 @@ def test_run_tool_chat_ticket_create_is_idempotent_within_dedup_window(monkeypat
     assert "STK202602230201" in second["answer"]["content"]
     assert "재사용" in second["answer"]["content"]
     assert call_count["ticket_create"] == 1
+
+
+def test_run_tool_chat_ticket_create_is_idempotent_across_sessions_same_user(monkeypatch):
+    call_count = {"ticket_create": 0}
+
+    async def fake_call_commerce(method, path, **kwargs):
+        if method == "POST" and path == "/support/tickets":
+            call_count["ticket_create"] += 1
+            return {
+                "ticket": {
+                    "ticket_id": 25,
+                    "ticket_no": "STK202602230205",
+                    "status": "RECEIVED",
+                    "severity": "LOW",
+                },
+                "expected_response_minutes": 140,
+            }
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    user_id = "dedup-cross-user-1"
+
+    first = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": "sess-ticket-dedup-cross-1",
+                "message": {"role": "user", "content": "문의 접수해줘 결제 확인 문자가 중복 발송돼요"},
+                "client": {"locale": "ko-KR", "user_id": user_id},
+            },
+            "trace_test",
+            "req_create_cross_1",
+        )
+    )
+    before_metrics = dict(chat_tools.metrics.snapshot())
+    second = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": "sess-ticket-dedup-cross-2",
+                "message": {"role": "user", "content": "문의 접수해줘 결제 확인 문자가 중복 발송돼요"},
+                "client": {"locale": "ko-KR", "user_id": user_id},
+            },
+            "trace_test",
+            "req_create_cross_2",
+        )
+    )
+    after_metrics = chat_tools.metrics.snapshot()
+
+    assert first is not None and first["status"] == "ok"
+    assert second is not None and second["status"] == "ok"
+    assert "STK202602230205" in second["answer"]["content"]
+    assert "재사용" in second["answer"]["content"]
+    assert call_count["ticket_create"] == 1
+    metric_key = "chat_ticket_create_dedup_scope_total{scope=user}"
+    assert after_metrics.get(metric_key, 0) >= before_metrics.get(metric_key, 0) + 1
 
 
 def test_run_tool_chat_ticket_create_dedup_reuse_clears_unresolved_context(monkeypatch):

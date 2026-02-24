@@ -364,6 +364,10 @@ def _ticket_create_dedup_cache_key(session_id: str, fingerprint: str) -> str:
     return f"chat:ticket-create:dedup:{session_id}:{fingerprint}"
 
 
+def _ticket_create_dedup_user_cache_key(user_id: str, fingerprint: str) -> str:
+    return f"chat:ticket-create:dedup:user:{user_id}:{fingerprint}"
+
+
 def _ticket_create_last_cache_key(session_id: str) -> str:
     return f"chat:ticket-create:last:{session_id}"
 
@@ -372,18 +376,28 @@ def _ticket_create_last_user_cache_key(user_id: str) -> str:
     return f"chat:ticket-create:last:user:{user_id}"
 
 
-def _load_ticket_create_dedup(session_id: str, fingerprint: str) -> dict[str, Any] | None:
-    cached = _CACHE.get_json(_ticket_create_dedup_cache_key(session_id, fingerprint))
-    if isinstance(cached, dict):
-        return cached
-    return None
+def _load_ticket_create_dedup(session_id: str, user_id: str, fingerprint: str) -> tuple[dict[str, Any] | None, str | None]:
+    candidates = (
+        ("session", _CACHE.get_json(_ticket_create_dedup_cache_key(session_id, fingerprint))),
+        ("user", _CACHE.get_json(_ticket_create_dedup_user_cache_key(user_id, fingerprint))),
+    )
+    for scope, cached in candidates:
+        if isinstance(cached, dict):
+            return cached, scope
+    return None, None
 
 
-def _save_ticket_create_dedup(session_id: str, fingerprint: str, payload: dict[str, Any]) -> None:
+def _save_ticket_create_dedup(session_id: str, user_id: str, fingerprint: str, payload: dict[str, Any]) -> None:
+    ttl = _ticket_create_dedup_ttl_sec()
     _CACHE.set_json(
         _ticket_create_dedup_cache_key(session_id, fingerprint),
         payload,
-        ttl=_ticket_create_dedup_ttl_sec(),
+        ttl=ttl,
+    )
+    _CACHE.set_json(
+        _ticket_create_dedup_user_cache_key(user_id, fingerprint),
+        payload,
+        ttl=ttl,
     )
 
 
@@ -925,7 +939,7 @@ async def _handle_ticket_create(
         )
 
     dedup_fingerprint = _ticket_create_fingerprint(user_id, effective_query)
-    dedup_cached = _load_ticket_create_dedup(session_id, dedup_fingerprint)
+    dedup_cached, dedup_scope = _load_ticket_create_dedup(session_id, user_id, dedup_fingerprint)
     if isinstance(dedup_cached, dict):
         cached_ticket_no = str(dedup_cached.get("ticket_no") or "")
         cached_status = str(dedup_cached.get("status") or "RECEIVED")
@@ -933,6 +947,7 @@ async def _handle_ticket_create(
         cached_eta_minutes = int(dedup_cached.get("expected_response_minutes") or 0)
         if cached_ticket_no:
             metrics.inc("chat_ticket_create_dedup_hit_total", {"result": "reused"})
+            metrics.inc("chat_ticket_create_dedup_scope_total", {"scope": dedup_scope or "unknown"})
             metrics.inc("chat_ticket_create_rate_limited_total", {"result": "dedup_bypass"})
             _save_last_ticket_no(session_id, user_id, cached_ticket_no)
             _save_ticket_create_last(session_id, user_id)
@@ -1041,6 +1056,7 @@ async def _handle_ticket_create(
     _save_ticket_create_last(session_id, user_id)
     _save_ticket_create_dedup(
         session_id,
+        user_id,
         dedup_fingerprint,
         {
             "ticket_no": ticket_no,

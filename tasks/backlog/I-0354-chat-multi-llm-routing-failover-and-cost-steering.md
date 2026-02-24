@@ -335,3 +335,12 @@ Implement multi-provider LLM routing for chat:
   - 사용자 안내 메시지와 함께 운영 근거(`remaining_sec`, `recent_ticket_no`)를 source snippet으로 제공
 - [x] 회귀 테스트 보강
   - 쿨다운 차단 응답에서 citation/source endpoint가 채워지는지 검증
+
+## Implementation Update (2026-02-24, Bundle 43)
+- [x] ticket 생성 dedup을 사용자 범위로 확장
+  - 기존 세션 dedup 키와 함께 사용자 dedup 키를 저장/조회해 교차 세션 동일 문의도 티켓 재사용
+  - 사용자 dedup hit 시 신규 티켓 생성/쿨다운 차단 대신 기존 접수번호를 즉시 반환
+- [x] 운영 관측 지표 추가
+  - `chat_ticket_create_dedup_scope_total{scope=session|user}`로 dedup 재사용 범위를 분리 집계
+- [x] 회귀 테스트 추가
+  - 같은 `user_id`, 다른 `session_id`에서 동일 문의 접수 시 두 번째 요청이 재사용되는지 검증
