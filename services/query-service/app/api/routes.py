@@ -334,6 +334,7 @@ async def chat_session_state(request: Request):
     trace_id, request_id, _, traceparent = _extract_ids(request)
     session_id = str(request.query_params.get("session_id") or "").strip()
     if not session_id:
+        metrics.inc("chat_session_state_requests_total", {"result": "missing_session_id"})
         return _error_response(
             "invalid_request",
             "Query parameter session_id is required.",
@@ -343,12 +344,20 @@ async def chat_session_state(request: Request):
     try:
         snapshot = get_chat_session_state(session_id, trace_id, request_id)
     except ValueError:
+        metrics.inc("chat_session_state_requests_total", {"result": "invalid_session_id"})
         return _error_response(
             "invalid_request",
             "Invalid session_id format.",
             trace_id,
             request_id,
         )
+    metrics.inc(
+        "chat_session_state_requests_total",
+        {
+            "result": "ok",
+            "has_unresolved": "true" if isinstance(snapshot.get("unresolved_context"), dict) else "false",
+        },
+    )
     payload = {
         "version": "v1",
         "trace_id": trace_id,

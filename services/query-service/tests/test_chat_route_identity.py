@@ -81,6 +81,11 @@ def test_chat_provider_snapshot_route_returns_payload(monkeypatch):
 
 
 def test_chat_session_state_route_returns_payload(monkeypatch):
+    captured = []
+
+    def fake_inc(name, labels=None):
+        captured.append((name, labels or {}))
+
     def fake_session_state(session_id, trace_id, request_id):
         assert session_id == "u:101:default"
         return {
@@ -101,6 +106,7 @@ def test_chat_session_state_route_returns_payload(monkeypatch):
             "request_id": request_id,
         }
 
+    monkeypatch.setattr(routes.metrics, "inc", fake_inc)
     monkeypatch.setattr(routes, "get_chat_session_state", fake_session_state)
 
     client = TestClient(app)
@@ -111,21 +117,36 @@ def test_chat_session_state_route_returns_payload(monkeypatch):
     assert data["status"] == "ok"
     assert data["session"]["fallback_count"] == 2
     assert data["session"]["unresolved_context"]["reason_code"] == "LLM_NO_CITATIONS"
+    assert any(name == "chat_session_state_requests_total" and labels.get("result") == "ok" for name, labels in captured)
 
 
-def test_chat_session_state_route_requires_session_id():
+def test_chat_session_state_route_requires_session_id(monkeypatch):
+    captured = []
+
+    def fake_inc(name, labels=None):
+        captured.append((name, labels or {}))
+
+    monkeypatch.setattr(routes.metrics, "inc", fake_inc)
     client = TestClient(app)
     response = client.get("/internal/chat/session/state")
 
     assert response.status_code == 400
     payload = response.json()
     assert payload["error"]["code"] == "invalid_request"
+    assert any(name == "chat_session_state_requests_total" and labels.get("result") == "missing_session_id" for name, labels in captured)
 
 
-def test_chat_session_state_route_rejects_invalid_session_id():
+def test_chat_session_state_route_rejects_invalid_session_id(monkeypatch):
+    captured = []
+
+    def fake_inc(name, labels=None):
+        captured.append((name, labels or {}))
+
+    monkeypatch.setattr(routes.metrics, "inc", fake_inc)
     client = TestClient(app)
     response = client.get("/internal/chat/session/state", params={"session_id": "bad session"})
 
     assert response.status_code == 400
     payload = response.json()
     assert payload["error"]["code"] == "invalid_request"
+    assert any(name == "chat_session_state_requests_total" and labels.get("result") == "invalid_session_id" for name, labels in captured)

@@ -248,3 +248,10 @@ Implement multi-provider LLM routing for chat:
 - [x] SSOT/테스트 반영
   - `chat-session-state-response` contract + sample 확장
   - core/route 테스트에서 신규 필드 검증
+
+## Implementation Update (2026-02-23, Bundle 32)
+- [x] session 진단 endpoint 운영 메트릭 추가
+  - `chat_session_state_requests_total{result,has_unresolved}` 집계
+  - `result`: `ok`, `missing_session_id`, `invalid_session_id`
+- [x] 회귀 테스트 추가
+  - 정상/필수 파라미터 누락/형식 오류 케이스에서 메트릭 라벨 검증
