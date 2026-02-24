@@ -150,3 +150,87 @@ def test_chat_session_state_route_rejects_invalid_session_id(monkeypatch):
     payload = response.json()
     assert payload["error"]["code"] == "invalid_request"
     assert any(name == "chat_session_state_requests_total" and labels.get("result") == "invalid_session_id" for name, labels in captured)
+
+
+def test_chat_session_reset_route_returns_payload(monkeypatch):
+    captured = []
+
+    def fake_inc(name, labels=None):
+        captured.append((name, labels or {}))
+
+    def fake_reset(session_id, trace_id, request_id):
+        assert session_id == "u:101:default"
+        return {
+            "session_id": session_id,
+            "reset_applied": True,
+            "previous_fallback_count": 3,
+            "previous_unresolved_context": True,
+            "reset_at_ms": 1760000000,
+            "trace_id": trace_id,
+            "request_id": request_id,
+        }
+
+    monkeypatch.setattr(routes.metrics, "inc", fake_inc)
+    monkeypatch.setattr(routes, "reset_chat_session_state", fake_reset)
+
+    client = TestClient(app)
+    response = client.post("/internal/chat/session/reset", json={"session_id": "u:101:default"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["session"]["reset_applied"] is True
+    assert data["session"]["previous_fallback_count"] == 3
+    assert any(name == "chat_session_reset_requests_total" and labels.get("result") == "ok" for name, labels in captured)
+
+
+def test_chat_session_reset_route_requires_session_id(monkeypatch):
+    captured = []
+
+    def fake_inc(name, labels=None):
+        captured.append((name, labels or {}))
+
+    monkeypatch.setattr(routes.metrics, "inc", fake_inc)
+    client = TestClient(app)
+    response = client.post("/internal/chat/session/reset", json={})
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_request"
+    assert any(name == "chat_session_reset_requests_total" and labels.get("result") == "missing_session_id" for name, labels in captured)
+
+
+def test_chat_session_reset_route_rejects_invalid_session_id(monkeypatch):
+    captured = []
+
+    def fake_inc(name, labels=None):
+        captured.append((name, labels or {}))
+
+    monkeypatch.setattr(routes.metrics, "inc", fake_inc)
+    client = TestClient(app)
+    response = client.post("/internal/chat/session/reset", json={"session_id": "bad session"})
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_request"
+    assert any(name == "chat_session_reset_requests_total" and labels.get("result") == "invalid_session_id" for name, labels in captured)
+
+
+def test_chat_session_reset_route_rejects_invalid_json(monkeypatch):
+    captured = []
+
+    def fake_inc(name, labels=None):
+        captured.append((name, labels or {}))
+
+    monkeypatch.setattr(routes.metrics, "inc", fake_inc)
+    client = TestClient(app)
+    response = client.post(
+        "/internal/chat/session/reset",
+        data="{invalid",
+        headers={"content-type": "application/json"},
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_request"
+    assert any(name == "chat_session_reset_requests_total" and labels.get("result") == "invalid_json" for name, labels in captured)

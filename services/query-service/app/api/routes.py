@@ -16,7 +16,14 @@ from app.core.rewrite import run_rewrite
 from app.core.metrics import metrics
 from app.core.rewrite_log import get_rewrite_log, now_iso
 from app.core.spell import run_spell
-from app.core.chat import explain_chat_rag, get_chat_provider_snapshot, get_chat_session_state, run_chat, run_chat_stream
+from app.core.chat import (
+    explain_chat_rag,
+    get_chat_provider_snapshot,
+    get_chat_session_state,
+    reset_chat_session_state,
+    run_chat,
+    run_chat_stream,
+)
 from app.core.understanding import parse_understanding
 
 router = APIRouter()
@@ -369,6 +376,75 @@ async def chat_session_state(request: Request):
             "fallback_escalation_threshold": snapshot["fallback_escalation_threshold"],
             "escalation_ready": snapshot["escalation_ready"],
             "unresolved_context": snapshot["unresolved_context"],
+        },
+    }
+    return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
+
+
+@router.post("/internal/chat/session/reset")
+async def chat_session_reset(request: Request):
+    trace_id, request_id, _, traceparent = _extract_ids(request)
+    try:
+        body = await request.json()
+    except Exception:
+        metrics.inc("chat_session_reset_requests_total", {"result": "invalid_json"})
+        return _error_response(
+            "invalid_request",
+            "Request body must be a valid JSON object.",
+            trace_id,
+            request_id,
+        )
+    if not isinstance(body, dict):
+        metrics.inc("chat_session_reset_requests_total", {"result": "invalid_body"})
+        return _error_response(
+            "invalid_request",
+            "Request body must be a JSON object.",
+            trace_id,
+            request_id,
+        )
+
+    if isinstance(body.get("trace_id"), str) and body.get("trace_id"):
+        trace_id = body.get("trace_id")
+    if isinstance(body.get("request_id"), str) and body.get("request_id"):
+        request_id = body.get("request_id")
+
+    session_id = str(body.get("session_id") or "").strip()
+    if not session_id:
+        metrics.inc("chat_session_reset_requests_total", {"result": "missing_session_id"})
+        return _error_response(
+            "invalid_request",
+            "Field session_id is required.",
+            trace_id,
+            request_id,
+        )
+    try:
+        snapshot = reset_chat_session_state(session_id, trace_id, request_id)
+    except ValueError:
+        metrics.inc("chat_session_reset_requests_total", {"result": "invalid_session_id"})
+        return _error_response(
+            "invalid_request",
+            "Invalid session_id format.",
+            trace_id,
+            request_id,
+        )
+    metrics.inc(
+        "chat_session_reset_requests_total",
+        {
+            "result": "ok",
+            "had_unresolved": "true" if bool(snapshot.get("previous_unresolved_context")) else "false",
+        },
+    )
+    payload = {
+        "version": "v1",
+        "trace_id": trace_id,
+        "request_id": request_id,
+        "status": "ok",
+        "session": {
+            "session_id": snapshot["session_id"],
+            "reset_applied": snapshot["reset_applied"],
+            "previous_fallback_count": snapshot["previous_fallback_count"],
+            "previous_unresolved_context": snapshot["previous_unresolved_context"],
+            "reset_at_ms": snapshot["reset_at_ms"],
         },
     }
     return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))

@@ -159,6 +159,29 @@ def test_get_chat_session_state_contains_fallback_and_unresolved_context():
     assert state["unresolved_context"]["query_preview"].startswith("환불 조건을 정리해줘.")
 
 
+def test_reset_chat_session_state_clears_fallback_and_unresolved_context():
+    chat._CACHE = CacheClient(None)
+    session_id = "u:102:default"
+    for _ in range(3):
+        chat._increment_fallback_count(session_id)
+    chat._save_unresolved_context(
+        session_id,
+        "배송 지연 문의",
+        "PROVIDER_TIMEOUT",
+        trace_id="trace_prev",
+        request_id="req_prev",
+    )
+
+    reset = chat.reset_chat_session_state(session_id, "trace_now", "req_now")
+    state = chat.get_chat_session_state(session_id, "trace_now2", "req_now2")
+
+    assert reset["reset_applied"] is True
+    assert reset["previous_fallback_count"] == 3
+    assert reset["previous_unresolved_context"] is True
+    assert state["fallback_count"] == 0
+    assert state["unresolved_context"] is None
+
+
 def test_run_chat_stream_emits_done_with_validated_citations(monkeypatch):
     chat._CACHE = CacheClient(None)
 

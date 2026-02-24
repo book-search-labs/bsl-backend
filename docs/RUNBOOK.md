@@ -115,6 +115,14 @@ curl -s "http://localhost:8001/internal/chat/session/state?session_id=u:101:defa
 `session.unresolved_context.reason_message`, `session.unresolved_context.next_action`으로 사용자 안내 문구/후속 액션을 즉시 확인한다.
 운영 지표는 `chat_session_state_requests_total{result,has_unresolved}`에서 확인한다.
 
+세션 진단 상태를 초기화하려면:
+```bash
+curl -s -X POST "http://localhost:8001/internal/chat/session/reset" \
+  -H "content-type: application/json" \
+  -d '{"session_id":"u:101:default"}'
+```
+운영 지표는 `chat_session_reset_requests_total{result,had_unresolved}`에서 확인한다.
+
 ## Sample Dev Bootstrap (Recommended)
 
 For team onboarding / fresh clone, use this exact flow:

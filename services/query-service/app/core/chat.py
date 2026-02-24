@@ -2394,3 +2394,21 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
         "trace_id": trace_id,
         "request_id": request_id,
     }
+
+
+def reset_chat_session_state(session_id: str, trace_id: str, request_id: str) -> Dict[str, Any]:
+    if not _is_valid_session_id(session_id):
+        raise ValueError("invalid_session_id")
+    previous_fallback_count = _load_fallback_count(session_id)
+    previous_unresolved_context = isinstance(_load_unresolved_context(session_id), dict)
+    _reset_fallback_count(session_id)
+    _clear_unresolved_context(session_id)
+    return {
+        "session_id": session_id,
+        "reset_applied": True,
+        "previous_fallback_count": previous_fallback_count,
+        "previous_unresolved_context": previous_unresolved_context,
+        "reset_at_ms": int(time.time() * 1000),
+        "trace_id": trace_id,
+        "request_id": request_id,
+    }

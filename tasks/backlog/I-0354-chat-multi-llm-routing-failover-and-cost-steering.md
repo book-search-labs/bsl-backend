@@ -255,3 +255,14 @@ Implement multi-provider LLM routing for chat:
   - `result`: `ok`, `missing_session_id`, `invalid_session_id`
 - [x] 회귀 테스트 추가
   - 정상/필수 파라미터 누락/형식 오류 케이스에서 메트릭 라벨 검증
+
+## Implementation Update (2026-02-23, Bundle 33)
+- [x] session 진단 reset endpoint 추가
+  - `POST /internal/chat/session/reset`로 fallback 카운터/미해결 컨텍스트 초기화
+  - 응답에 reset 전 상태(`previous_fallback_count`, `previous_unresolved_context`) 포함
+- [x] SSOT 반영
+  - `chat-session-reset-response` contract + sample 추가
+  - API surface / runbook 문서 반영
+- [x] 운영 메트릭/회귀 테스트 추가
+  - `chat_session_reset_requests_total{result,had_unresolved}` 집계
+  - 정상/필수값 누락/세션 형식 오류/JSON 파싱 오류 케이스 검증

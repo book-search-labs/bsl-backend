@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://booksearch/contracts/chat-session-reset-response.schema.json",
+  "title": "Chat Session Reset Response",
+  "type": "object",
+  "required": ["version", "trace_id", "request_id", "status", "session"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "v1"
+    },
+    "trace_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ok"]
+    },
+    "session": {
+      "type": "object",
+      "required": [
+        "session_id",
+        "reset_applied",
+        "previous_fallback_count",
+        "previous_unresolved_context",
+        "reset_at_ms"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reset_applied": {
+          "type": "boolean"
+        },
+        "previous_fallback_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "previous_unresolved_context": {
+          "type": "boolean"
+        },
+        "reset_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
