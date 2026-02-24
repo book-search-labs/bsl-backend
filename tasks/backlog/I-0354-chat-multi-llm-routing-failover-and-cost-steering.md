@@ -413,3 +413,11 @@ Implement multi-provider LLM routing for chat:
   - 비정상 세션 공유/클라이언트 버그로 인한 소유자 불일치 신호를 운영에서 즉시 감지 가능
 - [x] 회귀 테스트 보강
   - `last_ticket`/`create_last` owner mismatch 시 메트릭 증가 검증
+
+## Implementation Update (2026-02-24, Bundle 53)
+- [x] 쿨다운 차단 컨텍스트 메트릭 추가
+  - `chat_ticket_create_rate_limited_context_total{has_recent_ticket=true|false}` 집계
+  - 차단 응답에서 최근 접수번호 안내 포함 비율을 운영 관점에서 분리 관측 가능
+- [x] 회귀 테스트 보강
+  - 최근 접수번호가 있는 차단 케이스(`has_recent_ticket=true`) 메트릭 검증
+  - 최근 접수번호가 없는 차단 케이스(`has_recent_ticket=false`) 메트릭 검증

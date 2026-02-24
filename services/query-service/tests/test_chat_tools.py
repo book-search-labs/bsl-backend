@@ -873,6 +873,60 @@ def test_run_tool_chat_ticket_create_applies_cooldown_for_non_dedup_issue(monkey
     assert second["sources"][0]["url"] == "POST /api/v1/support/tickets"
     assert call_count["ticket_create"] == 1
     assert after_metrics.get(metric_key, 0) >= before_metrics.get(metric_key, 0) + 1
+    context_metric_key = "chat_ticket_create_rate_limited_context_total{has_recent_ticket=true}"
+    assert after_metrics.get(context_metric_key, 0) >= before_metrics.get(context_metric_key, 0) + 1
+
+
+def test_run_tool_chat_ticket_create_applies_cooldown_without_recent_ticket_hint(monkeypatch):
+    call_count = {"ticket_create": 0}
+
+    async def fake_call_commerce(method, path, **kwargs):
+        if method == "POST" and path == "/support/tickets":
+            call_count["ticket_create"] += 1
+            return {
+                "ticket": {
+                    "ticket_id": 33,
+                    "ticket_no": "STK202602230303",
+                    "status": "RECEIVED",
+                    "severity": "LOW",
+                },
+                "expected_response_minutes": 80,
+            }
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    monkeypatch.setattr(chat_tools, "_ticket_create_cooldown_sec", lambda: 60)
+    monkeypatch.setattr(chat_tools.time, "time", lambda: 1_700_300_120)
+
+    session_id = "sess-ticket-cooldown-no-recent-1"
+    user_id = "cooldown-user-3"
+    chat_tools._CACHE.set_json(
+        chat_tools._ticket_create_last_cache_key(session_id),
+        {"created_at": 1_700_300_100, "user_id": user_id},
+        ttl=120,
+    )
+
+    metric_key = "chat_ticket_create_rate_limited_context_total{has_recent_ticket=false}"
+    before_metrics = dict(chat_tools.metrics.snapshot())
+    result = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": session_id,
+                "message": {"role": "user", "content": "문의 접수해줘 배송 상태가 계속 갱신되지 않아요"},
+                "client": {"locale": "ko-KR", "user_id": user_id},
+            },
+            "trace_test",
+            "req_cooldown_no_recent",
+        )
+    )
+    after_metrics = chat_tools.metrics.snapshot()
+
+    assert result is not None
+    assert result["status"] == "needs_input"
+    assert result["reason_code"] == "RATE_LIMITED"
+    assert "기존 접수번호" not in result["answer"]["content"]
+    assert call_count["ticket_create"] == 0
+    assert after_metrics.get(metric_key, 0) >= before_metrics.get(metric_key, 0) + 1
 
 
 def test_run_tool_chat_ticket_create_applies_cooldown_across_sessions_same_user(monkeypatch):

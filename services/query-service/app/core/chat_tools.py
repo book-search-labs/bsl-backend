@@ -1077,6 +1077,10 @@ async def _handle_ticket_create(
             if remaining_sec > 0:
                 metrics.inc("chat_ticket_create_rate_limited_total", {"result": "blocked"})
                 recent_ticket_no = _load_last_ticket_no(session_id, user_id)
+                metrics.inc(
+                    "chat_ticket_create_rate_limited_context_total",
+                    {"has_recent_ticket": "true" if recent_ticket_no else "false"},
+                )
                 if recent_ticket_no:
                     message = (
                         f"문의가 방금 접수되었습니다. 기존 접수번호는 {recent_ticket_no}입니다. "
