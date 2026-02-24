@@ -147,6 +147,7 @@ dedup 조회 결과는 `chat_ticket_create_dedup_lookup_total{result=miss|sessio
 최근 문의 목록이 비었거나 조회 실패하면 `needs_input`으로 접수번호 입력을 안내한다.
 최근 문의 목록 조회 결과는 `chat_ticket_status_recent_lookup_total{result=found|empty|error}`로 분리 관측한다.
 캐시 접수번호가 stale(`not_found`)인 경우 최신 목록으로 1회 자동 복구를 시도하며 `chat_ticket_status_lookup_cache_recovery_total{result=recovered|miss|retry_failed}`로 확인한다.
+티켓 상태 응답 본문에는 상태 외에 문의 유형/중요도/예상 첫 응답 시간(분)이 함께 포함되어 상담 대기 맥락을 한 번에 안내한다.
 
 BFF 경유 점검이 필요하면 동일 기능을 아래로 호출한다:
 ```bash

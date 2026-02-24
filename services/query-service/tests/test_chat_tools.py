@@ -487,6 +487,44 @@ def test_run_tool_chat_ticket_status_lookup_recovers_when_cached_ticket_is_stale
     ) + 1
 
 
+def test_run_tool_chat_ticket_status_lookup_includes_category_severity_and_eta(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        if method == "GET" and path == "/support/tickets?limit=1":
+            return {"items": [{"ticket_no": "STK202602230511"}]}
+        if method == "GET" and path == "/support/tickets/by-number/STK202602230511":
+            return {
+                "ticket": {
+                    "ticket_id": 511,
+                    "ticket_no": "STK202602230511",
+                    "status": "RECEIVED",
+                    "category": "REFUND",
+                    "severity": "HIGH",
+                },
+                "expected_response_minutes": 45,
+            }
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    result = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": "sess-ticket-status-enriched-1",
+                "message": {"role": "user", "content": "내 문의 상태 알려줘"},
+                "client": {"locale": "ko-KR", "user_id": "1"},
+            },
+            "trace_test",
+            "req_status_enriched",
+        )
+    )
+
+    assert result is not None
+    assert result["status"] == "ok"
+    content = result["answer"]["content"]
+    assert "환불/반품" in content
+    assert "긴급" in content
+    assert "45분" in content
+
+
 def test_save_last_ticket_no_respects_configured_ttl(monkeypatch):
     chat_tools._CACHE = CacheClient(None)
     monkeypatch.setenv("QS_CHAT_LAST_TICKET_TTL_SEC", "7200")

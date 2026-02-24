@@ -605,6 +605,29 @@ def _ticket_followup_message(status: str | None) -> str:
     return mapping.get(normalized, "현재 티켓 상태를 확인했습니다.")
 
 
+def _ticket_category_ko(category: str | None) -> str:
+    mapping = {
+        "ORDER": "주문/결제",
+        "SHIPPING": "배송",
+        "REFUND": "환불/반품",
+        "GENERAL": "일반 문의",
+    }
+    if not category:
+        return "미분류"
+    return mapping.get(str(category).upper(), str(category))
+
+
+def _ticket_severity_ko(severity: str | None) -> str:
+    mapping = {
+        "LOW": "일반",
+        "MEDIUM": "보통",
+        "HIGH": "긴급",
+    }
+    if not severity:
+        return "미지정"
+    return mapping.get(str(severity).upper(), str(severity))
+
+
 def _infer_ticket_category(query: str) -> str:
     q = _normalize_text(query)
     if any(keyword in q for keyword in ["환불", "반품", "refund"]):
@@ -1309,11 +1332,23 @@ async def _handle_ticket_status(
     ticket = looked_up.get("ticket") if isinstance(looked_up, dict) else {}
     status = str(ticket.get("status") or "RECEIVED")
     status_ko = _ticket_status_ko(status)
+    category_ko = _ticket_category_ko(str(ticket.get("category") or ""))
+    severity_ko = _ticket_severity_ko(str(ticket.get("severity") or ""))
+    eta_minutes = int(looked_up.get("expected_response_minutes") or 0) if isinstance(looked_up, dict) else 0
     followup = _ticket_followup_message(status)
     metrics.inc("chat_ticket_status_lookup_total", {"result": "ok"})
     metrics.inc("chat_ticket_followup_prompt_total", {"status": status})
 
-    content = f"접수번호 {ticket_no}의 현재 상태는 '{status_ko}'입니다. {followup}"
+    eta_message = (
+        f"예상 첫 응답은 약 {eta_minutes}분입니다."
+        if eta_minutes > 0
+        else "예상 응답 시간은 담당자 배정 후 안내됩니다."
+    )
+    content = (
+        f"접수번호 {ticket_no}의 현재 상태는 '{status_ko}'입니다. "
+        f"문의 유형은 '{category_ko}', 중요도는 '{severity_ko}'로 접수되어 있습니다. "
+        f"{eta_message} {followup}"
+    )
     return _build_response(
         trace_id,
         request_id,
