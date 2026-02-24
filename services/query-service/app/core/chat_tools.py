@@ -315,7 +315,7 @@ def _last_ticket_user_cache_key(user_id: str) -> str:
 def _user_id_from_session_id(session_id: str) -> str | None:
     if not session_id:
         return None
-    match = re.match(r"^u:([^:]+):", session_id)
+    match = re.match(r"^u:([^:]+)(?::|$)", session_id)
     if match:
         user_id = match.group(1).strip()
         if user_id:

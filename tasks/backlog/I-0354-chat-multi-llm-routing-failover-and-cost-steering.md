@@ -391,3 +391,10 @@ Implement multi-provider LLM routing for chat:
   - `u:<user_id>:` 패턴 세션 reset 시 사용자 dedup epoch도 함께 증가
 - [x] 회귀 테스트 보강
   - 사용자 패턴 세션 reset 시 사용자 dedup epoch 증가 및 user dedup 조회 무효화 검증
+
+## Implementation Update (2026-02-24, Bundle 50)
+- [x] session pattern 파싱 확장
+  - 사용자 세션 파싱을 `u:<user_id>:` 뿐 아니라 `u:<user_id>` 형식까지 지원
+- [x] session reset 범위 안전성 테스트 보강
+  - `u:<user_id>` 세션에서 사용자 캐시 clear 동작 검증
+  - 일반 세션 reset 시 사용자 캐시가 유지되는지 검증

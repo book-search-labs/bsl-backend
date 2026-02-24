@@ -395,9 +395,25 @@ def test_reset_ticket_session_context_clears_user_ticket_state_from_session_patt
     assert after_metrics.get(scope_metric_key, 0) >= before_metrics.get(scope_metric_key, 0) + 1
 
 
+def test_reset_ticket_session_context_clears_user_ticket_state_for_short_user_session_pattern():
+    chat_tools._CACHE = CacheClient(None)
+    session_id = "u:778"
+    user_id = "778"
+    chat_tools._CACHE.set_json(chat_tools._last_ticket_user_cache_key(user_id), {"ticket_no": "STK202602230778"}, ttl=300)
+    chat_tools._CACHE.set_json(chat_tools._ticket_create_last_user_cache_key(user_id), {"created_at": 1_700_200_020}, ttl=300)
+
+    chat_tools.reset_ticket_session_context(session_id)
+
+    assert chat_tools._CACHE.get_json(chat_tools._last_ticket_user_cache_key(user_id)) == {"cleared": True}
+    assert chat_tools._CACHE.get_json(chat_tools._ticket_create_last_user_cache_key(user_id)) == {"cleared": True}
+
+
 def test_reset_ticket_session_context_records_session_only_scope_metric():
     chat_tools._CACHE = CacheClient(None)
     session_id = "sess-ticket-reset-no-user"
+    user_id = "999"
+    chat_tools._CACHE.set_json(chat_tools._last_ticket_user_cache_key(user_id), {"ticket_no": "STK202602239999"}, ttl=300)
+    chat_tools._CACHE.set_json(chat_tools._ticket_create_last_user_cache_key(user_id), {"created_at": 1_700_200_099}, ttl=300)
     scope_metric_key = "chat_ticket_context_reset_scope_total{scope=session_only}"
     before_metrics = dict(chat_tools.metrics.snapshot())
 
@@ -405,6 +421,8 @@ def test_reset_ticket_session_context_records_session_only_scope_metric():
     after_metrics = chat_tools.metrics.snapshot()
 
     assert after_metrics.get(scope_metric_key, 0) >= before_metrics.get(scope_metric_key, 0) + 1
+    assert chat_tools._CACHE.get_json(chat_tools._last_ticket_user_cache_key(user_id)) == {"ticket_no": "STK202602239999"}
+    assert chat_tools._CACHE.get_json(chat_tools._ticket_create_last_user_cache_key(user_id)) == {"created_at": 1_700_200_099}
 
 
 def test_run_tool_chat_ticket_status_lookup_uses_user_recent_ticket_across_sessions(monkeypatch):
