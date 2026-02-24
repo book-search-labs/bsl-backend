@@ -297,3 +297,12 @@ Implement multi-provider LLM routing for chat:
 - [x] BFF alias 회귀 테스트 보강
   - `/v1/chat/session/state`, `/v1/chat/session/reset` alias 동작 검증
   - 프론트 라우팅 기준 endpoint prefix 변화 시 회귀 방지
+
+## Implementation Update (2026-02-24, Bundle 38)
+- [x] support ticket 생성 쿨다운 도입
+  - 동일 세션에서 연속 ticket 생성 시도 시 `QS_CHAT_TICKET_CREATE_COOLDOWN_SEC`(기본 30초) 쿨다운 적용
+  - 쿨다운 중 응답은 `reason_code=RATE_LIMITED`, `next_action=RETRY`, `retry_after_ms`로 표준 복구 힌트 반환
+- [x] 중복/성공 경로 정합성 유지
+  - dedup 재사용 경로와 실제 ticket 생성 성공 경로 모두 마지막 생성 시각 캐시를 갱신
+- [x] 회귀 테스트 추가
+  - 동일 세션 내 비중복 ticket 연속 생성 시 두 번째 요청이 rate limit 차단되는지 검증

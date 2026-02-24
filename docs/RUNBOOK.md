@@ -124,6 +124,7 @@ curl -s -X POST "http://localhost:8001/internal/chat/session/reset" \
 ```
 운영 지표는 `chat_session_reset_requests_total{result,had_unresolved}`에서 확인한다.
 또한 챗봇에서 support ticket를 성공적으로 생성/재사용하면 미해결 컨텍스트와 fallback 카운터를 자동 초기화한다 (`chat_ticket_context_reset_total`).
+동일 세션에서 연속으로 ticket 생성을 시도하면 `QS_CHAT_TICKET_CREATE_COOLDOWN_SEC`(기본 30초) 쿨다운이 적용되며, 응답은 `reason_code=RATE_LIMITED`, `next_action=RETRY`, `retry_after_ms`를 반환한다.
 
 BFF 경유 점검이 필요하면 동일 기능을 아래로 호출한다:
 ```bash

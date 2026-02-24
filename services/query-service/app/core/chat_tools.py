@@ -65,6 +65,10 @@ def _ticket_create_dedup_ttl_sec() -> int:
     return max(30, int(os.getenv("QS_CHAT_TICKET_DEDUP_TTL_SEC", "180")))
 
 
+def _ticket_create_cooldown_sec() -> int:
+    return max(0, int(os.getenv("QS_CHAT_TICKET_CREATE_COOLDOWN_SEC", "30")))
+
+
 def _extract_query_text(request: dict[str, Any]) -> str:
     message = request.get("message") if isinstance(request.get("message"), dict) else {}
     content = message.get("content") if isinstance(message, dict) else None
@@ -349,6 +353,10 @@ def _ticket_create_dedup_cache_key(session_id: str, fingerprint: str) -> str:
     return f"chat:ticket-create:dedup:{session_id}:{fingerprint}"
 
 
+def _ticket_create_last_cache_key(session_id: str) -> str:
+    return f"chat:ticket-create:last:{session_id}"
+
+
 def _load_ticket_create_dedup(session_id: str, fingerprint: str) -> dict[str, Any] | None:
     cached = _CACHE.get_json(_ticket_create_dedup_cache_key(session_id, fingerprint))
     if isinstance(cached, dict):
@@ -362,6 +370,22 @@ def _save_ticket_create_dedup(session_id: str, fingerprint: str, payload: dict[s
         payload,
         ttl=_ticket_create_dedup_ttl_sec(),
     )
+
+
+def _load_ticket_create_last(session_id: str) -> int | None:
+    cached = _CACHE.get_json(_ticket_create_last_cache_key(session_id))
+    if not isinstance(cached, dict):
+        return None
+    raw_ts = cached.get("created_at")
+    if isinstance(raw_ts, int) and raw_ts > 0:
+        return raw_ts
+    return None
+
+
+def _save_ticket_create_last(session_id: str) -> None:
+    cooldown = _ticket_create_cooldown_sec()
+    ttl = max(60, cooldown * 2 if cooldown > 0 else 60)
+    _CACHE.set_json(_ticket_create_last_cache_key(session_id), {"created_at": int(time.time())}, ttl=ttl)
 
 
 def _is_generic_ticket_create_message(query: str) -> bool:
@@ -886,6 +910,7 @@ async def _handle_ticket_create(
         if cached_ticket_no:
             metrics.inc("chat_ticket_create_dedup_hit_total", {"result": "reused"})
             _save_last_ticket_no(session_id, cached_ticket_no)
+            _save_ticket_create_last(session_id)
             _clear_unresolved_context(session_id)
             _reset_fallback_counter(session_id)
             metrics.inc("chat_ticket_context_reset_total", {"reason": "ticket_reused"})
@@ -901,6 +926,25 @@ async def _handle_ticket_create(
                 endpoint="POST /api/v1/support/tickets",
                 source_snippet=f"ticket_no={cached_ticket_no}, dedup=true, status={cached_status}",
             )
+
+    cooldown_sec = _ticket_create_cooldown_sec()
+    if cooldown_sec > 0:
+        last_created_at = _load_ticket_create_last(session_id)
+        now_ts = int(time.time())
+        if isinstance(last_created_at, int):
+            remaining_sec = (last_created_at + cooldown_sec) - now_ts
+            if remaining_sec > 0:
+                metrics.inc("chat_ticket_create_rate_limited_total", {"result": "blocked"})
+                return _build_response(
+                    trace_id,
+                    request_id,
+                    "needs_input",
+                    f"문의가 방금 접수되었습니다. {remaining_sec}초 후 다시 시도해 주세요.",
+                    reason_code="RATE_LIMITED",
+                    recoverable=True,
+                    next_action="RETRY",
+                    retry_after_ms=remaining_sec * 1000,
+                )
 
     category = _infer_ticket_category(effective_query)
     severity = _infer_ticket_severity(effective_query)
@@ -957,6 +1001,7 @@ async def _handle_ticket_create(
     status_ko = _ticket_status_ko(status)
     eta_minutes = int(created.get("expected_response_minutes") or 0)
     _save_last_ticket_no(session_id, ticket_no)
+    _save_ticket_create_last(session_id)
     _save_ticket_create_dedup(
         session_id,
         dedup_fingerprint,

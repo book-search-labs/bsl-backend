@@ -439,6 +439,53 @@ def test_run_tool_chat_ticket_create_dedup_reuse_clears_unresolved_context(monke
     assert chat_tools._CACHE.get_json(f"chat:fallback:count:{session_id}") == {"count": 0}
 
 
+def test_run_tool_chat_ticket_create_applies_cooldown_for_non_dedup_issue(monkeypatch):
+    call_count = {"ticket_create": 0}
+
+    async def fake_call_commerce(method, path, **kwargs):
+        if method == "POST" and path == "/support/tickets":
+            call_count["ticket_create"] += 1
+            return {
+                "ticket": {
+                    "ticket_id": 23,
+                    "ticket_no": "STK202602230203",
+                    "status": "RECEIVED",
+                    "severity": "MEDIUM",
+                },
+                "expected_response_minutes": 90,
+            }
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    monkeypatch.setattr(chat_tools, "_ticket_create_cooldown_sec", lambda: 60)
+    monkeypatch.setattr(chat_tools.time, "time", lambda: 1_700_000_000)
+
+    session_id = "sess-ticket-cooldown-1"
+    first_payload = {
+        "session_id": session_id,
+        "message": {"role": "user", "content": "문의 접수해줘 결제가 두 번 승인됐어요"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+    second_payload = {
+        "session_id": session_id,
+        "message": {"role": "user", "content": "문의 접수해줘 배송지가 잘못 입력됐어요"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+
+    first = asyncio.run(chat_tools.run_tool_chat(first_payload, "trace_test", "req_create_1"))
+    second = asyncio.run(chat_tools.run_tool_chat(second_payload, "trace_test", "req_create_2"))
+
+    assert first is not None and first["status"] == "ok"
+    assert second is not None
+    assert second["status"] == "needs_input"
+    assert second["reason_code"] == "RATE_LIMITED"
+    assert second["next_action"] == "RETRY"
+    assert second["recoverable"] is True
+    assert int(second["retry_after_ms"] or 0) > 0
+    assert "다시 시도" in second["answer"]["content"]
+    assert call_count["ticket_create"] == 1
+
+
 def test_build_response_emits_recovery_hint_metric():
     before = dict(chat_tools.metrics.snapshot())
     response = chat_tools._build_response(
