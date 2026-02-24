@@ -78,3 +78,52 @@ def test_chat_provider_snapshot_route_returns_payload(monkeypatch):
     data = response.json()
     assert data["status"] == "ok"
     assert data["snapshot"]["routing"]["final_chain"][0] == "primary"
+
+
+def test_chat_session_state_route_returns_payload(monkeypatch):
+    def fake_session_state(session_id, trace_id, request_id):
+        assert session_id == "u:101:default"
+        return {
+            "session_id": session_id,
+            "fallback_count": 2,
+            "fallback_escalation_threshold": 3,
+            "escalation_ready": False,
+            "unresolved_context": {
+                "reason_code": "LLM_NO_CITATIONS",
+                "trace_id": "trace_prev",
+                "request_id": "req_prev",
+                "updated_at": 1760000000,
+                "query_preview": "환불 조건 문의",
+            },
+            "trace_id": trace_id,
+            "request_id": request_id,
+        }
+
+    monkeypatch.setattr(routes, "get_chat_session_state", fake_session_state)
+
+    client = TestClient(app)
+    response = client.get("/internal/chat/session/state", params={"session_id": "u:101:default"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["session"]["fallback_count"] == 2
+    assert data["session"]["unresolved_context"]["reason_code"] == "LLM_NO_CITATIONS"
+
+
+def test_chat_session_state_route_requires_session_id():
+    client = TestClient(app)
+    response = client.get("/internal/chat/session/state")
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_request"
+
+
+def test_chat_session_state_route_rejects_invalid_session_id():
+    client = TestClient(app)
+    response = client.get("/internal/chat/session/state", params={"session_id": "bad session"})
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_request"

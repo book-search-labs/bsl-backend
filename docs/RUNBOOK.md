@@ -107,6 +107,12 @@ curl -s http://localhost:8001/internal/chat/providers
 ```
 응답의 `snapshot.providers[]`에서 provider별 `cooldown`/`stats`를, `snapshot.routing.final_chain`에서 현재 우선순위를 확인한다.
 
+세션별 fallback/미해결 컨텍스트 상태는:
+```bash
+curl -s "http://localhost:8001/internal/chat/session/state?session_id=u:101:default"
+```
+응답의 `session.fallback_count`가 임계치(`fallback_escalation_threshold`) 이상이면 상담 티켓 전환(`OPEN_SUPPORT_TICKET`) 대상이다.
+
 ## Sample Dev Bootstrap (Recommended)
 
 For team onboarding / fresh clone, use this exact flow:

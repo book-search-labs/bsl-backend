@@ -215,3 +215,14 @@ Implement multi-provider LLM routing for chat:
   - `contracts/chat-provider-snapshot-response.schema.json` 및 sample 추가
 - [x] 회귀 테스트 추가
   - `/internal/chat/providers` 응답 shape 검증
+
+## Implementation Update (2026-02-23, Bundle 28)
+- [x] session 단위 챗봇 진단 endpoint 추가
+  - `GET /internal/chat/session/state?session_id=...`
+  - fallback 누적 횟수, 티켓 전환 임계치, 미해결 컨텍스트(reason/trace/request/query preview) 노출
+- [x] SSOT 반영
+  - `contracts/chat-session-state-response.schema.json` + sample 추가
+  - `docs/API_SURFACE.md`, `docs/RUNBOOK.md` 반영
+- [x] 회귀 테스트 추가
+  - session state core 함수 fallback/unresolved snapshot 검증
+  - endpoint 정상/필수 파라미터 누락 에러 검증

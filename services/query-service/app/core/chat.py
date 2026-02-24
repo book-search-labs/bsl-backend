@@ -1079,6 +1079,15 @@ def _reset_fallback_count(session_id: Optional[str]) -> None:
     _CACHE.set_json(_fallback_counter_key(session_id), {"count": 0}, ttl=5)
 
 
+def _load_fallback_count(session_id: str) -> int:
+    cached = _CACHE.get_json(_fallback_counter_key(session_id))
+    if isinstance(cached, dict):
+        raw_count = cached.get("count")
+        if isinstance(raw_count, int) and raw_count >= 0:
+            return raw_count
+    return 0
+
+
 def _unresolved_context_key(session_id: str) -> str:
     return f"chat:unresolved:{session_id}"
 
@@ -1111,6 +1120,22 @@ def _clear_unresolved_context(session_id: Optional[str]) -> None:
     if not session_id:
         return
     _CACHE.set_json(_unresolved_context_key(session_id), {"cleared": True}, ttl=1)
+
+
+def _load_unresolved_context(session_id: str) -> Optional[Dict[str, Any]]:
+    cached = _CACHE.get_json(_unresolved_context_key(session_id))
+    if not isinstance(cached, dict):
+        return None
+    if cached.get("cleared") is True:
+        return None
+    return cached
+
+
+def _query_preview(text: str, *, max_len: int = 120) -> str:
+    normalized = " ".join((text or "").split()).strip()
+    if len(normalized) <= max_len:
+        return normalized
+    return f"{normalized[: max_len - 1]}..."
 
 
 def _resolve_top_k(request: Dict[str, Any]) -> int:
@@ -2327,4 +2352,31 @@ def get_chat_provider_snapshot(trace_id: str, request_id: str) -> Dict[str, Any]
             "low_cost_provider": _llm_low_cost_provider() or None,
             "intent_policy": _llm_provider_by_intent(),
         },
+    }
+
+
+def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> Dict[str, Any]:
+    if not _is_valid_session_id(session_id):
+        raise ValueError("invalid_session_id")
+
+    fallback_count = _load_fallback_count(session_id)
+    threshold = _fallback_escalation_threshold()
+    unresolved = _load_unresolved_context(session_id)
+    unresolved_context: Optional[Dict[str, Any]] = None
+    if isinstance(unresolved, dict):
+        unresolved_context = {
+            "reason_code": str(unresolved.get("reason_code") or ""),
+            "trace_id": str(unresolved.get("trace_id") or ""),
+            "request_id": str(unresolved.get("request_id") or ""),
+            "updated_at": int(unresolved.get("updated_at") or 0),
+            "query_preview": _query_preview(str(unresolved.get("query") or "")),
+        }
+    return {
+        "session_id": session_id,
+        "fallback_count": fallback_count,
+        "fallback_escalation_threshold": threshold,
+        "escalation_ready": fallback_count >= threshold,
+        "unresolved_context": unresolved_context,
+        "trace_id": trace_id,
+        "request_id": request_id,
     }

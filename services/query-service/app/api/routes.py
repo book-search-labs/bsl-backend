@@ -16,7 +16,7 @@ from app.core.rewrite import run_rewrite
 from app.core.metrics import metrics
 from app.core.rewrite_log import get_rewrite_log, now_iso
 from app.core.spell import run_spell
-from app.core.chat import explain_chat_rag, get_chat_provider_snapshot, run_chat, run_chat_stream
+from app.core.chat import explain_chat_rag, get_chat_provider_snapshot, get_chat_session_state, run_chat, run_chat_stream
 from app.core.understanding import parse_understanding
 
 router = APIRouter()
@@ -325,6 +325,42 @@ async def chat_provider_snapshot(request: Request):
         "request_id": request_id,
         "status": "ok",
         "snapshot": get_chat_provider_snapshot(trace_id, request_id),
+    }
+    return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
+
+
+@router.get("/internal/chat/session/state")
+async def chat_session_state(request: Request):
+    trace_id, request_id, _, traceparent = _extract_ids(request)
+    session_id = str(request.query_params.get("session_id") or "").strip()
+    if not session_id:
+        return _error_response(
+            "invalid_request",
+            "Query parameter session_id is required.",
+            trace_id,
+            request_id,
+        )
+    try:
+        snapshot = get_chat_session_state(session_id, trace_id, request_id)
+    except ValueError:
+        return _error_response(
+            "invalid_request",
+            "Invalid session_id format.",
+            trace_id,
+            request_id,
+        )
+    payload = {
+        "version": "v1",
+        "trace_id": trace_id,
+        "request_id": request_id,
+        "status": "ok",
+        "session": {
+            "session_id": snapshot["session_id"],
+            "fallback_count": snapshot["fallback_count"],
+            "fallback_escalation_threshold": snapshot["fallback_escalation_threshold"],
+            "escalation_ready": snapshot["escalation_ready"],
+            "unresolved_context": snapshot["unresolved_context"],
+        },
     }
     return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
 

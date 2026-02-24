@@ -42,6 +42,7 @@ SCHEMA_FILES = {
     "agent-alias-upsert-request.sample.json": CONTRACTS_DIR / "agent-alias-upsert-request.schema.json",
     "agent-alias-response.sample.json": CONTRACTS_DIR / "agent-alias-response.schema.json",
     "chat-provider-snapshot-response.sample.json": CONTRACTS_DIR / "chat-provider-snapshot-response.schema.json",
+    "chat-session-state-response.sample.json": CONTRACTS_DIR / "chat-session-state-response.schema.json",
 }
 
 def load_json(p: Path) -> dict:

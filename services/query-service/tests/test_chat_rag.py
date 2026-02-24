@@ -135,6 +135,28 @@ def test_get_chat_provider_snapshot_contains_config_and_stats(monkeypatch):
     assert any(item["name"] == "fallback_1" for item in snapshot["providers"])
 
 
+def test_get_chat_session_state_contains_fallback_and_unresolved_context():
+    chat._CACHE = CacheClient(None)
+    session_id = "u:101:default"
+    for _ in range(2):
+        chat._increment_fallback_count(session_id)
+    chat._save_unresolved_context(
+        session_id,
+        "환불 조건을 정리해줘. 주문번호는 1234입니다.",
+        "LLM_NO_CITATIONS",
+        trace_id="trace_prev",
+        request_id="req_prev",
+    )
+
+    state = chat.get_chat_session_state(session_id, "trace_now", "req_now")
+
+    assert state["session_id"] == session_id
+    assert state["fallback_count"] == 2
+    assert state["escalation_ready"] is False
+    assert state["unresolved_context"]["reason_code"] == "LLM_NO_CITATIONS"
+    assert state["unresolved_context"]["query_preview"].startswith("환불 조건을 정리해줘.")
+
+
 def test_run_chat_stream_emits_done_with_validated_citations(monkeypatch):
     chat._CACHE = CacheClient(None)
 

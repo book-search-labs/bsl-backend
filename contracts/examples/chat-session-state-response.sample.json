@@ -1,0 +1,19 @@
+{
+  "version": "v1",
+  "trace_id": "trace_01",
+  "request_id": "req_01",
+  "status": "ok",
+  "session": {
+    "session_id": "u:101:default",
+    "fallback_count": 2,
+    "fallback_escalation_threshold": 3,
+    "escalation_ready": false,
+    "unresolved_context": {
+      "reason_code": "LLM_NO_CITATIONS",
+      "trace_id": "trace_prev",
+      "request_id": "req_prev",
+      "updated_at": 1760000000,
+      "query_preview": "환불 조건을 정리해줘. 주문번호는 1234입니다."
+    }
+  }
+}

@@ -553,6 +553,16 @@ If supported, the server should treat it as:
 - Contract: `contracts/chat-provider-snapshot-response.schema.json`
 - Example: `contracts/examples/chat-provider-snapshot-response.sample.json`
 
+## GET `/internal/chat/session/state`
+**Purpose**: Internal chat session diagnostics snapshot (fallback count + unresolved context).
+
+### Query
+- `session_id` (required): chat session identifier.
+
+### Response
+- Contract: `contracts/chat-session-state-response.schema.json`
+- Example: `contracts/examples/chat-session-state-response.sample.json`
+
 ## GET `/internal/qc/rewrite/failures`
 **Purpose**: List curated rewrite failure cases for replay/analysis.
 
