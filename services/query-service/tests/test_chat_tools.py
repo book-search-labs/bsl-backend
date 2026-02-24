@@ -321,6 +321,7 @@ def test_run_tool_chat_ticket_create_uses_unresolved_context(monkeypatch):
         },
         ttl=600,
     )
+    chat_tools._CACHE.set_json(f"chat:fallback:count:{session_id}", {"count": 3}, ttl=600)
 
     payload = {
         "session_id": session_id,
@@ -335,6 +336,8 @@ def test_run_tool_chat_ticket_create_uses_unresolved_context(monkeypatch):
     assert captured["payload"]["summary"] == "환불 조건을 정리해줘"
     assert captured["payload"]["details"]["effectiveQuery"] == "환불 조건을 정리해줘"
     assert captured["payload"]["details"]["unresolvedReasonCode"] == "OUTPUT_GUARD_FORBIDDEN_CLAIM"
+    assert chat_tools._CACHE.get_json(f"chat:unresolved:{session_id}") == {"cleared": True}
+    assert chat_tools._CACHE.get_json(f"chat:fallback:count:{session_id}") == {"count": 0}
 
 
 def test_run_tool_chat_ticket_create_requires_issue_context():
@@ -387,6 +390,53 @@ def test_run_tool_chat_ticket_create_is_idempotent_within_dedup_window(monkeypat
     assert "STK202602230201" in second["answer"]["content"]
     assert "재사용" in second["answer"]["content"]
     assert call_count["ticket_create"] == 1
+
+
+def test_run_tool_chat_ticket_create_dedup_reuse_clears_unresolved_context(monkeypatch):
+    call_count = {"ticket_create": 0}
+
+    async def fake_call_commerce(method, path, **kwargs):
+        if method == "POST" and path == "/support/tickets":
+            call_count["ticket_create"] += 1
+            return {
+                "ticket": {
+                    "ticket_id": 22,
+                    "ticket_no": "STK202602230202",
+                    "status": "RECEIVED",
+                    "severity": "LOW",
+                },
+                "expected_response_minutes": 60,
+            }
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    session_id = "sess-ticket-dedup-ctx-1"
+    chat_tools._CACHE.set_json(
+        f"chat:unresolved:{session_id}",
+        {
+            "query": "배송이 안와요",
+            "reason_code": "PROVIDER_TIMEOUT",
+            "trace_id": "trace_prev",
+            "request_id": "req_prev",
+        },
+        ttl=600,
+    )
+    chat_tools._CACHE.set_json(f"chat:fallback:count:{session_id}", {"count": 2}, ttl=600)
+
+    payload = {
+        "session_id": session_id,
+        "message": {"role": "user", "content": "문의 접수해줘 배송이 안와요"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+
+    first = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_create_1"))
+    second = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_create_2"))
+
+    assert first is not None and first["status"] == "ok"
+    assert second is not None and second["status"] == "ok"
+    assert call_count["ticket_create"] == 1
+    assert chat_tools._CACHE.get_json(f"chat:unresolved:{session_id}") == {"cleared": True}
+    assert chat_tools._CACHE.get_json(f"chat:fallback:count:{session_id}") == {"count": 0}
 
 
 def test_build_response_emits_recovery_hint_metric():

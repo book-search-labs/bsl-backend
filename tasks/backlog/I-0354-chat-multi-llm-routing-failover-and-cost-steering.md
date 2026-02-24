@@ -274,3 +274,11 @@ Implement multi-provider LLM routing for chat:
 - [x] SSOT/테스트 반영
   - `chat-session-state-response` contract + sample 확장
   - state core/route 테스트에서 권장 액션 필드 검증
+
+## Implementation Update (2026-02-23, Bundle 35)
+- [x] ticket 접수 성공 후 세션 컨텍스트 자동 정리
+  - support ticket 생성/중복 재사용 성공 시 unresolved context/fallback counter 자동 초기화
+  - 반복 실패 후 티켓 접수 시 stale fallback 상태가 남지 않도록 보정
+- [x] 운영 메트릭/회귀 테스트 추가
+  - `chat_ticket_context_reset_total{reason=ticket_created|ticket_reused}` 집계
+  - unresolved context 기반 ticket 생성/중복 재사용 케이스에서 캐시 정리 검증

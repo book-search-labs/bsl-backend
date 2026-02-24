@@ -123,6 +123,7 @@ curl -s -X POST "http://localhost:8001/internal/chat/session/reset" \
   -d '{"session_id":"u:101:default"}'
 ```
 운영 지표는 `chat_session_reset_requests_total{result,had_unresolved}`에서 확인한다.
+또한 챗봇에서 support ticket를 성공적으로 생성/재사용하면 미해결 컨텍스트와 fallback 카운터를 자동 초기화한다 (`chat_ticket_context_reset_total`).
 
 ## Sample Dev Bootstrap (Recommended)
 

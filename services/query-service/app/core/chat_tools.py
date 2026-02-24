@@ -322,8 +322,22 @@ def _unresolved_context_cache_key(session_id: str) -> str:
 def _load_unresolved_context(session_id: str) -> dict[str, Any] | None:
     cached = _CACHE.get_json(_unresolved_context_cache_key(session_id))
     if isinstance(cached, dict):
+        if cached.get("cleared") is True:
+            return None
         return cached
     return None
+
+
+def _clear_unresolved_context(session_id: str) -> None:
+    _CACHE.set_json(_unresolved_context_cache_key(session_id), {"cleared": True}, ttl=1)
+
+
+def _fallback_counter_cache_key(session_id: str) -> str:
+    return f"chat:fallback:count:{session_id}"
+
+
+def _reset_fallback_counter(session_id: str) -> None:
+    _CACHE.set_json(_fallback_counter_cache_key(session_id), {"count": 0}, ttl=5)
 
 
 def _ticket_create_fingerprint(user_id: str, query: str) -> str:
@@ -872,6 +886,9 @@ async def _handle_ticket_create(
         if cached_ticket_no:
             metrics.inc("chat_ticket_create_dedup_hit_total", {"result": "reused"})
             _save_last_ticket_no(session_id, cached_ticket_no)
+            _clear_unresolved_context(session_id)
+            _reset_fallback_counter(session_id)
+            metrics.inc("chat_ticket_context_reset_total", {"reason": "ticket_reused"})
             return _build_response(
                 trace_id,
                 request_id,
@@ -949,7 +966,10 @@ async def _handle_ticket_create(
             "expected_response_minutes": eta_minutes,
         },
     )
+    _clear_unresolved_context(session_id)
+    _reset_fallback_counter(session_id)
     metrics.inc("chat_ticket_created_total", {"category": category})
+    metrics.inc("chat_ticket_context_reset_total", {"reason": "ticket_created"})
 
     content = (
         f"문의가 접수되었습니다. 접수번호는 {ticket_no}, 현재 상태는 '{status_ko}'입니다. "
