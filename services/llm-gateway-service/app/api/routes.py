@@ -49,11 +49,11 @@ def _synthesize_answer(payload: GenerateRequest) -> tuple[str, list[str]]:
         top = chunks[:2]
         citations = [chunk.citation_key for chunk in top]
         summary = " ".join(chunk.content[:160].strip() for chunk in top)
-        answer = f"Based on the provided sources, {summary}"
+        answer = f"제공된 근거를 기준으로 정리하면 {summary}"
         if payload.citations_required and citations:
             answer = f"{answer} [{' '.join(citations)}]"
     else:
-        answer = "Insufficient evidence to answer the question with citations."
+        answer = "근거 문서가 충분하지 않아 확정 답변이 어렵습니다. 질문을 조금 더 구체적으로 입력해 주세요."
     return answer, citations
 
 

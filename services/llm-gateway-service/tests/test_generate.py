@@ -67,7 +67,7 @@ class GenerateEndpointTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertEqual(body["citations"], [])
-        self.assertIn("Insufficient evidence", body["content"])
+        self.assertIn("근거 문서가 충분하지 않아", body["content"])
 
     def test_api_key_enforced_when_configured(self):
         settings_module.SETTINGS.allowed_keys = ["k1"]

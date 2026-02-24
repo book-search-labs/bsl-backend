@@ -226,3 +226,10 @@ Implement multi-provider LLM routing for chat:
 - [x] 회귀 테스트 추가
   - session state core 함수 fallback/unresolved snapshot 검증
   - endpoint 정상/필수 파라미터 누락 에러 검증
+
+## Implementation Update (2026-02-23, Bundle 29)
+- [x] LLM Gateway toy 응답 한국어화
+  - 근거 부족 메시지를 한국어로 고정해 UI 영어 문구 노출 제거
+  - toy 요약 응답 문구도 한국어로 통일
+- [x] 회귀 테스트 반영
+  - no-context insufficiency 응답 문구 한국어 검증
