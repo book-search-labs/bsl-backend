@@ -292,3 +292,8 @@ Implement multi-provider LLM routing for chat:
   - ChatController에서 state/reset 프록시 정상/필수값 누락 검증
 - [x] 문서 반영
   - API surface 및 runbook에 BFF 경유 호출 예시 추가
+
+## Implementation Update (2026-02-23, Bundle 37)
+- [x] BFF alias 회귀 테스트 보강
+  - `/v1/chat/session/state`, `/v1/chat/session/reset` alias 동작 검증
+  - 프론트 라우팅 기준 endpoint prefix 변화 시 회귀 방지

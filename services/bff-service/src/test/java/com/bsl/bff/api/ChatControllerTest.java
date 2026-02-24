@@ -180,6 +180,33 @@ class ChatControllerTest {
     }
 
     @Test
+    void v1ChatSessionStateAliasUsesQueryServiceProxy() throws Exception {
+        JsonNode responseNode = objectMapper.readTree(
+            "{"
+                + "\"version\":\"v1\","
+                + "\"trace_id\":\"trace_a\","
+                + "\"request_id\":\"req_a\","
+                + "\"status\":\"ok\","
+                + "\"session\":{"
+                + "\"session_id\":\"u:201:default\","
+                + "\"fallback_count\":0,"
+                + "\"fallback_escalation_threshold\":3,"
+                + "\"escalation_ready\":false,"
+                + "\"recommended_action\":\"NONE\","
+                + "\"recommended_message\":\"현재 챗봇 세션 상태는 정상입니다.\","
+                + "\"unresolved_context\":null"
+                + "}"
+                + "}"
+        );
+        when(queryServiceClient.chatSessionState(eq("u:201:default"), any())).thenReturn(responseNode);
+
+        mockMvc.perform(get("/v1/chat/session/state")
+                .param("session_id", "u:201:default"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.session.session_id").value("u:201:default"));
+    }
+
+    @Test
     void chatSessionResetProxyReturnsQueryServicePayload() throws Exception {
         JsonNode responseNode = objectMapper.readTree(
             "{"
@@ -216,5 +243,32 @@ class ChatControllerTest {
             .andExpect(jsonPath("$.error.code").value("bad_request"));
 
         verify(queryServiceClient, never()).resetChatSession(any(), any());
+    }
+
+    @Test
+    void v1ChatSessionResetAliasUsesQueryServiceProxy() throws Exception {
+        JsonNode responseNode = objectMapper.readTree(
+            "{"
+                + "\"version\":\"v1\","
+                + "\"trace_id\":\"trace_a\","
+                + "\"request_id\":\"req_a\","
+                + "\"status\":\"ok\","
+                + "\"session\":{"
+                + "\"session_id\":\"u:201:default\","
+                + "\"reset_applied\":true,"
+                + "\"previous_fallback_count\":1,"
+                + "\"previous_unresolved_context\":false,"
+                + "\"reset_at_ms\":1760000200000"
+                + "}"
+                + "}"
+        );
+        when(queryServiceClient.resetChatSession(eq("u:201:default"), any())).thenReturn(responseNode);
+
+        mockMvc.perform(post("/v1/chat/session/reset")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"session_id\":\"u:201:default\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.session.reset_applied").value(true))
+            .andExpect(jsonPath("$.session.previous_fallback_count").value(1));
     }
 }
