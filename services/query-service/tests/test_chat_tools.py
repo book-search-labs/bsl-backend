@@ -362,17 +362,35 @@ def test_reset_ticket_session_context_clears_user_ticket_state_from_session_patt
     chat_tools._CACHE = CacheClient(None)
     session_id = "u:777:default"
     user_id = "777"
+    query = "문의 접수해줘 결제 오류가 반복되고 있어요"
+    fingerprint = chat_tools._ticket_create_fingerprint(user_id, query)
+    chat_tools._CACHE.set_json(
+        chat_tools._ticket_create_dedup_user_cache_key(user_id, fingerprint),
+        {
+            "ticket_no": "STK202602230777",
+            "status": "RECEIVED",
+            "expected_response_minutes": 180,
+            "cached_at": 222,
+        },
+        ttl=300,
+    )
     chat_tools._CACHE.set_json(chat_tools._last_ticket_user_cache_key(user_id), {"ticket_no": "STK202602230402"}, ttl=300)
     chat_tools._CACHE.set_json(chat_tools._ticket_create_last_user_cache_key(user_id), {"created_at": 1_700_200_010}, ttl=300)
 
     metric_key = "chat_ticket_context_reset_total{reason=session_reset}"
     scope_metric_key = "chat_ticket_context_reset_scope_total{scope=session_and_user}"
+    before_user_epoch = chat_tools._ticket_create_dedup_user_epoch(user_id)
     before_metrics = dict(chat_tools.metrics.snapshot())
     chat_tools.reset_ticket_session_context(session_id)
     after_metrics = chat_tools.metrics.snapshot()
+    after_user_epoch = chat_tools._ticket_create_dedup_user_epoch(user_id)
+    dedup_cached, dedup_scope = chat_tools._load_ticket_create_dedup(session_id, user_id, fingerprint)
 
     assert chat_tools._CACHE.get_json(chat_tools._last_ticket_user_cache_key(user_id)) == {"cleared": True}
     assert chat_tools._CACHE.get_json(chat_tools._ticket_create_last_user_cache_key(user_id)) == {"cleared": True}
+    assert after_user_epoch == before_user_epoch + 1
+    assert dedup_cached is None
+    assert dedup_scope is None
     assert after_metrics.get(metric_key, 0) >= before_metrics.get(metric_key, 0) + 1
     assert after_metrics.get(scope_metric_key, 0) >= before_metrics.get(scope_metric_key, 0) + 1
 

@@ -384,3 +384,10 @@ Implement multi-provider LLM routing for chat:
 - [x] 회귀 테스트 추가
   - `u:<user_id>:` 세션에서 `scope=session_and_user` 증가 검증
   - 일반 세션에서 `scope=session_only` 증가 검증
+
+## Implementation Update (2026-02-24, Bundle 49)
+- [x] 사용자 dedup epoch 추가
+  - 사용자 dedup cache key에 epoch를 포함해 reset 이후 stale 사용자 dedup 엔트리 무효화
+  - `u:<user_id>:` 패턴 세션 reset 시 사용자 dedup epoch도 함께 증가
+- [x] 회귀 테스트 보강
+  - 사용자 패턴 세션 reset 시 사용자 dedup epoch 증가 및 user dedup 조회 무효화 검증

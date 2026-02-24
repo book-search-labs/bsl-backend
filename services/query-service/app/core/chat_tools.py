@@ -379,6 +379,10 @@ def _ticket_create_dedup_epoch_key(session_id: str) -> str:
     return f"chat:ticket-create:dedup:epoch:{session_id}"
 
 
+def _ticket_create_dedup_user_epoch_key(user_id: str) -> str:
+    return f"chat:ticket-create:dedup:user-epoch:{user_id}"
+
+
 def _ticket_create_dedup_epoch(session_id: str) -> int:
     cached = _CACHE.get_json(_ticket_create_dedup_epoch_key(session_id))
     if isinstance(cached, dict):
@@ -398,13 +402,33 @@ def _bump_ticket_create_dedup_epoch(session_id: str) -> int:
     return next_epoch
 
 
+def _ticket_create_dedup_user_epoch(user_id: str) -> int:
+    cached = _CACHE.get_json(_ticket_create_dedup_user_epoch_key(user_id))
+    if isinstance(cached, dict):
+        raw_epoch = cached.get("epoch")
+        if isinstance(raw_epoch, int) and raw_epoch >= 0:
+            return raw_epoch
+    return 0
+
+
+def _bump_ticket_create_dedup_user_epoch(user_id: str) -> int:
+    next_epoch = _ticket_create_dedup_user_epoch(user_id) + 1
+    _CACHE.set_json(
+        _ticket_create_dedup_user_epoch_key(user_id),
+        {"epoch": next_epoch},
+        ttl=max(600, _ticket_create_dedup_ttl_sec() * 4),
+    )
+    return next_epoch
+
+
 def _ticket_create_dedup_cache_key(session_id: str, fingerprint: str) -> str:
     epoch = _ticket_create_dedup_epoch(session_id)
     return f"chat:ticket-create:dedup:{session_id}:e{epoch}:{fingerprint}"
 
 
 def _ticket_create_dedup_user_cache_key(user_id: str, fingerprint: str) -> str:
-    return f"chat:ticket-create:dedup:user:{user_id}:{fingerprint}"
+    epoch = _ticket_create_dedup_user_epoch(user_id)
+    return f"chat:ticket-create:dedup:user:{user_id}:e{epoch}:{fingerprint}"
 
 
 def _ticket_create_last_cache_key(session_id: str) -> str:
@@ -486,6 +510,7 @@ def reset_ticket_session_context(session_id: str) -> None:
     if user_id:
         _CACHE.set_json(_last_ticket_user_cache_key(user_id), {"cleared": True}, ttl=1)
         _CACHE.set_json(_ticket_create_last_user_cache_key(user_id), {"cleared": True}, ttl=1)
+        _bump_ticket_create_dedup_user_epoch(user_id)
         scope = "session_and_user"
     _bump_ticket_create_dedup_epoch(session_id)
     metrics.inc("chat_ticket_context_reset_total", {"reason": "session_reset"})
