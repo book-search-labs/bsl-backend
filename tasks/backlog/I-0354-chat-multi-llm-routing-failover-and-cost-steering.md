@@ -306,3 +306,10 @@ Implement multi-provider LLM routing for chat:
   - dedup 재사용 경로와 실제 ticket 생성 성공 경로 모두 마지막 생성 시각 캐시를 갱신
 - [x] 회귀 테스트 추가
   - 동일 세션 내 비중복 ticket 연속 생성 시 두 번째 요청이 rate limit 차단되는지 검증
+
+## Implementation Update (2026-02-24, Bundle 39)
+- [x] ticket 생성 쿨다운 관측 라벨 확장
+  - `chat_ticket_create_rate_limited_total`에 `result=pass`, `result=dedup_bypass` 라벨 집계 추가
+  - 차단(`blocked`) 뿐 아니라 정상 통과/중복 재사용 bypass 비율까지 운영 대시보드에서 분리 관측 가능
+- [x] 회귀 테스트 보강
+  - 쿨다운 차단 케이스에서 `chat_ticket_create_rate_limited_total{result=blocked}` 증가 검증

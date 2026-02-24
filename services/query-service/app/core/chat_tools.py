@@ -909,6 +909,7 @@ async def _handle_ticket_create(
         cached_eta_minutes = int(dedup_cached.get("expected_response_minutes") or 0)
         if cached_ticket_no:
             metrics.inc("chat_ticket_create_dedup_hit_total", {"result": "reused"})
+            metrics.inc("chat_ticket_create_rate_limited_total", {"result": "dedup_bypass"})
             _save_last_ticket_no(session_id, cached_ticket_no)
             _save_ticket_create_last(session_id)
             _clear_unresolved_context(session_id)
@@ -945,6 +946,7 @@ async def _handle_ticket_create(
                     next_action="RETRY",
                     retry_after_ms=remaining_sec * 1000,
                 )
+        metrics.inc("chat_ticket_create_rate_limited_total", {"result": "pass"})
 
     category = _infer_ticket_category(effective_query)
     severity = _infer_ticket_severity(effective_query)

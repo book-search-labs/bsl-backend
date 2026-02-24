@@ -472,8 +472,11 @@ def test_run_tool_chat_ticket_create_applies_cooldown_for_non_dedup_issue(monkey
         "client": {"locale": "ko-KR", "user_id": "1"},
     }
 
+    metric_key = "chat_ticket_create_rate_limited_total{result=blocked}"
+    before_metrics = dict(chat_tools.metrics.snapshot())
     first = asyncio.run(chat_tools.run_tool_chat(first_payload, "trace_test", "req_create_1"))
     second = asyncio.run(chat_tools.run_tool_chat(second_payload, "trace_test", "req_create_2"))
+    after_metrics = chat_tools.metrics.snapshot()
 
     assert first is not None and first["status"] == "ok"
     assert second is not None
@@ -484,6 +487,7 @@ def test_run_tool_chat_ticket_create_applies_cooldown_for_non_dedup_issue(monkey
     assert int(second["retry_after_ms"] or 0) > 0
     assert "다시 시도" in second["answer"]["content"]
     assert call_count["ticket_create"] == 1
+    assert after_metrics.get(metric_key, 0) >= before_metrics.get(metric_key, 0) + 1
 
 
 def test_build_response_emits_recovery_hint_metric():
