@@ -73,6 +73,10 @@ def _last_ticket_ttl_sec() -> int:
     return max(600, int(os.getenv("QS_CHAT_LAST_TICKET_TTL_SEC", "86400")))
 
 
+def _ticket_list_default_limit() -> int:
+    return min(20, max(1, int(os.getenv("QS_CHAT_TICKET_LIST_LIMIT", "5"))))
+
+
 def _extract_query_text(request: dict[str, Any]) -> str:
     message = request.get("message") if isinstance(request.get("message"), dict) else {}
     content = message.get("content") if isinstance(message, dict) else None
@@ -125,6 +129,7 @@ def _detect_intent(query: str) -> ToolIntent:
     shipment_keywords = ["배송", "택배", "출고", "shipment", "tracking"]
     refund_keywords = ["환불", "refund", "반품"]
     order_keywords = ["주문", "order", "결제", "payment"]
+    ticket_list_keywords = ["문의 내역", "문의 목록", "티켓 내역", "티켓 목록", "ticket list", "my tickets", "최근 문의"]
     ticket_status_keywords = ["문의 상태", "티켓 상태", "ticket status", "ticket lookup", "내 문의"]
     ticket_create_keywords = ["문의 접수", "티켓 생성", "상담원 연결", "문의 남길", "ticket create", "support ticket"]
     cancel_keywords = ["주문 취소", "취소해", "cancel order", "cancel my order"]
@@ -134,6 +139,8 @@ def _detect_intent(query: str) -> ToolIntent:
         return ToolIntent("ORDER_CANCEL", 0.96)
     if any(keyword in q for keyword in refund_create_keywords) and (has_order_ref or "주문" in q or "order" in q):
         return ToolIntent("REFUND_CREATE", 0.95)
+    if any(keyword in q for keyword in ticket_list_keywords):
+        return ToolIntent("TICKET_LIST", 0.95)
     if ticket_no:
         return ToolIntent("TICKET_STATUS", 0.95)
     if any(keyword in q for keyword in ticket_status_keywords):
@@ -602,6 +609,20 @@ def _extract_ticket_no(query: str) -> str | None:
     if match:
         return match.group(1)
     return None
+
+
+def _extract_ticket_list_limit(query: str) -> int:
+    default_limit = _ticket_list_default_limit()
+    if not query:
+        return default_limit
+    match = re.search(r"(\d{1,2})\s*(?:건|개)", query)
+    if not match:
+        return default_limit
+    try:
+        parsed = int(match.group(1))
+    except Exception:
+        return default_limit
+    return min(20, max(1, parsed))
 
 
 def _ticket_status_ko(status: str | None) -> str:
@@ -1389,6 +1410,75 @@ async def _handle_ticket_status(
     )
 
 
+async def _handle_ticket_list(
+    query: str,
+    *,
+    user_id: str,
+    session_id: str,
+    trace_id: str,
+    request_id: str,
+) -> dict[str, Any]:
+    limit = _extract_ticket_list_limit(query)
+    try:
+        listed = await _call_commerce(
+            "GET",
+            f"/support/tickets?limit={limit}",
+            user_id=user_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            tool_name="ticket_list",
+            intent="TICKET_LIST",
+        )
+    except ToolCallError as exc:
+        if exc.status_code == 403:
+            metrics.inc("chat_ticket_authz_denied_total")
+            metrics.inc("chat_ticket_list_total", {"result": "forbidden"})
+            return _build_response(trace_id, request_id, "forbidden", "본인 티켓만 조회할 수 있습니다.")
+        metrics.inc("chat_ticket_list_total", {"result": "error"})
+        return _build_response(trace_id, request_id, "tool_fallback", "문의 내역을 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.")
+
+    items = listed.get("items") if isinstance(listed, dict) else []
+    if not isinstance(items, list) or not items:
+        metrics.inc("chat_ticket_list_total", {"result": "empty"})
+        return _build_response(
+            trace_id,
+            request_id,
+            "ok",
+            "현재 접수된 문의 내역이 없습니다. 문제가 있으면 '문의 접수해줘 ...' 형태로 알려주세요.",
+            tool_name="ticket_list",
+            endpoint="GET /api/v1/support/tickets",
+            source_snippet=f"ticket_count=0, limit={limit}",
+        )
+
+    lines: list[str] = []
+    latest_ticket_no = ""
+    for idx, item in enumerate(items[:limit], start=1):
+        if not isinstance(item, dict):
+            continue
+        ticket_no = str(item.get("ticket_no") or "-").strip().upper()
+        status = _ticket_status_ko(str(item.get("status") or ""))
+        category = _ticket_category_ko(str(item.get("category") or ""))
+        severity = _ticket_severity_ko(str(item.get("severity") or ""))
+        if idx == 1 and ticket_no and ticket_no != "-":
+            latest_ticket_no = ticket_no
+        lines.append(f"{idx}) {ticket_no} · {status} · {category} · {severity}")
+
+    if latest_ticket_no:
+        _save_last_ticket_no(session_id, user_id, latest_ticket_no)
+
+    metrics.inc("chat_ticket_list_total", {"result": "ok"})
+    content = "최근 문의 내역입니다.\n" + "\n".join(lines)
+    return _build_response(
+        trace_id,
+        request_id,
+        "ok",
+        content,
+        tool_name="ticket_list",
+        endpoint="GET /api/v1/support/tickets",
+        source_snippet=f"ticket_count={len(items)}, limit={limit}",
+    )
+
+
 async def _execute_sensitive_workflow(
     workflow: dict[str, Any],
     *,
@@ -1609,6 +1699,14 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
             )
         if intent.name == "TICKET_STATUS":
             return await _handle_ticket_status(
+                query,
+                user_id=user_id,
+                session_id=session_id,
+                trace_id=trace_id,
+                request_id=request_id,
+            )
+        if intent.name == "TICKET_LIST":
+            return await _handle_ticket_list(
                 query,
                 user_id=user_id,
                 session_id=session_id,

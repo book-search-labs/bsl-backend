@@ -355,6 +355,94 @@ def test_run_tool_chat_ticket_status_lookup_with_ticket_number_only(monkeypatch)
     ) + 1
 
 
+def test_run_tool_chat_ticket_list_success(monkeypatch):
+    calls: list[tuple[str, str]] = []
+
+    async def fake_call_commerce(method, path, **kwargs):
+        calls.append((method, path))
+        if method == "GET" and path == "/support/tickets?limit=3":
+            return {
+                "items": [
+                    {
+                        "ticket_no": "STK202602230601",
+                        "status": "IN_PROGRESS",
+                        "category": "REFUND",
+                        "severity": "HIGH",
+                    },
+                    {
+                        "ticket_no": "STK202602230600",
+                        "status": "RECEIVED",
+                        "category": "SHIPPING",
+                        "severity": "MEDIUM",
+                    },
+                ]
+            }
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    before_metrics = dict(chat_tools.metrics.snapshot())
+    result = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": "sess-ticket-list-1",
+                "message": {"role": "user", "content": "내 문의 내역 3건 보여줘"},
+                "client": {"locale": "ko-KR", "user_id": "1"},
+            },
+            "trace_test",
+            "req_ticket_list_ok",
+        )
+    )
+    after_metrics = chat_tools.metrics.snapshot()
+
+    assert result is not None
+    assert result["status"] == "ok"
+    content = result["answer"]["content"]
+    assert "최근 문의 내역" in content
+    assert "STK202602230601" in content
+    assert "환불/반품" in content
+    assert "긴급" in content
+    assert calls == [("GET", "/support/tickets?limit=3")]
+    assert result["sources"][0]["url"] == "GET /api/v1/support/tickets"
+    assert chat_tools._CACHE.get_json(chat_tools._last_ticket_cache_key("sess-ticket-list-1")) == {
+        "ticket_no": "STK202602230601",
+        "user_id": "1",
+    }
+    assert after_metrics.get("chat_ticket_list_total{result=ok}", 0) >= before_metrics.get(
+        "chat_ticket_list_total{result=ok}",
+        0,
+    ) + 1
+
+
+def test_run_tool_chat_ticket_list_empty(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        if method == "GET" and path == "/support/tickets?limit=5":
+            return {"items": []}
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    before_metrics = dict(chat_tools.metrics.snapshot())
+    result = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": "sess-ticket-list-empty-1",
+                "message": {"role": "user", "content": "문의 목록 보여줘"},
+                "client": {"locale": "ko-KR", "user_id": "1"},
+            },
+            "trace_test",
+            "req_ticket_list_empty",
+        )
+    )
+    after_metrics = chat_tools.metrics.snapshot()
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert "접수된 문의 내역이 없습니다" in result["answer"]["content"]
+    assert after_metrics.get("chat_ticket_list_total{result=empty}", 0) >= before_metrics.get(
+        "chat_ticket_list_total{result=empty}",
+        0,
+    ) + 1
+
+
 def test_run_tool_chat_ticket_status_lookup_uses_recent_ticket_list_when_no_reference(monkeypatch):
     calls: list[tuple[str, str]] = []
 

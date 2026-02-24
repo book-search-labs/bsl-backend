@@ -485,3 +485,15 @@ Implement multi-provider LLM routing for chat:
   - 이후 `내 문의 상태` 요청에서 직전 조회 접수번호를 재사용할 수 있도록 연속성 보강
 - [x] 회귀 테스트 보강
   - 접수번호 직접 조회 후 session/user 최근 문의 캐시가 동기화되는지 검증
+
+## Implementation Update (2026-02-24, Bundle 61)
+- [x] 티켓 목록 조회 인텐트/핸들러 추가
+  - `내 문의 내역/문의 목록/티켓 목록` 질의를 `TICKET_LIST`로 분리해 `GET /api/v1/support/tickets` 호출
+  - 질의 내 `N건/개` 패턴을 읽어 조회 건수(limit)를 조정(기본 5, 최대 20)
+- [x] 상태 연속성 보강
+  - 티켓 목록 조회 성공 시 최신 접수번호를 session/user 최근 문의 캐시에 동기화
+- [x] 운영 관측 지표 추가
+  - `chat_ticket_list_total{result=ok|empty|forbidden|error}` 집계
+- [x] 회귀 테스트 보강
+  - 목록 조회 성공(건수 지정) 응답 포맷/캐시 동기화 검증
+  - 목록 조회 빈 결과 응답/메트릭 검증
