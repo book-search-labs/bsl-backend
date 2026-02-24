@@ -153,6 +153,8 @@ def test_get_chat_session_state_contains_fallback_and_unresolved_context():
     assert state["session_id"] == session_id
     assert state["fallback_count"] == 2
     assert state["escalation_ready"] is False
+    assert state["recommended_action"] == "RETRY"
+    assert "답변을 보류" in state["recommended_message"]
     assert state["unresolved_context"]["reason_code"] == "LLM_NO_CITATIONS"
     assert "답변을 보류" in state["unresolved_context"]["reason_message"]
     assert state["unresolved_context"]["next_action"] == "RETRY"
@@ -180,6 +182,27 @@ def test_reset_chat_session_state_clears_fallback_and_unresolved_context():
     assert reset["previous_unresolved_context"] is True
     assert state["fallback_count"] == 0
     assert state["unresolved_context"] is None
+
+
+def test_get_chat_session_state_recommends_ticket_when_escalation_ready(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_FALLBACK_ESCALATE_THRESHOLD", "2")
+    session_id = "u:103:default"
+    for _ in range(2):
+        chat._increment_fallback_count(session_id)
+    chat._save_unresolved_context(
+        session_id,
+        "환불 요청이 계속 실패해요",
+        "LLM_NO_CITATIONS",
+        trace_id="trace_prev",
+        request_id="req_prev",
+    )
+
+    state = chat.get_chat_session_state(session_id, "trace_now", "req_now")
+
+    assert state["escalation_ready"] is True
+    assert state["recommended_action"] == "OPEN_SUPPORT_TICKET"
+    assert "상담 티켓" in state["recommended_message"]
 
 
 def test_run_chat_stream_emits_done_with_validated_citations(monkeypatch):

@@ -563,6 +563,7 @@ If supported, the server should treat it as:
 - Contract: `contracts/chat-session-state-response.schema.json`
 - Example: `contracts/examples/chat-session-state-response.sample.json`
 - `session.unresolved_context`에는 `reason_code` 뿐 아니라 `reason_message`, `next_action`이 포함되어 상담 티켓/재시도 분기 판단에 바로 사용 가능.
+- `session.recommended_action`, `session.recommended_message`는 현재 세션 상태(임계치 포함)를 반영한 최종 권장 후속 액션이다.
 
 ## POST `/internal/chat/session/reset`
 **Purpose**: Internal chat session diagnostics reset (fallback counter + unresolved context clear).

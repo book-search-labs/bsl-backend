@@ -2371,8 +2371,11 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
 
     fallback_count = _load_fallback_count(session_id)
     threshold = _fallback_escalation_threshold()
+    escalation_ready = fallback_count >= threshold
     unresolved = _load_unresolved_context(session_id)
     unresolved_context: Optional[Dict[str, Any]] = None
+    recommended_action = "NONE"
+    recommended_message = "현재 챗봇 세션 상태는 정상입니다."
     if isinstance(unresolved, dict):
         reason_code = str(unresolved.get("reason_code") or "")
         defaults = _fallback_defaults(reason_code)
@@ -2385,11 +2388,18 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
             "updated_at": int(unresolved.get("updated_at") or 0),
             "query_preview": _query_preview(str(unresolved.get("query") or "")),
         }
+        recommended_action = str(defaults.get("next_action") or "RETRY")
+        recommended_message = str(defaults.get("message") or "직전 미해결 사유를 확인해 주세요.")
+    if escalation_ready:
+        recommended_action = "OPEN_SUPPORT_TICKET"
+        recommended_message = "반복 실패가 임계치를 초과했습니다. 상담 티켓 접수를 권장합니다."
     return {
         "session_id": session_id,
         "fallback_count": fallback_count,
         "fallback_escalation_threshold": threshold,
-        "escalation_ready": fallback_count >= threshold,
+        "escalation_ready": escalation_ready,
+        "recommended_action": recommended_action,
+        "recommended_message": recommended_message,
         "unresolved_context": unresolved_context,
         "trace_id": trace_id,
         "request_id": request_id,

@@ -28,6 +28,8 @@
         "fallback_count",
         "fallback_escalation_threshold",
         "escalation_ready",
+        "recommended_action",
+        "recommended_message",
         "unresolved_context"
       ],
       "properties": {
@@ -45,6 +47,12 @@
         },
         "escalation_ready": {
           "type": "boolean"
+        },
+        "recommended_action": {
+          "type": "string"
+        },
+        "recommended_message": {
+          "type": "string"
         },
         "unresolved_context": {
           "type": ["object", "null"],

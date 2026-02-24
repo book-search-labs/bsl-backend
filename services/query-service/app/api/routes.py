@@ -375,6 +375,8 @@ async def chat_session_state(request: Request):
             "fallback_count": snapshot["fallback_count"],
             "fallback_escalation_threshold": snapshot["fallback_escalation_threshold"],
             "escalation_ready": snapshot["escalation_ready"],
+            "recommended_action": snapshot["recommended_action"],
+            "recommended_message": snapshot["recommended_message"],
             "unresolved_context": snapshot["unresolved_context"],
         },
     }

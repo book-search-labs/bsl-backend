@@ -113,6 +113,7 @@ curl -s "http://localhost:8001/internal/chat/session/state?session_id=u:101:defa
 ```
 응답의 `session.fallback_count`가 임계치(`fallback_escalation_threshold`) 이상이면 상담 티켓 전환(`OPEN_SUPPORT_TICKET`) 대상이다.
 `session.unresolved_context.reason_message`, `session.unresolved_context.next_action`으로 사용자 안내 문구/후속 액션을 즉시 확인한다.
+`session.recommended_action`, `session.recommended_message`는 임계치/직전 실패 사유를 반영한 최종 권장값이다.
 운영 지표는 `chat_session_state_requests_total{result,has_unresolved}`에서 확인한다.
 
 세션 진단 상태를 초기화하려면:

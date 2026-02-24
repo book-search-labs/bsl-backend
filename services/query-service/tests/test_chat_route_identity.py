@@ -93,6 +93,8 @@ def test_chat_session_state_route_returns_payload(monkeypatch):
             "fallback_count": 2,
             "fallback_escalation_threshold": 3,
             "escalation_ready": False,
+            "recommended_action": "RETRY",
+            "recommended_message": "생성된 답변과 근거 문서가 일치하지 않아 답변을 보류했습니다. 잠시 후 다시 시도해 주세요.",
             "unresolved_context": {
                 "reason_code": "LLM_NO_CITATIONS",
                 "reason_message": "생성된 답변과 근거 문서가 일치하지 않아 답변을 보류했습니다. 잠시 후 다시 시도해 주세요.",
@@ -116,6 +118,7 @@ def test_chat_session_state_route_returns_payload(monkeypatch):
     data = response.json()
     assert data["status"] == "ok"
     assert data["session"]["fallback_count"] == 2
+    assert data["session"]["recommended_action"] == "RETRY"
     assert data["session"]["unresolved_context"]["reason_code"] == "LLM_NO_CITATIONS"
     assert any(name == "chat_session_state_requests_total" and labels.get("result") == "ok" for name, labels in captured)
 

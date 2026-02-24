@@ -266,3 +266,11 @@ Implement multi-provider LLM routing for chat:
 - [x] 운영 메트릭/회귀 테스트 추가
   - `chat_session_reset_requests_total{result,had_unresolved}` 집계
   - 정상/필수값 누락/세션 형식 오류/JSON 파싱 오류 케이스 검증
+
+## Implementation Update (2026-02-23, Bundle 34)
+- [x] session state 응답에 최종 권장 액션 추가
+  - `recommended_action`, `recommended_message` 필드 제공
+  - fallback 임계치 초과 시 `OPEN_SUPPORT_TICKET`를 우선 권장
+- [x] SSOT/테스트 반영
+  - `chat-session-state-response` contract + sample 확장
+  - state core/route 테스트에서 권장 액션 필드 검증
