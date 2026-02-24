@@ -482,11 +482,14 @@ def reset_ticket_session_context(session_id: str) -> None:
     _CACHE.set_json(_last_ticket_cache_key(session_id), {"cleared": True}, ttl=1)
     _CACHE.set_json(_ticket_create_last_cache_key(session_id), {"cleared": True}, ttl=1)
     user_id = _user_id_from_session_id(session_id)
+    scope = "session_only"
     if user_id:
         _CACHE.set_json(_last_ticket_user_cache_key(user_id), {"cleared": True}, ttl=1)
         _CACHE.set_json(_ticket_create_last_user_cache_key(user_id), {"cleared": True}, ttl=1)
+        scope = "session_and_user"
     _bump_ticket_create_dedup_epoch(session_id)
     metrics.inc("chat_ticket_context_reset_total", {"reason": "session_reset"})
+    metrics.inc("chat_ticket_context_reset_scope_total", {"scope": scope})
 
 
 def _is_generic_ticket_create_message(query: str) -> bool:

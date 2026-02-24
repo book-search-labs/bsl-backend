@@ -376,3 +376,11 @@ Implement multi-provider LLM routing for chat:
   - `chat_ticket_context_reset_total{reason=session_reset}`를 session reset 경로에서 집계
 - [x] 회귀 테스트 추가
   - session pattern 기반 사용자 캐시 clear 및 `session_reset` 메트릭 증가 검증
+
+## Implementation Update (2026-02-24, Bundle 48)
+- [x] session reset 범위 메트릭 추가
+  - `chat_ticket_context_reset_scope_total{scope=session_only|session_and_user}` 집계
+  - 사용자 패턴 세션과 일반 세션의 reset 범위를 운영 대시보드에서 분리 확인 가능
+- [x] 회귀 테스트 추가
+  - `u:<user_id>:` 세션에서 `scope=session_and_user` 증가 검증
+  - 일반 세션에서 `scope=session_only` 증가 검증
