@@ -1200,13 +1200,7 @@ async def _handle_ticket_status(
     trace_id: str,
     request_id: str,
 ) -> dict[str, Any]:
-    source = "query"
-    ticket_no = _extract_ticket_no(query)
-    if not ticket_no:
-        source = "cache"
-        ticket_no = _load_last_ticket_no(session_id, user_id)
-    if not ticket_no:
-        source = "list"
+    async def _load_latest_ticket_no_from_list() -> tuple[str | None, str]:
         try:
             listed = await _call_commerce(
                 "GET",
@@ -1218,21 +1212,42 @@ async def _handle_ticket_status(
                 intent="TICKET_STATUS",
             )
         except ToolCallError:
-            metrics.inc("chat_ticket_status_lookup_total", {"result": "recent_lookup_error"})
-            metrics.inc("chat_ticket_status_lookup_ticket_source_total", {"source": "missing"})
-            return _build_response(
-                trace_id,
-                request_id,
-                "needs_input",
-                "최근 문의 내역을 조회하지 못했습니다. 접수번호(예: STK202602230001)를 입력해 주세요.",
-            )
+            metrics.inc("chat_ticket_status_recent_lookup_total", {"result": "error"})
+            return None, "error"
         items = listed.get("items") if isinstance(listed, dict) else []
         if isinstance(items, list) and items:
             latest = items[0] if isinstance(items[0], dict) else {}
             candidate_ticket_no = str(latest.get("ticket_no") or "").strip().upper()
             if candidate_ticket_no:
-                ticket_no = candidate_ticket_no
-                _save_last_ticket_no(session_id, user_id, ticket_no)
+                metrics.inc("chat_ticket_status_recent_lookup_total", {"result": "found"})
+                return candidate_ticket_no, "found"
+        metrics.inc("chat_ticket_status_recent_lookup_total", {"result": "empty"})
+        return None, "empty"
+
+    source = "query"
+    ticket_no = _extract_ticket_no(query)
+    if not ticket_no:
+        source = "cache"
+        ticket_no = _load_last_ticket_no(session_id, user_id)
+    if not ticket_no:
+        source = "list"
+        ticket_no, list_result = await _load_latest_ticket_no_from_list()
+        if not ticket_no:
+            result_label = "recent_lookup_error" if list_result == "error" else "needs_input"
+            message = (
+                "최근 문의 내역을 조회하지 못했습니다. 접수번호(예: STK202602230001)를 입력해 주세요."
+                if list_result == "error"
+                else "최근 접수된 문의가 없습니다. 접수번호(예: STK202602230001)를 입력해 주세요."
+            )
+            metrics.inc("chat_ticket_status_lookup_total", {"result": result_label})
+            metrics.inc("chat_ticket_status_lookup_ticket_source_total", {"source": "missing"})
+            return _build_response(
+                trace_id,
+                request_id,
+                "needs_input",
+                message,
+            )
+        _save_last_ticket_no(session_id, user_id, ticket_no)
     if not ticket_no:
         metrics.inc("chat_ticket_status_lookup_total", {"result": "needs_input"})
         metrics.inc("chat_ticket_status_lookup_ticket_source_total", {"source": "missing"})
@@ -1255,15 +1270,41 @@ async def _handle_ticket_status(
             intent="TICKET_STATUS",
         )
     except ToolCallError as exc:
-        if exc.status_code == 403:
+        if source == "cache" and exc.code == "not_found":
+            refreshed_ticket_no, _ = await _load_latest_ticket_no_from_list()
+            if refreshed_ticket_no and refreshed_ticket_no != ticket_no:
+                _save_last_ticket_no(session_id, user_id, refreshed_ticket_no)
+                metrics.inc("chat_ticket_status_lookup_ticket_source_total", {"source": "list"})
+                try:
+                    looked_up = await _call_commerce(
+                        "GET",
+                        f"/support/tickets/by-number/{refreshed_ticket_no}",
+                        user_id=user_id,
+                        trace_id=trace_id,
+                        request_id=request_id,
+                        tool_name="ticket_status_lookup",
+                        intent="TICKET_STATUS",
+                    )
+                    ticket_no = refreshed_ticket_no
+                    metrics.inc("chat_ticket_status_lookup_cache_recovery_total", {"result": "recovered"})
+                    exc = None
+                except ToolCallError as retry_exc:
+                    metrics.inc("chat_ticket_status_lookup_cache_recovery_total", {"result": "retry_failed"})
+                    exc = retry_exc
+            else:
+                metrics.inc("chat_ticket_status_lookup_cache_recovery_total", {"result": "miss"})
+        if exc is None:
+            pass
+        elif exc.status_code == 403:
             metrics.inc("chat_ticket_authz_denied_total")
             metrics.inc("chat_ticket_status_lookup_total", {"result": "forbidden"})
             return _build_response(trace_id, request_id, "forbidden", "본인 티켓만 조회할 수 있습니다.")
-        if exc.code == "not_found":
+        elif exc.code == "not_found":
             metrics.inc("chat_ticket_status_lookup_total", {"result": "not_found"})
             return _build_response(trace_id, request_id, "not_found", "해당 접수번호의 문의를 찾을 수 없습니다.")
-        metrics.inc("chat_ticket_status_lookup_total", {"result": "error"})
-        return _build_response(trace_id, request_id, "tool_fallback", "티켓 상태를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.")
+        elif exc is not None:
+            metrics.inc("chat_ticket_status_lookup_total", {"result": "error"})
+            return _build_response(trace_id, request_id, "tool_fallback", "티켓 상태를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.")
 
     ticket = looked_up.get("ticket") if isinstance(looked_up, dict) else {}
     status = str(ticket.get("status") or "RECEIVED")

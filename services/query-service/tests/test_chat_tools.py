@@ -395,6 +395,98 @@ def test_run_tool_chat_ticket_status_lookup_needs_input_when_no_recent_ticket(mo
     ) + 1
 
 
+def test_run_tool_chat_ticket_status_lookup_returns_needs_input_when_recent_lookup_errors(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        if method == "GET" and path == "/support/tickets?limit=1":
+            raise chat_tools.ToolCallError("tool_timeout", "timeout", status_code=504)
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    before_metrics = dict(chat_tools.metrics.snapshot())
+    result = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": "sess-ticket-status-list-error-1",
+                "message": {"role": "user", "content": "내 문의 상태 알려줘"},
+                "client": {"locale": "ko-KR", "user_id": "1"},
+            },
+            "trace_test",
+            "req_status_list_error",
+        )
+    )
+    after_metrics = chat_tools.metrics.snapshot()
+
+    assert result is not None
+    assert result["status"] == "needs_input"
+    assert "최근 문의 내역을 조회하지 못했습니다" in result["answer"]["content"]
+    assert after_metrics.get("chat_ticket_status_lookup_total{result=recent_lookup_error}", 0) >= before_metrics.get(
+        "chat_ticket_status_lookup_total{result=recent_lookup_error}",
+        0,
+    ) + 1
+    assert after_metrics.get("chat_ticket_status_recent_lookup_total{result=error}", 0) >= before_metrics.get(
+        "chat_ticket_status_recent_lookup_total{result=error}",
+        0,
+    ) + 1
+
+
+def test_run_tool_chat_ticket_status_lookup_recovers_when_cached_ticket_is_stale(monkeypatch):
+    calls: list[tuple[str, str]] = []
+    session_id = "sess-ticket-status-recover-1"
+    user_id = "ticket-status-recover-user-1"
+    chat_tools._CACHE.set_json(
+        chat_tools._last_ticket_cache_key(session_id),
+        {"ticket_no": "STK202602230499", "user_id": user_id},
+        ttl=300,
+    )
+
+    async def fake_call_commerce(method, path, **kwargs):
+        calls.append((method, path))
+        if method == "GET" and path == "/support/tickets/by-number/STK202602230499":
+            raise chat_tools.ToolCallError("not_found", "not found", status_code=404)
+        if method == "GET" and path == "/support/tickets?limit=1":
+            return {"items": [{"ticket_no": "STK202602230500"}]}
+        if method == "GET" and path == "/support/tickets/by-number/STK202602230500":
+            return {
+                "ticket": {
+                    "ticket_id": 50,
+                    "ticket_no": "STK202602230500",
+                    "status": "IN_PROGRESS",
+                    "severity": "LOW",
+                },
+                "expected_response_minutes": 80,
+            }
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    before_metrics = dict(chat_tools.metrics.snapshot())
+    result = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": session_id,
+                "message": {"role": "user", "content": "내 문의 상태 알려줘"},
+                "client": {"locale": "ko-KR", "user_id": user_id},
+            },
+            "trace_test",
+            "req_status_cache_recover",
+        )
+    )
+    after_metrics = chat_tools.metrics.snapshot()
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert "STK202602230500" in result["answer"]["content"]
+    assert "처리 중" in result["answer"]["content"]
+    assert calls == [
+        ("GET", "/support/tickets/by-number/STK202602230499"),
+        ("GET", "/support/tickets?limit=1"),
+        ("GET", "/support/tickets/by-number/STK202602230500"),
+    ]
+    assert after_metrics.get("chat_ticket_status_lookup_cache_recovery_total{result=recovered}", 0) >= before_metrics.get(
+        "chat_ticket_status_lookup_cache_recovery_total{result=recovered}",
+        0,
+    ) + 1
+
+
 def test_save_last_ticket_no_respects_configured_ttl(monkeypatch):
     chat_tools._CACHE = CacheClient(None)
     monkeypatch.setenv("QS_CHAT_LAST_TICKET_TTL_SEC", "7200")

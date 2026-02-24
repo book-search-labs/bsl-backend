@@ -443,3 +443,14 @@ Implement multi-provider LLM routing for chat:
 - [x] 회귀 테스트 보강
   - 접수번호 없이도 최근 문의 목록 기반으로 상태 조회 성공하는지 검증
   - 최근 문의가 없는 경우 `needs_input`으로 접수번호 입력 안내 및 메트릭 증가 검증
+
+## Implementation Update (2026-02-24, Bundle 56)
+- [x] 최근 문의 자동 조회 실패/빈목록 구분 처리
+  - 최근 문의 조회 실패(`error`)와 빈 목록(`empty`)을 분리해 `needs_input` 안내 메시지/집계 라벨을 명확화
+  - 최근 문의 조회 결과를 `chat_ticket_status_recent_lookup_total{result=found|empty|error}`로 관측
+- [x] stale 캐시 접수번호 자동 복구 추가
+  - 캐시 접수번호 조회가 `not_found`면 최신 문의 목록으로 1회 재조회 후 새로운 접수번호로 재시도
+  - 복구 성공/실패를 `chat_ticket_status_lookup_cache_recovery_total{result=recovered|miss|retry_failed}`로 분리 집계
+- [x] 회귀 테스트 보강
+  - 최근 문의 조회 timeout/error 시 `recent_lookup_error` 처리 검증
+  - stale cache(`not_found`)에서 최신 접수번호 재시도 후 복구 성공 경로 검증
