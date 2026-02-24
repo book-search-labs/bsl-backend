@@ -155,6 +155,7 @@ dedup 조회 결과는 `chat_ticket_create_dedup_lookup_total{result=miss|sessio
 이벤트 조회 상태는 `chat_ticket_status_event_lookup_total{result=ok|empty|error}`로 관측한다.
 사용자 메시지에 접수번호(`STK...`)가 포함되면 별도 키워드 없이도 티켓 상태 조회로 자동 라우팅된다.
 `내 문의 내역/목록` 질의는 `GET /api/v1/support/tickets`를 호출해 최근 티켓 목록(기본 5건, 최대 20건)을 반환한다.
+티켓 목록 건수 파싱은 `N건/N개`뿐 아니라 `N tickets`, `N items`도 지원한다.
 티켓 목록 조회 결과는 `chat_ticket_list_total{result=ok|empty|forbidden|error}`로 분리 관측한다.
 
 BFF 경유 점검이 필요하면 동일 기능을 아래로 호출한다:

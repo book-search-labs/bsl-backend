@@ -615,7 +615,7 @@ def _extract_ticket_list_limit(query: str) -> int:
     default_limit = _ticket_list_default_limit()
     if not query:
         return default_limit
-    match = re.search(r"(\d{1,2})\s*(?:건|개)", query)
+    match = re.search(r"(\d{1,2})\s*(?:건|개|tickets?|items?)", query, flags=re.IGNORECASE)
     if not match:
         return default_limit
     try:

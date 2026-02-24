@@ -446,6 +446,33 @@ def test_run_tool_chat_ticket_list_empty(monkeypatch):
     ) + 1
 
 
+def test_run_tool_chat_ticket_list_parses_english_limit(monkeypatch):
+    calls: list[tuple[str, str]] = []
+
+    async def fake_call_commerce(method, path, **kwargs):
+        calls.append((method, path))
+        if method == "GET" and path == "/support/tickets?limit=7":
+            return {"items": []}
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    result = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": "sess-ticket-list-en-limit-1",
+                "message": {"role": "user", "content": "show my tickets 7 items"},
+                "client": {"locale": "en-US", "user_id": "1"},
+            },
+            "trace_test",
+            "req_ticket_list_en_limit",
+        )
+    )
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert calls == [("GET", "/support/tickets?limit=7")]
+
+
 def test_run_tool_chat_ticket_status_lookup_uses_recent_ticket_list_when_no_reference(monkeypatch):
     calls: list[tuple[str, str]] = []
 

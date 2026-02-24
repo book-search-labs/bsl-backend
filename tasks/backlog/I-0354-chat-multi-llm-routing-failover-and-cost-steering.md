@@ -506,3 +506,10 @@ Implement multi-provider LLM routing for chat:
   - `chat_ticket_status_event_lookup_total{result=ok|empty|error}` 집계
 - [x] 회귀 테스트 보강
   - 상태 조회 응답에 최근 이벤트(상태 변경/노트) 문구가 포함되는지 검증
+
+## Implementation Update (2026-02-24, Bundle 63)
+- [x] 티켓 목록 건수 파싱 다국어 확장
+  - 목록 질의 limit 파싱을 `N건/N개` 외에 `N tickets`, `N items`까지 지원
+  - 영어/혼합 질의에서도 동일한 ticket list limit 제어가 가능
+- [x] 회귀 테스트 보강
+  - `show my tickets 7 items` 질의에서 `limit=7` 호출 검증
