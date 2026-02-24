@@ -977,6 +977,9 @@ async def _handle_ticket_create(
                     recoverable=True,
                     next_action="RETRY",
                     retry_after_ms=remaining_sec * 1000,
+                    tool_name="ticket_create_cooldown",
+                    endpoint="POST /api/v1/support/tickets",
+                    source_snippet=f"cooldown_sec={cooldown_sec}, remaining_sec={remaining_sec}, recent_ticket_no={recent_ticket_no or '-'}",
                 )
         metrics.inc("chat_ticket_create_rate_limited_total", {"result": "pass"})
 

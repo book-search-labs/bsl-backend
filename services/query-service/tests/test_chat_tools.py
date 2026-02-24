@@ -552,6 +552,8 @@ def test_run_tool_chat_ticket_create_applies_cooldown_for_non_dedup_issue(monkey
     assert int(second["retry_after_ms"] or 0) > 0
     assert "다시 시도" in second["answer"]["content"]
     assert "STK202602230203" in second["answer"]["content"]
+    assert second["citations"]
+    assert second["sources"][0]["url"] == "POST /api/v1/support/tickets"
     assert call_count["ticket_create"] == 1
     assert after_metrics.get(metric_key, 0) >= before_metrics.get(metric_key, 0) + 1
 

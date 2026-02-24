@@ -127,6 +127,7 @@ curl -s -X POST "http://localhost:8001/internal/chat/session/reset" \
 동일 세션에서 연속으로 ticket 생성을 시도하면 `QS_CHAT_TICKET_CREATE_COOLDOWN_SEC`(기본 30초) 쿨다운이 적용되며, 응답은 `reason_code=RATE_LIMITED`, `next_action=RETRY`, `retry_after_ms`를 반환한다.
 쿨다운 기준은 사용자 단위(`user_id`)로도 함께 저장되어, 동일 사용자가 세션을 바꿔도 짧은 시간 내 반복 접수를 제한한다.
 쿨다운 차단 응답에는 최근 접수번호가 있으면 함께 반환되어, 사용자에게 즉시 상태 조회 경로를 안내한다.
+쿨다운 차단 응답은 `POST /api/v1/support/tickets` source citation을 포함해 UI에서 근거 배지를 유지한다.
 쿨다운 관측 지표는 `chat_ticket_create_rate_limited_total{result=blocked|pass|dedup_bypass}`를 사용한다.
 
 BFF 경유 점검이 필요하면 동일 기능을 아래로 호출한다:

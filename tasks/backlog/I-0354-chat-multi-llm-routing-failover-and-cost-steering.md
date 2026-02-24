@@ -328,3 +328,10 @@ Implement multi-provider LLM routing for chat:
   - 쿨다운(`RATE_LIMITED`) 응답에 최근 접수번호를 함께 제공해 즉시 문의 상태 조회 유도
 - [x] 회귀 테스트 추가
   - 다른 세션에서도 사용자 최근 접수번호를 기반으로 `내 문의 상태` 조회가 동작하는지 검증
+
+## Implementation Update (2026-02-24, Bundle 42)
+- [x] 쿨다운 차단 응답 근거(citation) 추가
+  - `RATE_LIMITED` 응답에도 `ticket_create_cooldown` source/citation을 포함해 UI 근거 배지 유지
+  - 사용자 안내 메시지와 함께 운영 근거(`remaining_sec`, `recent_ticket_no`)를 source snippet으로 제공
+- [x] 회귀 테스트 보강
+  - 쿨다운 차단 응답에서 citation/source endpoint가 채워지는지 검증
