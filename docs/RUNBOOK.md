@@ -142,6 +142,9 @@ dedup 조회 결과는 `chat_ticket_create_dedup_lookup_total{result=miss|sessio
 세션 리셋 관측은 `chat_ticket_context_reset_total{reason=session_reset}`에서도 확인할 수 있다.
 최근 문의번호/쿨다운의 세션 캐시는 `user_id` 소유 정보를 포함하며, 조회 시 현재 사용자와 불일치하면 무시해 교차 사용자 오염을 방지한다.
 이상 징후 관측은 `chat_ticket_session_cache_owner_mismatch_total{cache=last_ticket|create_last}`로 확인한다.
+티켓 상태 조회(`내 문의 상태`)는 접수번호가 없으면 최근 문의 목록(`GET /api/v1/support/tickets?limit=1`)을 자동 조회해 접수번호를 보정한다.
+최근 문의 자동 보정 소스는 `chat_ticket_status_lookup_ticket_source_total{source=query|cache|list|missing}`로 관측한다.
+최근 문의 목록이 비었거나 조회 실패하면 `needs_input`으로 접수번호 입력을 안내한다.
 
 BFF 경유 점검이 필요하면 동일 기능을 아래로 호출한다:
 ```bash

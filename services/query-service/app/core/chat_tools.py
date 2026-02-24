@@ -1200,14 +1200,49 @@ async def _handle_ticket_status(
     trace_id: str,
     request_id: str,
 ) -> dict[str, Any]:
-    ticket_no = _extract_ticket_no(query) or _load_last_ticket_no(session_id, user_id)
+    source = "query"
+    ticket_no = _extract_ticket_no(query)
     if not ticket_no:
+        source = "cache"
+        ticket_no = _load_last_ticket_no(session_id, user_id)
+    if not ticket_no:
+        source = "list"
+        try:
+            listed = await _call_commerce(
+                "GET",
+                "/support/tickets?limit=1",
+                user_id=user_id,
+                trace_id=trace_id,
+                request_id=request_id,
+                tool_name="ticket_status_lookup",
+                intent="TICKET_STATUS",
+            )
+        except ToolCallError:
+            metrics.inc("chat_ticket_status_lookup_total", {"result": "recent_lookup_error"})
+            metrics.inc("chat_ticket_status_lookup_ticket_source_total", {"source": "missing"})
+            return _build_response(
+                trace_id,
+                request_id,
+                "needs_input",
+                "최근 문의 내역을 조회하지 못했습니다. 접수번호(예: STK202602230001)를 입력해 주세요.",
+            )
+        items = listed.get("items") if isinstance(listed, dict) else []
+        if isinstance(items, list) and items:
+            latest = items[0] if isinstance(items[0], dict) else {}
+            candidate_ticket_no = str(latest.get("ticket_no") or "").strip().upper()
+            if candidate_ticket_no:
+                ticket_no = candidate_ticket_no
+                _save_last_ticket_no(session_id, user_id, ticket_no)
+    if not ticket_no:
+        metrics.inc("chat_ticket_status_lookup_total", {"result": "needs_input"})
+        metrics.inc("chat_ticket_status_lookup_ticket_source_total", {"source": "missing"})
         return _build_response(
             trace_id,
             request_id,
             "needs_input",
-            "티켓 상태 조회를 위해 접수번호(예: STK202602230001)를 입력해 주세요.",
+            "최근 접수된 문의가 없습니다. 접수번호(예: STK202602230001)를 입력해 주세요.",
         )
+    metrics.inc("chat_ticket_status_lookup_ticket_source_total", {"source": source})
 
     try:
         looked_up = await _call_commerce(

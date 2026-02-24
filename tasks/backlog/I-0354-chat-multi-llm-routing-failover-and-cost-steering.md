@@ -432,3 +432,14 @@ Implement multi-provider LLM routing for chat:
 - [x] 회귀 테스트 보강
   - dedup 조회 miss/session/user 메트릭 증가 검증
   - `cached_at` 동률일 때 session dedup 선택 검증
+
+## Implementation Update (2026-02-24, Bundle 55)
+- [x] 티켓 상태 조회 접수번호 자동 보정 추가
+  - `내 문의 상태` 질의에서 접수번호/캐시가 없으면 `GET /api/v1/support/tickets?limit=1`로 최신 문의를 조회해 자동 보정
+  - 최신 문의를 찾으면 세션/사용자 최근 접수번호 캐시에 다시 저장해 이후 상태 조회 연속성 확보
+- [x] 티켓 상태 조회 소스 관측 지표 추가
+  - `chat_ticket_status_lookup_ticket_source_total{source=query|cache|list|missing}` 집계
+  - 질의 파싱/캐시/목록 보정/미해결 경로를 운영 관점에서 분리 추적 가능
+- [x] 회귀 테스트 보강
+  - 접수번호 없이도 최근 문의 목록 기반으로 상태 조회 성공하는지 검증
+  - 최근 문의가 없는 경우 `needs_input`으로 접수번호 입력 안내 및 메트릭 증가 검증
