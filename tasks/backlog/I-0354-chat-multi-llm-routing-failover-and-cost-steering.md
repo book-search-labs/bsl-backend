@@ -344,3 +344,10 @@ Implement multi-provider LLM routing for chat:
   - `chat_ticket_create_dedup_scope_total{scope=session|user}`로 dedup 재사용 범위를 분리 집계
 - [x] 회귀 테스트 추가
   - 같은 `user_id`, 다른 `session_id`에서 동일 문의 접수 시 두 번째 요청이 재사용되는지 검증
+
+## Implementation Update (2026-02-24, Bundle 44)
+- [x] dedup 캐시 최신성 우선 선택 로직 추가
+  - 세션/user dedup 엔트리가 동시에 존재할 때 `cached_at` 기준 최신 엔트리를 우선 선택
+  - 세션 이동/재진입 시 과거 stale dedup 응답을 반환하지 않도록 보정
+- [x] 회귀 테스트 추가
+  - session/user dedup 캐시에 서로 다른 ticket_no가 있을 때 최신 엔트리가 선택되는지 검증

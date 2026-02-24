@@ -520,6 +520,51 @@ def test_run_tool_chat_ticket_create_is_idempotent_across_sessions_same_user(mon
     assert after_metrics.get(metric_key, 0) >= before_metrics.get(metric_key, 0) + 1
 
 
+def test_run_tool_chat_ticket_create_dedup_prefers_latest_cache_entry():
+    session_id = "sess-ticket-dedup-latest-1"
+    user_id = "dedup-latest-user-1"
+    query = "문의 접수해줘 결제 확인 문자가 중복 발송돼요"
+    fingerprint = chat_tools._ticket_create_fingerprint(user_id, query)
+
+    chat_tools._CACHE.set_json(
+        chat_tools._ticket_create_dedup_cache_key(session_id, fingerprint),
+        {
+            "ticket_no": "STK202602230210",
+            "status": "RECEIVED",
+            "expected_response_minutes": 180,
+            "cached_at": 100,
+        },
+        ttl=300,
+    )
+    chat_tools._CACHE.set_json(
+        chat_tools._ticket_create_dedup_user_cache_key(user_id, fingerprint),
+        {
+            "ticket_no": "STK202602230211",
+            "status": "IN_PROGRESS",
+            "expected_response_minutes": 120,
+            "cached_at": 200,
+        },
+        ttl=300,
+    )
+
+    result = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": session_id,
+                "message": {"role": "user", "content": query},
+                "client": {"locale": "ko-KR", "user_id": user_id},
+            },
+            "trace_test",
+            "req_dedup_latest",
+        )
+    )
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert "STK202602230211" in result["answer"]["content"]
+    assert "처리 중" in result["answer"]["content"]
+
+
 def test_run_tool_chat_ticket_create_dedup_reuse_clears_unresolved_context(monkeypatch):
     call_count = {"ticket_create": 0}
 

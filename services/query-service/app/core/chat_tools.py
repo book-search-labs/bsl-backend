@@ -381,22 +381,33 @@ def _load_ticket_create_dedup(session_id: str, user_id: str, fingerprint: str) -
         ("session", _CACHE.get_json(_ticket_create_dedup_cache_key(session_id, fingerprint))),
         ("user", _CACHE.get_json(_ticket_create_dedup_user_cache_key(user_id, fingerprint))),
     )
+    best_payload: dict[str, Any] | None = None
+    best_scope: str | None = None
+    best_ts = -1
     for scope, cached in candidates:
-        if isinstance(cached, dict):
-            return cached, scope
-    return None, None
+        if not isinstance(cached, dict):
+            continue
+        cached_ts = cached.get("cached_at")
+        ts = int(cached_ts) if isinstance(cached_ts, int) else 0
+        if ts >= best_ts:
+            best_payload = cached
+            best_scope = scope
+            best_ts = ts
+    return best_payload, best_scope
 
 
 def _save_ticket_create_dedup(session_id: str, user_id: str, fingerprint: str, payload: dict[str, Any]) -> None:
     ttl = _ticket_create_dedup_ttl_sec()
+    payload_with_meta = dict(payload)
+    payload_with_meta["cached_at"] = int(time.time())
     _CACHE.set_json(
         _ticket_create_dedup_cache_key(session_id, fingerprint),
-        payload,
+        payload_with_meta,
         ttl=ttl,
     )
     _CACHE.set_json(
         _ticket_create_dedup_user_cache_key(user_id, fingerprint),
-        payload,
+        payload_with_meta,
         ttl=ttl,
     )
 
