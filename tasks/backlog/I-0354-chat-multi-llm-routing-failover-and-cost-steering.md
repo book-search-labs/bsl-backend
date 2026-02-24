@@ -282,3 +282,13 @@ Implement multi-provider LLM routing for chat:
 - [x] 운영 메트릭/회귀 테스트 추가
   - `chat_ticket_context_reset_total{reason=ticket_created|ticket_reused}` 집계
   - unresolved context 기반 ticket 생성/중복 재사용 케이스에서 캐시 정리 검증
+
+## Implementation Update (2026-02-23, Bundle 36)
+- [x] BFF 챗 세션 진단 프록시 endpoint 추가
+  - `GET /chat/session/state` (`/v1/chat/session/state`)
+  - `POST /chat/session/reset` (`/v1/chat/session/reset`)
+  - 프론트가 Query Service 내부 경로를 직접 호출하지 않도록 표준 진입점 제공
+- [x] BFF 회귀 테스트 추가
+  - ChatController에서 state/reset 프록시 정상/필수값 누락 검증
+- [x] 문서 반영
+  - API surface 및 runbook에 BFF 경유 호출 예시 추가

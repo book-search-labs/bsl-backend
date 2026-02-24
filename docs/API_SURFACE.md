@@ -165,6 +165,32 @@ All structured responses that follow `contracts/*` must include:
   - `error` (reason code/message when degraded)
   - `done` (final status + citations + optional recovery hints)
 
+## GET `/chat/session/state`
+**Purpose**: BFF proxy for chat session diagnostics snapshot.
+**Alias**: `GET /v1/chat/session/state`
+
+### Query
+- `session_id` (required)
+
+### Response
+- Contract: `contracts/chat-session-state-response.schema.json`
+- Example: `contracts/examples/chat-session-state-response.sample.json`
+
+## POST `/chat/session/reset`
+**Purpose**: BFF proxy for chat session diagnostics reset.
+**Alias**: `POST /v1/chat/session/reset`
+
+### Request
+```json
+{
+  "session_id": "u:101:default"
+}
+```
+
+### Response
+- Contract: `contracts/chat-session-reset-response.schema.json`
+- Example: `contracts/examples/chat-session-reset-response.sample.json`
+
 ## POST `/chat/feedback`
 **Purpose**: user feedback for chat answers (👍/👎 + flags).  
 **Alias**: `POST /v1/chat/feedback`

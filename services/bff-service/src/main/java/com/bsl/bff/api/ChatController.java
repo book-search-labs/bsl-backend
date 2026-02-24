@@ -27,8 +27,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -124,6 +126,41 @@ public class ChatController {
         }
         outboxService.record("chat_feedback_v1", "chat_message", aggregateId, payload);
         return ack(context);
+    }
+
+    @GetMapping("/session/state")
+    public ResponseEntity<JsonNode> sessionState(
+        @RequestParam(value = "session_id", required = false) String sessionId
+    ) {
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new BadRequestException("session_id is required");
+        }
+        RequestContext context = RequestContextHolder.get();
+        JsonNode response = queryServiceClient.chatSessionState(sessionId.trim(), context);
+        if (response == null) {
+            throw new DownstreamException(HttpStatus.BAD_GATEWAY, "query_service_error", "Query service response is empty");
+        }
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/session/reset")
+    public ResponseEntity<JsonNode> sessionReset(
+        @RequestBody(required = false) Map<String, Object> request
+    ) {
+        if (request == null) {
+            throw new BadRequestException("request body is required");
+        }
+        Object rawSessionId = request.get("session_id");
+        String sessionId = rawSessionId instanceof String ? ((String) rawSessionId).trim() : "";
+        if (sessionId.isBlank()) {
+            throw new BadRequestException("session_id is required");
+        }
+        RequestContext context = RequestContextHolder.get();
+        JsonNode response = queryServiceClient.resetChatSession(sessionId, context);
+        if (response == null) {
+            throw new DownstreamException(HttpStatus.BAD_GATEWAY, "query_service_error", "Query service response is empty");
+        }
+        return ResponseEntity.ok(response);
     }
 
     private void streamFromQueryService(

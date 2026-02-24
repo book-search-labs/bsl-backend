@@ -8,6 +8,7 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -138,5 +139,82 @@ class ChatControllerTest {
             .andExpect(jsonPath("$.status").value("ok"));
 
         verify(queryServiceClient).chat(anyMap(), any());
+    }
+
+    @Test
+    void chatSessionStateProxyReturnsQueryServicePayload() throws Exception {
+        JsonNode responseNode = objectMapper.readTree(
+            "{"
+                + "\"version\":\"v1\","
+                + "\"trace_id\":\"trace_a\","
+                + "\"request_id\":\"req_a\","
+                + "\"status\":\"ok\","
+                + "\"session\":{"
+                + "\"session_id\":\"u:101:default\","
+                + "\"fallback_count\":2,"
+                + "\"fallback_escalation_threshold\":3,"
+                + "\"escalation_ready\":false,"
+                + "\"recommended_action\":\"RETRY\","
+                + "\"recommended_message\":\"잠시 후 다시 시도해 주세요.\","
+                + "\"unresolved_context\":null"
+                + "}"
+                + "}"
+        );
+        when(queryServiceClient.chatSessionState(eq("u:101:default"), any())).thenReturn(responseNode);
+
+        mockMvc.perform(get("/chat/session/state")
+                .param("session_id", "u:101:default"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"))
+            .andExpect(jsonPath("$.session.session_id").value("u:101:default"))
+            .andExpect(jsonPath("$.session.recommended_action").value("RETRY"));
+    }
+
+    @Test
+    void chatSessionStateRequiresSessionId() throws Exception {
+        mockMvc.perform(get("/chat/session/state"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("bad_request"));
+
+        verify(queryServiceClient, never()).chatSessionState(any(), any());
+    }
+
+    @Test
+    void chatSessionResetProxyReturnsQueryServicePayload() throws Exception {
+        JsonNode responseNode = objectMapper.readTree(
+            "{"
+                + "\"version\":\"v1\","
+                + "\"trace_id\":\"trace_a\","
+                + "\"request_id\":\"req_a\","
+                + "\"status\":\"ok\","
+                + "\"session\":{"
+                + "\"session_id\":\"u:101:default\","
+                + "\"reset_applied\":true,"
+                + "\"previous_fallback_count\":3,"
+                + "\"previous_unresolved_context\":true,"
+                + "\"reset_at_ms\":1760000100000"
+                + "}"
+                + "}"
+        );
+        when(queryServiceClient.resetChatSession(eq("u:101:default"), any())).thenReturn(responseNode);
+
+        mockMvc.perform(post("/chat/session/reset")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"session_id\":\"u:101:default\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"))
+            .andExpect(jsonPath("$.session.reset_applied").value(true))
+            .andExpect(jsonPath("$.session.previous_fallback_count").value(3));
+    }
+
+    @Test
+    void chatSessionResetRequiresSessionId() throws Exception {
+        mockMvc.perform(post("/chat/session/reset")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("bad_request"));
+
+        verify(queryServiceClient, never()).resetChatSession(any(), any());
     }
 }

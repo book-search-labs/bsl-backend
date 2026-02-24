@@ -125,6 +125,14 @@ curl -s -X POST "http://localhost:8001/internal/chat/session/reset" \
 운영 지표는 `chat_session_reset_requests_total{result,had_unresolved}`에서 확인한다.
 또한 챗봇에서 support ticket를 성공적으로 생성/재사용하면 미해결 컨텍스트와 fallback 카운터를 자동 초기화한다 (`chat_ticket_context_reset_total`).
 
+BFF 경유 점검이 필요하면 동일 기능을 아래로 호출한다:
+```bash
+curl -s "http://localhost:8088/chat/session/state?session_id=u:101:default"
+curl -s -X POST "http://localhost:8088/chat/session/reset" \
+  -H "content-type: application/json" \
+  -d '{"session_id":"u:101:default"}'
+```
+
 ## Sample Dev Bootstrap (Recommended)
 
 For team onboarding / fresh clone, use this exact flow:
