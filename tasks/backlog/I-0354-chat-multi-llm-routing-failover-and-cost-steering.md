@@ -497,3 +497,12 @@ Implement multi-provider LLM routing for chat:
 - [x] 회귀 테스트 보강
   - 목록 조회 성공(건수 지정) 응답 포맷/캐시 동기화 검증
   - 목록 조회 빈 결과 응답/메트릭 검증
+
+## Implementation Update (2026-02-24, Bundle 62)
+- [x] 티켓 상태 조회에 최근 이벤트 병기
+  - 상태 조회 성공 시 `/api/v1/support/tickets/{ticketId}/events`를 추가 조회해 최근 처리 이력(event_type/note/timestamp)을 응답 문구에 포함
+  - 이벤트 조회 실패는 상태 조회 자체를 막지 않고 본문에서 이력만 생략
+- [x] 운영 관측 지표 추가
+  - `chat_ticket_status_event_lookup_total{result=ok|empty|error}` 집계
+- [x] 회귀 테스트 보강
+  - 상태 조회 응답에 최근 이벤트(상태 변경/노트) 문구가 포함되는지 검증

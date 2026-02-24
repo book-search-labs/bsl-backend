@@ -650,6 +650,28 @@ def _ticket_followup_message(status: str | None) -> str:
     return mapping.get(normalized, "현재 티켓 상태를 확인했습니다.")
 
 
+def _ticket_event_type_ko(event_type: str | None) -> str:
+    mapping = {
+        "TICKET_RECEIVED": "문의 접수",
+        "STATUS_CHANGED": "상태 변경",
+    }
+    if not event_type:
+        return "처리 이력"
+    return mapping.get(str(event_type).upper(), str(event_type))
+
+
+def _format_event_timestamp(raw: Any) -> str:
+    text = str(raw or "").strip()
+    if not text:
+        return ""
+    normalized = text.replace("T", " ")
+    if "." in normalized:
+        normalized = normalized.split(".", 1)[0]
+    if len(normalized) >= 16:
+        return normalized[:16]
+    return normalized
+
+
 def _ticket_category_ko(category: str | None) -> str:
     mapping = {
         "ORDER": "주문/결제",
@@ -1385,6 +1407,37 @@ async def _handle_ticket_status(
     severity_ko = _ticket_severity_ko(str(ticket.get("severity") or ""))
     eta_minutes = int(looked_up.get("expected_response_minutes") or 0) if isinstance(looked_up, dict) else 0
     followup = _ticket_followup_message(status)
+    ticket_id = int(ticket.get("ticket_id") or 0) if isinstance(ticket, dict) else 0
+    event_message = ""
+    if ticket_id > 0:
+        try:
+            event_data = await _call_commerce(
+                "GET",
+                f"/support/tickets/{ticket_id}/events",
+                user_id=user_id,
+                trace_id=trace_id,
+                request_id=request_id,
+                tool_name="ticket_status_events",
+                intent="TICKET_STATUS",
+            )
+        except Exception:
+            metrics.inc("chat_ticket_status_event_lookup_total", {"result": "error"})
+        else:
+            events = event_data.get("items") if isinstance(event_data, dict) else []
+            if isinstance(events, list) and events:
+                latest_event = events[-1] if isinstance(events[-1], dict) else {}
+                event_type_ko = _ticket_event_type_ko(str(latest_event.get("event_type") or ""))
+                event_note = str(latest_event.get("note") or "").strip()
+                event_at = _format_event_timestamp(latest_event.get("created_at"))
+                event_message = f"최근 처리 이력은 '{event_type_ko}'"
+                if event_at:
+                    event_message += f" ({event_at})"
+                if event_note:
+                    event_message += f" - {event_note}"
+                event_message += "입니다."
+                metrics.inc("chat_ticket_status_event_lookup_total", {"result": "ok"})
+            else:
+                metrics.inc("chat_ticket_status_event_lookup_total", {"result": "empty"})
     metrics.inc("chat_ticket_status_lookup_total", {"result": "ok"})
     metrics.inc("chat_ticket_followup_prompt_total", {"status": status})
 
@@ -1399,6 +1452,8 @@ async def _handle_ticket_status(
         f"문의 유형은 '{category_ko}', 중요도는 '{severity_ko}'로 접수되어 있습니다. "
         f"{eta_message} {followup}"
     )
+    if event_message:
+        content += f" {event_message}"
     return _build_response(
         trace_id,
         request_id,

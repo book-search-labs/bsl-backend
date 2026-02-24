@@ -151,6 +151,8 @@ dedup 조회 결과는 `chat_ticket_create_dedup_lookup_total{result=miss|sessio
 최근 문의 목록 조회 결과는 `chat_ticket_status_recent_lookup_total{result=found|empty|error}`로 분리 관측한다.
 캐시 접수번호가 stale(`not_found`)인 경우 최신 목록으로 1회 자동 복구를 시도하며 `chat_ticket_status_lookup_cache_recovery_total{result=recovered|miss|retry_failed}`로 확인한다.
 티켓 상태 응답 본문에는 상태 외에 문의 유형/중요도/예상 첫 응답 시간(분)이 함께 포함되어 상담 대기 맥락을 한 번에 안내한다.
+가능하면 티켓 이벤트(`/api/v1/support/tickets/{ticketId}/events`)를 함께 조회해 최근 처리 이력을 상태 응답 문구에 병기한다.
+이벤트 조회 상태는 `chat_ticket_status_event_lookup_total{result=ok|empty|error}`로 관측한다.
 사용자 메시지에 접수번호(`STK...`)가 포함되면 별도 키워드 없이도 티켓 상태 조회로 자동 라우팅된다.
 `내 문의 내역/목록` 질의는 `GET /api/v1/support/tickets`를 호출해 최근 티켓 목록(기본 5건, 최대 20건)을 반환한다.
 티켓 목록 조회 결과는 `chat_ticket_list_total{result=ok|empty|forbidden|error}`로 분리 관측한다.

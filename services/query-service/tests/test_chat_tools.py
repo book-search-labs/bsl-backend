@@ -343,7 +343,10 @@ def test_run_tool_chat_ticket_status_lookup_with_ticket_number_only(monkeypatch)
     assert result is not None
     assert result["status"] == "ok"
     assert "STK202602230777" in result["answer"]["content"]
-    assert calls == [("GET", "/support/tickets/by-number/STK202602230777")]
+    assert calls == [
+        ("GET", "/support/tickets/by-number/STK202602230777"),
+        ("GET", "/support/tickets/777/events"),
+    ]
     assert chat_tools._CACHE.get_json(chat_tools._last_ticket_cache_key("sess-ticket-number-only-1")) == {
         "ticket_no": "STK202602230777",
         "user_id": "1",
@@ -492,6 +495,7 @@ def test_run_tool_chat_ticket_status_lookup_uses_recent_ticket_list_when_no_refe
     assert calls == [
         ("GET", "/support/tickets?limit=1"),
         ("GET", "/support/tickets/by-number/STK202602230401"),
+        ("GET", "/support/tickets/41/events"),
     ]
     metric_key = "chat_ticket_status_lookup_ticket_source_total{source=list}"
     assert after_metrics.get(metric_key, 0) >= before_metrics.get(metric_key, 0) + 1
@@ -616,6 +620,7 @@ def test_run_tool_chat_ticket_status_lookup_recovers_when_cached_ticket_is_stale
         ("GET", "/support/tickets/by-number/STK202602230499"),
         ("GET", "/support/tickets?limit=1"),
         ("GET", "/support/tickets/by-number/STK202602230500"),
+        ("GET", "/support/tickets/50/events"),
     ]
     assert after_metrics.get("chat_ticket_status_lookup_cache_recovery_total{result=recovered}", 0) >= before_metrics.get(
         "chat_ticket_status_lookup_cache_recovery_total{result=recovered}",
@@ -638,6 +643,21 @@ def test_run_tool_chat_ticket_status_lookup_includes_category_severity_and_eta(m
                 },
                 "expected_response_minutes": 45,
             }
+        if method == "GET" and path == "/support/tickets/511/events":
+            return {
+                "items": [
+                    {
+                        "event_type": "TICKET_RECEIVED",
+                        "note": "ticket created",
+                        "created_at": "2026-02-24T11:20:30",
+                    },
+                    {
+                        "event_type": "STATUS_CHANGED",
+                        "note": "담당자 배정",
+                        "created_at": "2026-02-24T11:30:00",
+                    },
+                ]
+            }
         raise AssertionError(f"unexpected call {method} {path}")
 
     monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
@@ -659,6 +679,9 @@ def test_run_tool_chat_ticket_status_lookup_includes_category_severity_and_eta(m
     assert "환불/반품" in content
     assert "긴급" in content
     assert "45분" in content
+    assert "최근 처리 이력" in content
+    assert "상태 변경" in content
+    assert "담당자 배정" in content
 
 
 def test_save_last_ticket_no_respects_configured_ttl(monkeypatch):
