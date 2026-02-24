@@ -364,8 +364,32 @@ def _ticket_create_fingerprint(user_id: str, query: str) -> str:
     return hashlib.sha256(f"{user_id}:{normalized}".encode("utf-8")).hexdigest()[:24]
 
 
+def _ticket_create_dedup_epoch_key(session_id: str) -> str:
+    return f"chat:ticket-create:dedup:epoch:{session_id}"
+
+
+def _ticket_create_dedup_epoch(session_id: str) -> int:
+    cached = _CACHE.get_json(_ticket_create_dedup_epoch_key(session_id))
+    if isinstance(cached, dict):
+        raw_epoch = cached.get("epoch")
+        if isinstance(raw_epoch, int) and raw_epoch >= 0:
+            return raw_epoch
+    return 0
+
+
+def _bump_ticket_create_dedup_epoch(session_id: str) -> int:
+    next_epoch = _ticket_create_dedup_epoch(session_id) + 1
+    _CACHE.set_json(
+        _ticket_create_dedup_epoch_key(session_id),
+        {"epoch": next_epoch},
+        ttl=max(600, _ticket_create_dedup_ttl_sec() * 4),
+    )
+    return next_epoch
+
+
 def _ticket_create_dedup_cache_key(session_id: str, fingerprint: str) -> str:
-    return f"chat:ticket-create:dedup:{session_id}:{fingerprint}"
+    epoch = _ticket_create_dedup_epoch(session_id)
+    return f"chat:ticket-create:dedup:{session_id}:e{epoch}:{fingerprint}"
 
 
 def _ticket_create_dedup_user_cache_key(user_id: str, fingerprint: str) -> str:
@@ -439,6 +463,14 @@ def _save_ticket_create_last(session_id: str, user_id: str) -> None:
     payload = {"created_at": int(time.time())}
     _CACHE.set_json(_ticket_create_last_cache_key(session_id), payload, ttl=ttl)
     _CACHE.set_json(_ticket_create_last_user_cache_key(user_id), payload, ttl=ttl)
+
+
+def reset_ticket_session_context(session_id: str) -> None:
+    if not session_id:
+        return
+    _CACHE.set_json(_last_ticket_cache_key(session_id), {"cleared": True}, ttl=1)
+    _CACHE.set_json(_ticket_create_last_cache_key(session_id), {"cleared": True}, ttl=1)
+    _bump_ticket_create_dedup_epoch(session_id)
 
 
 def _is_generic_ticket_create_message(query: str) -> bool:

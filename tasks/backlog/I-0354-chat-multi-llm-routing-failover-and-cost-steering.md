@@ -358,3 +358,13 @@ Implement multi-provider LLM routing for chat:
   - 세션/사용자 범위 최근 문의번호 캐시에 동일 TTL 적용
 - [x] 회귀 테스트 추가
   - TTL 설정값이 실제 캐시 만료시각에 반영되는지 검증
+
+## Implementation Update (2026-02-24, Bundle 46)
+- [x] session reset에 티켓 세션 컨텍스트 초기화 연동
+  - `reset_chat_session_state`에서 ticket session context reset을 함께 호출
+  - fallback/unresolved뿐 아니라 세션 범위 최근 문의번호/쿨다운 timestamp/dedup epoch를 동기화 초기화
+- [x] dedup epoch 분리 도입
+  - 세션 dedup key에 epoch를 포함해 reset 이후 stale dedup 키를 무효화
+- [x] 회귀 테스트 추가
+  - session reset 시 ticket session context reset 함수 호출 검증
+  - ticket session context reset 시 epoch 증가 및 session dedup 비활성화 검증

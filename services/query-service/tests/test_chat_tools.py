@@ -326,6 +326,38 @@ def test_save_last_ticket_no_respects_configured_ttl(monkeypatch):
     assert user_entry[0] == 1_700_207_200
 
 
+def test_reset_ticket_session_context_clears_session_ticket_state(monkeypatch):
+    chat_tools._CACHE = CacheClient(None)
+    session_id = "sess-ticket-reset-1"
+    user_id = "ticket-reset-user-1"
+    query = "문의 접수해줘 결제 오류가 반복되고 있어요"
+    fingerprint = chat_tools._ticket_create_fingerprint(user_id, query)
+
+    chat_tools._CACHE.set_json(
+        chat_tools._ticket_create_dedup_cache_key(session_id, fingerprint),
+        {
+            "ticket_no": "STK202602230401",
+            "status": "RECEIVED",
+            "expected_response_minutes": 200,
+            "cached_at": 111,
+        },
+        ttl=300,
+    )
+    chat_tools._CACHE.set_json(chat_tools._last_ticket_cache_key(session_id), {"ticket_no": "STK202602230401"}, ttl=300)
+    chat_tools._CACHE.set_json(chat_tools._ticket_create_last_cache_key(session_id), {"created_at": 1_700_200_000}, ttl=300)
+
+    before_epoch = chat_tools._ticket_create_dedup_epoch(session_id)
+    chat_tools.reset_ticket_session_context(session_id)
+    after_epoch = chat_tools._ticket_create_dedup_epoch(session_id)
+    dedup_cached, dedup_scope = chat_tools._load_ticket_create_dedup(session_id, user_id, fingerprint)
+
+    assert after_epoch == before_epoch + 1
+    assert chat_tools._CACHE.get_json(chat_tools._last_ticket_cache_key(session_id)) == {"cleared": True}
+    assert chat_tools._CACHE.get_json(chat_tools._ticket_create_last_cache_key(session_id)) == {"cleared": True}
+    assert dedup_cached is None
+    assert dedup_scope is None
+
+
 def test_run_tool_chat_ticket_status_lookup_uses_user_recent_ticket_across_sessions(monkeypatch):
     async def fake_call_commerce(method, path, **kwargs):
         if method == "POST" and path == "/support/tickets":

@@ -10,7 +10,7 @@ import httpx
 from app.core.analyzer import analyze_query
 from app.core.cache import get_cache
 from app.core.metrics import metrics
-from app.core.chat_tools import run_tool_chat
+from app.core.chat_tools import reset_ticket_session_context, run_tool_chat
 from app.core.rag import retrieve_chunks_with_trace
 from app.core.rag_candidates import retrieve_candidates
 from app.core.rewrite import run_rewrite
@@ -2413,6 +2413,7 @@ def reset_chat_session_state(session_id: str, trace_id: str, request_id: str) ->
     previous_unresolved_context = isinstance(_load_unresolved_context(session_id), dict)
     _reset_fallback_count(session_id)
     _clear_unresolved_context(session_id)
+    reset_ticket_session_context(session_id)
     return {
         "session_id": session_id,
         "reset_applied": True,

@@ -161,9 +161,11 @@ def test_get_chat_session_state_contains_fallback_and_unresolved_context():
     assert state["unresolved_context"]["query_preview"].startswith("환불 조건을 정리해줘.")
 
 
-def test_reset_chat_session_state_clears_fallback_and_unresolved_context():
+def test_reset_chat_session_state_clears_fallback_and_unresolved_context(monkeypatch):
     chat._CACHE = CacheClient(None)
     session_id = "u:102:default"
+    called = []
+    monkeypatch.setattr(chat, "reset_ticket_session_context", lambda sid: called.append(sid))
     for _ in range(3):
         chat._increment_fallback_count(session_id)
     chat._save_unresolved_context(
@@ -182,6 +184,7 @@ def test_reset_chat_session_state_clears_fallback_and_unresolved_context():
     assert reset["previous_unresolved_context"] is True
     assert state["fallback_count"] == 0
     assert state["unresolved_context"] is None
+    assert called == [session_id]
 
 
 def test_get_chat_session_state_recommends_ticket_when_escalation_ready(monkeypatch):
