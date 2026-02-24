@@ -326,6 +326,42 @@ def test_save_last_ticket_no_respects_configured_ttl(monkeypatch):
     assert user_entry[0] == 1_700_207_200
 
 
+def test_load_last_ticket_no_ignores_session_cache_with_other_user():
+    chat_tools._CACHE = CacheClient(None)
+    session_id = "sess-last-ticket-owner-1"
+    chat_tools._CACHE.set_json(
+        chat_tools._last_ticket_cache_key(session_id),
+        {"ticket_no": "STK202602239001", "user_id": "other-user"},
+        ttl=300,
+    )
+    chat_tools._CACHE.set_json(
+        chat_tools._last_ticket_user_cache_key("owner-user"),
+        {"ticket_no": "STK202602239002"},
+        ttl=300,
+    )
+
+    loaded = chat_tools._load_last_ticket_no(session_id, "owner-user")
+    assert loaded == "STK202602239002"
+
+
+def test_load_ticket_create_last_ignores_session_cache_with_other_user():
+    chat_tools._CACHE = CacheClient(None)
+    session_id = "sess-cooldown-owner-1"
+    chat_tools._CACHE.set_json(
+        chat_tools._ticket_create_last_cache_key(session_id),
+        {"created_at": 1_700_200_100, "user_id": "other-user"},
+        ttl=300,
+    )
+    chat_tools._CACHE.set_json(
+        chat_tools._ticket_create_last_user_cache_key("owner-user"),
+        {"created_at": 1_700_200_200},
+        ttl=300,
+    )
+
+    loaded = chat_tools._load_ticket_create_last(session_id, "owner-user")
+    assert loaded == 1_700_200_200
+
+
 def test_reset_ticket_session_context_clears_session_ticket_state(monkeypatch):
     chat_tools._CACHE = CacheClient(None)
     session_id = "sess-ticket-reset-1"
@@ -483,6 +519,52 @@ def test_run_tool_chat_ticket_status_lookup_uses_user_recent_ticket_across_sessi
     assert status_result["status"] == "ok"
     assert "STK202602230301" in status_result["answer"]["content"]
     assert "처리 중" in status_result["answer"]["content"]
+
+
+def test_run_tool_chat_ticket_create_ignores_other_user_session_cooldown(monkeypatch):
+    call_count = {"ticket_create": 0}
+
+    async def fake_call_commerce(method, path, **kwargs):
+        if method == "POST" and path == "/support/tickets":
+            call_count["ticket_create"] += 1
+            return {
+                "ticket": {
+                    "ticket_id": 32,
+                    "ticket_no": "STK202602230302",
+                    "status": "RECEIVED",
+                    "severity": "LOW",
+                },
+                "expected_response_minutes": 100,
+            }
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    monkeypatch.setattr(chat_tools, "_ticket_create_cooldown_sec", lambda: 60)
+    monkeypatch.setattr(chat_tools.time, "time", lambda: 1_700_300_000)
+
+    session_id = "sess-shared-legacy"
+    chat_tools._CACHE.set_json(
+        chat_tools._ticket_create_last_cache_key(session_id),
+        {"created_at": 1_700_299_980, "user_id": "other-user"},
+        ttl=300,
+    )
+
+    result = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": session_id,
+                "message": {"role": "user", "content": "문의 접수해줘 결제 오류가 반복돼요"},
+                "client": {"locale": "ko-KR", "user_id": "owner-user"},
+            },
+            "trace_test",
+            "req_ticket_owner",
+        )
+    )
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert "STK202602230302" in result["answer"]["content"]
+    assert call_count["ticket_create"] == 1
 
 
 def test_run_tool_chat_ticket_create_uses_unresolved_context(monkeypatch):

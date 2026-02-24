@@ -325,21 +325,23 @@ def _user_id_from_session_id(session_id: str) -> str | None:
 
 def _save_last_ticket_no(session_id: str, user_id: str, ticket_no: str) -> None:
     if ticket_no:
-        payload = {"ticket_no": ticket_no}
+        payload = {"ticket_no": ticket_no, "user_id": user_id}
         ttl = _last_ticket_ttl_sec()
         _CACHE.set_json(_last_ticket_cache_key(session_id), payload, ttl=ttl)
-        _CACHE.set_json(_last_ticket_user_cache_key(user_id), payload, ttl=ttl)
+        _CACHE.set_json(_last_ticket_user_cache_key(user_id), {"ticket_no": ticket_no}, ttl=ttl)
 
 
 def _load_last_ticket_no(session_id: str, user_id: str) -> str | None:
-    candidates = (
-        _CACHE.get_json(_last_ticket_cache_key(session_id)),
-        _CACHE.get_json(_last_ticket_user_cache_key(user_id)),
-    )
-    for cached in candidates:
-        if not isinstance(cached, dict):
-            continue
-        value = cached.get("ticket_no")
+    session_cached = _CACHE.get_json(_last_ticket_cache_key(session_id))
+    if isinstance(session_cached, dict):
+        owner = str(session_cached.get("user_id") or "").strip()
+        value = session_cached.get("ticket_no")
+        if owner == user_id and isinstance(value, str) and value.strip():
+            return value.strip()
+
+    user_cached = _CACHE.get_json(_last_ticket_user_cache_key(user_id))
+    if isinstance(user_cached, dict):
+        value = user_cached.get("ticket_no")
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
@@ -476,17 +478,20 @@ def _save_ticket_create_dedup(session_id: str, user_id: str, fingerprint: str, p
 
 
 def _load_ticket_create_last(session_id: str, user_id: str) -> int | None:
-    candidates = (
-        _CACHE.get_json(_ticket_create_last_cache_key(session_id)),
-        _CACHE.get_json(_ticket_create_last_user_cache_key(user_id)),
-    )
     timestamps: list[int] = []
-    for cached in candidates:
-        if not isinstance(cached, dict):
-            continue
-        raw_ts = cached.get("created_at")
+    session_cached = _CACHE.get_json(_ticket_create_last_cache_key(session_id))
+    if isinstance(session_cached, dict):
+        owner = str(session_cached.get("user_id") or "").strip()
+        raw_ts = session_cached.get("created_at")
+        if owner == user_id and isinstance(raw_ts, int) and raw_ts > 0:
+            timestamps.append(raw_ts)
+
+    user_cached = _CACHE.get_json(_ticket_create_last_user_cache_key(user_id))
+    if isinstance(user_cached, dict):
+        raw_ts = user_cached.get("created_at")
         if isinstance(raw_ts, int) and raw_ts > 0:
             timestamps.append(raw_ts)
+
     if timestamps:
         return max(timestamps)
     return None
@@ -495,9 +500,10 @@ def _load_ticket_create_last(session_id: str, user_id: str) -> int | None:
 def _save_ticket_create_last(session_id: str, user_id: str) -> None:
     cooldown = _ticket_create_cooldown_sec()
     ttl = max(60, cooldown * 2 if cooldown > 0 else 60)
-    payload = {"created_at": int(time.time())}
+    now_ts = int(time.time())
+    payload = {"created_at": now_ts, "user_id": user_id}
     _CACHE.set_json(_ticket_create_last_cache_key(session_id), payload, ttl=ttl)
-    _CACHE.set_json(_ticket_create_last_user_cache_key(user_id), payload, ttl=ttl)
+    _CACHE.set_json(_ticket_create_last_user_cache_key(user_id), {"created_at": now_ts}, ttl=ttl)
 
 
 def reset_ticket_session_context(session_id: str) -> None:

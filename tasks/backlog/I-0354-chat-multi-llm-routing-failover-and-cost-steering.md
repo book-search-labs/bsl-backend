@@ -398,3 +398,11 @@ Implement multi-provider LLM routing for chat:
 - [x] session reset 범위 안전성 테스트 보강
   - `u:<user_id>` 세션에서 사용자 캐시 clear 동작 검증
   - 일반 세션 reset 시 사용자 캐시가 유지되는지 검증
+
+## Implementation Update (2026-02-24, Bundle 51)
+- [x] 세션 캐시 소유자 검증 추가
+  - 최근 문의번호/티켓 생성 쿨다운 세션 캐시에 `user_id`를 저장하고 조회 시 소유자 일치 여부 검증
+  - 소유자가 다르면 세션 캐시는 무시하고 사용자 캐시만 사용
+- [x] 회귀 테스트 추가
+  - 소유자 불일치 세션 캐시가 조회에서 제외되는지 검증
+  - 소유자 불일치 세션 쿨다운이 신규 사용자 ticket 생성을 차단하지 않는지 검증
