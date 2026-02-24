@@ -358,6 +358,23 @@ def test_reset_ticket_session_context_clears_session_ticket_state(monkeypatch):
     assert dedup_scope is None
 
 
+def test_reset_ticket_session_context_clears_user_ticket_state_from_session_pattern():
+    chat_tools._CACHE = CacheClient(None)
+    session_id = "u:777:default"
+    user_id = "777"
+    chat_tools._CACHE.set_json(chat_tools._last_ticket_user_cache_key(user_id), {"ticket_no": "STK202602230402"}, ttl=300)
+    chat_tools._CACHE.set_json(chat_tools._ticket_create_last_user_cache_key(user_id), {"created_at": 1_700_200_010}, ttl=300)
+
+    metric_key = "chat_ticket_context_reset_total{reason=session_reset}"
+    before_metrics = dict(chat_tools.metrics.snapshot())
+    chat_tools.reset_ticket_session_context(session_id)
+    after_metrics = chat_tools.metrics.snapshot()
+
+    assert chat_tools._CACHE.get_json(chat_tools._last_ticket_user_cache_key(user_id)) == {"cleared": True}
+    assert chat_tools._CACHE.get_json(chat_tools._ticket_create_last_user_cache_key(user_id)) == {"cleared": True}
+    assert after_metrics.get(metric_key, 0) >= before_metrics.get(metric_key, 0) + 1
+
+
 def test_run_tool_chat_ticket_status_lookup_uses_user_recent_ticket_across_sessions(monkeypatch):
     async def fake_call_commerce(method, path, **kwargs):
         if method == "POST" and path == "/support/tickets":

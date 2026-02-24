@@ -368,3 +368,11 @@ Implement multi-provider LLM routing for chat:
 - [x] 회귀 테스트 추가
   - session reset 시 ticket session context reset 함수 호출 검증
   - ticket session context reset 시 epoch 증가 및 session dedup 비활성화 검증
+
+## Implementation Update (2026-02-24, Bundle 47)
+- [x] session reset 사용자 범위 캐시 초기화 연동
+  - `session_id`가 `u:<user_id>:` 패턴이면 사용자 범위 최근 문의번호/쿨다운 캐시도 함께 clear 처리
+- [x] 운영 관측 지표 반영
+  - `chat_ticket_context_reset_total{reason=session_reset}`를 session reset 경로에서 집계
+- [x] 회귀 테스트 추가
+  - session pattern 기반 사용자 캐시 clear 및 `session_reset` 메트릭 증가 검증

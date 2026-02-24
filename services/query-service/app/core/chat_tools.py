@@ -312,6 +312,17 @@ def _last_ticket_user_cache_key(user_id: str) -> str:
     return f"chat:last-ticket:user:{user_id}"
 
 
+def _user_id_from_session_id(session_id: str) -> str | None:
+    if not session_id:
+        return None
+    match = re.match(r"^u:([^:]+):", session_id)
+    if match:
+        user_id = match.group(1).strip()
+        if user_id:
+            return user_id
+    return None
+
+
 def _save_last_ticket_no(session_id: str, user_id: str, ticket_no: str) -> None:
     if ticket_no:
         payload = {"ticket_no": ticket_no}
@@ -470,7 +481,12 @@ def reset_ticket_session_context(session_id: str) -> None:
         return
     _CACHE.set_json(_last_ticket_cache_key(session_id), {"cleared": True}, ttl=1)
     _CACHE.set_json(_ticket_create_last_cache_key(session_id), {"cleared": True}, ttl=1)
+    user_id = _user_id_from_session_id(session_id)
+    if user_id:
+        _CACHE.set_json(_last_ticket_user_cache_key(user_id), {"cleared": True}, ttl=1)
+        _CACHE.set_json(_ticket_create_last_user_cache_key(user_id), {"cleared": True}, ttl=1)
     _bump_ticket_create_dedup_epoch(session_id)
+    metrics.inc("chat_ticket_context_reset_total", {"reason": "session_reset"})
 
 
 def _is_generic_ticket_create_message(query: str) -> bool:

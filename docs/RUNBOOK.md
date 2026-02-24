@@ -125,6 +125,7 @@ curl -s -X POST "http://localhost:8001/internal/chat/session/reset" \
 운영 지표는 `chat_session_reset_requests_total{result,had_unresolved}`에서 확인한다.
 또한 챗봇에서 support ticket를 성공적으로 생성/재사용하면 미해결 컨텍스트와 fallback 카운터를 자동 초기화한다 (`chat_ticket_context_reset_total`).
 `/internal/chat/session/reset`은 fallback/unresolved 외에 세션 범위 티켓 컨텍스트(최근 문의번호, 티켓 생성 쿨다운 timestamp, 세션 dedup epoch)도 함께 초기화한다.
+`session_id`가 `u:<user_id>:` 패턴이면 사용자 범위 최근 문의번호/쿨다운 캐시도 함께 초기화한다.
 동일 세션에서 연속으로 ticket 생성을 시도하면 `QS_CHAT_TICKET_CREATE_COOLDOWN_SEC`(기본 30초) 쿨다운이 적용되며, 응답은 `reason_code=RATE_LIMITED`, `next_action=RETRY`, `retry_after_ms`를 반환한다.
 쿨다운 기준은 사용자 단위(`user_id`)로도 함께 저장되어, 동일 사용자가 세션을 바꿔도 짧은 시간 내 반복 접수를 제한한다.
 쿨다운 차단 응답에는 최근 접수번호가 있으면 함께 반환되어, 사용자에게 즉시 상태 조회 경로를 안내한다.
@@ -133,6 +134,7 @@ curl -s -X POST "http://localhost:8001/internal/chat/session/reset" \
 동일 문의 dedup도 사용자 범위로 동작하며 `chat_ticket_create_dedup_scope_total{scope=session|user}`로 세션 내부/교차 세션 재사용 비율을 구분해 본다.
 세션 dedup과 사용자 dedup이 동시에 존재하면 `cached_at` 기준 최신 항목을 우선 선택한다.
 최근 문의번호 캐시 TTL은 `QS_CHAT_LAST_TICKET_TTL_SEC`(기본 86400초)로 조정한다.
+세션 리셋 관측은 `chat_ticket_context_reset_total{reason=session_reset}`에서도 확인할 수 있다.
 
 BFF 경유 점검이 필요하면 동일 기능을 아래로 호출한다:
 ```bash
