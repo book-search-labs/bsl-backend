@@ -240,3 +240,11 @@ Implement multi-provider LLM routing for chat:
   - 사용자 노출 메시지를 `응답 품질 검증에서 차단되었습니다.`로 표준화
 - [x] 회귀 테스트 추가
   - stream guard 차단 시 에러 이벤트 메시지 한국어 노출 검증
+
+## Implementation Update (2026-02-23, Bundle 31)
+- [x] session 진단 응답 실행가능 정보 확장
+  - unresolved context에 `reason_message`, `next_action` 추가
+  - 운영자가 reason code 해석 없이 즉시 재시도/티켓 전환 분기 가능
+- [x] SSOT/테스트 반영
+  - `chat-session-state-response` contract + sample 확장
+  - core/route 테스트에서 신규 필드 검증

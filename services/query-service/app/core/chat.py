@@ -2374,8 +2374,12 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
     unresolved = _load_unresolved_context(session_id)
     unresolved_context: Optional[Dict[str, Any]] = None
     if isinstance(unresolved, dict):
+        reason_code = str(unresolved.get("reason_code") or "")
+        defaults = _fallback_defaults(reason_code)
         unresolved_context = {
-            "reason_code": str(unresolved.get("reason_code") or ""),
+            "reason_code": reason_code,
+            "reason_message": str(defaults.get("message") or ""),
+            "next_action": str(defaults.get("next_action") or "RETRY"),
             "trace_id": str(unresolved.get("trace_id") or ""),
             "request_id": str(unresolved.get("request_id") or ""),
             "updated_at": int(unresolved.get("updated_at") or 0),

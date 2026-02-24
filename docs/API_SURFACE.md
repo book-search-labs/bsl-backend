@@ -562,6 +562,7 @@ If supported, the server should treat it as:
 ### Response
 - Contract: `contracts/chat-session-state-response.schema.json`
 - Example: `contracts/examples/chat-session-state-response.sample.json`
+- `session.unresolved_context`에는 `reason_code` 뿐 아니라 `reason_message`, `next_action`이 포함되어 상담 티켓/재시도 분기 판단에 바로 사용 가능.
 
 ## GET `/internal/qc/rewrite/failures`
 **Purpose**: List curated rewrite failure cases for replay/analysis.

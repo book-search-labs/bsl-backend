@@ -10,6 +10,8 @@
     "escalation_ready": false,
     "unresolved_context": {
       "reason_code": "LLM_NO_CITATIONS",
+      "reason_message": "생성된 답변과 근거 문서가 일치하지 않아 답변을 보류했습니다. 잠시 후 다시 시도해 주세요.",
+      "next_action": "RETRY",
       "trace_id": "trace_prev",
       "request_id": "req_prev",
       "updated_at": 1760000000,

@@ -154,6 +154,8 @@ def test_get_chat_session_state_contains_fallback_and_unresolved_context():
     assert state["fallback_count"] == 2
     assert state["escalation_ready"] is False
     assert state["unresolved_context"]["reason_code"] == "LLM_NO_CITATIONS"
+    assert "답변을 보류" in state["unresolved_context"]["reason_message"]
+    assert state["unresolved_context"]["next_action"] == "RETRY"
     assert state["unresolved_context"]["query_preview"].startswith("환불 조건을 정리해줘.")
 
 

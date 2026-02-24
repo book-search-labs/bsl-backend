@@ -48,9 +48,23 @@
         },
         "unresolved_context": {
           "type": ["object", "null"],
-          "required": ["reason_code", "trace_id", "request_id", "updated_at", "query_preview"],
+          "required": [
+            "reason_code",
+            "reason_message",
+            "next_action",
+            "trace_id",
+            "request_id",
+            "updated_at",
+            "query_preview"
+          ],
           "properties": {
             "reason_code": {
+              "type": "string"
+            },
+            "reason_message": {
+              "type": "string"
+            },
+            "next_action": {
               "type": "string"
             },
             "trace_id": {
