@@ -307,6 +307,49 @@ def test_run_tool_chat_ticket_create_and_status_lookup(monkeypatch):
     assert "처리 중" in status_result["answer"]["content"]
 
 
+def test_run_tool_chat_ticket_status_lookup_with_ticket_number_only(monkeypatch):
+    calls: list[tuple[str, str]] = []
+
+    async def fake_call_commerce(method, path, **kwargs):
+        calls.append((method, path))
+        if method == "GET" and path == "/support/tickets/by-number/STK202602230777":
+            return {
+                "ticket": {
+                    "ticket_id": 777,
+                    "ticket_no": "STK202602230777",
+                    "status": "IN_PROGRESS",
+                    "category": "GENERAL",
+                    "severity": "LOW",
+                },
+                "expected_response_minutes": 70,
+            }
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    before_metrics = dict(chat_tools.metrics.snapshot())
+    result = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": "sess-ticket-number-only-1",
+                "message": {"role": "user", "content": "STK202602230777 확인해줘"},
+                "client": {"locale": "ko-KR", "user_id": "1"},
+            },
+            "trace_test",
+            "req_ticket_number_only",
+        )
+    )
+    after_metrics = chat_tools.metrics.snapshot()
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert "STK202602230777" in result["answer"]["content"]
+    assert calls == [("GET", "/support/tickets/by-number/STK202602230777")]
+    assert after_metrics.get("chat_ticket_status_lookup_ticket_source_total{source=query}", 0) >= before_metrics.get(
+        "chat_ticket_status_lookup_ticket_source_total{source=query}",
+        0,
+    ) + 1
+
+
 def test_run_tool_chat_ticket_status_lookup_uses_recent_ticket_list_when_no_reference(monkeypatch):
     calls: list[tuple[str, str]] = []
 

@@ -97,6 +97,7 @@ def _detect_intent(query: str) -> ToolIntent:
         return ToolIntent("NONE", 0.0)
 
     order_ref = _extract_order_ref(query)
+    ticket_no = _extract_ticket_no(query)
     has_order_ref = order_ref.order_id is not None or order_ref.order_no is not None
     has_lookup_word = any(keyword in q for keyword in ["조회", "상태", "확인", "내역", "where", "status", "lookup", "track"])
 
@@ -112,6 +113,8 @@ def _detect_intent(query: str) -> ToolIntent:
         return ToolIntent("ORDER_CANCEL", 0.96)
     if any(keyword in q for keyword in refund_create_keywords) and (has_order_ref or "주문" in q or "order" in q):
         return ToolIntent("REFUND_CREATE", 0.95)
+    if ticket_no:
+        return ToolIntent("TICKET_STATUS", 0.95)
     if any(keyword in q for keyword in ticket_status_keywords):
         return ToolIntent("TICKET_STATUS", 0.95)
     if any(keyword in q for keyword in ticket_create_keywords):
