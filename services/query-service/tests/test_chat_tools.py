@@ -38,6 +38,40 @@ def test_run_tool_chat_requires_login_for_commerce_queries():
     assert "로그인" in result["answer"]["content"]
 
 
+def test_run_tool_chat_refund_policy_guide_without_login():
+    payload = {
+        "message": {"role": "user", "content": "환불 조건을 정리해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_refund_policy"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert result["reason_code"] == "OK"
+    assert "환불/반품 조건" in result["answer"]["content"]
+    assert "주문번호를 알려주시면" in result["answer"]["content"]
+    assert result["citations"]
+    assert result["sources"][0]["url"] == "POLICY / commerce-refund-guide"
+
+
+def test_run_tool_chat_shipping_policy_guide_without_login():
+    payload = {
+        "message": {"role": "user", "content": "배송비 기준 안내해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_shipping_policy"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert result["reason_code"] == "OK"
+    assert "배송 정책" in result["answer"]["content"]
+    assert "기본 배송비" in result["answer"]["content"]
+    assert result["citations"]
+    assert result["sources"][0]["url"] == "POLICY / commerce-shipping-guide"
+
+
 def test_run_tool_chat_order_lookup_success(monkeypatch):
     async def fake_call_commerce(method, path, **kwargs):
         assert method == "GET"

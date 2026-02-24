@@ -53,6 +53,18 @@ def _tool_lookup_retry_count() -> int:
     return max(0, int(os.getenv("QS_CHAT_TOOL_LOOKUP_RETRY", "1")))
 
 
+def _policy_base_shipping_fee() -> int:
+    return max(0, int(os.getenv("QS_CHAT_POLICY_BASE_SHIPPING_FEE", "3000")))
+
+
+def _policy_fast_shipping_fee() -> int:
+    return max(0, int(os.getenv("QS_CHAT_POLICY_FAST_SHIPPING_FEE", "5000")))
+
+
+def _policy_free_shipping_threshold() -> int:
+    return max(0, int(os.getenv("QS_CHAT_POLICY_FREE_SHIPPING_THRESHOLD", "20000")))
+
+
 def _workflow_ttl_sec() -> int:
     return max(60, int(os.getenv("QS_CHAT_WORKFLOW_TTL_SEC", "900")))
 
@@ -134,11 +146,19 @@ def _detect_intent(query: str) -> ToolIntent:
     ticket_create_keywords = ["문의 접수", "티켓 생성", "상담원 연결", "문의 남길", "ticket create", "support ticket"]
     cancel_keywords = ["주문 취소", "취소해", "cancel order", "cancel my order"]
     refund_create_keywords = ["환불 신청", "환불 접수", "refund request", "환불해"]
+    policy_keywords = ["조건", "정리", "안내", "절차", "규정", "기준", "수수료", "policy", "guide"]
+    has_policy_word = any(keyword in q for keyword in policy_keywords)
 
-    if any(keyword in q for keyword in cancel_keywords) and (has_order_ref or "주문" in q or "order" in q):
+    if any(keyword in q for keyword in cancel_keywords) and (has_order_ref or "주문" in q or "order" in q) and not has_policy_word:
         return ToolIntent("ORDER_CANCEL", 0.96)
-    if any(keyword in q for keyword in refund_create_keywords) and (has_order_ref or "주문" in q or "order" in q):
+    if any(keyword in q for keyword in refund_create_keywords) and (has_order_ref or "주문" in q or "order" in q) and not has_policy_word:
         return ToolIntent("REFUND_CREATE", 0.95)
+    if has_policy_word and any(keyword in q for keyword in refund_keywords):
+        return ToolIntent("REFUND_POLICY", 0.93)
+    if has_policy_word and any(keyword in q for keyword in shipment_keywords):
+        return ToolIntent("SHIPPING_POLICY", 0.9)
+    if has_policy_word and any(keyword in q for keyword in order_keywords):
+        return ToolIntent("ORDER_POLICY", 0.85)
     if any(keyword in q for keyword in ticket_list_keywords):
         return ToolIntent("TICKET_LIST", 0.95)
     if ticket_no:
@@ -1019,6 +1039,73 @@ async def _handle_refund_lookup(
     )
 
 
+def _handle_refund_policy_guide(trace_id: str, request_id: str) -> dict[str, Any]:
+    base_fee = _format_krw(_policy_base_shipping_fee())
+    fast_fee = _format_krw(_policy_fast_shipping_fee())
+    free_threshold = _format_krw(_policy_free_shipping_threshold())
+    content = (
+        "환불/반품 조건을 요약해드릴게요.\n"
+        "- 결제 완료/배송 준비 단계에서 전체 취소 시 상품금액과 배송비를 환불합니다.\n"
+        "- 배송 중/배송 완료 이후에는 환불 사유에 따라 환불 금액이 달라집니다.\n"
+        "- 판매자 귀책(파손/오배송/하자/지연)은 배송비 포함 환불이 가능합니다.\n"
+        f"- 단순 변심은 반품비가 차감되며, 기본 배송 {base_fee}, 빠른 배송 {fast_fee} 기준으로 계산됩니다.\n"
+        "- 최종 환불액은 '상품금액 + 환불배송비 - 반품비'로 계산됩니다.\n"
+        f"- 무료배송 기준은 {free_threshold}입니다.\n"
+        "주문번호를 알려주시면 해당 주문 기준 예상 환불 금액을 바로 조회해드릴 수 있어요."
+    )
+    return _build_response(
+        trace_id,
+        request_id,
+        "ok",
+        content,
+        tool_name="refund_policy",
+        endpoint="POLICY / commerce-refund-guide",
+        source_snippet="refund policy summary: order status, reason code, return fee, shipping refund",
+    )
+
+
+def _handle_shipping_policy_guide(trace_id: str, request_id: str) -> dict[str, Any]:
+    base_fee = _format_krw(_policy_base_shipping_fee())
+    fast_fee = _format_krw(_policy_fast_shipping_fee())
+    free_threshold = _format_krw(_policy_free_shipping_threshold())
+    content = (
+        "배송 정책을 요약해드릴게요.\n"
+        f"- 기본 배송비는 {base_fee}, 빠른 배송비는 {fast_fee}입니다.\n"
+        f"- 주문 금액이 {free_threshold} 이상이면 기본 배송비가 0원 처리됩니다.\n"
+        "- 빠른 배송은 기본 배송보다 우선 출고되며, 결제 시 선택한 배송 방식으로 고정됩니다.\n"
+        "- 배송 준비 이후에는 주소/옵션 변경이 제한될 수 있습니다.\n"
+        "주문번호를 알려주시면 현재 배송 상태와 변경 가능 여부를 바로 확인해드릴게요."
+    )
+    return _build_response(
+        trace_id,
+        request_id,
+        "ok",
+        content,
+        tool_name="shipping_policy",
+        endpoint="POLICY / commerce-shipping-guide",
+        source_snippet="shipping policy summary: base/fast fee, free-shipping threshold, change restrictions",
+    )
+
+
+def _handle_order_policy_guide(trace_id: str, request_id: str) -> dict[str, Any]:
+    content = (
+        "주문/결제 진행 기준을 요약해드릴게요.\n"
+        "- 주문 생성 → 결제 대기 → 결제 완료 → 배송 준비 → 배송 중 → 배송 완료 순서로 진행됩니다.\n"
+        "- 결제 대기 상태에서는 결제 수단 변경 또는 취소가 가능합니다.\n"
+        "- 결제 완료 이후 취소/환불은 배송 상태와 사유에 따라 가능 여부가 달라집니다.\n"
+        "주문번호를 알려주시면 현재 단계와 지금 가능한 다음 액션을 정확히 안내해드릴게요."
+    )
+    return _build_response(
+        trace_id,
+        request_id,
+        "ok",
+        content,
+        tool_name="order_policy",
+        endpoint="POLICY / commerce-order-guide",
+        source_snippet="order flow summary: created, paid, ready_to_ship, shipped, delivered",
+    )
+
+
 async def _start_sensitive_workflow(
     intent: str,
     query: str,
@@ -1714,6 +1801,13 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
             "needs_input",
             "요청을 정확히 구분하지 못했습니다. 주문조회/배송조회/환불조회 중 어떤 도움인지 알려주세요.",
         )
+
+    if intent.name == "REFUND_POLICY":
+        return _handle_refund_policy_guide(trace_id, request_id)
+    if intent.name == "SHIPPING_POLICY":
+        return _handle_shipping_policy_guide(trace_id, request_id)
+    if intent.name == "ORDER_POLICY":
+        return _handle_order_policy_guide(trace_id, request_id)
 
     if not user_id:
         metrics.inc("chat_tool_authz_denied_total", {"intent": intent.name})
