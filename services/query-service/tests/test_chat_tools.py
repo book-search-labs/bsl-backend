@@ -340,8 +340,12 @@ def test_load_last_ticket_no_ignores_session_cache_with_other_user():
         ttl=300,
     )
 
+    metric_key = "chat_ticket_session_cache_owner_mismatch_total{cache=last_ticket}"
+    before_metrics = dict(chat_tools.metrics.snapshot())
     loaded = chat_tools._load_last_ticket_no(session_id, "owner-user")
+    after_metrics = chat_tools.metrics.snapshot()
     assert loaded == "STK202602239002"
+    assert after_metrics.get(metric_key, 0) >= before_metrics.get(metric_key, 0) + 1
 
 
 def test_load_ticket_create_last_ignores_session_cache_with_other_user():
@@ -358,8 +362,12 @@ def test_load_ticket_create_last_ignores_session_cache_with_other_user():
         ttl=300,
     )
 
+    metric_key = "chat_ticket_session_cache_owner_mismatch_total{cache=create_last}"
+    before_metrics = dict(chat_tools.metrics.snapshot())
     loaded = chat_tools._load_ticket_create_last(session_id, "owner-user")
+    after_metrics = chat_tools.metrics.snapshot()
     assert loaded == 1_700_200_200
+    assert after_metrics.get(metric_key, 0) >= before_metrics.get(metric_key, 0) + 1
 
 
 def test_reset_ticket_session_context_clears_session_ticket_state(monkeypatch):

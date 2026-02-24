@@ -338,6 +338,8 @@ def _load_last_ticket_no(session_id: str, user_id: str) -> str | None:
         value = session_cached.get("ticket_no")
         if owner == user_id and isinstance(value, str) and value.strip():
             return value.strip()
+        if owner and owner != user_id:
+            metrics.inc("chat_ticket_session_cache_owner_mismatch_total", {"cache": "last_ticket"})
 
     user_cached = _CACHE.get_json(_last_ticket_user_cache_key(user_id))
     if isinstance(user_cached, dict):
@@ -485,6 +487,8 @@ def _load_ticket_create_last(session_id: str, user_id: str) -> int | None:
         raw_ts = session_cached.get("created_at")
         if owner == user_id and isinstance(raw_ts, int) and raw_ts > 0:
             timestamps.append(raw_ts)
+        if owner and owner != user_id:
+            metrics.inc("chat_ticket_session_cache_owner_mismatch_total", {"cache": "create_last"})
 
     user_cached = _CACHE.get_json(_ticket_create_last_user_cache_key(user_id))
     if isinstance(user_cached, dict):

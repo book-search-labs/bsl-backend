@@ -406,3 +406,10 @@ Implement multi-provider LLM routing for chat:
 - [x] 회귀 테스트 추가
   - 소유자 불일치 세션 캐시가 조회에서 제외되는지 검증
   - 소유자 불일치 세션 쿨다운이 신규 사용자 ticket 생성을 차단하지 않는지 검증
+
+## Implementation Update (2026-02-24, Bundle 52)
+- [x] 세션 캐시 소유자 mismatch 관측 메트릭 추가
+  - `chat_ticket_session_cache_owner_mismatch_total{cache=last_ticket|create_last}` 집계
+  - 비정상 세션 공유/클라이언트 버그로 인한 소유자 불일치 신호를 운영에서 즉시 감지 가능
+- [x] 회귀 테스트 보강
+  - `last_ticket`/`create_last` owner mismatch 시 메트릭 증가 검증
