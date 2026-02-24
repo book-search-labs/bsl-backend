@@ -665,14 +665,20 @@ def test_run_tool_chat_ticket_create_is_idempotent_within_dedup_window(monkeypat
         "client": {"locale": "ko-KR", "user_id": "1"},
     }
 
+    metric_miss_key = "chat_ticket_create_dedup_lookup_total{result=miss}"
+    metric_session_key = "chat_ticket_create_dedup_lookup_total{result=session}"
+    before_metrics = dict(chat_tools.metrics.snapshot())
     first = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_create_1"))
     second = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_create_2"))
+    after_metrics = chat_tools.metrics.snapshot()
 
     assert first is not None and first["status"] == "ok"
     assert second is not None and second["status"] == "ok"
     assert "STK202602230201" in second["answer"]["content"]
     assert "재사용" in second["answer"]["content"]
     assert call_count["ticket_create"] == 1
+    assert after_metrics.get(metric_miss_key, 0) >= before_metrics.get(metric_miss_key, 0) + 1
+    assert after_metrics.get(metric_session_key, 0) >= before_metrics.get(metric_session_key, 0) + 1
 
 
 def test_run_tool_chat_ticket_create_is_idempotent_across_sessions_same_user(monkeypatch):
@@ -726,7 +732,9 @@ def test_run_tool_chat_ticket_create_is_idempotent_across_sessions_same_user(mon
     assert "재사용" in second["answer"]["content"]
     assert call_count["ticket_create"] == 1
     metric_key = "chat_ticket_create_dedup_scope_total{scope=user}"
+    lookup_metric_key = "chat_ticket_create_dedup_lookup_total{result=user}"
     assert after_metrics.get(metric_key, 0) >= before_metrics.get(metric_key, 0) + 1
+    assert after_metrics.get(lookup_metric_key, 0) >= before_metrics.get(lookup_metric_key, 0) + 1
 
 
 def test_run_tool_chat_ticket_create_dedup_prefers_latest_cache_entry():
@@ -772,6 +780,39 @@ def test_run_tool_chat_ticket_create_dedup_prefers_latest_cache_entry():
     assert result["status"] == "ok"
     assert "STK202602230211" in result["answer"]["content"]
     assert "처리 중" in result["answer"]["content"]
+
+
+def test_load_ticket_create_dedup_prefers_session_scope_on_equal_cached_at():
+    session_id = "sess-ticket-dedup-tie-1"
+    user_id = "dedup-tie-user-1"
+    query = "문의 접수해줘 결제 확인 문자가 중복 발송돼요"
+    fingerprint = chat_tools._ticket_create_fingerprint(user_id, query)
+    chat_tools._CACHE.set_json(
+        chat_tools._ticket_create_dedup_cache_key(session_id, fingerprint),
+        {
+            "ticket_no": "STK202602230212",
+            "status": "RECEIVED",
+            "expected_response_minutes": 180,
+            "cached_at": 300,
+        },
+        ttl=300,
+    )
+    chat_tools._CACHE.set_json(
+        chat_tools._ticket_create_dedup_user_cache_key(user_id, fingerprint),
+        {
+            "ticket_no": "STK202602230213",
+            "status": "IN_PROGRESS",
+            "expected_response_minutes": 120,
+            "cached_at": 300,
+        },
+        ttl=300,
+    )
+
+    dedup_cached, dedup_scope = chat_tools._load_ticket_create_dedup(session_id, user_id, fingerprint)
+
+    assert dedup_scope == "session"
+    assert dedup_cached is not None
+    assert dedup_cached.get("ticket_no") == "STK202602230212"
 
 
 def test_run_tool_chat_ticket_create_dedup_reuse_clears_unresolved_context(monkeypatch):

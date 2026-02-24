@@ -456,7 +456,7 @@ def _load_ticket_create_dedup(session_id: str, user_id: str, fingerprint: str) -
             continue
         cached_ts = cached.get("cached_at")
         ts = int(cached_ts) if isinstance(cached_ts, int) else 0
-        if ts >= best_ts:
+        if ts > best_ts:
             best_payload = cached
             best_scope = scope
             best_ts = ts
@@ -1041,6 +1041,7 @@ async def _handle_ticket_create(
 
     dedup_fingerprint = _ticket_create_fingerprint(user_id, effective_query)
     dedup_cached, dedup_scope = _load_ticket_create_dedup(session_id, user_id, dedup_fingerprint)
+    metrics.inc("chat_ticket_create_dedup_lookup_total", {"result": dedup_scope or "miss"})
     if isinstance(dedup_cached, dict):
         cached_ticket_no = str(dedup_cached.get("ticket_no") or "")
         cached_status = str(dedup_cached.get("status") or "RECEIVED")

@@ -421,3 +421,14 @@ Implement multi-provider LLM routing for chat:
 - [x] 회귀 테스트 보강
   - 최근 접수번호가 있는 차단 케이스(`has_recent_ticket=true`) 메트릭 검증
   - 최근 접수번호가 없는 차단 케이스(`has_recent_ticket=false`) 메트릭 검증
+
+## Implementation Update (2026-02-24, Bundle 54)
+- [x] dedup 조회 단계 관측 메트릭 추가
+  - `chat_ticket_create_dedup_lookup_total{result=miss|session|user}`로 조회 경로를 분리 집계
+  - 신규 접수 전환(miss)과 세션/사용자 재사용 경로를 운영 대시보드에서 즉시 구분 가능
+- [x] dedup 동시 후보 타이브레이크 보정
+  - session/user dedup의 `cached_at`이 동일할 때 세션 후보를 우선 선택하도록 결정 규칙 고정
+  - 동일 timestamp에서 비결정적 재사용 결과가 바뀌지 않도록 안정화
+- [x] 회귀 테스트 보강
+  - dedup 조회 miss/session/user 메트릭 증가 검증
+  - `cached_at` 동률일 때 session dedup 선택 검증

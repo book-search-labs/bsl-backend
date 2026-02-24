@@ -136,7 +136,8 @@ curl -s -X POST "http://localhost:8001/internal/chat/session/reset" \
 쿨다운 관측 지표는 `chat_ticket_create_rate_limited_total{result=blocked|pass|dedup_bypass}`를 사용한다.
 쿨다운 차단 시 최근 접수번호 포함 여부는 `chat_ticket_create_rate_limited_context_total{has_recent_ticket=true|false}`로 구분 관측한다.
 동일 문의 dedup도 사용자 범위로 동작하며 `chat_ticket_create_dedup_scope_total{scope=session|user}`로 세션 내부/교차 세션 재사용 비율을 구분해 본다.
-세션 dedup과 사용자 dedup이 동시에 존재하면 `cached_at` 기준 최신 항목을 우선 선택한다.
+dedup 조회 결과는 `chat_ticket_create_dedup_lookup_total{result=miss|session|user}`로 분리 관측한다.
+세션 dedup과 사용자 dedup이 동시에 존재하면 `cached_at` 기준 최신 항목을 우선 선택하며, timestamp가 같으면 세션 항목을 우선 적용한다.
 최근 문의번호 캐시 TTL은 `QS_CHAT_LAST_TICKET_TTL_SEC`(기본 86400초)로 조정한다.
 세션 리셋 관측은 `chat_ticket_context_reset_total{reason=session_reset}`에서도 확인할 수 있다.
 최근 문의번호/쿨다운의 세션 캐시는 `user_id` 소유 정보를 포함하며, 조회 시 현재 사용자와 불일치하면 무시해 교차 사용자 오염을 방지한다.
