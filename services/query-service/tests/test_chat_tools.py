@@ -297,6 +297,66 @@ def test_run_tool_chat_ticket_create_and_status_lookup(monkeypatch):
     assert "처리 중" in status_result["answer"]["content"]
 
 
+def test_run_tool_chat_ticket_status_lookup_uses_user_recent_ticket_across_sessions(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        if method == "POST" and path == "/support/tickets":
+            return {
+                "ticket": {
+                    "ticket_id": 31,
+                    "ticket_no": "STK202602230301",
+                    "status": "RECEIVED",
+                    "severity": "LOW",
+                },
+                "expected_response_minutes": 120,
+            }
+        if method == "GET" and path == "/support/tickets/by-number/STK202602230301":
+            return {
+                "ticket": {
+                    "ticket_id": 31,
+                    "ticket_no": "STK202602230301",
+                    "status": "IN_PROGRESS",
+                    "severity": "LOW",
+                },
+                "expected_response_minutes": 120,
+            }
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    user_id = "ticket-status-cross-user-1"
+
+    create_result = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": "sess-ticket-status-cross-1",
+                "message": {"role": "user", "content": "문의 접수해줘 결제 오류가 반복되고 있어요"},
+                "client": {"locale": "ko-KR", "user_id": user_id},
+            },
+            "trace_test",
+            "req_create_cross",
+        )
+    )
+    assert create_result is not None
+    assert create_result["status"] == "ok"
+    assert "STK202602230301" in create_result["answer"]["content"]
+
+    status_result = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": "sess-ticket-status-cross-2",
+                "message": {"role": "user", "content": "내 문의 상태 알려줘"},
+                "client": {"locale": "ko-KR", "user_id": user_id},
+            },
+            "trace_test",
+            "req_status_cross",
+        )
+    )
+
+    assert status_result is not None
+    assert status_result["status"] == "ok"
+    assert "STK202602230301" in status_result["answer"]["content"]
+    assert "처리 중" in status_result["answer"]["content"]
+
+
 def test_run_tool_chat_ticket_create_uses_unresolved_context(monkeypatch):
     captured = {}
 
@@ -491,6 +551,7 @@ def test_run_tool_chat_ticket_create_applies_cooldown_for_non_dedup_issue(monkey
     assert second["recoverable"] is True
     assert int(second["retry_after_ms"] or 0) > 0
     assert "다시 시도" in second["answer"]["content"]
+    assert "STK202602230203" in second["answer"]["content"]
     assert call_count["ticket_create"] == 1
     assert after_metrics.get(metric_key, 0) >= before_metrics.get(metric_key, 0) + 1
 

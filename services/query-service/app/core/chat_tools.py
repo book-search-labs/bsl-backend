@@ -304,18 +304,29 @@ def _last_ticket_cache_key(session_id: str) -> str:
     return f"chat:last-ticket:{session_id}"
 
 
-def _save_last_ticket_no(session_id: str, ticket_no: str) -> None:
+def _last_ticket_user_cache_key(user_id: str) -> str:
+    return f"chat:last-ticket:user:{user_id}"
+
+
+def _save_last_ticket_no(session_id: str, user_id: str, ticket_no: str) -> None:
     if ticket_no:
-        _CACHE.set_json(_last_ticket_cache_key(session_id), {"ticket_no": ticket_no}, ttl=max(600, _workflow_ttl_sec()))
+        payload = {"ticket_no": ticket_no}
+        ttl = max(600, _workflow_ttl_sec())
+        _CACHE.set_json(_last_ticket_cache_key(session_id), payload, ttl=ttl)
+        _CACHE.set_json(_last_ticket_user_cache_key(user_id), payload, ttl=ttl)
 
 
-def _load_last_ticket_no(session_id: str) -> str | None:
-    cached = _CACHE.get_json(_last_ticket_cache_key(session_id))
-    if not isinstance(cached, dict):
-        return None
-    value = cached.get("ticket_no")
-    if isinstance(value, str) and value.strip():
-        return value.strip()
+def _load_last_ticket_no(session_id: str, user_id: str) -> str | None:
+    candidates = (
+        _CACHE.get_json(_last_ticket_cache_key(session_id)),
+        _CACHE.get_json(_last_ticket_user_cache_key(user_id)),
+    )
+    for cached in candidates:
+        if not isinstance(cached, dict):
+            continue
+        value = cached.get("ticket_no")
+        if isinstance(value, str) and value.strip():
+            return value.strip()
     return None
 
 
@@ -923,7 +934,7 @@ async def _handle_ticket_create(
         if cached_ticket_no:
             metrics.inc("chat_ticket_create_dedup_hit_total", {"result": "reused"})
             metrics.inc("chat_ticket_create_rate_limited_total", {"result": "dedup_bypass"})
-            _save_last_ticket_no(session_id, cached_ticket_no)
+            _save_last_ticket_no(session_id, user_id, cached_ticket_no)
             _save_ticket_create_last(session_id, user_id)
             _clear_unresolved_context(session_id)
             _reset_fallback_counter(session_id)
@@ -949,11 +960,19 @@ async def _handle_ticket_create(
             remaining_sec = (last_created_at + cooldown_sec) - now_ts
             if remaining_sec > 0:
                 metrics.inc("chat_ticket_create_rate_limited_total", {"result": "blocked"})
+                recent_ticket_no = _load_last_ticket_no(session_id, user_id)
+                if recent_ticket_no:
+                    message = (
+                        f"문의가 방금 접수되었습니다. 기존 접수번호는 {recent_ticket_no}입니다. "
+                        f"{remaining_sec}초 후 다시 시도해 주세요."
+                    )
+                else:
+                    message = f"문의가 방금 접수되었습니다. {remaining_sec}초 후 다시 시도해 주세요."
                 return _build_response(
                     trace_id,
                     request_id,
                     "needs_input",
-                    f"문의가 방금 접수되었습니다. {remaining_sec}초 후 다시 시도해 주세요.",
+                    message,
                     reason_code="RATE_LIMITED",
                     recoverable=True,
                     next_action="RETRY",
@@ -1015,7 +1034,7 @@ async def _handle_ticket_create(
     status = str(ticket.get("status") or "RECEIVED")
     status_ko = _ticket_status_ko(status)
     eta_minutes = int(created.get("expected_response_minutes") or 0)
-    _save_last_ticket_no(session_id, ticket_no)
+    _save_last_ticket_no(session_id, user_id, ticket_no)
     _save_ticket_create_last(session_id, user_id)
     _save_ticket_create_dedup(
         session_id,
@@ -1056,7 +1075,7 @@ async def _handle_ticket_status(
     trace_id: str,
     request_id: str,
 ) -> dict[str, Any]:
-    ticket_no = _extract_ticket_no(query) or _load_last_ticket_no(session_id)
+    ticket_no = _extract_ticket_no(query) or _load_last_ticket_no(session_id, user_id)
     if not ticket_no:
         return _build_response(
             trace_id,

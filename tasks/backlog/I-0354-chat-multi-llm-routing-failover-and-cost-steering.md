@@ -320,3 +320,11 @@ Implement multi-provider LLM routing for chat:
   - 동일 사용자 다중 탭/다중 세션에서 단시간 spam ticket 생성 방지
 - [x] 회귀 테스트 추가
   - 같은 `user_id`, 다른 `session_id`에서 연속 ticket 생성 시 두 번째 요청이 `RATE_LIMITED`로 차단되는지 검증
+
+## Implementation Update (2026-02-24, Bundle 41)
+- [x] 최근 문의번호 캐시를 사용자 범위로 확장
+  - 마지막 접수번호를 `session_id` + `user_id` 양쪽에 저장해 세션 이동 시에도 상태조회 연속성 유지
+- [x] 쿨다운 차단 응답 안내 강화
+  - 쿨다운(`RATE_LIMITED`) 응답에 최근 접수번호를 함께 제공해 즉시 문의 상태 조회 유도
+- [x] 회귀 테스트 추가
+  - 다른 세션에서도 사용자 최근 접수번호를 기반으로 `내 문의 상태` 조회가 동작하는지 검증
