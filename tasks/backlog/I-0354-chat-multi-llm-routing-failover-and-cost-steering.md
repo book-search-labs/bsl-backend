@@ -478,3 +478,10 @@ Implement multi-provider LLM routing for chat:
   - `chat_ticket_create_with_context_total{source=history}` 집계로 history 보강 사용량 확인
 - [x] 회귀 테스트 보강
   - history 이슈 문장 기반 ticket 생성 성공 및 payload(summary/effectiveQuery) 반영 검증
+
+## Implementation Update (2026-02-24, Bundle 60)
+- [x] 티켓 상태 조회 성공 시 최근 문의 캐시 동기화
+  - 접수번호 직접 입력(`STK...`)으로 상태 조회한 경우에도 마지막 접수번호를 session/user 캐시에 저장
+  - 이후 `내 문의 상태` 요청에서 직전 조회 접수번호를 재사용할 수 있도록 연속성 보강
+- [x] 회귀 테스트 보강
+  - 접수번호 직접 조회 후 session/user 최근 문의 캐시가 동기화되는지 검증

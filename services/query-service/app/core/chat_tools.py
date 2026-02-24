@@ -1372,6 +1372,7 @@ async def _handle_ticket_status(
         if eta_minutes > 0
         else "예상 응답 시간은 담당자 배정 후 안내됩니다."
     )
+    _save_last_ticket_no(session_id, user_id, ticket_no)
     content = (
         f"접수번호 {ticket_no}의 현재 상태는 '{status_ko}'입니다. "
         f"문의 유형은 '{category_ko}', 중요도는 '{severity_ko}'로 접수되어 있습니다. "

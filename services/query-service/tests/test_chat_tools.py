@@ -344,6 +344,11 @@ def test_run_tool_chat_ticket_status_lookup_with_ticket_number_only(monkeypatch)
     assert result["status"] == "ok"
     assert "STK202602230777" in result["answer"]["content"]
     assert calls == [("GET", "/support/tickets/by-number/STK202602230777")]
+    assert chat_tools._CACHE.get_json(chat_tools._last_ticket_cache_key("sess-ticket-number-only-1")) == {
+        "ticket_no": "STK202602230777",
+        "user_id": "1",
+    }
+    assert chat_tools._CACHE.get_json(chat_tools._last_ticket_user_cache_key("1")) == {"ticket_no": "STK202602230777"}
     assert after_metrics.get("chat_ticket_status_lookup_ticket_source_total{source=query}", 0) >= before_metrics.get(
         "chat_ticket_status_lookup_ticket_source_total{source=query}",
         0,
