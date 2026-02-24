@@ -768,6 +768,10 @@ def _fallback_defaults(reason_code: str) -> Dict[str, Any]:
     )
 
 
+def _guard_blocked_message() -> str:
+    return "응답 품질 검증에서 차단되었습니다."
+
+
 def _fallback(
     trace_id: str,
     request_id: str,
@@ -1948,7 +1952,10 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
                         "risk_band": risk_band,
                     },
                 )
-                yield _sse_event("error", {"code": guard_reason or "OUTPUT_GUARD_BLOCKED", "message": "output guard blocked"})
+                yield _sse_event(
+                    "error",
+                    {"code": guard_reason or "OUTPUT_GUARD_BLOCKED", "message": _guard_blocked_message()},
+                )
                 yield _sse_event(
                     "done",
                     {
@@ -2198,7 +2205,10 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
     if guarded_response is not None:
         metrics.inc("chat_output_guard_total", {"result": "blocked", "reason": guard_reason or "unknown"})
         risk_band = _compute_risk_band(query, guarded_response.get("status", "insufficient_evidence"), [], guard_reason)
-        yield _sse_event("error", {"code": guard_reason or "OUTPUT_GUARD_BLOCKED", "message": "output guard blocked"})
+        yield _sse_event(
+            "error",
+            {"code": guard_reason or "OUTPUT_GUARD_BLOCKED", "message": _guard_blocked_message()},
+        )
         yield _sse_event(
             "done",
             {

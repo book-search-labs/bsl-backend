@@ -233,3 +233,10 @@ Implement multi-provider LLM routing for chat:
   - toy 요약 응답 문구도 한국어로 통일
 - [x] 회귀 테스트 반영
   - no-context insufficiency 응답 문구 한국어 검증
+
+## Implementation Update (2026-02-23, Bundle 30)
+- [x] output guard 차단 메시지 한국어 통일
+  - 스트리밍/JSON 경로 공통으로 `output guard blocked` 영문 문구 제거
+  - 사용자 노출 메시지를 `응답 품질 검증에서 차단되었습니다.`로 표준화
+- [x] 회귀 테스트 추가
+  - stream guard 차단 시 에러 이벤트 메시지 한국어 노출 검증

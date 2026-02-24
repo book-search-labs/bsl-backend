@@ -242,6 +242,53 @@ def test_run_chat_stream_emits_error_when_citation_mapping_fails(monkeypatch):
     assert any("event: done" in event and "insufficient_evidence" in event for event in events)
 
 
+def test_run_chat_stream_guard_block_message_is_korean(monkeypatch):
+    chat._CACHE = CacheClient(None)
+
+    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
+        return {
+            "ok": True,
+            "query": "환불 정책 알려줘",
+            "canonical_key": "ck:test",
+            "locale": "ko-KR",
+            "selected": [
+                {
+                    "chunk_id": "chunk-1",
+                    "citation_key": "chunk-1",
+                    "doc_id": "doc-1",
+                    "title": "환불 정책",
+                    "url": "https://example.com/refund",
+                    "snippet": "환불은 정책에 따라 달라집니다.",
+                    "score": 0.9,
+                }
+            ],
+        }
+
+    async def fake_stream_llm(payload, trace_id, request_id):
+        async def generator():
+            yield chat._sse_event("meta", {"trace_id": trace_id, "request_id": request_id})
+            yield chat._sse_event("delta", {"delta": "해당 주문은 반드시 100% 환불됩니다."})
+
+        return generator(), {
+            "answer": "해당 주문은 반드시 100% 환불됩니다.",
+            "citations": ["chunk-1"],
+            "llm_error": None,
+            "done_status": "ok",
+        }
+
+    monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
+    monkeypatch.setattr(chat, "_stream_llm", fake_stream_llm)
+    monkeypatch.setattr(chat, "_llm_stream_enabled", lambda: True)
+    monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
+    monkeypatch.setenv("QS_CHAT_OUTPUT_GUARD_ENABLED", "1")
+    monkeypatch.setenv("QS_CHAT_GUARD_FORBIDDEN_ANSWER_KEYWORDS", "반드시,100%")
+
+    events = _collect_stream_events({"message": {"role": "user", "content": "환불 정책 알려줘"}, "options": {"stream": True}})
+
+    assert any("event: error" in event and "OUTPUT_GUARD_FORBIDDEN_CLAIM" in event for event in events)
+    assert any("응답 품질 검증에서 차단되었습니다." in event for event in events)
+
+
 def test_run_chat_blocks_forbidden_claim_on_high_risk_query(monkeypatch):
     chat._CACHE = CacheClient(None)
 
