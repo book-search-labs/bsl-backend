@@ -351,3 +351,10 @@ Implement multi-provider LLM routing for chat:
   - 세션 이동/재진입 시 과거 stale dedup 응답을 반환하지 않도록 보정
 - [x] 회귀 테스트 추가
   - session/user dedup 캐시에 서로 다른 ticket_no가 있을 때 최신 엔트리가 선택되는지 검증
+
+## Implementation Update (2026-02-24, Bundle 45)
+- [x] 최근 문의번호 캐시 TTL 환경변수화
+  - `QS_CHAT_LAST_TICKET_TTL_SEC`(기본 86400초, 최소 600초) 추가
+  - 세션/사용자 범위 최근 문의번호 캐시에 동일 TTL 적용
+- [x] 회귀 테스트 추가
+  - TTL 설정값이 실제 캐시 만료시각에 반영되는지 검증

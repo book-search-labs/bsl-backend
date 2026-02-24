@@ -69,6 +69,10 @@ def _ticket_create_cooldown_sec() -> int:
     return max(0, int(os.getenv("QS_CHAT_TICKET_CREATE_COOLDOWN_SEC", "30")))
 
 
+def _last_ticket_ttl_sec() -> int:
+    return max(600, int(os.getenv("QS_CHAT_LAST_TICKET_TTL_SEC", "86400")))
+
+
 def _extract_query_text(request: dict[str, Any]) -> str:
     message = request.get("message") if isinstance(request.get("message"), dict) else {}
     content = message.get("content") if isinstance(message, dict) else None
@@ -311,7 +315,7 @@ def _last_ticket_user_cache_key(user_id: str) -> str:
 def _save_last_ticket_no(session_id: str, user_id: str, ticket_no: str) -> None:
     if ticket_no:
         payload = {"ticket_no": ticket_no}
-        ttl = max(600, _workflow_ttl_sec())
+        ttl = _last_ticket_ttl_sec()
         _CACHE.set_json(_last_ticket_cache_key(session_id), payload, ttl=ttl)
         _CACHE.set_json(_last_ticket_user_cache_key(user_id), payload, ttl=ttl)
 

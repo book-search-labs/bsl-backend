@@ -5,6 +5,7 @@ import pytest
 
 from app.core import chat
 from app.core import chat_tools
+from app.core.cache import CacheClient
 
 
 @pytest.fixture(autouse=True)
@@ -304,6 +305,25 @@ def test_run_tool_chat_ticket_create_and_status_lookup(monkeypatch):
     assert status_result is not None
     assert status_result["status"] == "ok"
     assert "처리 중" in status_result["answer"]["content"]
+
+
+def test_save_last_ticket_no_respects_configured_ttl(monkeypatch):
+    chat_tools._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_LAST_TICKET_TTL_SEC", "7200")
+    monkeypatch.setattr(chat_tools.time, "time", lambda: 1_700_200_000)
+
+    session_id = "sess-last-ticket-ttl-1"
+    user_id = "last-ticket-ttl-user-1"
+    chat_tools._save_last_ticket_no(session_id, user_id, "STK202602230399")
+
+    local_store = chat_tools._CACHE._local._store
+    session_entry = local_store.get(chat_tools._last_ticket_cache_key(session_id))
+    user_entry = local_store.get(chat_tools._last_ticket_user_cache_key(user_id))
+
+    assert session_entry is not None
+    assert user_entry is not None
+    assert session_entry[0] == 1_700_207_200
+    assert user_entry[0] == 1_700_207_200
 
 
 def test_run_tool_chat_ticket_status_lookup_uses_user_recent_ticket_across_sessions(monkeypatch):

@@ -131,6 +131,7 @@ curl -s -X POST "http://localhost:8001/internal/chat/session/reset" \
 쿨다운 관측 지표는 `chat_ticket_create_rate_limited_total{result=blocked|pass|dedup_bypass}`를 사용한다.
 동일 문의 dedup도 사용자 범위로 동작하며 `chat_ticket_create_dedup_scope_total{scope=session|user}`로 세션 내부/교차 세션 재사용 비율을 구분해 본다.
 세션 dedup과 사용자 dedup이 동시에 존재하면 `cached_at` 기준 최신 항목을 우선 선택한다.
+최근 문의번호 캐시 TTL은 `QS_CHAT_LAST_TICKET_TTL_SEC`(기본 86400초)로 조정한다.
 
 BFF 경유 점검이 필요하면 동일 기능을 아래로 호출한다:
 ```bash
