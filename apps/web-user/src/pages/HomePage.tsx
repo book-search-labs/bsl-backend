@@ -4,6 +4,7 @@ import { Link, useOutletContext } from 'react-router-dom'
 import { fetchAutocomplete } from '../api/autocomplete'
 import { fetchHomeCollections, type HomeCollectionSection } from '../api/homeCollections'
 import { fetchHomePanels, type HomePanelItem } from '../api/homePanels'
+import BookCover from '../components/books/BookCover'
 import type { KdcCategoryNode } from '../api/categories'
 import { clearRecentViews, getRecentViews } from '../utils/recentViews'
 import type { RecentView } from '../utils/recentViews'
@@ -30,9 +31,9 @@ const HOME_SECTIONS = [
   },
   {
     key: 'new',
-    title: '신간 · 예약 판매',
-    note: '새로운 출간 소식을 가장 먼저 만나보세요.',
-    link: '/search?q=신간',
+    title: '신간 · 예약구매',
+    note: '곧 출간하는 도서를 예약구매로 먼저 만나보세요.',
+    link: '/preorders',
   },
   {
     key: 'editor',
@@ -56,6 +57,17 @@ type AppShellContext = {
 
 function formatAuthors(authors: string[]) {
   return authors.length > 0 ? authors.join(', ') : '저자 정보 없음'
+}
+
+function formatViewedAgo(viewedAt: number) {
+  if (!Number.isFinite(viewedAt) || viewedAt <= 0) return '방금 확인'
+  const elapsedMinutes = Math.max(0, Math.floor((Date.now() - viewedAt) / 60000))
+  if (elapsedMinutes < 1) return '방금 확인'
+  if (elapsedMinutes < 60) return `${elapsedMinutes}분 전`
+  const elapsedHours = Math.floor(elapsedMinutes / 60)
+  if (elapsedHours < 24) return `${elapsedHours}시간 전`
+  const elapsedDays = Math.floor(elapsedHours / 24)
+  return `${elapsedDays}일 전`
 }
 
 export default function HomePage() {
@@ -412,7 +424,16 @@ export default function HomePage() {
                       const detailLink = docId
                         ? `/book/${encodeURIComponent(docId)}?from=home`
                         : `/search?q=${encodeURIComponent(title)}`
-                      const searchLink = `/search?q=${encodeURIComponent(title)}`
+                      const searchLink = (() => {
+                        const params = new URLSearchParams()
+                        params.set('q', title)
+                        params.set('vector', 'true')
+                        params.set('related_title', title)
+                        if (docId) {
+                          params.set('related', docId)
+                        }
+                        return `/search?${params.toString()}`
+                      })()
                       const labels = Array.isArray(hit.edition_labels)
                         ? hit.edition_labels.slice(0, 2)
                         : []
@@ -420,8 +441,15 @@ export default function HomePage() {
                       return (
                         <article key={docId ?? `${section.key}-${index}`} className="book-tile book-tile--compact">
                           <div className={`book-tile-cover book-tile-cover--${decor.tone}`}>
+                            <BookCover
+                              className="book-cover-image"
+                              title={title}
+                              coverUrl={typeof hit.cover_url === 'string' ? hit.cover_url : null}
+                              isbn13={typeof hit.isbn13 === 'string' ? hit.isbn13 : null}
+                              docId={docId ?? null}
+                              size="M"
+                            />
                             <span className="book-tile-rank">#{index + 1}</span>
-                            <span className="book-tile-cover-title">{title}</span>
                           </div>
                           <div className="book-tile-body">
                             <h3 className="book-tile-title">{title}</h3>
@@ -477,8 +505,20 @@ export default function HomePage() {
               <div className="recent-list">
                 {recentLinks.map((item) => (
                   <Link key={item.docId} to={item.to} className="recent-card">
-                    <div className="recent-card-title">{item.titleKo ?? 'Untitled'}</div>
-                    <div className="recent-card-meta">{formatAuthors(item.authors)}</div>
+                    <BookCover
+                      className="recent-card-cover"
+                      title={item.titleKo}
+                      coverUrl={item.coverUrl ?? null}
+                      isbn13={item.isbn13 ?? null}
+                      docId={item.docId}
+                      size="S"
+                    />
+                    <div className="recent-card-body">
+                      <div className="recent-card-title">{item.titleKo ?? '제목 없음'}</div>
+                      <div className="recent-card-meta">{formatAuthors(item.authors)}</div>
+                      <div className="recent-card-time">{formatViewedAgo(item.viewedAt)}</div>
+                    </div>
+                    <span className="recent-card-cta">이어보기</span>
                   </Link>
                 ))}
               </div>
@@ -492,42 +532,42 @@ export default function HomePage() {
               </div>
             )}
           </div>
-
-          <div className="home-block side-block">
-            <div className="home-block-header">
-              <div>
-                <h2 className="section-title">필요한 정보를 빠르게</h2>
-                <p className="section-note">배송, 환불, 주문 문의를 빠르게 이동하세요.</p>
-              </div>
-              <Link to="/chat" className="section-link-btn">
-                책봇 상담
-              </Link>
-            </div>
-            <div className="help-grid help-grid--side">
-              <div className="help-card">
-                <div className="help-title">배송/반품 안내</div>
-                <p className="help-meta">주문 후 배송 상황과 반품 정책을 확인하세요.</p>
-                <Link to="/about" className="help-link">
-                  자세히 보기
-                </Link>
-              </div>
-              <div className="help-card">
-                <div className="help-title">주문 내역 확인</div>
-                <p className="help-meta">주문 상태와 결제 내역을 확인하세요.</p>
-                <Link to="/orders" className="help-link">
-                  주문/배송 보기
-                </Link>
-              </div>
-              <div className="help-card">
-                <div className="help-title">장바구니 바로가기</div>
-                <p className="help-meta">담아둔 도서를 한 번에 결제하세요.</p>
-                <Link to="/cart" className="help-link">
-                  장바구니 열기
-                </Link>
-              </div>
-            </div>
-          </div>
         </aside>
+      </div>
+
+      <div className="container home-section">
+        <div className="section-header">
+          <div>
+            <h2 className="section-title">필요한 정보를 빠르게</h2>
+            <p className="section-note">배송, 환불, 주문 문의를 빠르게 이동하세요.</p>
+          </div>
+          <Link to="/chat" className="section-link-btn">
+            책봇 상담
+          </Link>
+        </div>
+        <div className="help-grid">
+          <div className="help-card">
+            <div className="help-title">배송/반품 안내</div>
+            <p className="help-meta">주문 후 배송 상황과 반품 정책을 확인하세요.</p>
+            <Link to="/about" className="help-link">
+              자세히 보기
+            </Link>
+          </div>
+          <div className="help-card">
+            <div className="help-title">주문 내역 확인</div>
+            <p className="help-meta">주문 상태와 결제 내역을 확인하세요.</p>
+            <Link to="/orders" className="help-link">
+              주문/배송 보기
+            </Link>
+          </div>
+          <div className="help-card">
+            <div className="help-title">장바구니 바로가기</div>
+            <p className="help-meta">담아둔 도서를 한 번에 결제하세요.</p>
+            <Link to="/cart" className="help-link">
+              장바구니 열기
+            </Link>
+          </div>
+        </div>
       </div>
     </section>
   )

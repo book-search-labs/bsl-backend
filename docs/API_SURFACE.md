@@ -860,6 +860,9 @@ If supported, the server should treat it as:
 - `GET /api/v1/materials/{materialId}/current-offer`
 - `GET /api/v1/home/panels?limit=31&type=EVENT|NOTICE`
 - `GET /api/v1/home/collections?limit_per_section=8`
+- `GET /api/v1/home/benefits?limit=12`
+- `GET /api/v1/home/preorders?limit=12`
+- `POST /api/v1/home/preorders/{preorderId}/reserve`
 - `GET /api/v1/cart`
 - `POST /api/v1/cart/items`
 - `PATCH /api/v1/cart/items/{cartItemId}`
@@ -868,6 +871,7 @@ If supported, the server should treat it as:
 - `GET /api/v1/checkout`
 - `GET /api/v1/addresses`
 - `POST /api/v1/addresses`
+- `PATCH /api/v1/addresses/{addressId}`
 - `POST /api/v1/addresses/{addressId}/default`
 - `POST /api/v1/orders`
 - `GET /api/v1/orders`
@@ -890,6 +894,24 @@ If supported, the server should treat it as:
 - `GET /api/v1/support/tickets/{ticketId}`
 - `GET /api/v1/support/tickets/by-number/{ticketNo}`
 - `GET /api/v1/support/tickets/{ticketId}/events`
+- `GET /api/v1/my/wishlist`
+- `POST /api/v1/my/wishlist`
+- `DELETE /api/v1/my/wishlist/{docId}`
+- `GET /api/v1/my/comments`
+- `POST /api/v1/my/comments`
+- `GET /api/v1/my/wallet/points`
+- `GET /api/v1/my/wallet/vouchers`
+- `GET /api/v1/my/wallet/coupons`
+- `GET /api/v1/my/elib`
+- `GET /api/v1/my/notifications`
+- `POST /api/v1/my/notifications/{notificationId}/read`
+- `POST /api/v1/my/notifications/read-all`
+- `GET /api/v1/my/notification-preferences`
+- `POST /api/v1/my/notification-preferences/{category}`
+- `GET /api/v1/my/gifts`
+- `GET /api/v1/my/gifts/{giftId}`
+- `GET /api/v1/my/inquiries`
+- `POST /api/v1/my/inquiries`
 
 ### Home Events/Notices
 - `GET /api/v1/home/panels`
@@ -910,8 +932,41 @@ If supported, the server should treat it as:
     - `limit_per_section`, `count`
   - Data source
     - `bestseller`: 최근 주문/결제 데이터 집계(order_item + orders + sku)
-    - `new`: 발행연도/발행일 기반 최신 도서
+    - `new`: 발행연도/발행일 기반 최신 도서 + 예약구매 랜딩 연계
     - `editor`: 인문/문학/에세이 계열 주제 신호 + KDC 기반 큐레이션
+
+### Today Benefits (프로모션/할인)
+- `GET /api/v1/home/benefits`
+  - Query params
+    - `limit` (optional, default `12`, max `50`)
+  - Response fields
+    - `today`: 기준일 (`yyyy-MM-dd`)
+    - `items[]`: `item_id`, `benefit_code`, `badge`, `title`, `description`, `discount_type`, `discount_value`, `discount_label`, `min_order_amount`, `max_discount_amount`, `valid_from`, `valid_to`, `daily_limit`, `remaining_daily`, `link_url`, `cta_label`
+    - `count`, `total_count`, `limit`
+  - Data source
+    - `cart_content_item` (`content_type='PROMOTION'`) 실데이터 기반
+    - 기간/잔여수량 조건(`valid_from`, `valid_to`, `remaining_daily`)으로 오늘 노출 항목 필터링
+
+### Preorder (예약구매)
+- `GET /api/v1/home/preorders`
+  - Query params
+    - `limit` (optional, default `12`, max `60`)
+  - Header
+    - `x-user-id` (optional, default `1`)
+  - Response fields
+    - `items[]`: `preorder_id`, `doc_id`, `title_ko`, `authors`, `publisher_name`, `issued_year`, `preorder_price`, `list_price`, `discount_rate`, `preorder_start_at`, `preorder_end_at`, `release_at`, `reservation_limit`, `reserved_count`, `remaining`, `reserved_by_me`, `reserved_qty`, `badge`, `cta_label`
+    - `count`, `total_count`, `limit`
+- `POST /api/v1/home/preorders/{preorderId}/reserve`
+  - Header
+    - `x-user-id` (optional, default `1`)
+  - Request body
+    - `qty` (optional, default `1`, min `1`, max `10`)
+    - `note` (optional)
+  - Response fields
+    - `reservation`: `reservation_id`, `preorder_id`, `user_id`, `qty`, `status`, `reserved_price`, `reservation_limit`, `reserved_total`, `remaining`, `note`
+  - Validation
+    - 활성 예약구매 상품만 가능
+    - 예약 가능 수량 초과 시 `409 preorder_limit_exceeded`
 
 ### Orders (User)
 - `GET /api/v1/orders`
@@ -945,6 +1000,44 @@ If supported, the server should treat it as:
   - Returns latest ticket state for owner only.
 - `GET /api/v1/support/tickets/{ticketId}/events`
   - Returns lifecycle events (received/status changed, etc.)
+
+### MyPage (User)
+- `GET /api/v1/my/wishlist`
+  - 관심 도서 목록 조회 (`user_saved_material` + 카탈로그 현재 판매가)
+- `POST /api/v1/my/wishlist`
+  - 관심 도서 추가 (중복 추가 시 무시)
+- `DELETE /api/v1/my/wishlist/{docId}`
+  - 관심 도서 삭제
+- `GET /api/v1/my/comments`
+  - 작성한 코멘트 목록
+- `POST /api/v1/my/comments`
+  - 코멘트 등록 (배송 완료/구매확정 주문만 허용, 주문당 1회)
+- `GET /api/v1/my/wallet/points`
+  - 통합 포인트 잔액 + 변동 이력
+- `GET /api/v1/my/wallet/vouchers`
+  - e교환권 목록
+- `GET /api/v1/my/wallet/coupons`
+  - 쿠폰 목록
+- `GET /api/v1/my/elib`
+  - e-라이브러리(전자 보관함) 목록
+- `GET /api/v1/my/notifications`
+  - 알림 목록 (`category`, `unreadOnly` 필터 지원)
+- `POST /api/v1/my/notifications/{notificationId}/read`
+  - 알림 1건 읽음 처리
+- `POST /api/v1/my/notifications/read-all`
+  - 전체 읽음 처리
+- `GET /api/v1/my/notification-preferences`
+  - 알림 수신 설정 조회
+- `POST /api/v1/my/notification-preferences/{category}`
+  - 알림 수신 설정 변경
+- `GET /api/v1/my/gifts`
+  - 선물함 목록
+- `GET /api/v1/my/gifts/{giftId}`
+  - 선물 상세(도서 목록 포함)
+- `GET /api/v1/my/inquiries`
+  - 1:1 문의 내역 (`support_ticket` 기반)
+- `POST /api/v1/my/inquiries`
+  - 1:1 문의 등록 (`support_ticket` 생성)
 
 ## Admin (v1)
 - `GET /admin/sellers`

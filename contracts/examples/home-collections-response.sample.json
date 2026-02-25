@@ -23,9 +23,9 @@
     },
     {
       "key": "new",
-      "title": "신간 · 예약 판매",
-      "note": "새로운 출간 소식을 가장 먼저 만나보세요.",
-      "link": "/search?q=신간",
+      "title": "신간 · 예약구매",
+      "note": "곧 출간하는 도서를 예약구매로 먼저 만나보세요.",
+      "link": "/preorders",
       "items": [
         {
           "doc_id": "nlk:CDM200900003",

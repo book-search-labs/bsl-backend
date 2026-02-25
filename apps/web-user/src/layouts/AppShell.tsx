@@ -11,10 +11,15 @@ import {
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { fetchAutocomplete, postAutocompleteSelect, type AutocompleteSuggestion } from '../api/autocomplete'
+import { getCart } from '../api/cart'
 import { fetchKdcCategories, type KdcCategoryNode } from '../api/categories'
+import IconNav from '../components/header/IconNav'
+import UtilityMenu from '../components/header/UtilityMenu'
+import { MY_DROPDOWN_LINKS } from '../components/my/myNavigation'
 import FloatingChatWidget from '../components/chat/FloatingChatWidget'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { useOutsideClick } from '../hooks/useOutsideClick'
+import { resetSessionUser } from '../services/mySession'
 import { getTopLevelKdc } from '../utils/kdc'
 
 const AUTOCOMPLETE_SIZE = 8
@@ -75,7 +80,10 @@ export default function AppShell() {
   const [kdcCategories, setKdcCategories] = useState<KdcCategoryNode[]>([])
   const [isCategoryOpen, setIsCategoryOpen] = useState(false)
   const [activeTopCode, setActiveTopCode] = useState<string | null>(null)
+  const [cartCount, setCartCount] = useState(0)
+  const [myMenuOpen, setMyMenuOpen] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
+  const myMenuRef = useRef<HTMLDivElement>(null)
   const shouldSuggestRef = useRef(false)
   const debouncedQuery = useDebouncedValue(query, AUTOCOMPLETE_DEBOUNCE_MS)
   const topCategories = useMemo(() => getTopLevelKdc(kdcCategories), [kdcCategories])
@@ -107,7 +115,29 @@ export default function AppShell() {
 
   useEffect(() => {
     setIsCategoryOpen(false)
+    setMyMenuOpen(false)
   }, [location.pathname])
+
+  const refreshCartCount = useCallback(() => {
+    let active = true
+    getCart()
+      .then((cart) => {
+        if (!active) return
+        const nextCount = cart.items.reduce((sum, item) => sum + item.qty, 0)
+        setCartCount(nextCount)
+      })
+      .catch(() => {
+        if (active) {
+          setCartCount(0)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => refreshCartCount(), [refreshCartCount, location.pathname])
 
   const closeSuggestions = useCallback(() => {
     setIsOpen(false)
@@ -121,6 +151,20 @@ export default function AppShell() {
   const openCategoryDrawer = useCallback(() => {
     setIsCategoryOpen(true)
   }, [])
+
+  const closeMyMenu = useCallback(() => {
+    setMyMenuOpen(false)
+  }, [])
+
+  const toggleMyMenu = useCallback(() => {
+    setMyMenuOpen((prev) => !prev)
+  }, [])
+
+  const handleLogout = useCallback(() => {
+    resetSessionUser()
+    setMyMenuOpen(false)
+    navigate('/')
+  }, [navigate])
 
   const activeTopCategory =
     topCategories.find((node) => node.code === activeTopCode) ?? topCategories[0] ?? null
@@ -141,6 +185,10 @@ export default function AppShell() {
 
   useOutsideClick(formRef, () => {
     suppressSuggestions()
+  })
+
+  useOutsideClick(myMenuRef, () => {
+    closeMyMenu()
   })
 
   useEffect(() => {
@@ -399,27 +447,13 @@ export default function AppShell() {
 
   const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
     `nav-link ${isActive ? 'active' : ''}`
-  const utilityLinkClassName = ({ isActive }: { isActive: boolean }) =>
-    `utility-link ${isActive ? 'active' : ''}`
 
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="top-strip">
-          <div className="container">
-            <div className="top-strip-inner">
-              <div className="top-strip-left">
-                <span className="top-pill">무료배송</span>
-                <span className="top-note">2만원 이상 주문 시</span>
-              </div>
-              <div className="top-strip-links">
-                <span className="top-note">밤 11시 전 주문 시 내일 도착</span>
-                <span className="top-divider" />
-                <Link to="/about">고객센터</Link>
-                <span className="top-divider" />
-                <Link to="/orders">주문/배송</Link>
-              </div>
-            </div>
+        <div className="utility-strip">
+          <div className="container utility-strip-inner">
+            <UtilityMenu onLogout={handleLogout} />
           </div>
         </div>
         <div className="main-header">
@@ -580,24 +614,14 @@ export default function AppShell() {
                   </div>
                 </div>
               </div>
-              <div className="utility-links">
-                <NavLink to="/about" className={utilityLinkClassName}>
-                  <span className="utility-icon">HELP</span>
-                  고객센터
-                </NavLink>
-                <NavLink to="/cart" className={utilityLinkClassName}>
-                  <span className="utility-icon">CART</span>
-                  장바구니
-                </NavLink>
-                <NavLink to="/orders" className={utilityLinkClassName}>
-                  <span className="utility-icon">MY</span>
-                  주문/배송
-                </NavLink>
-                <NavLink to="/events" className={utilityLinkClassName}>
-                  <span className="utility-icon">EVT</span>
-                  이벤트/공지
-                </NavLink>
-              </div>
+              <IconNav
+                cartCount={cartCount}
+                myMenuOpen={myMenuOpen}
+                onToggleMyMenu={toggleMyMenu}
+                onCloseMyMenu={closeMyMenu}
+                dropdownItems={MY_DROPDOWN_LINKS}
+                dropdownRef={myMenuRef}
+              />
             </div>
           </div>
         </div>
@@ -619,11 +643,11 @@ export default function AppShell() {
                 </NavLink>
               </nav>
               <div className="nav-extra">
-                <Link to="/search?q=할인" className="nav-extra-link">
+                <Link to="/benefits" className="nav-extra-link">
                   오늘의 혜택
                 </Link>
-                <Link to="/search?q=예약" className="nav-extra-link">
-                  예약판매
+                <Link to="/preorders" className="nav-extra-link">
+                  예약구매
                 </Link>
                 <Link to="/about" className="nav-extra-link">
                   이용안내
@@ -712,8 +736,61 @@ export default function AppShell() {
       <FloatingChatWidget />
 
       <footer className="app-footer mt-auto">
-        <div className="container py-4">
-          <small>BSL Book Search Labs — MVP</small>
+        <div className="container app-footer-inner">
+          <div className="app-footer-links">
+            <Link to="/about">서비스 소개</Link>
+            <span aria-hidden="true">|</span>
+            <Link to="/my/notifications">알림 설정</Link>
+            <span aria-hidden="true">|</span>
+            <Link to="/my/support/inquiries">문의하기</Link>
+            <span aria-hidden="true">|</span>
+            <Link to="/orders">주문/배송 조회</Link>
+            <span aria-hidden="true">|</span>
+            <Link to="/my/profile">개인정보 설정</Link>
+          </div>
+
+          <div className="app-footer-body">
+            <section className="app-footer-block app-footer-brand">
+              <div className="footer-brand-title">BSL Books</div>
+              <p>책 검색과 쇼핑을 함께 제공하는 통합 북 플랫폼</p>
+              <p className="footer-brand-meta">운영시간 09:00 - 18:00 (주말/공휴일 제외)</p>
+            </section>
+
+            <section className="app-footer-block">
+              <h3>고객센터</h3>
+              <p className="footer-strong">1661-0101</p>
+              <p>이메일 support@bslbooks.local</p>
+              <p>점심시간 12:00 - 13:00</p>
+            </section>
+
+            <section className="app-footer-block">
+              <h3>주요 안내</h3>
+              <ul>
+                <li>2만원 이상 주문 시 무료배송</li>
+                <li>기본배송 3,000원 / 빠른배송 5,000원</li>
+                <li>배송 완료 후 반품/환불 신청 가능</li>
+              </ul>
+            </section>
+
+            <section className="app-footer-block">
+              <h3>바로가기</h3>
+              <ul>
+                <li>
+                  <Link to="/benefits">오늘의 혜택</Link>
+                </li>
+                <li>
+                  <Link to="/preorders">예약구매</Link>
+                </li>
+                <li>
+                  <Link to="/events">이벤트/공지</Link>
+                </li>
+              </ul>
+            </section>
+          </div>
+
+          <div className="app-footer-copy">
+            <small>© {new Date().getFullYear()} BSL Books. All rights reserved.</small>
+          </div>
         </div>
       </footer>
     </div>
