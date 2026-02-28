@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "olap.topics")
 public class OlapTopicProperties {
     private String searchImpression = "search_impression_v1";
+    private String searchResultSummary = "search_result_summary_v1";
     private String searchClick = "search_click_v1";
     private String searchDwell = "search_dwell_v1";
     private String acImpression = "ac_impression_v1";
@@ -27,6 +28,14 @@ public class OlapTopicProperties {
 
     public void setSearchClick(String searchClick) {
         this.searchClick = searchClick;
+    }
+
+    public String getSearchResultSummary() {
+        return searchResultSummary;
+    }
+
+    public void setSearchResultSummary(String searchResultSummary) {
+        this.searchResultSummary = searchResultSummary;
     }
 
     public String getSearchDwell() {

@@ -26,6 +26,8 @@ SCHEMA_FILES = {
     "autocomplete-admin-update-request.sample.json": CONTRACTS_DIR / "autocomplete-admin-update-request.schema.json",
     "autocomplete-admin-update-response.sample.json": CONTRACTS_DIR / "autocomplete-admin-update-response.schema.json",
     "autocomplete-admin-trends-response.sample.json": CONTRACTS_DIR / "autocomplete-admin-trends-response.schema.json",
+    "admin-ops-metrics-summary-response.sample.json": CONTRACTS_DIR / "admin-ops-metrics-summary-response.schema.json",
+    "admin-ops-metrics-timeseries-response.sample.json": CONTRACTS_DIR / "admin-ops-metrics-timeseries-response.schema.json",
     "book-detail-response.sample.json": CONTRACTS_DIR / "book-detail-response.schema.json",
     "home-collections-response.sample.json": CONTRACTS_DIR / "home-collections-response.schema.json",
     "home-benefits-response.sample.json": CONTRACTS_DIR / "home-benefits-response.schema.json",

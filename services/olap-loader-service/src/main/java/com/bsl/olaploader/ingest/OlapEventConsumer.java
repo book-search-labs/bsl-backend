@@ -30,6 +30,7 @@ public class OlapEventConsumer {
     @KafkaListener(
         topics = {
             "${olap.topics.search-impression:search_impression_v1}",
+            "${olap.topics.search-result-summary:search_result_summary_v1}",
             "${olap.topics.search-click:search_click_v1}",
             "${olap.topics.search-dwell:search_dwell_v1}",
             "${olap.topics.ac-impression:ac_impression_v1}",
@@ -58,6 +59,10 @@ public class OlapEventConsumer {
                 case "search_impression" -> writer.append(
                     "search_impression",
                     buildSearchImpression(payload, eventId, dedupKey, occurredAt)
+                );
+                case "search_result_summary" -> writer.append(
+                    "search_result_summary",
+                    buildSearchResultSummary(payload, eventId, dedupKey, occurredAt)
                 );
                 case "search_click" -> writer.append(
                     "search_click",
@@ -129,6 +134,34 @@ public class OlapEventConsumer {
             rows.add(row);
         }
         return rows;
+    }
+
+    private List<Map<String, Object>> buildSearchResultSummary(
+        JsonNode payload,
+        String eventId,
+        String dedupKey,
+        String occurredAt
+    ) {
+        String impId = payload.path("imp_id").asText("");
+        if (impId.isBlank()) {
+            return List.of();
+        }
+        String eventTime = resolveEventTime(payload, occurredAt);
+        String eventDate = toDate(eventTime);
+        Map<String, Object> row = baseRow(payload, eventId, dedupKey, eventDate, eventTime);
+        row.put("imp_id", impId);
+        row.put("query_hash", payload.path("query_hash").asText(null));
+        row.put("query_raw", payload.path("query_raw").asText(null));
+        row.put("total_hits", Math.max(0, payload.path("total_hits").asInt(0)));
+        row.put("zero_result", toFlag(payload.get("zero_result")));
+        row.put("rerank_applied", toFlag(payload.get("rerank_applied")));
+        row.put("took_ms", Math.max(0, payload.path("took_ms").asInt(0)));
+        row.put("strategy", payload.path("strategy").asText(null));
+        row.put("status", payload.path("status").asText("ok"));
+        row.put("policy_id", payload.path("policy_id").asText(null));
+        row.put("experiment_id", payload.path("experiment_id").asText(null));
+        row.put("experiment_bucket", payload.path("experiment_bucket").asText(null));
+        return List.of(row);
     }
 
     private List<Map<String, Object>> buildSearchClick(
@@ -361,5 +394,24 @@ public class OlapEventConsumer {
 
     private String formatDateTime(OffsetDateTime time) {
         return time.format(DATETIME_FMT);
+    }
+
+    private int toFlag(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return 0;
+        }
+        if (node.isBoolean()) {
+            return node.asBoolean(false) ? 1 : 0;
+        }
+        if (node.isInt() || node.isLong()) {
+            return node.asInt(0) > 0 ? 1 : 0;
+        }
+        if (node.isTextual()) {
+            String text = node.asText("").trim().toLowerCase();
+            if ("1".equals(text) || "true".equals(text) || "yes".equals(text)) {
+                return 1;
+            }
+        }
+        return 0;
     }
 }

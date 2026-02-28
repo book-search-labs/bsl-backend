@@ -67,6 +67,11 @@ bff:
   model-ops:
     registry-path: ${MODEL_REGISTRY_PATH:services/model-inference-service/app/config/model_registry.json}
     eval-runs-dir: ${EVAL_RUNS_DIR:evaluation/eval_runs}
+  ops-metrics:
+    enabled: ${BFF_OPS_METRICS_ENABLED:true}
+    clickhouse-url: ${CLICKHOUSE_URL:http://localhost:8123}
+    clickhouse-database: ${CLICKHOUSE_DB:bsl_olap}
+    timeout-ms: ${BFF_OPS_METRICS_TIMEOUT_MS:1200}
 
 app:
   cors:

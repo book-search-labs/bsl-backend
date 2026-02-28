@@ -10,6 +10,7 @@ import org.springframework.web.client.RestTemplate;
 
 @Configuration
 @EnableConfigurationProperties({DownstreamProperties.class, OutboxProperties.class, ModelOpsProperties.class,
+    OpsMetricsProperties.class,
     com.bsl.bff.security.AuthProperties.class,
     com.bsl.bff.security.RbacProperties.class,
     com.bsl.bff.ratelimit.RateLimitProperties.class,
@@ -71,6 +72,14 @@ public class BffConfig {
         return builder
             .setConnectTimeout(Duration.ofMillis(config.getTimeoutMs()))
             .setReadTimeout(Duration.ofMillis(config.getTimeoutMs()))
+            .build();
+    }
+
+    @Bean
+    public RestTemplate metricsOpsRestTemplate(RestTemplateBuilder builder, OpsMetricsProperties properties) {
+        return builder
+            .setConnectTimeout(Duration.ofMillis(properties.getTimeoutMs()))
+            .setReadTimeout(Duration.ofMillis(properties.getTimeoutMs()))
             .build();
     }
 }

@@ -425,6 +425,20 @@ All structured responses that follow `contracts/*` must include:
 **Query Params**: `metric` (ctr|popularity|impressions, optional), `limit` (int, optional)  
 **Response**: `contracts/autocomplete-admin-trends-response.schema.json`
 
+## GET `/admin/ops/metrics/summary`
+**Purpose**: return operational metric summary for the selected window.  
+**Query Params**: `window` (`15m|1h|24h`, optional; default `15m`)  
+**Response**: `contracts/admin-ops-metrics-summary-response.schema.json`  
+**Example**: `contracts/examples/admin-ops-metrics-summary-response.sample.json`
+
+## GET `/admin/ops/metrics/timeseries`
+**Purpose**: return time-bucketed metric points for dashboard sparkline cards.  
+**Query Params**:
+- `metric` (`query_count|p95_ms|p99_ms|zero_result_rate|rerank_rate|error_rate`, optional; default `query_count`)
+- `window` (`15m|1h|24h`, optional; default `15m`)
+**Response**: `contracts/admin-ops-metrics-timeseries-response.schema.json`  
+**Example**: `contracts/examples/admin-ops-metrics-timeseries-response.sample.json`
+
 ## GET `/admin/authority/merge-groups`
 **Purpose**: list material merge groups (canonical selection queue).  
 **Query Params**: `limit` (int, optional), `status` (string, optional)  
