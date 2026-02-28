@@ -10,7 +10,7 @@ Books doc (service alias path):
 - Write alias: `books_doc_write`
 
 RAG docs:
-- Physical index: `docs_doc_v1_YYYYMMDD_001`, `docs_vec_v1_YYYYMMDD_001`, ...
+- Physical index: `docs_doc_v1_YYYYMMDD_001`, `docs_vec_v2_YYYYMMDD_001`, ...
 - Read alias: `docs_doc_read`, `docs_vec_read`
 - Write alias: `docs_doc_write`, `docs_vec_write`
 
@@ -27,7 +27,7 @@ RAG docs:
 
 RAG docs:
 1) Create `docs_doc_v1_*` with `infra/opensearch/docs_doc_v1.mapping.json`
-2) Create `docs_vec_v1_*` with `infra/opensearch/docs_vec_v1.mapping.json`
+2) Create `docs_vec_v2_*` with `infra/opensearch/docs_vec_v2.mapping.json`
 3) Point aliases `docs_doc_read/write`, `docs_vec_read/write` accordingly
 
 ## Alias Commands

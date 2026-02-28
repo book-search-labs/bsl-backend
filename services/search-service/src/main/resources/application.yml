@@ -24,7 +24,7 @@ query-service:
 embedding:
   mode: ${EMBEDDING_MODE:HTTP}
   base-url: ${EMBEDDING_BASE_URL:http://localhost:8005}
-  model: ${EMBEDDING_MODEL:bge-m3}
+  model: ${EMBEDDING_MODEL:multilingual-e5-small}
   timeout-ms: ${EMBEDDING_TIMEOUT_MS:200}
   retry-count: ${EMBEDDING_RETRY_COUNT:0}
   cache:

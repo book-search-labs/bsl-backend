@@ -10,21 +10,49 @@ import static org.mockito.Mockito.when;
 import com.bsl.bff.config.DownstreamProperties;
 import com.bsl.bff.security.AuthContext;
 import com.bsl.bff.security.AuthContextHolder;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
+
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class QueryServiceClientTest {
 
     @AfterEach
     void tearDown() {
         AuthContextHolder.clear();
+    }
+
+    @Test
+    void fetchQueryContextSendsJsonBody() {
+        RestTemplate restTemplate = new RestTemplate();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        ObjectMapper mapper = new ObjectMapper();
+        QueryServiceClient client = new QueryServiceClient(restTemplate, downstream("http://localhost:8001"), mapper);
+
+        server.expect(requestTo("http://localhost:8001/query/prepare"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(header(HttpHeaders.CONTENT_TYPE, org.hamcrest.Matchers.containsString(MediaType.APPLICATION_JSON_VALUE)))
+            .andExpect(content().json("{\"query\":{\"raw\":\"해리포터\"}}"))
+            .andRespond(withSuccess("{\"version\":\"v1.1\"}", MediaType.APPLICATION_JSON));
+
+        JsonNode response = client.fetchQueryContext("해리포터", null);
+        assertThat(response.path("version").asText()).isEqualTo("v1.1");
+        server.verify();
     }
 
     @Test

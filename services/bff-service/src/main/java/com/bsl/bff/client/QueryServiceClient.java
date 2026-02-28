@@ -17,6 +17,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -31,6 +33,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Component
 public class QueryServiceClient {
+    private static final Logger log = LoggerFactory.getLogger(QueryServiceClient.class);
+
     public static class ChatStreamResult {
         private String status = "ok";
         private String reasonCode = "OK";
@@ -143,12 +147,35 @@ public class QueryServiceClient {
 
         HttpHeaders headers = DownstreamHeaders.from(context);
         enrichAuthHeaders(headers);
-        headers.add(HttpHeaders.CONTENT_TYPE, "application/json");
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        final byte[] requestBody;
+        try {
+            requestBody = objectMapper.writeValueAsBytes(body);
+        } catch (IOException ex) {
+            throw new DownstreamException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "query_request_encode_error",
+                "Query request encode failed"
+            );
+        }
 
         try {
-            ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.POST, entity, JsonNode.class);
-            return response.getBody();
+            return restTemplate.execute(
+                url,
+                HttpMethod.POST,
+                request -> {
+                    request.getHeaders().putAll(headers);
+                    request.getHeaders().setContentLength(requestBody.length);
+                    request.getBody().write(requestBody);
+                },
+                response -> {
+                    InputStream responseBody = response.getBody();
+                    if (responseBody == null) {
+                        return null;
+                    }
+                    return objectMapper.readTree(responseBody);
+                }
+            );
         } catch (ResourceAccessException ex) {
             throw new DownstreamException(HttpStatus.SERVICE_UNAVAILABLE, "query_service_timeout", "Query service timeout");
         } catch (HttpStatusCodeException ex) {
@@ -156,7 +183,21 @@ public class QueryServiceClient {
             if (status == null) {
                 status = HttpStatus.SERVICE_UNAVAILABLE;
             }
-            throw new DownstreamException(status, "query_service_error", "Query service error");
+            String responseBody = ex.getResponseBodyAsString();
+            if (responseBody != null && responseBody.length() > 300) {
+                responseBody = responseBody.substring(0, 300);
+            }
+            log.warn(
+                "query_prepare_failed status={} url={} body={}",
+                ex.getStatusCode().value(),
+                url,
+                responseBody
+            );
+            throw new DownstreamException(
+                status,
+                "query_service_error",
+                "Query service error (status=" + ex.getStatusCode().value() + ")"
+            );
         }
     }
 

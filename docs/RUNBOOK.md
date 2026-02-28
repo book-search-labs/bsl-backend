@@ -354,7 +354,7 @@ curl -s http://localhost:9200/_cat/aliases?v
 ### Smoke checks
 ```bash
 curl -s -XPOST http://localhost:9200/books_doc_read/_search -H 'Content-Type: application/json' -d '{"query":{"match":{"title_ko":"해리"}},"size":3}'
-curl -s -XPOST http://localhost:9200/books_vec_read/_search -H 'Content-Type: application/json' -d "{\"size\":3,\"query\":{\"knn\":{\"embedding\":{\"vector\":$(python3 -c 'import hashlib,random,json; seed=int(hashlib.sha256(b"b1").hexdigest()[:8],16); r=random.Random(seed); print(json.dumps([round(r.random(),6) for _ in range(768)]))'),\"k\":3}}}}"
+curl -s -XPOST http://localhost:9200/books_vec_read/_search -H 'Content-Type: application/json' -d "{\"size\":3,\"query\":{\"knn\":{\"embedding\":{\"vector\":$(python3 -c 'import hashlib,random,json; seed=int(hashlib.sha256(b"b1").hexdigest()[:8],16); r=random.Random(seed); print(json.dumps([round(r.random(),6) for _ in range(384)]))'),\"k\":3}}}}"
 ```
 
 ---
@@ -385,9 +385,9 @@ OpenSearch ingest defaults to `EMBED_PROVIDER=mis` and **requires** `MIS_URL`:
 EMBED_PROVIDER=mis MIS_URL=http://localhost:8005 \
   ./scripts/ingest/run_ingest_opensearch.sh
 ```
-Use `bge-m3` explicitly:
+Use `multilingual-e5-small` explicitly:
 ```bash
-EMBED_PROVIDER=mis MIS_URL=http://localhost:8005 EMBED_MODEL=bge-m3 \
+EMBED_PROVIDER=mis MIS_URL=http://localhost:8005 EMBED_MODEL=multilingual-e5-small \
   ./scripts/ingest/run_ingest_opensearch.sh
 ```
 When `NLK_INPUT_MODE=sample` and neither `EMBED_PROVIDER` nor `MIS_URL` is set,
@@ -550,7 +550,7 @@ python scripts/eval/run_eval.py --run evaluation/runs/sample_run.jsonl --baselin
 
 Create RAG indices (OpenSearch):
 ```bash
-DOCS_DOC_INDEX=docs_doc_v1_20260131_001 DOCS_VEC_INDEX=docs_vec_v1_20260131_001 ./scripts/os_bootstrap_indices_v1_1.sh
+DOCS_DOC_INDEX=docs_doc_v1_20260131_001 DOCS_VEC_INDEX=docs_vec_v2_20260228_001 ./scripts/os_bootstrap_indices_v1_1.sh
 ```
 
 Build chunks + embeddings:

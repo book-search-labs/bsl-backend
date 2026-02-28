@@ -17,6 +17,7 @@ import com.bsl.bff.budget.BudgetProperties;
 import com.bsl.bff.client.QueryServiceClient;
 import com.bsl.bff.client.SearchServiceClient;
 import com.bsl.bff.client.dto.SearchServiceResponse;
+import com.bsl.bff.common.DownstreamException;
 import com.bsl.bff.outbox.OutboxService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,6 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 
 @ExtendWith(MockitoExtension.class)
 class SearchControllerTest {
@@ -114,6 +116,32 @@ class SearchControllerTest {
         assertNotNull(response.getHits());
         assertEquals(1, response.getHits().size());
         assertEquals("한은경", response.getHits().get(0).getAuthors().get(0));
+    }
+
+    @Test
+    void fallsBackToRawQueryWhenQueryContextFetchFails() {
+        BffSearchRequest request = requestWithRawQuery("해리포터");
+        when(queryServiceClient.fetchQueryContext(eq("해리포터"), any()))
+            .thenThrow(new DownstreamException(HttpStatus.INTERNAL_SERVER_ERROR, "query_service_error", "Query service error"));
+
+        SearchServiceResponse recovered = new SearchServiceResponse();
+        recovered.setTotal(1);
+        recovered.setHits(List.of(hit("doc-2", "해리 포터와 비밀의 방")));
+        when(searchServiceClient.search(any(), any())).thenReturn(recovered);
+
+        BffSearchResponse response = controller.search(request, null, null);
+
+        assertNotNull(response);
+        assertEquals(1, response.getTotal());
+        assertNotNull(response.getHits());
+        assertEquals(1, response.getHits().size());
+        assertEquals("해리 포터와 비밀의 방", response.getHits().get(0).getTitle());
+
+        ArgumentCaptor<com.bsl.bff.client.dto.DownstreamSearchRequest> requestCaptor =
+            ArgumentCaptor.forClass(com.bsl.bff.client.dto.DownstreamSearchRequest.class);
+        verify(searchServiceClient, times(1)).search(requestCaptor.capture(), any());
+        assertNull(requestCaptor.getValue().getQueryContextV11());
+        assertEquals("해리포터", requestCaptor.getValue().getQuery().getRaw());
     }
 
     private BffSearchRequest requestWithRawQuery(String rawQuery) {

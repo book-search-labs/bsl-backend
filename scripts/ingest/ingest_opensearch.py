@@ -52,7 +52,7 @@ EMBED_BATCH_SIZE = int(os.environ.get("EMBED_BATCH_SIZE", "32"))
 EMBED_TIMEOUT_SEC = float(os.environ.get("EMBED_TIMEOUT_SEC", "5"))
 EMBED_MAX_RETRY = int(os.environ.get("EMBED_MAX_RETRY", "3"))
 EMBED_FALLBACK_TO_TOY = os.environ.get("EMBED_FALLBACK_TO_TOY", "0") == "1"
-EMBED_DIM = int(os.environ.get("EMBED_DIM", "768"))
+EMBED_DIM = int(os.environ.get("EMBED_DIM", "384"))
 EMBED_NORMALIZE = os.environ.get("EMBED_NORMALIZE", "1") == "1"
 EMBED_CACHE = os.environ.get("EMBED_CACHE", "off").lower()
 EMBED_CACHE_PATH = os.environ.get("EMBED_CACHE_PATH", "data/cache/emb.sqlite")

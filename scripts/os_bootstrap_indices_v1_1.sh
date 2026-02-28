@@ -3,10 +3,10 @@ set -euo pipefail
 
 OS_URL="${OS_URL:-http://localhost:9200}"
 DOC_INDEX="${DOC_INDEX:-books_doc_v2_20260222_001}"
-VEC_INDEX="${VEC_INDEX:-books_vec_v3_20260224_001}"
+VEC_INDEX="${VEC_INDEX:-books_vec_v4_20260228_001}"
 CHUNK_INDEX="${CHUNK_INDEX:-book_chunks_v1}"
 DOCS_DOC_INDEX="${DOCS_DOC_INDEX:-docs_doc_v1_20260116_001}"
-DOCS_VEC_INDEX="${DOCS_VEC_INDEX:-docs_vec_v1_20260116_001}"
+DOCS_VEC_INDEX="${DOCS_VEC_INDEX:-docs_vec_v2_20260228_001}"
 AC_INDEX="${AC_INDEX:-ac_candidates_v1_20260116_001}"
 AUTHORS_INDEX="${AUTHORS_INDEX:-authors_doc_v1_20260116_001}"
 SERIES_INDEX="${SERIES_INDEX:-series_doc_v1_20260116_001}"
@@ -17,10 +17,10 @@ ENABLE_CHUNK_INDEX="${ENABLE_CHUNK_INDEX:-0}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 DOC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/books_doc_v2.mapping.json"
-VEC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/books_vec_v3.mapping.json"
+VEC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/books_vec_v4.mapping.json"
 CHUNK_MAPPING_FILE="$ROOT_DIR/infra/opensearch/book_chunks_v1.mapping.json"
 DOCS_DOC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/docs_doc_v1.mapping.json"
-DOCS_VEC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/docs_vec_v1.mapping.json"
+DOCS_VEC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/docs_vec_v2.mapping.json"
 AC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/ac_candidates_v1.mapping.json"
 AUTHORS_MAPPING_FILE="$ROOT_DIR/infra/opensearch/authors_doc_v1.mapping.json"
 AUTHORS_MAPPING_FALLBACK_FILE="$ROOT_DIR/infra/opensearch/authors_doc_v1.local.mapping.json"
@@ -113,10 +113,13 @@ PY
 
 VEC_MAPPING_PAYLOAD="$VEC_MAPPING_FILE"
 CHUNK_MAPPING_PAYLOAD="$CHUNK_MAPPING_FILE"
+DOCS_VEC_MAPPING_PAYLOAD="$DOCS_VEC_MAPPING_FILE"
 
 if [ -n "${VEC_DIM:-}" ] || [ -n "${VEC_SPACE_TYPE:-}" ] || [ -n "${VEC_HNSW_M:-}" ] || [ -n "${VEC_HNSW_EF_CONSTRUCTION:-}" ] || [ -n "${VEC_HNSW_EF_SEARCH:-}" ]; then
   VEC_MAPPING_PAYLOAD="$(mktemp)"
   render_mapping "$VEC_MAPPING_FILE" "$VEC_MAPPING_PAYLOAD"
+  DOCS_VEC_MAPPING_PAYLOAD="$(mktemp)"
+  render_mapping "$DOCS_VEC_MAPPING_FILE" "$DOCS_VEC_MAPPING_PAYLOAD"
   if [ "$ENABLE_CHUNK_INDEX" = "1" ] && [ -f "$CHUNK_MAPPING_FILE" ]; then
     CHUNK_MAPPING_PAYLOAD="$(mktemp)"
     render_mapping "$CHUNK_MAPPING_FILE" "$CHUNK_MAPPING_PAYLOAD"
@@ -239,7 +242,7 @@ if index_exists "$DOCS_VEC_INDEX"; then
 fi
 
 if ! index_exists "$DOCS_VEC_INDEX"; then
-  create_index "$DOCS_VEC_INDEX" "$DOCS_VEC_MAPPING_FILE"
+  create_index "$DOCS_VEC_INDEX" "$DOCS_VEC_MAPPING_PAYLOAD"
 fi
 
 if index_exists "$AC_INDEX"; then
@@ -328,10 +331,10 @@ remove_alias "books_doc_read" "books_doc_v*"
 remove_alias "books_doc_write" "books_doc_v*"
 remove_alias "books_vec_read" "books_vec_v*"
 remove_alias "books_vec_write" "books_vec_v*"
-remove_alias "docs_doc_read" "docs_doc_v1_*"
-remove_alias "docs_doc_write" "docs_doc_v1_*"
-remove_alias "docs_vec_read" "docs_vec_v1_*"
-remove_alias "docs_vec_write" "docs_vec_v1_*"
+remove_alias "docs_doc_read" "docs_doc_v*"
+remove_alias "docs_doc_write" "docs_doc_v*"
+remove_alias "docs_vec_read" "docs_vec_v*"
+remove_alias "docs_vec_write" "docs_vec_v*"
 remove_alias "ac_read" "ac_candidates_v1_*"
 remove_alias "ac_write" "ac_candidates_v1_*"
 remove_alias "authors_doc_read" "authors_doc_v1_*"

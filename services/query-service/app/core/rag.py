@@ -134,7 +134,7 @@ async def _embed_query(client: httpx.AsyncClient, text: str, trace_id: str, requ
         "version": "v1",
         "trace_id": trace_id,
         "request_id": request_id,
-        "model": os.getenv("QS_EMBED_MODEL", "bge-m3"),
+        "model": os.getenv("QS_EMBED_MODEL", "multilingual-e5-small"),
         "texts": [text],
     }
     try:

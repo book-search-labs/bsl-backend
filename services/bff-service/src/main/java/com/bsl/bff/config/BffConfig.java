@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 @Configuration
@@ -20,9 +21,11 @@ public class BffConfig {
     @Bean
     public RestTemplate queryServiceRestTemplate(RestTemplateBuilder builder, DownstreamProperties properties) {
         DownstreamProperties.ServiceProperties config = properties.getQueryService();
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(config.getTimeoutMs());
+        requestFactory.setReadTimeout(config.getTimeoutMs());
         return builder
-            .setConnectTimeout(Duration.ofMillis(config.getTimeoutMs()))
-            .setReadTimeout(Duration.ofMillis(config.getTimeoutMs()))
+            .requestFactory(() -> requestFactory)
             .build();
     }
 

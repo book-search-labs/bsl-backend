@@ -7,7 +7,7 @@ VEC_ALIAS="${VEC_ALIAS:-books_vec_write}"
 AC_ALIAS="${AC_ALIAS:-ac_write}"
 AUTHORS_ALIAS="${AUTHORS_ALIAS:-authors_doc_write}"
 SERIES_ALIAS="${SERIES_ALIAS:-series_doc_write}"
-VEC_DIM="${VEC_DIM:-1024}"
+VEC_DIM="${VEC_DIM:-384}"
 
 if command -v python3 >/dev/null 2>&1; then
   PYTHON="python3"

@@ -46,7 +46,7 @@ if [ "$NLK_INPUT_MODE" = "sample" ] && [ -z "${EMBED_PROVIDER:-}" ] && [ -z "${M
   export EMBED_PROVIDER="toy"
 fi
 if [ "${EMBED_PROVIDER:-}" = "toy" ] && [ -z "${EMBED_DIM:-}" ]; then
-  export EMBED_DIM="768"
+  export EMBED_DIM="384"
 fi
 
 if ! command -v python3 >/dev/null 2>&1; then

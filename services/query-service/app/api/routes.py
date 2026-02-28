@@ -1179,7 +1179,7 @@ def _build_retrieval_hints(plan_id: str, canonical_key: str, tenant_id: str) -> 
         "vector": {
             "enabled": True,
             "topKHint": 200,
-            "embedModelHint": "bge-m3",
+            "embedModelHint": "multilingual-e5-small",
             "fusionHint": {
                 "method": "rrf",
                 "k": 60,
@@ -1222,7 +1222,7 @@ def _build_retrieval_hints(plan_id: str, canonical_key: str, tenant_id: str) -> 
             "maxVectorTopK": 500,
             "maxRerankTopK": 200,
             "allowedFusionMethods": ["rrf", "weighted_sum"],
-            "allowedEmbedModels": ["bge-m3"],
+            "allowedEmbedModels": ["multilingual-e5-small"],
             "allowedRerankModels": ["toy_rerank_v1", "minilm-cross-v2"],
         },
     }

@@ -1,6 +1,7 @@
 import asyncio
 import json
 import math
+import logging
 import re
 import uuid
 from typing import AsyncIterator, Optional
@@ -11,11 +12,13 @@ from fastapi.responses import StreamingResponse
 
 from app.api.schemas import GenerateRequest, GenerateResponse
 from app.core.audit import append_audit
+from app.core.audit_db import append_audit_db
 from app.core.budget import BudgetManager
 from app.core.limiter import RateLimiter
 from app.core.settings import SETTINGS
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 rate_limiter = RateLimiter(SETTINGS.rate_limit_rpm)
 budget_manager = BudgetManager.from_settings(SETTINGS)
 
@@ -76,6 +79,7 @@ def _audit_event(trace_id: str, request_id: str, model: str, tokens: int, cost: 
     payload = {
         "trace_id": trace_id,
         "request_id": request_id,
+        "provider": SETTINGS.provider,
         "model": model,
         "tokens": tokens,
         "cost_usd": cost,
@@ -83,7 +87,14 @@ def _audit_event(trace_id: str, request_id: str, model: str, tokens: int, cost: 
     }
     if reason:
         payload["reason_code"] = reason
-    append_audit(SETTINGS.audit_log_path, payload)
+    try:
+        append_audit(SETTINGS.audit_log_path, payload)
+    except Exception as exc:
+        logger.warning("Failed to append LLM file audit log: %s", exc)
+    try:
+        append_audit_db(payload)
+    except Exception as exc:
+        logger.warning("Failed to append LLM DB audit log: %s", exc)
 
 
 def _extract_citations_from_text(text: str) -> list[str]:

@@ -2,8 +2,8 @@
 set -euo pipefail
 
 MIS_URL="${MIS_URL:-http://localhost:8005}"
-MODEL="${MIS_EMBED_MODEL_ID:-bge-m3}"
-EXPECTED_DIM="${EXPECTED_DIM:-1024}"
+MODEL="${MIS_EMBED_MODEL_ID:-multilingual-e5-small}"
+EXPECTED_DIM="${EXPECTED_DIM:-384}"
 
 response="$(
   cat <<JSON | curl -sS -X POST "$MIS_URL/v1/embed" -H 'Content-Type: application/json' -d @-

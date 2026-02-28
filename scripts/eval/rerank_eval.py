@@ -372,7 +372,7 @@ def main() -> int:
     parser.add_argument("--doc-index", default="books_doc_read")
     parser.add_argument("--vec-index", default="books_vec_read")
     parser.add_argument("--mis-url", default="http://localhost:8005")
-    parser.add_argument("--mis-model", default="embed_ko_v1")
+    parser.add_argument("--mis-model", default="multilingual-e5-small")
     parser.add_argument("--ranking-url", default="http://localhost:8004")
     parser.add_argument("--lex-topk", type=int, default=200)
     parser.add_argument("--vec-topk", type=int, default=200)

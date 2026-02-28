@@ -5,22 +5,22 @@
 
 Request:
 ```json
-{ "model": "bge-m3", "normalize": true, "texts": ["...", "..."] }
+{ "model": "multilingual-e5-small", "normalize": true, "texts": ["...", "..."] }
 ```
 
 Response:
 ```json
-{ "version": "v1", "trace_id": "...", "request_id": "...", "model": "bge-m3", "dim": 768, "vectors": [[...],[...]] }
+{ "version": "v1", "trace_id": "...", "request_id": "...", "model": "multilingual-e5-small", "dim": 384, "vectors": [[...],[...]] }
 ```
 
-## Quick Start (bge-m3 ONNX)
+## Quick Start (multilingual-e5-small ONNX)
 
 1) Place artifacts:
 
 ```
 models/
   embed/
-    bge-m3/
+    multilingual-e5-small/
       model.onnx
       tokenizer.json
 ```
@@ -54,4 +54,4 @@ models/
 - Search Service should use:
   - `EMBEDDING_MODE=HTTP`
   - `EMBEDDING_BASE_URL=http://localhost:8005`
-  - `EMBEDDING_MODEL=bge-m3`
+  - `EMBEDDING_MODEL=multilingual-e5-small`

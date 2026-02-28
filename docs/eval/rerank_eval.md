@@ -13,7 +13,7 @@ python3 scripts/eval/rerank_eval.py \
   --mis-url http://localhost:8005 \
   --ranking-url http://localhost:8004 \
   --os-url http://localhost:9200 \
-  --mis-model embed_ko_v1 \
+  --mis-model multilingual-e5-small \
   --rerank-topk 50 \
   --out data/eval/reports
 ```
