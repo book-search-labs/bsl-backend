@@ -90,6 +90,45 @@ All structured responses that follow `contracts/*` must include:
 }
 ```
 
+## POST `/auth/login`
+**Purpose**: user login and Redis-backed session issue.
+**Alias**: `POST /v1/auth/login`
+
+### Request
+- Contract: `contracts/auth-login-request.schema.json`
+- Example: `contracts/examples/auth-login-request.sample.json`
+
+### Response
+- Contract: `contracts/auth-session-response.schema.json`
+- Example: `contracts/examples/auth-session-response.sample.json`
+
+### Notes
+- On success, returns `session.session_id` and user profile.
+- `session.session_id` must be forwarded via `x-session-id` header in subsequent requests.
+
+## GET `/auth/session`
+**Purpose**: get current authenticated session user.
+**Alias**: `GET /v1/auth/session`
+
+### Response
+- Contract: `contracts/auth-session-response.schema.json`
+- Example: `contracts/examples/auth-session-response.sample.json`
+
+### Notes
+- Returns `401` when session is missing or expired.
+
+## POST `/auth/logout`
+**Purpose**: invalidate current session.
+**Alias**: `POST /v1/auth/logout`
+
+### Request
+- no body required
+- client must send `x-session-id` header
+
+### Response
+- Contract: `contracts/ack-response.schema.json`
+- Example: `contracts/examples/ack-response.sample.json`
+
 ## POST `/search`
 **Purpose**: fan-out to QS → SS and return SearchResponse (v1).
 **Alias**: `POST /v1/search`

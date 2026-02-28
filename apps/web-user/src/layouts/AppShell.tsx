@@ -11,6 +11,7 @@ import {
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { fetchAutocomplete, postAutocompleteSelect, type AutocompleteSuggestion } from '../api/autocomplete'
+import { logoutSession } from '../api/auth'
 import { getCart } from '../api/cart'
 import { fetchKdcCategories, type KdcCategoryNode } from '../api/categories'
 import IconNav from '../components/header/IconNav'
@@ -19,7 +20,7 @@ import { MY_DROPDOWN_LINKS } from '../components/my/myNavigation'
 import FloatingChatWidget from '../components/chat/FloatingChatWidget'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { useOutsideClick } from '../hooks/useOutsideClick'
-import { resetSessionUser } from '../services/mySession'
+import { clearSession, getSessionId } from '../services/mySession'
 import { getTopLevelKdc } from '../utils/kdc'
 
 const AUTOCOMPLETE_SIZE = 8
@@ -82,6 +83,7 @@ export default function AppShell() {
   const [activeTopCode, setActiveTopCode] = useState<string | null>(null)
   const [cartCount, setCartCount] = useState(0)
   const [myMenuOpen, setMyMenuOpen] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(() => getSessionId() !== null)
   const formRef = useRef<HTMLFormElement>(null)
   const myMenuRef = useRef<HTMLDivElement>(null)
   const shouldSuggestRef = useRef(false)
@@ -116,9 +118,15 @@ export default function AppShell() {
   useEffect(() => {
     setIsCategoryOpen(false)
     setMyMenuOpen(false)
+    setIsLoggedIn(getSessionId() !== null)
   }, [location.pathname])
 
-  const refreshCartCount = useCallback(() => {
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setCartCount(0)
+      return
+    }
+
     let active = true
     getCart()
       .then((cart) => {
@@ -135,9 +143,7 @@ export default function AppShell() {
     return () => {
       active = false
     }
-  }, [])
-
-  useEffect(() => refreshCartCount(), [refreshCartCount, location.pathname])
+  }, [isLoggedIn, location.pathname])
 
   const closeSuggestions = useCallback(() => {
     setIsOpen(false)
@@ -161,10 +167,23 @@ export default function AppShell() {
   }, [])
 
   const handleLogout = useCallback(() => {
-    resetSessionUser()
-    setMyMenuOpen(false)
-    navigate('/')
+    void logoutSession()
+      .catch(() => {
+        // ignore logout api failures and clear local session anyway
+      })
+      .finally(() => {
+        clearSession()
+        setMyMenuOpen(false)
+        setIsLoggedIn(false)
+        navigate('/login', { replace: true })
+      })
   }, [navigate])
+
+  const handleLogin = useCallback(() => {
+    setMyMenuOpen(false)
+    const redirect = `${location.pathname}${location.search}`
+    navigate(`/login?redirect=${encodeURIComponent(redirect)}`)
+  }, [location.pathname, location.search, navigate])
 
   const activeTopCategory =
     topCategories.find((node) => node.code === activeTopCode) ?? topCategories[0] ?? null
@@ -453,7 +472,7 @@ export default function AppShell() {
       <header className="app-header">
         <div className="utility-strip">
           <div className="container utility-strip-inner">
-            <UtilityMenu onLogout={handleLogout} />
+            <UtilityMenu isLoggedIn={isLoggedIn} onLogin={handleLogin} onLogout={handleLogout} />
           </div>
         </div>
         <div className="main-header">
@@ -736,60 +755,100 @@ export default function AppShell() {
       <FloatingChatWidget />
 
       <footer className="app-footer mt-auto">
+        <div className="app-footer-notice-strip">
+          <div className="container app-footer-notice-inner">
+            <Link className="app-footer-notice-item" to="/events">
+              <strong>공지사항</strong>
+              <span>일부 영업점 서비스 종료 안내</span>
+            </Link>
+            <span className="app-footer-notice-divider" aria-hidden="true">
+              |
+            </span>
+            <Link className="app-footer-notice-item" to="/events">
+              <strong>당첨자발표</strong>
+              <span>[단독/e캐시] 이벤트 당첨자 발표</span>
+            </Link>
+          </div>
+        </div>
+
         <div className="container app-footer-inner">
-          <div className="app-footer-links">
-            <Link to="/about">서비스 소개</Link>
-            <span aria-hidden="true">|</span>
-            <Link to="/my/notifications">알림 설정</Link>
-            <span aria-hidden="true">|</span>
-            <Link to="/my/support/inquiries">문의하기</Link>
-            <span aria-hidden="true">|</span>
-            <Link to="/orders">주문/배송 조회</Link>
-            <span aria-hidden="true">|</span>
-            <Link to="/my/profile">개인정보 설정</Link>
-          </div>
-
           <div className="app-footer-body">
-            <section className="app-footer-block app-footer-brand">
-              <div className="footer-brand-title">BSL Books</div>
-              <p>책 검색과 쇼핑을 함께 제공하는 통합 북 플랫폼</p>
-              <p className="footer-brand-meta">운영시간 09:00 - 18:00 (주말/공휴일 제외)</p>
+            <section className="app-footer-company">
+              <div className="footer-company-logo">BSL Books</div>
+              <nav className="footer-company-links" aria-label="푸터 바로가기">
+                <Link to="/about">회사소개</Link>
+                <Link to="/events">이용약관</Link>
+                <Link to="/my/profile">개인정보처리방침</Link>
+                <Link to="/events">청소년보호정책</Link>
+                <Link to="/my/support/inquiries">대량구매문의</Link>
+                <Link to="/events">채용정보</Link>
+                <Link to="/events">광고소개</Link>
+              </nav>
+              <div className="footer-company-meta">
+                <p>(주)BSL Books | 서울특별시 중구 을지로 1 | 대표이사: 홍길동 | 사업자등록번호: 102-81-11670</p>
+                <p>대표전화: 1544-1900 | FAX: 0502-987-5711 | 통신판매업신고: 제 653호</p>
+                <p>운영시간: 09:00 - 18:00 (주말/공휴일 제외)</p>
+              </div>
             </section>
 
-            <section className="app-footer-block">
-              <h3>고객센터</h3>
-              <p className="footer-strong">1661-0101</p>
-              <p>이메일 support@bslbooks.local</p>
-              <p>점심시간 12:00 - 13:00</p>
-            </section>
+            <section className="app-footer-side">
+              <div className="footer-select-row">
+                <label className="footer-select-wrap">
+                  <span className="visually-hidden">Family site</span>
+                  <select
+                    className="footer-select"
+                    defaultValue=""
+                    onChange={(event) => {
+                      const targetUrl = event.currentTarget.value
+                      if (targetUrl) {
+                        window.open(targetUrl, '_blank', 'noopener,noreferrer')
+                      }
+                      event.currentTarget.value = ''
+                    }}
+                  >
+                    <option value="">Family Site</option>
+                    <option value="https://www.kyobobook.co.kr">교보문고</option>
+                    <option value="https://www.booklog.co.kr">북로그</option>
+                  </select>
+                </label>
+                <label className="footer-select-wrap">
+                  <span className="visually-hidden">SNS 바로가기</span>
+                  <select
+                    className="footer-select"
+                    defaultValue=""
+                    onChange={(event) => {
+                      const targetUrl = event.currentTarget.value
+                      if (targetUrl) {
+                        window.open(targetUrl, '_blank', 'noopener,noreferrer')
+                      }
+                      event.currentTarget.value = ''
+                    }}
+                  >
+                    <option value="">SNS 바로가기</option>
+                    <option value="https://www.instagram.com">Instagram</option>
+                    <option value="https://www.youtube.com">YouTube</option>
+                    <option value="https://blog.naver.com">Naver Blog</option>
+                  </select>
+                </label>
+              </div>
 
-            <section className="app-footer-block">
-              <h3>주요 안내</h3>
-              <ul>
-                <li>2만원 이상 주문 시 무료배송</li>
-                <li>기본배송 3,000원 / 빠른배송 5,000원</li>
-                <li>배송 완료 후 반품/환불 신청 가능</li>
-              </ul>
-            </section>
+              <div className="footer-security">
+                <div className="footer-security-badge">토스페이먼츠 구매안전서비스</div>
+                <p>고객님의 안전한 거래를 위해 결제 보호 서비스를 제공합니다.</p>
+              </div>
 
-            <section className="app-footer-block">
-              <h3>바로가기</h3>
-              <ul>
-                <li>
-                  <Link to="/benefits">오늘의 혜택</Link>
-                </li>
-                <li>
-                  <Link to="/preorders">예약구매</Link>
-                </li>
-                <li>
-                  <Link to="/events">이벤트/공지</Link>
-                </li>
-              </ul>
+              <div className="footer-certification">
+                <strong>ISMS 인증획득</strong>
+                <span>정보보호 관리체계 운영</span>
+                <span>유효기간 2023.11.15 ~ 2026.11.14</span>
+              </div>
             </section>
           </div>
+        </div>
 
-          <div className="app-footer-copy">
-            <small>© {new Date().getFullYear()} BSL Books. All rights reserved.</small>
+        <div className="app-footer-copy">
+          <div className="container app-footer-copy-inner">
+            <small>© {new Date().getFullYear()} BSL BOOK CENTRE</small>
           </div>
         </div>
       </footer>

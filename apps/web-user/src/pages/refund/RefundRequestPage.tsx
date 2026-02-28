@@ -2,15 +2,45 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { createRefund } from '../../api/refund'
+import { HttpError } from '../../api/http'
 import { getOrder } from '../../api/orders'
 
 const SELLER_FAULT_REASONS = new Set(['DAMAGED', 'DEFECTIVE', 'WRONG_ITEM', 'LATE_DELIVERY'])
+const REFUNDABLE_STATUSES = new Set(['PAID', 'READY_TO_SHIP', 'SHIPPED', 'DELIVERED', 'PARTIALLY_REFUNDED'])
+
+function mapRefundSubmitError(err: unknown) {
+  if (err instanceof HttpError) {
+    const payload = err.body && typeof err.body === 'object' ? (err.body as Record<string, unknown>) : null
+    const nestedError = payload?.error && typeof payload.error === 'object' ? (payload.error as Record<string, unknown>) : null
+    const code = typeof nestedError?.code === 'string' ? nestedError.code : typeof payload?.code === 'string' ? payload.code : null
+    const message = typeof nestedError?.message === 'string' ? nestedError.message : err.message
+
+    if (code === 'refund_in_progress') {
+      return '이미 환불 신청이 접수되어 처리 중입니다. 주문 내역에서 진행 상태를 확인해주세요.'
+    }
+    if (code === 'refund_already_requested') {
+      return '이미 환불 신청된 도서입니다. 주문 내역에서 환불 진행 상태를 확인해주세요.'
+    }
+    if (code === 'refund_exceeds') {
+      return '환불 가능 수량을 초과했습니다. 주문 정보를 새로고침한 뒤 다시 시도해주세요.'
+    }
+    if (code === 'invalid_state') {
+      return '현재 주문 상태에서는 환불 신청이 불가능합니다.'
+    }
+    if (typeof message === 'string' && message.toLowerCase().includes('refund qty exceeds remaining')) {
+      return '환불 가능 수량을 초과했습니다. 주문 정보를 새로고침한 뒤 다시 시도해주세요.'
+    }
+    return err.message || '환불 신청에 실패했습니다.'
+  }
+  return err instanceof Error ? err.message : '환불 신청에 실패했습니다.'
+}
 
 export default function RefundRequestPage() {
   const { orderId } = useParams()
   const navigate = useNavigate()
   const [orderDetail, setOrderDetail] = useState<Awaited<ReturnType<typeof getOrder>> | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null)
+  const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(null)
   const [reason, setReason] = useState('CHANGE_OF_MIND')
   const [detailReason, setDetailReason] = useState('')
   const [selectedQty, setSelectedQty] = useState<Record<number, number>>({})
@@ -22,6 +52,7 @@ export default function RefundRequestPage() {
       .then((data) => {
         if (!active) return
         setOrderDetail(data)
+        setLoadErrorMessage(null)
         const initial: Record<number, number> = {}
         data.items.forEach((item) => {
           initial[item.order_item_id] = item.qty
@@ -30,7 +61,7 @@ export default function RefundRequestPage() {
       })
       .catch((err) => {
         if (!active) return
-        setErrorMessage(err instanceof Error ? err.message : '주문 정보를 불러오지 못했습니다.')
+        setLoadErrorMessage(err instanceof Error ? err.message : '주문 정보를 불러오지 못했습니다.')
       })
     return () => {
       active = false
@@ -83,11 +114,33 @@ export default function RefundRequestPage() {
       net,
     }
   }, [orderDetail, reason, selectedAllItems, selectedItemAmount])
+  const orderStatus = orderDetail?.order.status ?? null
+  const refundBlockedMessage = useMemo(() => {
+    if (!orderStatus) return null
+    if (orderStatus === 'REFUND_PENDING') {
+      return '이미 환불 신청이 접수되어 처리 중입니다. 주문 내역에서 환불 진행 상태를 확인해주세요.'
+    }
+    if (orderStatus === 'REFUNDED') {
+      return '해당 주문은 환불이 완료되었습니다.'
+    }
+    if (orderStatus === 'CANCELED') {
+      return '취소된 주문은 환불 신청이 필요하지 않습니다.'
+    }
+    if (!REFUNDABLE_STATUSES.has(orderStatus)) {
+      return '현재 주문 상태에서는 환불 신청이 불가능합니다.'
+    }
+    return null
+  }, [orderStatus])
 
   const handleSubmit = async () => {
     if (!orderId) return
+    setSubmitErrorMessage(null)
+    if (refundBlockedMessage) {
+      setSubmitErrorMessage(refundBlockedMessage)
+      return
+    }
     if (!hasSelection) {
-      setErrorMessage('환불할 도서를 최소 1권 이상 선택해주세요.')
+      setSubmitErrorMessage('환불할 도서를 최소 1권 이상 선택해주세요.')
       return
     }
     try {
@@ -102,14 +155,14 @@ export default function RefundRequestPage() {
       await createRefund(payload)
       navigate(`/orders/${orderId}`)
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : '환불 신청에 실패했습니다.')
+      setSubmitErrorMessage(mapRefundSubmitError(err))
     }
   }
 
-  if (errorMessage) {
+  if (loadErrorMessage) {
     return (
       <div className="container py-5">
-        <div className="alert alert-danger">{errorMessage}</div>
+        <div className="alert alert-danger">{loadErrorMessage}</div>
       </div>
     )
   }
@@ -126,7 +179,17 @@ export default function RefundRequestPage() {
     <div className="container py-5">
       <div className="card p-4">
         <h2 className="mb-3">환불 신청</h2>
-        {errorMessage ? <div className="alert alert-danger">{errorMessage}</div> : null}
+        {refundBlockedMessage ? (
+          <div className="alert alert-info">
+            {refundBlockedMessage}
+            <div className="mt-2">
+              <button className="btn btn-outline-secondary btn-sm" onClick={() => navigate(`/orders/${orderId}`)}>
+                주문 내역으로 이동
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {submitErrorMessage ? <div className="alert alert-danger">{submitErrorMessage}</div> : null}
         <div className="mb-4">
           <label className="form-label">환불 사유</label>
           <select className="form-select" value={reason} onChange={(e) => setReason(e.target.value)}>
@@ -199,7 +262,7 @@ export default function RefundRequestPage() {
         </div>
 
         <div className="mt-4 d-flex gap-2">
-          <button className="btn btn-primary" onClick={handleSubmit}>
+          <button className="btn btn-primary" onClick={handleSubmit} disabled={Boolean(refundBlockedMessage)}>
             환불 신청하기
           </button>
           <button className="btn btn-outline-secondary" onClick={() => navigate(-1)}>

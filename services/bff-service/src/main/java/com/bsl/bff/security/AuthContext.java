@@ -20,4 +20,8 @@ public class AuthContext {
     public boolean isAdmin() {
         return adminId != null && !adminId.isBlank();
     }
+
+    public boolean isUser() {
+        return userId != null && !userId.isBlank();
+    }
 }

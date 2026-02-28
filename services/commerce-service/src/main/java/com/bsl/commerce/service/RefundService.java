@@ -76,15 +76,18 @@ public class RefundService {
 
         Map<String, Object> order = orderRepository.findOrderById(orderId);
         if (order == null) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "order not found");
+            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "주문 정보를 찾을 수 없습니다.");
         }
         String status = JdbcUtils.asString(order.get("status"));
+        if ("REFUND_PENDING".equals(status)) {
+            throw new ApiException(HttpStatus.CONFLICT, "refund_in_progress", "이미 환불 신청이 접수되어 처리 중입니다.");
+        }
         if (!("PAID".equals(status)
             || "READY_TO_SHIP".equals(status)
             || "SHIPPED".equals(status)
             || "DELIVERED".equals(status)
             || "PARTIALLY_REFUNDED".equals(status))) {
-            throw new ApiException(HttpStatus.CONFLICT, "invalid_state", "order not refundable");
+            throw new ApiException(HttpStatus.CONFLICT, "invalid_state", "현재 주문 상태에서는 환불 신청이 불가능합니다.");
         }
 
         Map<String, Object> payment = paymentRepository.findLatestPaymentByOrder(orderId);
@@ -113,19 +116,25 @@ public class RefundService {
                 Map<String, Object> orderItem = orderItems.stream()
                     .filter(row -> JdbcUtils.asLong(row.get("order_item_id")) == item.orderItemId())
                     .findFirst()
-                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "not_found", "order item not found"));
+                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "not_found", "주문 도서 정보를 찾을 수 없습니다."));
                 int qty = JdbcUtils.asInt(orderItem.get("qty"));
                 int already = refundedQty.getOrDefault(item.orderItemId(), 0);
                 int remaining = qty - already;
-                if (item.qty() <= 0 || item.qty() > remaining) {
-                    throw new ApiException(HttpStatus.CONFLICT, "refund_exceeds", "refund qty exceeds remaining");
+                if (item.qty() <= 0) {
+                    throw new ApiException(HttpStatus.BAD_REQUEST, "bad_request", "환불 수량은 1권 이상이어야 합니다.");
+                }
+                if (remaining <= 0) {
+                    throw new ApiException(HttpStatus.CONFLICT, "refund_already_requested", "해당 도서는 이미 환불 신청이 접수되었습니다.");
+                }
+                if (item.qty() > remaining) {
+                    throw new ApiException(HttpStatus.CONFLICT, "refund_exceeds", "환불 가능 수량을 초과했습니다. 주문 정보를 새로고침한 후 다시 시도해주세요.");
                 }
                 snapshots.add(snapshotFromOrderItem(orderItem, item.qty()));
             }
         }
 
         if (snapshots.isEmpty()) {
-            throw new ApiException(HttpStatus.CONFLICT, "refund_exceeds", "no refundable items");
+            throw new ApiException(HttpStatus.CONFLICT, "refund_already_requested", "환불 가능한 도서가 없습니다. 이미 환불 신청이 접수되었는지 확인해주세요.");
         }
 
         String normalizedReasonCode = normalizeReasonCode(reasonCode);
@@ -156,6 +165,7 @@ public class RefundService {
         }
         refundRepository.insertRefundItems(inserts);
         refundRepository.insertRefundEvent(refundId, "REFUND_REQUESTED", JsonUtils.toJson(objectMapper, pricing.toPayload()));
+        orderService.markRefundPending(orderId);
         return refundRepository.findRefund(refundId);
     }
 
@@ -163,11 +173,11 @@ public class RefundService {
     public Map<String, Object> approveRefund(long refundId, long adminId) {
         Map<String, Object> refund = refundRepository.findRefund(refundId);
         if (refund == null) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "refund not found");
+            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "환불 정보를 찾을 수 없습니다.");
         }
         String status = JdbcUtils.asString(refund.get("status"));
         if (!"REQUESTED".equals(status)) {
-            throw new ApiException(HttpStatus.CONFLICT, "invalid_state", "refund cannot be approved");
+            throw new ApiException(HttpStatus.CONFLICT, "invalid_state", "현재 상태에서는 환불 승인이 불가능합니다.");
         }
         refundRepository.updateRefundStatus(refundId, "APPROVED", adminId, null);
         refundRepository.insertRefundEvent(refundId, "REFUND_APPROVED", null);
@@ -178,11 +188,11 @@ public class RefundService {
     public Map<String, Object> processRefund(long refundId, String result) {
         Map<String, Object> refund = refundRepository.findRefund(refundId);
         if (refund == null) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "refund not found");
+            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "환불 정보를 찾을 수 없습니다.");
         }
         String status = JdbcUtils.asString(refund.get("status"));
         if (!"APPROVED".equals(status)) {
-            throw new ApiException(HttpStatus.CONFLICT, "invalid_state", "refund not ready to process");
+            throw new ApiException(HttpStatus.CONFLICT, "invalid_state", "현재 상태에서는 환불 처리를 진행할 수 없습니다.");
         }
 
         refundRepository.updateRefundStatus(refundId, "PROCESSING", JdbcUtils.asLong(refund.get("approved_by_admin_id")),
@@ -240,7 +250,7 @@ public class RefundService {
     public Map<String, Object> getRefund(long refundId) {
         Map<String, Object> refund = refundRepository.findRefund(refundId);
         if (refund == null) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "refund not found");
+            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "환불 정보를 찾을 수 없습니다.");
         }
         return refund;
     }

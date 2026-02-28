@@ -328,6 +328,11 @@ public class OrderService {
         transition(orderId, target, "REFUND_SUCCEEDED");
     }
 
+    @Transactional
+    public void markRefundPending(long orderId) {
+        transition(orderId, OrderStatus.REFUND_PENDING, "REFUND_REQUESTED");
+    }
+
     private void transition(long orderId, OrderStatus target, String eventType) {
         Map<String, Object> order = orderRepository.findOrderById(orderId);
         if (order == null) {
@@ -488,11 +493,11 @@ public class OrderService {
                 case CREATED -> target == PAYMENT_PENDING || target == CANCELED;
                 case PAYMENT_PENDING -> target == PAID || target == CANCELED;
                 case PAID -> target == READY_TO_SHIP || target == REFUND_PENDING || target == REFUNDED || target == PARTIALLY_REFUNDED;
-                case READY_TO_SHIP -> target == SHIPPED || target == CANCELED;
-                case SHIPPED -> target == DELIVERED || target == PARTIALLY_REFUNDED || target == REFUNDED;
-                case DELIVERED -> target == PARTIALLY_REFUNDED || target == REFUNDED;
+                case READY_TO_SHIP -> target == SHIPPED || target == CANCELED || target == REFUND_PENDING;
+                case SHIPPED -> target == DELIVERED || target == PARTIALLY_REFUNDED || target == REFUNDED || target == REFUND_PENDING;
+                case DELIVERED -> target == PARTIALLY_REFUNDED || target == REFUNDED || target == REFUND_PENDING;
                 case REFUND_PENDING -> target == REFUNDED || target == PARTIALLY_REFUNDED;
-                case PARTIALLY_REFUNDED -> target == REFUNDED || target == PARTIALLY_REFUNDED;
+                case PARTIALLY_REFUNDED -> target == REFUNDED || target == PARTIALLY_REFUNDED || target == REFUND_PENDING;
                 default -> false;
             };
         }

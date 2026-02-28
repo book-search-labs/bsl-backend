@@ -3,11 +3,11 @@
 This doc describes the **local-only** reindex flow that reads from the canonical MySQL schema and rebuilds the OpenSearch books index.
 
 ## What it does
-- Optionally deletes existing `books_doc_*` indices and aliases.
-- Creates a fresh books index from `infra/opensearch/books_doc_v2.mapping.json`.
-- Reads Canonical tables (`material`, `material_agent`, `agent`, `material_identifier`, `material_concept`, `concept`, overrides/merges).
-- Denormalizes to books search documents and bulk-indexes into OpenSearch.
-- Verifies index count and runs a few sample queries.
+- (선택) 기존 books_doc_* 인덱스와 alias(별칭)를 삭제합니다.
+- infra/opensearch/books_doc_v2.mapping.json을 기반으로 새 books 인덱스를 생성합니다.
+- Canonical 테이블(material, material_agent, agent, material_identifier, material_concept, concept, overrides/merges)을 읽습니다.
+- 검색용 books 문서로 비정규화(denormalize)한 뒤, OpenSearch에 bulk 인덱싱합니다.
+- 인덱스 문서 수(count)를 검증하고 몇 가지 샘플 쿼리를 실행합니다.
 
 ## Run (one command)
 ```bash
@@ -15,8 +15,8 @@ This doc describes the **local-only** reindex flow that reads from the canonical
 ```
 
 ## Requirements
-- OpenSearch running at `http://localhost:9200`.
-- MySQL running with Canonical tables populated.
+- OpenSearch가 http://localhost:9200에서 실행 중이어야 합니다.
+- MySQL이 실행 중이며 Canonical 테이블에 데이터가 채워져 있어야 합니다.
 - Python deps installed:
 ```bash
 python3 -m pip install -r scripts/ingest/requirements.txt
@@ -42,14 +42,14 @@ python3 -m pip install -r scripts/ingest/requirements.txt
 
 ## Output / Verification
 The script prints:
-- Bulk progress logs (`indexed X (failed Y)`)
-- Final count from OpenSearch
-- A few sample query hit counts
+- Bulk 진행 로그 (indexed X (failed Y))
+- OpenSearch에서 조회한 최종 문서 수(count)
+- 몇 가지 샘플 쿼리의 hit 수
 
-Failures are logged to `REINDEX_FAILURE_LOG` with doc id + error details.
+실패 건은 REINDEX_FAILURE_LOG에 문서 ID와 오류 상세 정보와 함께 기록됩니다.
 
 ## Troubleshooting
-- **OpenSearch unreachable**: ensure `./scripts/local_up.sh` is running.
-- **Count is 0**: verify canonical tables have data (`SELECT COUNT(*) FROM material;`).
-- **Bulk errors**: inspect `REINDEX_FAILURE_LOG` for the specific document errors.
-- **Mapping errors**: ensure the mapping file exists and matches the document fields.
+- **OpenSearch**에 접속할 수 없음: ./scripts/local_up.sh가 실행 중인지 확인하세요.
+- **Count가 0**: canonical 테이블에 데이터가 있는지 확인하세요.  (`SELECT COUNT(*) FROM material;`)
+- **Bulk 오류**: REINDEX_FAILURE_LOG에서 특정 문서의 오류 내용을 확인하세요.
+- **매핑 오류**: 매핑 파일이 존재하는지, 그리고 문서 필드와 매핑이 일치하는지 확인하세요.

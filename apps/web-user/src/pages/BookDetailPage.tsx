@@ -7,7 +7,9 @@ import { getBookDetail } from '../api/books'
 import { addCartItem } from '../api/cart'
 import { HttpError } from '../api/http'
 import { postSearchDwell, search } from '../api/searchApi'
+import BookCover from '../components/books/BookCover'
 import { openFloatingChatWidget } from '../components/chat/chatWidgetEvents'
+import { addWishlistItem, isWishlistItem, removeWishlistItem } from '../services/myService'
 import type { Book, BookHit } from '../types/search'
 import { flattenKdcCategories } from '../utils/kdc'
 import { addRecentView } from '../utils/recentViews'
@@ -28,6 +30,7 @@ type CachedHit = {
     edition_labels?: string[]
     kdc_code?: string
     kdc_path_codes?: string[]
+    cover_url?: string
     [key: string]: unknown
   } | null
   fromQuery?: {
@@ -69,6 +72,8 @@ function mapCachedToBook(docId: string, cached: CachedHit): Book {
     editionLabels: Array.isArray(source.edition_labels) ? source.edition_labels : [],
     kdcCode: source.kdc_code ?? null,
     kdcPathCodes: Array.isArray(source.kdc_path_codes) ? source.kdc_path_codes : [],
+    isbn13: typeof source.isbn13 === 'string' ? source.isbn13 : null,
+    coverUrl: typeof source.cover_url === 'string' ? source.cover_url : null,
   }
 }
 
@@ -202,7 +207,10 @@ export default function BookDetailPage() {
   const [qty, setQty] = useState(1)
   const [cartSubmitting, setCartSubmitting] = useState(false)
   const [buySubmitting, setBuySubmitting] = useState(false)
+  const [wishlistSubmitting, setWishlistSubmitting] = useState(false)
+  const [wishlisted, setWishlisted] = useState(false)
   const [commerceMessage, setCommerceMessage] = useState<string | null>(null)
+  const [wishlistMessage, setWishlistMessage] = useState<string | null>(null)
 
   useEffect(() => {
     let isActive = true
@@ -229,12 +237,14 @@ export default function BookDetailPage() {
       setError(null)
       setNotFound(false)
 
-      addRecentView({
-        docId: cachedBook.docId,
-        titleKo: cachedBook.titleKo,
-        authors: cachedBook.authors,
-        viewedAt: Date.now(),
-      })
+        addRecentView({
+          docId: cachedBook.docId,
+          titleKo: cachedBook.titleKo,
+          authors: cachedBook.authors,
+          isbn13: cachedBook.isbn13 ?? null,
+          coverUrl: cachedBook.coverUrl ?? null,
+          viewedAt: Date.now(),
+        })
     } else {
       setBook(null)
       setLoading(true)
@@ -273,6 +283,8 @@ export default function BookDetailPage() {
           editionLabels: Array.isArray(result.source.edition_labels) ? result.source.edition_labels : [],
           kdcCode: result.source.kdc_code ?? null,
           kdcPathCodes: Array.isArray(result.source.kdc_path_codes) ? result.source.kdc_path_codes : [],
+          isbn13: typeof result.source.isbn13 === 'string' ? result.source.isbn13 : null,
+          coverUrl: typeof result.source.cover_url === 'string' ? result.source.cover_url : null,
         }
 
         setBook(nextBook)
@@ -311,6 +323,8 @@ export default function BookDetailPage() {
           docId: nextBook.docId,
           titleKo: nextBook.titleKo,
           authors: nextBook.authors,
+          isbn13: nextBook.isbn13 ?? null,
+          coverUrl: nextBook.coverUrl ?? null,
           viewedAt: Date.now(),
         })
       })
@@ -412,6 +426,30 @@ export default function BookDetailPage() {
     }
   }, [docId])
 
+  useEffect(() => {
+    let active = true
+    if (!docId) {
+      setWishlisted(false)
+      return () => {
+        active = false
+      }
+    }
+    setWishlistMessage(null)
+    isWishlistItem(docId)
+      .then((result) => {
+        if (!active) return
+        setWishlisted(result)
+      })
+      .catch(() => {
+        if (!active) return
+        setWishlisted(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [docId])
+
   const backLink = useMemo(() => {
     if (fromParam === 'search') {
       const q = cachedHit?.fromQuery?.q
@@ -432,7 +470,17 @@ export default function BookDetailPage() {
   }, [cachedHit, fromParam])
 
   const similarQuery = book?.titleKo ?? cachedHit?.source?.title_ko ?? ''
-  const similarLink = similarQuery ? `/search?q=${encodeURIComponent(similarQuery)}` : '/search'
+  const similarLink = (() => {
+    if (!similarQuery) return '/search'
+    const params = new URLSearchParams()
+    params.set('q', similarQuery)
+    params.set('vector', 'true')
+    params.set('related_title', similarQuery)
+    if (docId) {
+      params.set('related', docId)
+    }
+    return `/search?${params.toString()}`
+  })()
 
   useEffect(() => {
     if (!similarQuery) {
@@ -543,6 +591,33 @@ export default function BookDetailPage() {
     openFloatingChatWidget({ prompt })
   }
 
+  const handleToggleWishlist = async () => {
+    if (!docId) return
+    try {
+      setWishlistSubmitting(true)
+      setWishlistMessage(null)
+      if (wishlisted) {
+        await removeWishlistItem(docId)
+        setWishlisted(false)
+        setWishlistMessage('찜 목록에서 제거했습니다.')
+        return
+      }
+      await addWishlistItem({
+        docId,
+        title,
+        author: authors[0] ?? '저자 정보 없음',
+        coverUrl: book?.coverUrl ?? null,
+        price: currentOffer?.effective_price ?? 0,
+      })
+      setWishlisted(true)
+      setWishlistMessage('찜 목록에 담았습니다.')
+    } catch (err) {
+      setWishlistMessage(err instanceof Error ? err.message : '찜하기 처리에 실패했습니다.')
+    } finally {
+      setWishlistSubmitting(false)
+    }
+  }
+
   const showNotFound = !loading && !error && notFound && !book && !(cachedHit && cachedHit.source)
   const showDetail = !loading && !showNotFound && (book || (cachedHit && cachedHit.source))
 
@@ -607,6 +682,15 @@ export default function BookDetailPage() {
           <div className="detail-grid">
             <div className="detail-cover">
               <div className="detail-cover-inner">
+                <BookCover
+                  className="detail-cover-image"
+                  title={title}
+                  coverUrl={book?.coverUrl ?? null}
+                  isbn13={book?.isbn13 ?? null}
+                  docId={book?.docId ?? null}
+                  size="L"
+                  loading="eager"
+                />
                 <span className="detail-cover-label">BSL Pick</span>
                 <span className="detail-cover-title">{title}</span>
                 <span className="detail-cover-meta">{joinAuthors(authors)}</span>
@@ -708,6 +792,14 @@ export default function BookDetailPage() {
                 <div className="detail-commerce-actions">
                   <button
                     type="button"
+                    className="btn btn-outline-secondary btn-sm"
+                    disabled={wishlistSubmitting}
+                    onClick={handleToggleWishlist}
+                  >
+                    {wishlistSubmitting ? '처리 중...' : wishlisted ? '찜 취소' : '찜하기'}
+                  </button>
+                  <button
+                    type="button"
                     className="btn btn-outline-dark btn-sm"
                     disabled={!canPurchase || cartSubmitting || buySubmitting}
                     onClick={handleAddToCart}
@@ -725,6 +817,7 @@ export default function BookDetailPage() {
                 </div>
                 {offerError ? <div className="text-muted small">{offerError}</div> : null}
                 {commerceMessage ? <div className="small">{commerceMessage}</div> : null}
+                {wishlistMessage ? <div className="small">{wishlistMessage}</div> : null}
               </div>
             </div>
             <aside className="detail-aside">
@@ -777,6 +870,8 @@ export default function BookDetailPage() {
                 const source = hit.source ?? {}
                 const similarTitle = source.title_ko ?? '제목 없음'
                 const similarAuthors = Array.isArray(source.authors) ? source.authors.join(', ') : '-'
+                const similarCoverUrl = typeof source.cover_url === 'string' ? source.cover_url : null
+                const similarIsbn13 = typeof source.isbn13 === 'string' ? source.isbn13 : null
                 const docLink = hit.doc_id
                   ? `/book/${encodeURIComponent(hit.doc_id)}?from=similar`
                   : `/search?q=${encodeURIComponent(similarTitle)}`
@@ -784,8 +879,15 @@ export default function BookDetailPage() {
                 return (
                   <article key={hit.doc_id ?? `similar-${index}`} className="book-tile">
                     <div className="book-tile-cover">
+                      <BookCover
+                        className="book-cover-image"
+                        title={similarTitle}
+                        coverUrl={similarCoverUrl}
+                        isbn13={similarIsbn13}
+                        docId={hit.doc_id ?? null}
+                        size="M"
+                      />
                       <span className="book-tile-rank">#{index + 1}</span>
-                      <span className="book-tile-cover-title">{similarTitle}</span>
                     </div>
                     <div className="book-tile-body">
                       <h3 className="book-tile-title">{similarTitle}</h3>

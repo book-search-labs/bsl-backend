@@ -10,6 +10,8 @@
     "publisher_name": "문학수첩",
     "issued_year": 2000,
     "volume": 1,
-    "edition_labels": ["first"]
+    "edition_labels": ["first"],
+    "isbn13": "9788983920775",
+    "cover_url": "https://cdn.example.com/book-covers/9788983920775.jpg"
   }
 }

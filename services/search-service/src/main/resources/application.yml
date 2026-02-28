@@ -22,9 +22,9 @@ query-service:
   timeout-ms: ${QUERY_TIMEOUT_MS:120}
 
 embedding:
-  mode: ${EMBEDDING_MODE:TOY}
+  mode: ${EMBEDDING_MODE:HTTP}
   base-url: ${EMBEDDING_BASE_URL:http://localhost:8005}
-  model: ${EMBEDDING_MODEL:}
+  model: ${EMBEDDING_MODEL:bge-m3}
   timeout-ms: ${EMBEDDING_TIMEOUT_MS:200}
   retry-count: ${EMBEDDING_RETRY_COUNT:0}
   cache:

@@ -34,6 +34,8 @@ import com.bsl.search.ranking.dto.RerankResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -184,7 +186,7 @@ public class HybridSearchService {
 
         BookDetailResponse response = new BookDetailResponse();
         response.setDocId(resolvedDocId);
-        response.setSource(mapSource(source));
+        response.setSource(mapSource(source, resolvedDocId));
         response.setTraceId(traceId);
         response.setRequestId(requestId);
         response.setTookMs((System.nanoTime() - started) / 1_000_000L);
@@ -506,7 +508,7 @@ public class HybridSearchService {
             }
             debug.setRankingScore(rerankHit.getScore());
             hit.setDebug(debug);
-            hit.setSource(mapSource(sources.get(docId)));
+            hit.setSource(mapSource(sources.get(docId), docId));
             hits.add(hit);
         }
         return hits;
@@ -536,7 +538,7 @@ public class HybridSearchService {
             debug.setRrfScore(candidate.getScore());
             hit.setDebug(debug);
 
-            hit.setSource(mapSource(sources.get(candidate.getDocId())));
+            hit.setSource(mapSource(sources.get(candidate.getDocId()), candidate.getDocId()));
             hits.add(hit);
         }
         return hits;
@@ -2474,7 +2476,7 @@ public class HybridSearchService {
         ZERO_RESULTS
     }
 
-    private BookHit.Source mapSource(JsonNode source) {
+    private BookHit.Source mapSource(JsonNode source, String docId) {
         if (source == null || source.isMissingNode()) {
             return null;
         }
@@ -2486,8 +2488,134 @@ public class HybridSearchService {
         mapped.setEditionLabels(extractEditionLabels(source));
         mapped.setKdcCode(readText(source, "kdc_code"));
         mapped.setKdcPathCodes(extractTextArray(source, "kdc_path_codes"));
+        mapped.setIsbn13(extractIsbn13(source));
         mapped.setAuthors(extractAuthors(source));
+        mapped.setCoverUrl(resolveCoverUrl(source, docId, mapped.getTitleKo(), mapped.getIsbn13()));
         return mapped;
+    }
+
+    private String resolveCoverUrl(JsonNode source, String docId, String title, String isbn13) {
+        String direct = firstNonBlank(
+            readText(source, "cover_url"),
+            readText(source, "cover_image_url"),
+            readText(source, "thumbnail_url"),
+            readText(source, "image_url")
+        );
+        if (direct != null) {
+            return direct;
+        }
+        JsonNode identifiers = source == null ? null : source.path("identifiers");
+        if (identifiers != null && identifiers.isObject()) {
+            String nested = firstNonBlank(
+                textOrNull(identifiers.path("cover_url")),
+                textOrNull(identifiers.path("thumbnail_url")),
+                textOrNull(identifiers.path("image_url"))
+            );
+            if (nested != null) {
+                return nested;
+            }
+        }
+        return buildGeneratedCoverDataUrl(docId, title, isbn13);
+    }
+
+    private String buildGeneratedCoverDataUrl(String docId, String title, String isbn13) {
+        String seed = firstNonBlank(docId, isbn13, title, "bsl-book-cover");
+        int hash = Math.abs(seed.hashCode());
+
+        String[] tones = {
+            "#2f3d66,#5a7bb8",
+            "#3f4f4a,#6d8f7e",
+            "#5a3f2f,#a47f62",
+            "#2f4f5a,#5f96ad",
+            "#4c3d62,#7f6ab8",
+            "#2f4b5f,#5f7fa6",
+        };
+        String[] picked = tones[hash % tones.length].split(",");
+        String bgStart = picked[0];
+        String bgEnd = picked[1];
+
+        String resolvedTitle = sanitizeCoverText(firstNonBlank(title, docId, "제목 없음"), 40);
+        String shortId = sanitizeCoverText(firstNonBlank(docId, "BSL"), 12);
+        String line1 = escapeXml(cutTitleLine(resolvedTitle, 0, 12));
+        String line2 = escapeXml(cutTitleLine(resolvedTitle, 12, 24));
+        String line3 = escapeXml(cutTitleLine(resolvedTitle, 24, 36));
+        String idLabel = escapeXml(shortId);
+
+        String svg = "<svg xmlns='http://www.w3.org/2000/svg' width='360' height='520' viewBox='0 0 360 520'>"
+            + "<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>"
+            + "<stop offset='0%' stop-color='" + bgStart + "'/>"
+            + "<stop offset='100%' stop-color='" + bgEnd + "'/>"
+            + "</linearGradient></defs>"
+            + "<rect width='360' height='520' fill='url(#g)'/>"
+            + "<rect x='26' y='26' width='308' height='468' rx='22' fill='rgba(255,255,255,0.08)'/>"
+            + "<text x='38' y='82' fill='rgba(255,255,255,0.9)' font-size='20' font-weight='700'>BSL BOOKS</text>"
+            + "<text x='38' y='206' fill='#ffffff' font-size='40' font-weight='700'>" + line1 + "</text>"
+            + "<text x='38' y='256' fill='#ffffff' font-size='40' font-weight='700'>" + line2 + "</text>"
+            + "<text x='38' y='306' fill='#ffffff' font-size='40' font-weight='700'>" + line3 + "</text>"
+            + "<text x='38' y='472' fill='rgba(255,255,255,0.86)' font-size='18' font-weight='600'>" + idLabel + "</text>"
+            + "</svg>";
+
+        return "data:image/svg+xml;utf8," + URLEncoder.encode(svg, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    private String cutTitleLine(String title, int start, int end) {
+        if (title == null || title.isBlank() || start >= title.length()) {
+            return "";
+        }
+        int safeEnd = Math.min(end, title.length());
+        return title.substring(start, safeEnd);
+    }
+
+    private String sanitizeCoverText(String value, int maxLen) {
+        if (value == null) {
+            return "";
+        }
+        String compact = value.replaceAll("\\s+", " ").trim();
+        if (compact.isBlank()) {
+            return "";
+        }
+        if (compact.length() <= maxLen) {
+            return compact;
+        }
+        return compact.substring(0, maxLen);
+    }
+
+    private String escapeXml(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        return value
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&apos;");
+    }
+
+    private String textOrNull(JsonNode node) {
+        if (node == null || node.isNull() || node.isMissingNode()) {
+            return null;
+        }
+        String value = node.asText(null);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private String extractIsbn13(JsonNode source) {
+        if (source == null || source.isMissingNode()) {
+            return null;
+        }
+        JsonNode identifiers = source.path("identifiers");
+        if (identifiers.isMissingNode() || identifiers.isNull()) {
+            return null;
+        }
+        String value = identifiers.path("isbn13").asText(null);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value;
     }
 
     private Integer readInteger(JsonNode source, String fieldName) {

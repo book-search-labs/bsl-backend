@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "auth-login-request.schema.json",
+  "title": "AuthLoginRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "email", "password"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "email": { "type": "string", "format": "email", "minLength": 3, "maxLength": 255 },
+    "password": { "type": "string", "minLength": 1, "maxLength": 255 }
+  }
+}

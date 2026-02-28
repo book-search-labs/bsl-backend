@@ -26,7 +26,7 @@ def main() -> int:
     parser.add_argument("--input", default="var/rag/docs_embed.jsonl")
     parser.add_argument("--output", default="var/rag/docs_vec.jsonl")
     parser.add_argument("--mis-url", default="http://localhost:8005")
-    parser.add_argument("--model", default="toy_embed_v1")
+    parser.add_argument("--model", default="bge-m3")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--timeout", type=float, default=10.0)
     args = parser.parse_args()

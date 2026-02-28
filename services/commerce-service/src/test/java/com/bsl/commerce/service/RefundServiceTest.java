@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.bsl.commerce.common.ApiException;
 import com.bsl.commerce.config.CommerceProperties;
 import com.bsl.commerce.repository.OrderRepository;
 import com.bsl.commerce.repository.OpsTaskRepository;
@@ -109,6 +110,7 @@ class RefundServiceTest {
         );
         verify(refundRepository).insertRefundItems(any());
         verify(refundRepository).insertRefundEvent(eq(501L), eq("REFUND_REQUESTED"), any());
+        verify(orderService).markRefundPending(1L);
     }
 
     @Test
@@ -158,5 +160,46 @@ class RefundServiceTest {
         );
         verify(refundRepository).insertRefundItems(any());
         verify(refundRepository).insertRefundEvent(eq(502L), eq("REFUND_REQUESTED"), any());
+        verify(orderService).markRefundPending(2L);
+    }
+
+    @Test
+    void createRefundThrowsWhenAlreadyRequestedForAllItems() {
+        RefundService service = newService();
+
+        Map<String, Object> order = new HashMap<>();
+        order.put("order_id", 3L);
+        order.put("status", "PAID");
+        order.put("shipping_fee", 3000);
+        order.put("shipping_mode", "STANDARD");
+
+        Map<String, Object> payment = Map.of("payment_id", 33L);
+
+        Map<String, Object> orderItem = new HashMap<>();
+        orderItem.put("order_item_id", 303L);
+        orderItem.put("sku_id", 66L);
+        orderItem.put("qty", 1);
+        orderItem.put("unit_price", 22000);
+
+        when(orderRepository.findOrderById(3L)).thenReturn(order);
+        when(refundRepository.findRefundByIdempotencyKey("idem-dup")).thenReturn(null);
+        when(paymentRepository.findLatestPaymentByOrder(3L)).thenReturn(payment);
+        when(orderRepository.findOrderItems(3L)).thenReturn(List.of(orderItem));
+        when(refundRepository.sumRefundedQtyByOrder(3L)).thenReturn(List.of(Map.of("order_item_id", 303L, "refunded_qty", 1)));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+            service.createRefund(
+                3L,
+                List.of(new RefundService.RefundItemRequest(303L, 1)),
+                "CHANGE_OF_MIND",
+                null,
+                "idem-dup"
+            )
+        )
+            .isInstanceOf(ApiException.class)
+            .satisfies((error) -> {
+                ApiException apiException = (ApiException) error;
+                assertThat(apiException.getCode()).isEqualTo("refund_already_requested");
+            });
     }
 }

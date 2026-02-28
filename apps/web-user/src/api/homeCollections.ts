@@ -8,6 +8,8 @@ export type HomeCollectionItem = {
   publisher_name?: string
   issued_year?: number
   edition_labels?: string[]
+  isbn13?: string
+  cover_url?: string
 }
 
 export type HomeCollectionSection = {

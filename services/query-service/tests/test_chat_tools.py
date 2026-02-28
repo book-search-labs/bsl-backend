@@ -72,6 +72,102 @@ def test_run_tool_chat_shipping_policy_guide_without_login():
     assert result["sources"][0]["url"] == "POLICY / commerce-shipping-guide"
 
 
+def test_run_tool_chat_book_recommendation_without_login(monkeypatch):
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        assert query in {"周易辭典", "도서 '周易辭典' 기준으로 비슷한 책을 추천해줘"}
+        return [
+            {"doc_id": "nlk:CM0000000201", "title": "周易辭典", "author": "장선문", "score": 8.4},
+            {"doc_id": "nlk:CM0000000302", "title": "中國民間宗教史", "author": "마시사", "score": 7.8},
+            {"doc_id": "nlk:CM0000000411", "title": "馬列主義與宗敎的衝突", "author": "왕장링", "score": 7.5},
+        ]
+
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+
+    payload = {
+        "message": {"role": "user", "content": "도서 '周易辭典' 기준으로 비슷한 책을 추천해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_book_recommend"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert result["reason_code"] == "OK"
+    assert "周易辭典" in result["answer"]["content"]
+    assert "中國民間宗教史" in result["answer"]["content"]
+    assert "馬列主義與宗敎的衝突" in result["answer"]["content"]
+    assert result["citations"]
+    assert result["sources"][0]["url"] == "OS /books_doc_read/_search"
+
+
+def test_run_tool_chat_cart_recommendation_with_login(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        assert method == "GET"
+        assert path == "/cart"
+        return {
+            "cart": {
+                "items": [
+                    {"title": "초등영어교육의 영미문화지도에 관한 연구"},
+                    {"title": "周易辭典"},
+                ]
+            }
+        }
+
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        if query == "초등영어교육의 영미문화지도에 관한 연구":
+            return [
+                {"doc_id": "nlk:CDM200900003", "title": "초등영어교육의 영미문화지도에 관한 연구", "author": "한은경", "score": 9.1},
+                {"doc_id": "nlk:CDM201100017", "title": "영미문화 교육론", "author": "박민정", "score": 8.2},
+            ]
+        if query == "周易辭典":
+            return [
+                {"doc_id": "nlk:CM0000000201", "title": "周易辭典", "author": "장선문", "score": 8.4},
+                {"doc_id": "nlk:CM0000000302", "title": "中國民間宗教史", "author": "마시사", "score": 7.8},
+            ]
+        return []
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+
+    payload = {
+        "message": {"role": "user", "content": "장바구니 기준 추천해줘"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_cart_recommend"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert result["reason_code"] == "OK"
+    assert "장바구니 도서를 기준으로 추천 도서를 정리했습니다." in result["answer"]["content"]
+    assert "영미문화 교육론" in result["answer"]["content"]
+    assert "中國民間宗教史" in result["answer"]["content"]
+    assert result["citations"]
+    assert result["sources"][0]["url"] == "GET /api/v1/cart"
+
+
+def test_run_tool_chat_book_recommendation_excludes_same_seed_only(monkeypatch):
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        return [
+            {"doc_id": "nlk:CM0000000201", "title": "周易辭典", "author": "장선문", "score": 8.4},
+        ]
+
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+
+    payload = {
+        "message": {"role": "user", "content": "도서 '周易辭典' 기준으로 비슷한 책을 추천해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_book_recommend_same_only"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert result["reason_code"] == "OK"
+    assert "동일 도서 외 유사 후보를 찾지 못했습니다." in result["answer"]["content"]
+    assert "周易辭典 (장선문 / nlk:CM0000000201)" not in result["answer"]["content"]
+
+
 def test_run_tool_chat_order_lookup_success(monkeypatch):
     async def fake_call_commerce(method, path, **kwargs):
         assert method == "GET"

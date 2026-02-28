@@ -30,6 +30,8 @@ export type OrderItem = {
   author?: string | null
   publisher?: string | null
   issued_year?: number | null
+  isbn13?: string | null
+  cover_url?: string | null
   seller_name?: string | null
   format?: string | null
   edition?: string | null

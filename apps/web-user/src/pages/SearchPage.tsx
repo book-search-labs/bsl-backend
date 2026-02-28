@@ -5,6 +5,7 @@ import { Link, useOutletContext, useSearchParams } from 'react-router-dom'
 import { postSearchClick, search } from '../api/searchApi'
 import { HttpError } from '../api/http'
 import type { KdcCategoryNode } from '../api/categories'
+import BookCover from '../components/books/BookCover'
 import type { BookHit, SearchResponse } from '../types/search'
 import { collectKdcDescendantCodes, flattenKdcCategories, getTopLevelKdc } from '../utils/kdc'
 
@@ -177,6 +178,9 @@ export default function SearchPage() {
   const { kdcCategories } = useOutletContext<AppShellContext>()
   const query = searchParams.get('q') ?? ''
   const kdcCode = (searchParams.get('kdc') ?? '').trim()
+  const relatedDocId = (searchParams.get('related') ?? '').trim()
+  const relatedTitle = (searchParams.get('related_title') ?? '').trim()
+  const hasRelatedSeed = relatedDocId.length > 0 || relatedTitle.length > 0
   const trimmedQuery = query.trim()
 
   const sizeValue = parseSizeParam(searchParams.get('size'))
@@ -210,8 +214,28 @@ export default function SearchPage() {
   }, [topCategories])
 
   const hits = useMemo<BookHit[]>(() => {
-    return Array.isArray(response?.hits) ? response?.hits : []
-  }, [response])
+    const values = Array.isArray(response?.hits) ? response.hits : []
+    if (!hasRelatedSeed) return values
+
+    const normalizedRelatedDocId = relatedDocId.toLowerCase()
+    const normalizedRelatedTitle = relatedTitle.replace(/\s+/g, '').toLowerCase()
+
+    return values.filter((hit) => {
+      const currentDocId = String(hit.doc_id ?? '').trim().toLowerCase()
+      if (normalizedRelatedDocId && currentDocId === normalizedRelatedDocId) {
+        return false
+      }
+
+      if (normalizedRelatedTitle) {
+        const currentTitle = String(hit.source?.title_ko ?? '').replace(/\s+/g, '').toLowerCase()
+        if (currentTitle && currentTitle === normalizedRelatedTitle) {
+          return false
+        }
+      }
+
+      return true
+    })
+  }, [hasRelatedSeed, relatedDocId, relatedTitle, response])
 
   useEffect(() => {
     setSearchInput(query)
@@ -292,7 +316,7 @@ export default function SearchPage() {
         size: sizeValue,
         from: fromValue,
         debug: debugEnabled,
-        vector: trimmedQuery.length > 0 ? vectorEnabled : false,
+        vector: trimmedQuery.length > 0 ? (hasRelatedSeed ? true : vectorEnabled) : false,
         filters: hasCategoryFilter
           ? [
               {
@@ -332,6 +356,7 @@ export default function SearchPage() {
     sizeValue,
     fromValue,
     trimmedQuery,
+    hasRelatedSeed,
     vectorEnabled,
   ])
 
@@ -340,7 +365,15 @@ export default function SearchPage() {
   }, [executeSearch])
 
   const updateParams = useCallback(
-    (updates: { q?: string; size?: number; vector?: boolean; kdc?: string; page?: number }) => {
+    (updates: {
+      q?: string
+      size?: number
+      vector?: boolean
+      kdc?: string
+      page?: number
+      related?: string
+      relatedTitle?: string
+    }) => {
       const params = new URLSearchParams(searchParams)
 
       if (updates.q !== undefined) {
@@ -372,6 +405,22 @@ export default function SearchPage() {
         params.set('page', String(nextPage))
       }
 
+      if (updates.related !== undefined) {
+        if (updates.related) {
+          params.set('related', updates.related)
+        } else {
+          params.delete('related')
+        }
+      }
+
+      if (updates.relatedTitle !== undefined) {
+        if (updates.relatedTitle) {
+          params.set('related_title', updates.relatedTitle)
+        } else {
+          params.delete('related_title')
+        }
+      }
+
       setSearchParams(params)
     },
     [searchParams, setSearchParams],
@@ -387,6 +436,8 @@ export default function SearchPage() {
       vector: vectorEnabled,
       kdc: nextQuery.trim().length > 0 ? '' : undefined,
       page: 1,
+      related: '',
+      relatedTitle: '',
     })
   }
 
@@ -402,7 +453,7 @@ export default function SearchPage() {
 
   const handleExampleClick = (value: string) => {
     setAdvancedFilters(emptyAdvancedFilters())
-    updateParams({ q: value, size: sizeValue, vector: vectorEnabled, kdc: '', page: 1 })
+    updateParams({ q: value, size: sizeValue, vector: vectorEnabled, kdc: '', page: 1, related: '', relatedTitle: '' })
   }
 
   const handleRefine = (value: string) => {
@@ -414,6 +465,8 @@ export default function SearchPage() {
       vector: vectorEnabled,
       kdc: next.trim().length > 0 ? '' : undefined,
       page: 1,
+      related: '',
+      relatedTitle: '',
     })
   }
 
@@ -443,19 +496,45 @@ export default function SearchPage() {
       vector: vectorEnabled,
       kdc: nextQuery.trim().length > 0 ? '' : undefined,
       page: 1,
+      related: '',
+      relatedTitle: '',
     })
   }
 
   const clearAdvancedFilters = () => {
     setAdvancedFilters(emptyAdvancedFilters())
-    updateParams({ q: stripExplicitSyntax(searchInput), size: sizeValue, vector: vectorEnabled, page: 1 })
+    updateParams({
+      q: stripExplicitSyntax(searchInput),
+      size: sizeValue,
+      vector: vectorEnabled,
+      page: 1,
+      related: '',
+      relatedTitle: '',
+    })
   }
 
   const handleCategoryClick = (code?: string) => {
     if (!code) return
     setAdvancedFilters(emptyAdvancedFilters())
-    updateParams({ kdc: code, q: '', size: sizeValue, vector: vectorEnabled, page: 1 })
+    updateParams({ kdc: code, q: '', size: sizeValue, vector: vectorEnabled, page: 1, related: '', relatedTitle: '' })
   }
+
+  const handleSimilarBooks = useCallback(
+    (title: string, docId?: string) => {
+      const nextQuery = title.trim()
+      if (!nextQuery) return
+      updateParams({
+        q: nextQuery,
+        size: Math.max(sizeValue, 20),
+        vector: true,
+        kdc: '',
+        page: 1,
+        related: docId ?? '',
+        relatedTitle: nextQuery,
+      })
+    },
+    [sizeValue, updateParams],
+  )
 
   const handleSelectHit = useCallback(
     (hit: BookHit, position: number) => {
@@ -521,7 +600,9 @@ export default function SearchPage() {
   const currentEnd = totalCount > 0 ? fromValue + hits.length : 0
   const displayQuery = stripExplicitSyntax(trimmedQuery) || trimmedQuery
   const resultsTitle = trimmedQuery
-    ? `"${displayQuery}" 검색 결과`
+    ? hasRelatedSeed
+      ? `"${displayQuery}" 비슷한 책`
+      : `"${displayQuery}" 검색 결과`
     : selectedCategory
       ? `${selectedCategory.name} 카테고리`
       : '검색 결과'
@@ -856,10 +937,11 @@ export default function SearchPage() {
                     const editions = Array.isArray(source.edition_labels)
                       ? source.edition_labels.slice(0, 3)
                       : []
+                    const isbn13 = typeof source.isbn13 === 'string' ? source.isbn13 : null
+                    const coverUrl = typeof source.cover_url === 'string' ? source.cover_url : null
                     const score = typeof hit.score === 'number' ? hit.score : null
                     const docId = hit.doc_id
                     const docLink = docId ? `/book/${encodeURIComponent(docId)}?from=search` : null
-                    const searchLink = `/search?q=${encodeURIComponent(title)}`
                     const debug = getHitDebug(hit)
                     const debugEntries = Object.entries(debug).filter(([, value]) => value !== undefined)
 
@@ -869,8 +951,15 @@ export default function SearchPage() {
                         className={viewMode === 'card' ? 'result-tile' : 'result-tile compact'}
                       >
                         <div className="result-cover">
+                          <BookCover
+                            className="result-cover-image"
+                            title={title}
+                            coverUrl={coverUrl}
+                            isbn13={isbn13}
+                            docId={docId ?? null}
+                            size="M"
+                          />
                           <span className="result-rank">#{hit.rank ?? itemPosition}</span>
-                          <span className="result-cover-title">{title}</span>
                         </div>
                         <div className="result-content">
                           <div className="result-header">
@@ -923,9 +1012,13 @@ export default function SearchPage() {
                                 상세보기
                               </Link>
                             ) : null}
-                            <Link to={searchLink} className="btn btn-outline-secondary btn-sm">
+                            <button
+                              type="button"
+                              className="btn btn-outline-secondary btn-sm"
+                              onClick={() => handleSimilarBooks(title, docId ?? undefined)}
+                            >
                               비슷한 책
-                            </Link>
+                            </button>
                           </div>
                         </div>
                       </article>

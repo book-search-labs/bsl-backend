@@ -15,6 +15,8 @@ export type BookDetailResponse = {
     edition_labels?: string[]
     kdc_code?: string
     kdc_path_codes?: string[]
+    isbn13?: string
+    cover_url?: string
     [key: string]: unknown
   }
   trace_id?: string

@@ -76,3 +76,21 @@ export async function listAddresses() {
   const response = await callApi<{ items: Address[] }>('/api/v1/addresses', { method: 'GET' })
   return response.items ?? []
 }
+
+export async function updateAddress(
+  addressId: number,
+  payload: {
+    name: string
+    phone: string
+    zip?: string
+    addr1?: string
+    addr2?: string
+    isDefault?: boolean
+  },
+) {
+  const response = await callApi<{ address: Address }>(`/api/v1/addresses/${addressId}`, {
+    method: 'PATCH',
+    body: payload,
+  })
+  return response.address
+}

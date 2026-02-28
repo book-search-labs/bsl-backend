@@ -193,4 +193,20 @@ class OrderServiceTest {
         assertThat(mapped.get("primary_item_author")).isEqualTo("홍길동");
         assertThat(mapped.get("primary_item_material_id")).isEqualTo("nlk:CM000000001");
     }
+
+    @Test
+    void markRefundPendingTransitionsFromReadyToShip() {
+        OrderService service = newService();
+
+        Map<String, Object> order = new HashMap<>();
+        order.put("order_id", 88L);
+        order.put("status", "READY_TO_SHIP");
+
+        when(orderRepository.findOrderById(88L)).thenReturn(order);
+
+        service.markRefundPending(88L);
+
+        verify(orderRepository).updateOrderStatus(88L, "REFUND_PENDING");
+        verify(orderRepository).insertOrderEvent(88L, "REFUND_REQUESTED", "READY_TO_SHIP", "REFUND_PENDING", null, null);
+    }
 }

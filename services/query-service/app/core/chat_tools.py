@@ -13,6 +13,7 @@ import httpx
 
 from app.core.cache import get_cache
 from app.core.metrics import metrics
+from app.core.rag_candidates import retrieve_candidates
 
 _CACHE = get_cache()
 
@@ -147,7 +148,9 @@ def _detect_intent(query: str) -> ToolIntent:
     cancel_keywords = ["주문 취소", "취소해", "cancel order", "cancel my order"]
     refund_create_keywords = ["환불 신청", "환불 접수", "refund request", "환불해"]
     policy_keywords = ["조건", "정리", "안내", "절차", "규정", "기준", "수수료", "policy", "guide"]
+    recommendation_keywords = ["추천", "비슷한 책", "유사한 책", "related book", "similar book", "recommend"]
     has_policy_word = any(keyword in q for keyword in policy_keywords)
+    has_recommend_word = any(keyword in q for keyword in recommendation_keywords)
 
     if any(keyword in q for keyword in cancel_keywords) and (has_order_ref or "주문" in q or "order" in q) and not has_policy_word:
         return ToolIntent("ORDER_CANCEL", 0.96)
@@ -167,6 +170,10 @@ def _detect_intent(query: str) -> ToolIntent:
         return ToolIntent("TICKET_STATUS", 0.95)
     if any(keyword in q for keyword in ticket_create_keywords):
         return ToolIntent("TICKET_CREATE", 0.93)
+    if has_recommend_word and any(keyword in q for keyword in ["도서", "책", "book", "장바구니", "cart"]):
+        if "장바구니" in q or "cart" in q:
+            return ToolIntent("CART_RECOMMEND", 0.92)
+        return ToolIntent("BOOK_RECOMMEND", 0.9)
 
     if any(keyword in q for keyword in shipment_keywords) and (has_lookup_word or has_order_ref):
         return ToolIntent("SHIPMENT_LOOKUP", 0.92)
@@ -203,6 +210,63 @@ def _format_krw(amount: Any) -> str:
     except Exception:
         value = 0
     return f"{value:,}원"
+
+
+def _extract_recommendation_seed_query(query: str) -> str:
+    raw = (query or "").strip()
+    if not raw:
+        return ""
+
+    quoted_patterns = [
+        r"[\"'“”‘’「」『』《》〈〉]\s*([^\"'“”‘’「」『』《》〈〉]{2,120})\s*[\"'“”‘’「」『』《》〈〉]",
+    ]
+    for pattern in quoted_patterns:
+        match = re.search(pattern, raw)
+        if match:
+            candidate = match.group(1).strip()
+            if len(candidate) >= 2:
+                return candidate
+
+    match = re.search(
+        r"(?:도서|책)\s*[:：]?\s*([0-9A-Za-z가-힣一-龥·\-\s]{2,120}?)(?:\s*(?:기준|관련|처럼|의|을|를|으로)|$)",
+        raw,
+    )
+    if match:
+        candidate = match.group(1).strip()
+        if len(candidate) >= 2:
+            return candidate
+
+    split_tokens = ["기준으로", "기준", "관련으로", "관련", "추천해", "추천"]
+    for token in split_tokens:
+        if token in raw:
+            candidate = raw.split(token, 1)[0].strip()
+            candidate = re.sub(r"^(도서|책)\s*", "", candidate).strip()
+            if len(candidate) >= 2:
+                return candidate
+    return ""
+
+
+def _normalize_title_for_compare(value: str) -> str:
+    return re.sub(r"\s+", "", (value or "").strip().lower())
+
+
+def _pick_cart_seed_titles(cart_items: list[dict[str, Any]], limit: int = 2) -> list[str]:
+    seeds: list[str] = []
+    for item in cart_items:
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title") or "").strip()
+        if not title:
+            continue
+        normalized = _normalize_title_for_compare(title)
+        if not normalized:
+            continue
+        if any(_normalize_title_for_compare(existing) == normalized for existing in seeds):
+            continue
+        seeds.append(title)
+        if len(seeds) >= limit:
+            break
+    return seeds
 
 
 def _order_status_ko(status: str | None) -> str:
@@ -1106,6 +1170,182 @@ def _handle_order_policy_guide(trace_id: str, request_id: str) -> dict[str, Any]
     )
 
 
+def _format_recommendation_lines(items: list[dict[str, Any]], *, max_items: int = 5) -> list[str]:
+    lines: list[str] = []
+    for idx, item in enumerate(items[:max_items], start=1):
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title") or "").strip()
+        if not title:
+            continue
+        author = str(item.get("author") or "").strip()
+        doc_id = str(item.get("doc_id") or "").strip()
+        score = item.get("score")
+        score_text = ""
+        if isinstance(score, (int, float)):
+            score_text = f" · 유사도 {float(score):.2f}"
+        meta_parts = [part for part in [author, doc_id] if part]
+        meta = f" ({' / '.join(meta_parts)})" if meta_parts else ""
+        lines.append(f"{idx}) {title}{meta}{score_text}")
+    return lines
+
+
+async def _handle_book_recommendation(
+    query: str,
+    *,
+    trace_id: str,
+    request_id: str,
+) -> dict[str, Any]:
+    seed_query = _extract_recommendation_seed_query(query)
+    lookup_query = seed_query or query
+    candidates = await retrieve_candidates(lookup_query, trace_id, request_id, top_k=10)
+
+    if not candidates and seed_query and seed_query != query:
+        candidates = await retrieve_candidates(query, trace_id, request_id, top_k=10)
+
+    if not candidates:
+        return _build_response(
+            trace_id,
+            request_id,
+            "ok",
+            "추천 후보를 찾지 못했습니다. 도서 제목/저자/ISBN 중 하나를 함께 입력해 주세요.",
+            tool_name="book_recommend",
+            endpoint="OS /books_doc_read/_search",
+            source_snippet=f"seed_query={lookup_query}, candidate_count=0",
+        )
+
+    normalized_seed = _normalize_title_for_compare(seed_query)
+    filtered: list[dict[str, Any]] = []
+    seed_hit: dict[str, Any] | None = None
+    for candidate in candidates:
+        title = str(candidate.get("title") or "").strip()
+        normalized_title = _normalize_title_for_compare(title)
+        if normalized_seed and normalized_title and normalized_title == normalized_seed:
+            if seed_hit is None:
+                seed_hit = candidate
+            continue
+        filtered.append(candidate)
+
+    recommended = filtered
+    if not recommended and not normalized_seed:
+        recommended = candidates
+    lines = _format_recommendation_lines(recommended, max_items=5)
+    if not lines:
+        return _build_response(
+            trace_id,
+            request_id,
+            "ok",
+            "현재 기준으로 동일 도서 외 유사 후보를 찾지 못했습니다. 제목/저자/카테고리를 함께 입력해 주세요.",
+            tool_name="book_recommend",
+            endpoint="OS /books_doc_read/_search",
+            source_snippet=f"seed_query={lookup_query}, candidate_count={len(candidates)}, filtered_count={len(filtered)}",
+        )
+
+    seed_title = str(seed_hit.get("title") or seed_query).strip() if seed_hit or seed_query else ""
+    prefix = f"'{seed_title}' 기준 추천 도서입니다.\n" if seed_title else "요청하신 기준으로 추천 도서를 정리했습니다.\n"
+    content = prefix + "\n".join(lines)
+    return _build_response(
+        trace_id,
+        request_id,
+        "ok",
+        content,
+        tool_name="book_recommend",
+        endpoint="OS /books_doc_read/_search",
+        source_snippet=f"seed_query={lookup_query}, candidate_count={len(candidates)}",
+    )
+
+
+async def _handle_cart_recommendation(
+    *,
+    user_id: str,
+    trace_id: str,
+    request_id: str,
+) -> dict[str, Any]:
+    try:
+        cart_data = await _call_commerce(
+            "GET",
+            "/cart",
+            user_id=user_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            tool_name="cart_recommend",
+            intent="CART_RECOMMEND",
+        )
+    except ToolCallError:
+        return _build_response(trace_id, request_id, "tool_fallback", "장바구니 정보를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.")
+
+    cart = cart_data.get("cart") if isinstance(cart_data, dict) else {}
+    items = cart.get("items") if isinstance(cart, dict) else []
+    if not isinstance(items, list) or not items:
+        return _build_response(
+            trace_id,
+            request_id,
+            "ok",
+            "장바구니가 비어 있어 추천 기준이 없습니다. 도서를 먼저 장바구니에 담아주세요.",
+            tool_name="cart_recommend",
+            endpoint="GET /api/v1/cart",
+            source_snippet="cart_item_count=0",
+        )
+
+    seed_titles = _pick_cart_seed_titles(items, limit=2)
+    if not seed_titles:
+        return _build_response(
+            trace_id,
+            request_id,
+            "ok",
+            "장바구니 도서 제목을 확인하지 못했습니다. 장바구니를 새로고침한 뒤 다시 시도해 주세요.",
+            tool_name="cart_recommend",
+            endpoint="GET /api/v1/cart",
+            source_snippet=f"cart_item_count={len(items)}, seed_count=0",
+        )
+
+    merged: list[dict[str, Any]] = []
+    seen_doc_ids: set[str] = set()
+    seed_normalized = {_normalize_title_for_compare(title) for title in seed_titles}
+    for seed in seed_titles:
+        candidates = await retrieve_candidates(seed, trace_id, request_id, top_k=6)
+        for candidate in candidates:
+            doc_id = str(candidate.get("doc_id") or "").strip()
+            title = str(candidate.get("title") or "").strip()
+            if not title:
+                continue
+            normalized_title = _normalize_title_for_compare(title)
+            if normalized_title and normalized_title in seed_normalized:
+                continue
+            if doc_id and doc_id in seen_doc_ids:
+                continue
+            if doc_id:
+                seen_doc_ids.add(doc_id)
+            merged.append(candidate)
+            if len(merged) >= 8:
+                break
+        if len(merged) >= 8:
+            break
+
+    if not merged:
+        return _build_response(
+            trace_id,
+            request_id,
+            "ok",
+            "장바구니 기준 추천 후보를 찾지 못했습니다. 장바구니 도서를 변경한 뒤 다시 시도해 주세요.",
+            tool_name="cart_recommend",
+            endpoint="GET /api/v1/cart",
+            source_snippet=f"cart_item_count={len(items)}, seed_count={len(seed_titles)}, recommendation_count=0",
+        )
+
+    lines = _format_recommendation_lines(merged, max_items=5)
+    content = "장바구니 도서를 기준으로 추천 도서를 정리했습니다.\n" + "\n".join(lines)
+    return _build_response(
+        trace_id,
+        request_id,
+        "ok",
+        content,
+        tool_name="cart_recommend",
+        endpoint="GET /api/v1/cart",
+        source_snippet=f"cart_item_count={len(items)}, seed_count={len(seed_titles)}, recommendation_count={len(merged)}",
+    )
+
+
 async def _start_sensitive_workflow(
     intent: str,
     query: str,
@@ -1808,6 +2048,8 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
         return _handle_shipping_policy_guide(trace_id, request_id)
     if intent.name == "ORDER_POLICY":
         return _handle_order_policy_guide(trace_id, request_id)
+    if intent.name == "BOOK_RECOMMEND":
+        return await _handle_book_recommendation(query, trace_id=trace_id, request_id=request_id)
 
     if not user_id:
         metrics.inc("chat_tool_authz_denied_total", {"intent": intent.name})
@@ -1868,6 +2110,12 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
             return await _handle_shipment_lookup(query, user_id=user_id, trace_id=trace_id, request_id=request_id)
         if intent.name == "REFUND_LOOKUP":
             return await _handle_refund_lookup(query, user_id=user_id, trace_id=trace_id, request_id=request_id)
+        if intent.name == "CART_RECOMMEND":
+            return await _handle_cart_recommendation(
+                user_id=user_id,
+                trace_id=trace_id,
+                request_id=request_id,
+            )
     except Exception:
         metrics.inc("chat_tool_fallback_total", {"reason_code": "unexpected_error"})
         return _build_response(

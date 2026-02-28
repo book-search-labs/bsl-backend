@@ -74,6 +74,12 @@ public class BookHit {
         @JsonProperty("kdc_path_codes")
         private List<String> kdcPathCodes;
 
+        @JsonProperty("isbn13")
+        private String isbn13;
+
+        @JsonProperty("cover_url")
+        private String coverUrl;
+
         public String getTitleKo() {
             return titleKo;
         }
@@ -136,6 +142,22 @@ public class BookHit {
 
         public void setKdcPathCodes(List<String> kdcPathCodes) {
             this.kdcPathCodes = kdcPathCodes;
+        }
+
+        public String getIsbn13() {
+            return isbn13;
+        }
+
+        public void setIsbn13(String isbn13) {
+            this.isbn13 = isbn13;
+        }
+
+        public String getCoverUrl() {
+            return coverUrl;
+        }
+
+        public void setCoverUrl(String coverUrl) {
+            this.coverUrl = coverUrl;
         }
     }
 

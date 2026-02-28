@@ -385,6 +385,11 @@ OpenSearch ingest defaults to `EMBED_PROVIDER=mis` and **requires** `MIS_URL`:
 EMBED_PROVIDER=mis MIS_URL=http://localhost:8005 \
   ./scripts/ingest/run_ingest_opensearch.sh
 ```
+Use `bge-m3` explicitly:
+```bash
+EMBED_PROVIDER=mis MIS_URL=http://localhost:8005 EMBED_MODEL=bge-m3 \
+  ./scripts/ingest/run_ingest_opensearch.sh
+```
 When `NLK_INPUT_MODE=sample` and neither `EMBED_PROVIDER` nor `MIS_URL` is set,
 `run_ingest.sh` automatically falls back to `EMBED_PROVIDER=toy`.
 If you don’t want embeddings:

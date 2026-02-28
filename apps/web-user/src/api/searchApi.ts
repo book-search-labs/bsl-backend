@@ -29,6 +29,8 @@ type BffSearchHit = {
   authors?: string[]
   publisher?: string
   publication_year?: number
+  isbn13?: string
+  cover_url?: string
   [key: string]: unknown
 }
 
@@ -81,6 +83,8 @@ function normalizeBook(hit: BookHit, fallbackDocId?: string): Book | null {
     issuedYear: typeof source.issued_year === 'number' ? source.issued_year : null,
     volume: typeof source.volume === 'number' ? source.volume : null,
     editionLabels: Array.isArray(source.edition_labels) ? source.edition_labels : [],
+    isbn13: typeof source.isbn13 === 'string' ? source.isbn13 : null,
+    coverUrl: typeof source.cover_url === 'string' ? source.cover_url : null,
   }
 }
 
@@ -97,6 +101,8 @@ function mapBffSearchResponse(response: BffSearchResponse): SearchResponse {
               authors: Array.isArray(hit.authors) ? hit.authors : [],
               publisher_name: hit.publisher ?? null,
               issued_year: hit.publication_year ?? null,
+              isbn13: typeof hit.isbn13 === 'string' ? hit.isbn13 : undefined,
+              cover_url: typeof hit.cover_url === 'string' ? hit.cover_url : undefined,
             },
           }
         })

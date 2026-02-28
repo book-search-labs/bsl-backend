@@ -5,6 +5,8 @@ export type RecentView = {
   docId: string
   titleKo: string | null
   authors: string[]
+  isbn13?: string | null
+  coverUrl?: string | null
   viewedAt: number
 }
 

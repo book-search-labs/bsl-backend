@@ -29,6 +29,6 @@ Cache key is based on `vector_text_hash + model + normalize`.
 
 ## Example
 ```bash
-EMBED_PROVIDER=mis MIS_URL=http://localhost:8005 EMBED_CACHE=sqlite ENABLE_VECTOR_INDEX=1 \
+EMBED_PROVIDER=mis MIS_URL=http://localhost:8005 EMBED_MODEL=bge-m3 EMBED_CACHE=sqlite ENABLE_VECTOR_INDEX=1 \
   python scripts/ingest/ingest_opensearch.py
 ```

@@ -14,7 +14,9 @@
       "title": "해리 포터와 마법사의 돌 1",
       "authors": ["J. K. 롤링"],
       "publisher": "문학수첩",
-      "publication_year": 2000
+      "publication_year": 2000,
+      "isbn13": "9788983920775",
+      "cover_url": "https://cdn.example.com/book-covers/9788983920775.jpg"
     },
     {
       "doc_id": "book_1002",
@@ -22,7 +24,9 @@
       "title": "해리 포터와 비밀의 방 2",
       "authors": ["J. K. 롤링"],
       "publisher": "문학수첩",
-      "publication_year": 2001
+      "publication_year": 2001,
+      "isbn13": "9788983921291",
+      "cover_url": "https://cdn.example.com/book-covers/9788983921291.jpg"
     }
   ],
   "facets": {

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { addCartItem, clearCart, getCart, removeCartItem, updateCartItem, type Cart } from '../../api/cart'
 import { getCurrentOfferByMaterial, type CurrentOffer } from '../../api/catalog'
 import { search } from '../../api/searchApi'
+import BookCover from '../../components/books/BookCover'
 import type { BookHit } from '../../types/search'
 
 type RecommendationTab = 'ai' | 'today' | 'new'
@@ -13,6 +14,8 @@ type RecommendationItem = {
   title: string
   authors: string[]
   publisher: string | null
+  isbn13: string | null
+  coverUrl: string | null
   offer: CurrentOffer | null
 }
 
@@ -61,12 +64,16 @@ function mapHitToRecommendation(hit: BookHit): Omit<RecommendationItem, 'offer'>
   const title = typeof source.title_ko === 'string' ? source.title_ko : '제목 정보 없음'
   const authors = Array.isArray(source.authors) ? source.authors.filter((author) => typeof author === 'string') : []
   const publisher = typeof source.publisher_name === 'string' ? source.publisher_name : null
+  const isbn13 = typeof source.isbn13 === 'string' ? source.isbn13 : null
+  const coverUrl = typeof source.cover_url === 'string' ? source.cover_url : null
 
   return {
     docId,
     title,
     authors,
     publisher,
+    isbn13,
+    coverUrl,
   }
 }
 
@@ -382,7 +389,14 @@ export default function CartPage() {
                 visibleItems.map((item) => (
                   <article key={item.cart_item_id} className="cart-item-row">
                     <Link to={item.material_id ? `/book/${encodeURIComponent(item.material_id)}` : '/search'} className="cart-cover">
-                      <span>{(item.title ?? 'BOOK').slice(0, 1)}</span>
+                      <BookCover
+                        className="book-cover-image"
+                        title={item.title ?? '도서 표지'}
+                        coverUrl={item.cover_url ?? null}
+                        isbn13={item.isbn13 ?? null}
+                        docId={item.material_id ?? `sku:${item.sku_id}`}
+                        size="M"
+                      />
                     </Link>
                     <div className="cart-item-body">
                       <div className="cart-item-title">{item.title ?? `도서 SKU #${item.sku_id}`}</div>
@@ -472,7 +486,14 @@ export default function CartPage() {
                   {recommendations.map((item) => (
                     <article key={item.docId} className="cart-reco-item">
                       <Link to={`/book/${encodeURIComponent(item.docId)}`} className="cart-reco-cover">
-                        <span>{item.title.slice(0, 1)}</span>
+                        <BookCover
+                          className="book-cover-image"
+                          title={item.title}
+                          coverUrl={item.coverUrl}
+                          isbn13={item.isbn13}
+                          docId={item.docId}
+                          size="M"
+                        />
                       </Link>
                       <Link to={`/book/${encodeURIComponent(item.docId)}`} className="cart-reco-title">
                         {item.title}

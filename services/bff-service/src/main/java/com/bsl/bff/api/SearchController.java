@@ -136,6 +136,8 @@ public class SearchController {
                     mappedHit.setAuthors(nullToEmptyList(hit.getSource().getAuthors()));
                     mappedHit.setPublisher(hit.getSource().getPublisherName());
                     mappedHit.setPublicationYear(hit.getSource().getIssuedYear());
+                    mappedHit.setIsbn13(hit.getSource().getIsbn13());
+                    mappedHit.setCoverUrl(hit.getSource().getCoverUrl());
                 } else {
                     mappedHit.setTitle("");
                     mappedHit.setAuthors(List.of());
@@ -207,7 +209,13 @@ public class SearchController {
         if (allAuthors.isEmpty()) {
             return;
         }
-        List<String> resolved = aliasService.applyAliases(allAuthors);
+        List<String> resolved;
+        try {
+            resolved = aliasService.applyAliases(allAuthors);
+        } catch (RuntimeException ignored) {
+            // Alias lookup is best-effort. Search should still succeed even if authority tables are unavailable.
+            return;
+        }
         if (resolved == null || resolved.size() != allAuthors.size()) {
             return;
         }

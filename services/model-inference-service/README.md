@@ -119,6 +119,30 @@ MIS_SPELL_MODEL_PATH=/models/spell/t5-typo-ko-v1/spell.onnx
 MIS_SPELL_TOKENIZER_PATH=/models/spell/t5-typo-ko-v1/tokenizer.json
 ```
 
+## Embed Model Enablement (ONNX, bge-m3)
+
+### Artifact layout
+
+```
+models/
+  embed/
+    bge-m3/
+      model.onnx
+      tokenizer.json
+```
+
+### Local run
+
+```bash
+./scripts/mis/run_mis_embed.sh
+```
+
+### Smoke test
+
+```bash
+./scripts/mis/embed_smoke_test.sh
+```
+
 ## Model Registry & Artifacts
 
 `app/config/model_registry.json` controls active/canary routing. `artifact_uri` may reference local paths

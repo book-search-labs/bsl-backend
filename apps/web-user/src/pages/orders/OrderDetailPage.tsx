@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { cancelOrder, getOrder } from '../../api/orders'
+import BookCover from '../../components/books/BookCover'
 import { getShipmentsByOrder } from '../../api/shipments'
 
 const ORDER_STATUS_LABEL: Record<string, string> = {
@@ -115,7 +116,7 @@ export default function OrderDetailPage() {
 
   const order = orderDetail?.order
   const canCancel = order?.status === 'PAYMENT_PENDING' || order?.status === 'CREATED'
-  const canRefund = order && ['PAID', 'READY_TO_SHIP', 'SHIPPED', 'DELIVERED'].includes(order.status)
+  const canRefund = order && ['PAID', 'READY_TO_SHIP', 'SHIPPED', 'DELIVERED', 'PARTIALLY_REFUNDED'].includes(order.status)
 
   const statusTimeline = useMemo(() => {
     const events = orderDetail?.events ?? []
@@ -258,7 +259,14 @@ export default function OrderDetailPage() {
               {orderDetail.items.map((item) => (
                 <article key={item.order_item_id} className="order-detail-item">
                   <Link to={item.material_id ? `/book/${encodeURIComponent(item.material_id)}` : '/search'} className="order-item-cover">
-                    <span>{(item.title ?? '책').slice(0, 1)}</span>
+                    <BookCover
+                      className="book-cover-image"
+                      title={item.title ?? '도서 표지'}
+                      coverUrl={item.cover_url ?? null}
+                      isbn13={item.isbn13 ?? null}
+                      docId={item.material_id ?? `sku:${item.sku_id}`}
+                      size="M"
+                    />
                   </Link>
                   <div className="order-item-body">
                     <div className="fw-semibold">{item.title ?? `도서 SKU #${item.sku_id}`}</div>

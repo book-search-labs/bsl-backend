@@ -1,3 +1,5 @@
+import { clearSession } from '../services/mySession'
+
 type HttpErrorDetails = {
   status: number
   statusText: string
@@ -89,6 +91,25 @@ function isJsonBody(body: unknown) {
   return true
 }
 
+function isAuthLoginRequest(url: string) {
+  if (typeof window === 'undefined') return false
+  try {
+    const pathname = new URL(url, window.location.origin).pathname
+    return pathname === '/auth/login' || pathname === '/v1/auth/login'
+  } catch {
+    return false
+  }
+}
+
+function handleUnauthorized(url: string) {
+  clearSession()
+  if (typeof window === 'undefined') return
+  if (isAuthLoginRequest(url)) return
+  if (window.location.pathname.startsWith('/login')) return
+  const redirect = `${window.location.pathname}${window.location.search}`
+  window.location.assign(`/login?redirect=${encodeURIComponent(redirect)}`)
+}
+
 export async function fetchJson<T>(url: string, init: JsonInit = {}): Promise<T> {
   const { timeoutMs = 5000, ...requestInit } = init
   const controller = new AbortController()
@@ -135,6 +156,9 @@ export async function fetchJson<T>(url: string, init: JsonInit = {}): Promise<T>
 
     if (!response.ok) {
       const rawStatusText = normalizeStatusText(response.statusText)
+      if (response.status === 401) {
+        handleUnauthorized(url)
+      }
       throw new HttpError(resolveHttpErrorMessage(parsed, rawStatusText, response.status), {
         status: response.status,
         statusText: rawStatusText || 'http_error',
