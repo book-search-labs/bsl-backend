@@ -1,16 +1,38 @@
 ALTER TABLE cart_content_item
-  ADD COLUMN IF NOT EXISTS benefit_code VARCHAR(64) NULL AFTER content_type,
-  ADD COLUMN IF NOT EXISTS badge VARCHAR(64) NULL AFTER description,
-  ADD COLUMN IF NOT EXISTS discount_type VARCHAR(24) NULL AFTER badge,
-  ADD COLUMN IF NOT EXISTS discount_value INT NULL AFTER discount_type,
-  ADD COLUMN IF NOT EXISTS min_order_amount INT NULL AFTER discount_value,
-  ADD COLUMN IF NOT EXISTS max_discount_amount INT NULL AFTER min_order_amount,
-  ADD COLUMN IF NOT EXISTS valid_from DATETIME NULL AFTER max_discount_amount,
-  ADD COLUMN IF NOT EXISTS valid_to DATETIME NULL AFTER valid_from,
-  ADD COLUMN IF NOT EXISTS daily_limit INT NULL AFTER valid_to,
-  ADD COLUMN IF NOT EXISTS remaining_daily INT NULL AFTER daily_limit,
-  ADD COLUMN IF NOT EXISTS link_url VARCHAR(500) NULL AFTER remaining_daily,
-  ADD COLUMN IF NOT EXISTS cta_label VARCHAR(64) NULL AFTER link_url;
+  ADD COLUMN benefit_code VARCHAR(64) NULL AFTER content_type;
+
+ALTER TABLE cart_content_item
+  ADD COLUMN badge VARCHAR(64) NULL AFTER description;
+
+ALTER TABLE cart_content_item
+  ADD COLUMN discount_type VARCHAR(24) NULL AFTER badge;
+
+ALTER TABLE cart_content_item
+  ADD COLUMN discount_value INT NULL AFTER discount_type;
+
+ALTER TABLE cart_content_item
+  ADD COLUMN min_order_amount INT NULL AFTER discount_value;
+
+ALTER TABLE cart_content_item
+  ADD COLUMN max_discount_amount INT NULL AFTER min_order_amount;
+
+ALTER TABLE cart_content_item
+  ADD COLUMN valid_from DATETIME NULL AFTER max_discount_amount;
+
+ALTER TABLE cart_content_item
+  ADD COLUMN valid_to DATETIME NULL AFTER valid_from;
+
+ALTER TABLE cart_content_item
+  ADD COLUMN daily_limit INT NULL AFTER valid_to;
+
+ALTER TABLE cart_content_item
+  ADD COLUMN remaining_daily INT NULL AFTER daily_limit;
+
+ALTER TABLE cart_content_item
+  ADD COLUMN link_url VARCHAR(500) NULL AFTER remaining_daily;
+
+ALTER TABLE cart_content_item
+  ADD COLUMN cta_label VARCHAR(64) NULL AFTER link_url;
 
 UPDATE cart_content_item
 SET
