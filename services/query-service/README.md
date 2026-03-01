@@ -116,6 +116,8 @@ CORS_ALLOW_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:
 - `POST /query-context` (deprecated alias of `/query/prepare`)
 - `POST /query/enhance` (gating + rewrite)
 - `GET /internal/qc/rewrite/failures`
+- `GET /internal/chat/recommend/experiment` (recommend experiment diagnostics)
+- `POST /internal/chat/recommend/experiment/reset` (recommend experiment state reset)
 
 ## Test
 ```bash

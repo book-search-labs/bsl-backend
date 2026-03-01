@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 import httpx
 import pytest
@@ -570,6 +571,31 @@ def test_run_tool_chat_book_recommendation_experiment_auto_disables_on_block_rat
     assert "선정 근거:" not in third["answer"]["content"]
     assert third["sources"]
     assert "recommend_status=disabled_auto" in third["sources"][0]["snippet"]
+
+
+def test_reset_recommend_experiment_state_clears_quality_snapshot(monkeypatch):
+    monkeypatch.setenv("QS_CHAT_RECOMMEND_EXPERIMENT_ENABLED", "1")
+    now_ts = int(time.time())
+    chat_tools._CACHE.set_json(
+        chat_tools._recommend_experiment_disable_key(),
+        {"until_ts": now_ts + 120, "reason": "QUALITY_BLOCK_RATE"},
+        ttl=120,
+    )
+    chat_tools._CACHE.set_json(
+        chat_tools._recommend_experiment_state_key(),
+        {"total": 10, "blocked": 6, "block_rate": 0.6},
+        ttl=600,
+    )
+
+    reset = chat_tools.reset_recommend_experiment_state()
+
+    assert reset["reset_applied"] is True
+    assert reset["before"]["auto_disabled"] is True
+    assert reset["before"]["total"] == 10
+    assert reset["after"]["total"] == 0
+    assert reset["after"]["blocked"] == 0
+    assert reset["after"]["block_rate"] == 0.0
+    assert reset["after"]["auto_disabled"] is False
 
 
 def test_run_tool_chat_order_lookup_success(monkeypatch):

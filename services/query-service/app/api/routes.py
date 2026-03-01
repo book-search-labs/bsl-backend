@@ -24,6 +24,7 @@ from app.core.chat import (
     run_chat,
     run_chat_stream,
 )
+from app.core.chat_tools import get_recommend_experiment_snapshot, reset_recommend_experiment_state
 from app.core.understanding import parse_understanding
 
 router = APIRouter()
@@ -332,6 +333,45 @@ async def chat_provider_snapshot(request: Request):
         "request_id": request_id,
         "status": "ok",
         "snapshot": get_chat_provider_snapshot(trace_id, request_id),
+    }
+    return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
+
+
+@router.get("/internal/chat/recommend/experiment")
+async def chat_recommend_experiment_snapshot(request: Request):
+    trace_id, request_id, _, traceparent = _extract_ids(request)
+    snapshot = get_recommend_experiment_snapshot()
+    metrics.inc("chat_recommend_experiment_snapshot_requests_total", {"result": "ok"})
+    payload = {
+        "version": "v1",
+        "trace_id": trace_id,
+        "request_id": request_id,
+        "status": "ok",
+        "experiment": snapshot,
+    }
+    return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
+
+
+@router.post("/internal/chat/recommend/experiment/reset")
+async def chat_recommend_experiment_reset(request: Request):
+    trace_id, request_id, _, traceparent = _extract_ids(request)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if isinstance(body, dict):
+        if isinstance(body.get("trace_id"), str) and body.get("trace_id"):
+            trace_id = body.get("trace_id")
+        if isinstance(body.get("request_id"), str) and body.get("request_id"):
+            request_id = body.get("request_id")
+    snapshot = reset_recommend_experiment_state()
+    metrics.inc("chat_recommend_experiment_reset_requests_total", {"result": "ok"})
+    payload = {
+        "version": "v1",
+        "trace_id": trace_id,
+        "request_id": request_id,
+        "status": "ok",
+        "reset": snapshot,
     }
     return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
 

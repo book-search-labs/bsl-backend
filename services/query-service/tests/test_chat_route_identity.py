@@ -80,6 +80,56 @@ def test_chat_provider_snapshot_route_returns_payload(monkeypatch):
     assert data["snapshot"]["routing"]["final_chain"][0] == "primary"
 
 
+def test_chat_recommend_experiment_snapshot_route_returns_payload(monkeypatch):
+    monkeypatch.setattr(
+        routes,
+        "get_recommend_experiment_snapshot",
+        lambda: {
+            "enabled": True,
+            "auto_disabled": False,
+            "disabled_until": None,
+            "disable_reason": None,
+            "total": 12,
+            "blocked": 2,
+            "block_rate": 0.16,
+            "min_samples": 20,
+            "max_block_rate": 0.4,
+        },
+    )
+
+    client = TestClient(app)
+    response = client.get("/internal/chat/recommend/experiment")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["experiment"]["enabled"] is True
+    assert data["experiment"]["blocked"] == 2
+
+
+def test_chat_recommend_experiment_reset_route_returns_payload(monkeypatch):
+    monkeypatch.setattr(
+        routes,
+        "reset_recommend_experiment_state",
+        lambda: {
+            "reset_applied": True,
+            "reset_at_ms": 1760000100000,
+            "before": {"enabled": True, "total": 15, "blocked": 8, "block_rate": 0.53},
+            "after": {"enabled": True, "total": 0, "blocked": 0, "block_rate": 0.0},
+        },
+    )
+
+    client = TestClient(app)
+    response = client.post("/internal/chat/recommend/experiment/reset", json={})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["reset"]["reset_applied"] is True
+    assert data["reset"]["before"]["total"] == 15
+    assert data["reset"]["after"]["total"] == 0
+
+
 def test_chat_session_state_route_returns_payload(monkeypatch):
     captured = []
 

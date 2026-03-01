@@ -2237,6 +2237,24 @@ def get_recommend_experiment_snapshot() -> dict[str, Any]:
     }
 
 
+def reset_recommend_experiment_state() -> dict[str, Any]:
+    before = get_recommend_experiment_snapshot()
+    _CACHE.set_json(_recommend_experiment_disable_key(), {"cleared": True}, ttl=1)
+    _CACHE.set_json(
+        _recommend_experiment_state_key(),
+        {"total": 0, "blocked": 0, "block_rate": 0.0, "cleared": True},
+        ttl=1,
+    )
+    after = get_recommend_experiment_snapshot()
+    metrics.inc("chat_recommend_experiment_reset_total", {"result": "ok"})
+    return {
+        "reset_applied": True,
+        "reset_at_ms": int(time.time() * 1000),
+        "before": before,
+        "after": after,
+    }
+
+
 def _recommendation_variant(
     *,
     session_id: str,

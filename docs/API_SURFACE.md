@@ -645,6 +645,54 @@ If supported, the server should treat it as:
 - Contract: `contracts/chat-provider-snapshot-response.schema.json`
 - Example: `contracts/examples/chat-provider-snapshot-response.sample.json`
 
+## GET `/internal/chat/recommend/experiment`
+**Purpose**: Internal recommendation experiment diagnostics snapshot (enabled/auto-disabled/block-rate state).
+
+### Response (MVP shape)
+```json
+{
+  "version": "v1",
+  "trace_id": "string",
+  "request_id": "string",
+  "status": "ok",
+  "experiment": {
+    "enabled": true,
+    "auto_disabled": false,
+    "disabled_until": null,
+    "disable_reason": null,
+    "total": 12,
+    "blocked": 3,
+    "block_rate": 0.25,
+    "min_samples": 20,
+    "max_block_rate": 0.4
+  }
+}
+```
+
+## POST `/internal/chat/recommend/experiment/reset`
+**Purpose**: Internal recommendation experiment state reset (quality counters + auto-disable latch clear).
+
+### Request
+```json
+{}
+```
+
+### Response (MVP shape)
+```json
+{
+  "version": "v1",
+  "trace_id": "string",
+  "request_id": "string",
+  "status": "ok",
+  "reset": {
+    "reset_applied": true,
+    "reset_at_ms": 1760000000000,
+    "before": {"total": 15, "blocked": 8, "block_rate": 0.53},
+    "after": {"total": 0, "blocked": 0, "block_rate": 0.0}
+  }
+}
+```
+
 ## GET `/internal/chat/session/state`
 **Purpose**: Internal chat session diagnostics snapshot (fallback count + unresolved context).
 

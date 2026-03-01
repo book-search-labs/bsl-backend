@@ -144,6 +144,20 @@ curl -s http://localhost:8001/internal/chat/providers
 ```
 응답의 `snapshot.providers[]`에서 provider별 `cooldown`/`stats`를, `snapshot.routing.final_chain`에서 현재 우선순위를 확인한다.
 
+추천 실험 상태 스냅샷은:
+```bash
+curl -s http://localhost:8001/internal/chat/recommend/experiment
+```
+응답의 `experiment.total/blocked/block_rate`, `auto_disabled`로 실험 상태를 즉시 확인한다.
+
+추천 실험 상태를 수동 초기화하려면:
+```bash
+curl -s -X POST http://localhost:8001/internal/chat/recommend/experiment/reset \
+  -H "content-type: application/json" \
+  -d '{}'
+```
+초기화 관측은 `chat_recommend_experiment_reset_total{result}`와 `chat_recommend_experiment_reset_requests_total{result}`로 확인한다.
+
 세션별 fallback/미해결 컨텍스트 상태는:
 ```bash
 curl -s "http://localhost:8001/internal/chat/session/state?session_id=u:101:default"
