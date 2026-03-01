@@ -106,32 +106,175 @@ def _policy_topic_cache_ttl_sec() -> int:
     return max(30, int(os.getenv("QS_CHAT_POLICY_TOPIC_CACHE_TTL_SEC", "300")))
 
 
+def _recommend_experiment_override_key() -> str:
+    return "chat:recommend:exp:override"
+
+
+def _recommend_experiment_override_ttl_sec() -> int:
+    return max(300, int(os.getenv("QS_CHAT_RECOMMEND_EXPERIMENT_OVERRIDE_TTL_SEC", "604800")))
+
+
+def _recommend_experiment_default_config() -> dict[str, Any]:
+    return {
+        "enabled": str(os.getenv("QS_CHAT_RECOMMEND_EXPERIMENT_ENABLED", "0")).strip().lower() in {"1", "true", "yes", "on"},
+        "diversity_percent": min(100, max(0, int(os.getenv("QS_CHAT_RECOMMEND_EXPERIMENT_DIVERSITY_PERCENT", "50")))),
+        "min_samples": max(1, int(os.getenv("QS_CHAT_RECOMMEND_EXPERIMENT_MIN_SAMPLES", "20"))),
+        "max_block_rate": min(1.0, max(0.0, float(os.getenv("QS_CHAT_RECOMMEND_EXPERIMENT_MAX_BLOCK_RATE", "0.4")))),
+        "auto_disable_sec": max(60, int(os.getenv("QS_CHAT_RECOMMEND_EXPERIMENT_AUTO_DISABLE_SEC", "600"))),
+        "quality_min_candidates": max(1, int(os.getenv("QS_CHAT_RECOMMEND_QUALITY_MIN_CANDIDATES", "2"))),
+        "quality_min_diversity": max(1, int(os.getenv("QS_CHAT_RECOMMEND_QUALITY_MIN_DIVERSITY", "2"))),
+    }
+
+
+def _sanitize_recommend_experiment_overrides(raw: dict[str, Any], *, strict: bool) -> dict[str, Any]:
+    allowed = {
+        "enabled",
+        "diversity_percent",
+        "min_samples",
+        "max_block_rate",
+        "auto_disable_sec",
+        "quality_min_candidates",
+        "quality_min_diversity",
+    }
+    sanitized: dict[str, Any] = {}
+    for key, value in raw.items():
+        if key not in allowed:
+            if strict:
+                raise ValueError(f"unknown override field: {key}")
+            continue
+        if key == "enabled":
+            if isinstance(value, bool):
+                sanitized[key] = value
+                continue
+            if isinstance(value, (int, float)):
+                sanitized[key] = bool(value)
+                continue
+            if isinstance(value, str):
+                token = value.strip().lower()
+                if token in {"1", "true", "yes", "on"}:
+                    sanitized[key] = True
+                    continue
+                if token in {"0", "false", "no", "off"}:
+                    sanitized[key] = False
+                    continue
+            if strict:
+                raise ValueError("override.enabled must be boolean")
+            continue
+
+        if key in {"diversity_percent", "min_samples", "auto_disable_sec", "quality_min_candidates", "quality_min_diversity"}:
+            try:
+                numeric = int(value)
+            except Exception:
+                if strict:
+                    raise ValueError(f"override.{key} must be integer")
+                continue
+            limits = {
+                "diversity_percent": (0, 100),
+                "min_samples": (1, None),
+                "auto_disable_sec": (60, None),
+                "quality_min_candidates": (1, None),
+                "quality_min_diversity": (1, None),
+            }
+            lower, upper = limits[key]
+            if numeric < lower or (upper is not None and numeric > upper):
+                if strict:
+                    if upper is None:
+                        raise ValueError(f"override.{key} must be >= {lower}")
+                    raise ValueError(f"override.{key} must be between {lower} and {upper}")
+                numeric = max(lower, min(upper, numeric)) if upper is not None else max(lower, numeric)
+            sanitized[key] = numeric
+            continue
+
+        if key == "max_block_rate":
+            try:
+                numeric = float(value)
+            except Exception:
+                if strict:
+                    raise ValueError("override.max_block_rate must be number")
+                continue
+            if numeric < 0.0 or numeric > 1.0:
+                if strict:
+                    raise ValueError("override.max_block_rate must be between 0 and 1")
+                numeric = min(1.0, max(0.0, numeric))
+            sanitized[key] = numeric
+    return sanitized
+
+
+def _recommend_experiment_overrides() -> dict[str, Any]:
+    cached = _CACHE.get_json(_recommend_experiment_override_key())
+    if not isinstance(cached, dict):
+        return {}
+    raw = cached.get("overrides")
+    if not isinstance(raw, dict):
+        return {}
+    return _sanitize_recommend_experiment_overrides(raw, strict=False)
+
+
+def get_recommend_experiment_config_overrides() -> dict[str, Any]:
+    return dict(_recommend_experiment_overrides())
+
+
+def update_recommend_experiment_config_overrides(
+    overrides: dict[str, Any] | None,
+    *,
+    clear: bool = False,
+) -> dict[str, Any]:
+    current = {} if clear else _recommend_experiment_overrides()
+    try:
+        patch = _sanitize_recommend_experiment_overrides(overrides or {}, strict=True)
+    except ValueError:
+        metrics.inc("chat_recommend_experiment_config_update_total", {"result": "invalid"})
+        raise
+    current.update(patch)
+    now_ts = int(time.time())
+    ttl_sec = _recommend_experiment_override_ttl_sec() if current else 1
+    payload: dict[str, Any] = {
+        "updated_at": now_ts,
+        "overrides": current,
+    }
+    if not current:
+        payload["cleared"] = True
+    _CACHE.set_json(_recommend_experiment_override_key(), payload, ttl=ttl_sec)
+    metrics.inc("chat_recommend_experiment_config_update_total", {"result": "ok"})
+    return {
+        "updated_at": now_ts,
+        "ttl_sec": ttl_sec,
+        "overrides": dict(current),
+    }
+
+
+def _recommend_experiment_config() -> dict[str, Any]:
+    config = _recommend_experiment_default_config()
+    config.update(_recommend_experiment_overrides())
+    return config
+
+
 def _recommend_experiment_enabled() -> bool:
-    return str(os.getenv("QS_CHAT_RECOMMEND_EXPERIMENT_ENABLED", "0")).strip().lower() in {"1", "true", "yes", "on"}
+    return bool(_recommend_experiment_config().get("enabled"))
 
 
 def _recommend_experiment_diversity_percent() -> int:
-    return min(100, max(0, int(os.getenv("QS_CHAT_RECOMMEND_EXPERIMENT_DIVERSITY_PERCENT", "50"))))
+    return int(_recommend_experiment_config().get("diversity_percent") or 0)
 
 
 def _recommend_experiment_min_samples() -> int:
-    return max(1, int(os.getenv("QS_CHAT_RECOMMEND_EXPERIMENT_MIN_SAMPLES", "20")))
+    return int(_recommend_experiment_config().get("min_samples") or 1)
 
 
 def _recommend_experiment_max_block_rate() -> float:
-    return min(1.0, max(0.0, float(os.getenv("QS_CHAT_RECOMMEND_EXPERIMENT_MAX_BLOCK_RATE", "0.4"))))
+    return float(_recommend_experiment_config().get("max_block_rate") or 0.0)
 
 
 def _recommend_experiment_auto_disable_sec() -> int:
-    return max(60, int(os.getenv("QS_CHAT_RECOMMEND_EXPERIMENT_AUTO_DISABLE_SEC", "600")))
+    return int(_recommend_experiment_config().get("auto_disable_sec") or 60)
 
 
 def _recommend_quality_min_candidates() -> int:
-    return max(1, int(os.getenv("QS_CHAT_RECOMMEND_QUALITY_MIN_CANDIDATES", "2")))
+    return int(_recommend_experiment_config().get("quality_min_candidates") or 1)
 
 
 def _recommend_quality_min_diversity() -> int:
-    return max(1, int(os.getenv("QS_CHAT_RECOMMEND_QUALITY_MIN_DIVERSITY", "2")))
+    return int(_recommend_experiment_config().get("quality_min_diversity") or 1)
 
 
 def _workflow_ttl_sec() -> int:
@@ -2222,23 +2365,37 @@ def _record_recommend_experiment_quality(*, blocked: bool) -> None:
 def get_recommend_experiment_snapshot() -> dict[str, Any]:
     disable = _CACHE.get_json(_recommend_experiment_disable_key())
     state = _CACHE.get_json(_recommend_experiment_state_key())
+    config = _recommend_experiment_config()
+    overrides = _recommend_experiment_overrides()
     now_ts = int(time.time())
     disabled_until = int(disable.get("until_ts") or 0) if isinstance(disable, dict) else 0
     return {
-        "enabled": _recommend_experiment_enabled(),
+        "enabled": bool(config.get("enabled")),
         "auto_disabled": disabled_until > now_ts,
         "disabled_until": disabled_until if disabled_until > now_ts else None,
         "disable_reason": str(disable.get("reason") or "") if isinstance(disable, dict) and disabled_until > now_ts else None,
         "total": max(0, int(state.get("total") or 0)) if isinstance(state, dict) else 0,
         "blocked": max(0, int(state.get("blocked") or 0)) if isinstance(state, dict) else 0,
         "block_rate": max(0.0, float(state.get("block_rate") or 0.0)) if isinstance(state, dict) else 0.0,
-        "min_samples": _recommend_experiment_min_samples(),
-        "max_block_rate": _recommend_experiment_max_block_rate(),
+        "min_samples": int(config.get("min_samples") or 1),
+        "max_block_rate": float(config.get("max_block_rate") or 0.0),
+        "diversity_percent": int(config.get("diversity_percent") or 0),
+        "auto_disable_sec": int(config.get("auto_disable_sec") or 60),
+        "quality_min_candidates": int(config.get("quality_min_candidates") or 1),
+        "quality_min_diversity": int(config.get("quality_min_diversity") or 1),
+        "config_overrides": overrides,
     }
 
 
-def reset_recommend_experiment_state() -> dict[str, Any]:
+def reset_recommend_experiment_state(
+    *,
+    overrides: dict[str, Any] | None = None,
+    clear_overrides: bool = False,
+) -> dict[str, Any]:
     before = get_recommend_experiment_snapshot()
+    override_result: dict[str, Any] | None = None
+    if clear_overrides or (isinstance(overrides, dict) and bool(overrides)):
+        override_result = update_recommend_experiment_config_overrides(overrides, clear=clear_overrides)
     _CACHE.set_json(_recommend_experiment_disable_key(), {"cleared": True}, ttl=1)
     _CACHE.set_json(
         _recommend_experiment_state_key(),
@@ -2252,6 +2409,7 @@ def reset_recommend_experiment_state() -> dict[str, Any]:
         "reset_at_ms": int(time.time() * 1000),
         "before": before,
         "after": after,
+        "override": override_result,
     }
 
 

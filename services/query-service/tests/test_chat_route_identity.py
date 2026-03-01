@@ -108,15 +108,23 @@ def test_chat_recommend_experiment_snapshot_route_returns_payload(monkeypatch):
 
 
 def test_chat_recommend_experiment_reset_route_returns_payload(monkeypatch):
-    monkeypatch.setattr(
-        routes,
-        "reset_recommend_experiment_state",
-        lambda: {
+    captured = {}
+
+    def fake_reset_recommend_experiment_state(*, overrides=None, clear_overrides=False):
+        captured["overrides"] = overrides
+        captured["clear_overrides"] = clear_overrides
+        return {
             "reset_applied": True,
             "reset_at_ms": 1760000100000,
             "before": {"enabled": True, "total": 15, "blocked": 8, "block_rate": 0.53},
             "after": {"enabled": True, "total": 0, "blocked": 0, "block_rate": 0.0},
-        },
+            "override": None,
+        }
+
+    monkeypatch.setattr(
+        routes,
+        "reset_recommend_experiment_state",
+        fake_reset_recommend_experiment_state,
     )
 
     client = TestClient(app)
@@ -128,6 +136,80 @@ def test_chat_recommend_experiment_reset_route_returns_payload(monkeypatch):
     assert data["reset"]["reset_applied"] is True
     assert data["reset"]["before"]["total"] == 15
     assert data["reset"]["after"]["total"] == 0
+    assert captured["overrides"] is None
+    assert captured["clear_overrides"] is False
+
+
+def test_chat_recommend_experiment_reset_route_accepts_overrides(monkeypatch):
+    captured = {}
+
+    def fake_reset_recommend_experiment_state(*, overrides=None, clear_overrides=False):
+        captured["overrides"] = overrides
+        captured["clear_overrides"] = clear_overrides
+        return {
+            "reset_applied": True,
+            "reset_at_ms": 1760000100000,
+            "before": {"enabled": True, "total": 4, "blocked": 1, "block_rate": 0.25},
+            "after": {"enabled": True, "total": 0, "blocked": 0, "block_rate": 0.0},
+            "override": {"overrides": overrides or {}},
+        }
+
+    monkeypatch.setattr(routes, "reset_recommend_experiment_state", fake_reset_recommend_experiment_state)
+
+    client = TestClient(app)
+    response = client.post(
+        "/internal/chat/recommend/experiment/reset",
+        json={
+            "clear_overrides": True,
+            "overrides": {
+                "enabled": True,
+                "diversity_percent": 70,
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["reset"]["override"]["overrides"]["diversity_percent"] == 70
+    assert captured["clear_overrides"] is True
+    assert captured["overrides"]["enabled"] is True
+
+
+def test_chat_recommend_experiment_reset_route_rejects_invalid_overrides():
+    client = TestClient(app)
+    response = client.post("/internal/chat/recommend/experiment/reset", json={"overrides": "bad"})
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_request"
+
+
+def test_chat_recommend_experiment_reset_route_rejects_invalid_clear_overrides():
+    client = TestClient(app)
+    response = client.post("/internal/chat/recommend/experiment/reset", json={"clear_overrides": "yes"})
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_request"
+
+
+def test_chat_recommend_experiment_reset_route_rejects_invalid_override_value(monkeypatch):
+    def fake_reset_recommend_experiment_state(*, overrides=None, clear_overrides=False):
+        raise ValueError("override.max_block_rate must be between 0 and 1")
+
+    monkeypatch.setattr(routes, "reset_recommend_experiment_state", fake_reset_recommend_experiment_state)
+
+    client = TestClient(app)
+    response = client.post(
+        "/internal/chat/recommend/experiment/reset",
+        json={"overrides": {"max_block_rate": 1.5}},
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_request"
+    assert "max_block_rate" in payload["error"]["message"]
 
 
 def test_chat_session_state_route_returns_payload(monkeypatch):

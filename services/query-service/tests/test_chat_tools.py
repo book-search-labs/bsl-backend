@@ -596,6 +596,54 @@ def test_reset_recommend_experiment_state_clears_quality_snapshot(monkeypatch):
     assert reset["after"]["blocked"] == 0
     assert reset["after"]["block_rate"] == 0.0
     assert reset["after"]["auto_disabled"] is False
+    assert reset["override"] is None
+
+
+def test_update_recommend_experiment_config_overrides_updates_snapshot(monkeypatch):
+    monkeypatch.setenv("QS_CHAT_RECOMMEND_EXPERIMENT_ENABLED", "0")
+
+    updated = chat_tools.update_recommend_experiment_config_overrides(
+        {
+            "enabled": True,
+            "diversity_percent": 80,
+            "min_samples": 12,
+            "max_block_rate": 0.35,
+            "auto_disable_sec": 300,
+            "quality_min_candidates": 3,
+            "quality_min_diversity": 2,
+        },
+        clear=True,
+    )
+
+    snapshot = chat_tools.get_recommend_experiment_snapshot()
+    assert updated["overrides"]["enabled"] is True
+    assert updated["overrides"]["diversity_percent"] == 80
+    assert snapshot["enabled"] is True
+    assert snapshot["diversity_percent"] == 80
+    assert snapshot["min_samples"] == 12
+    assert snapshot["max_block_rate"] == 0.35
+    assert snapshot["auto_disable_sec"] == 300
+    assert snapshot["quality_min_candidates"] == 3
+    assert snapshot["quality_min_diversity"] == 2
+    assert snapshot["config_overrides"]["enabled"] is True
+
+
+def test_update_recommend_experiment_config_overrides_rejects_invalid_value():
+    with pytest.raises(ValueError):
+        chat_tools.update_recommend_experiment_config_overrides({"max_block_rate": 1.5}, clear=True)
+
+
+def test_reset_recommend_experiment_state_applies_override_patch():
+    reset = chat_tools.reset_recommend_experiment_state(
+        overrides={"diversity_percent": 65, "quality_min_candidates": 2},
+        clear_overrides=True,
+    )
+
+    assert reset["reset_applied"] is True
+    assert isinstance(reset["override"], dict)
+    assert reset["override"]["overrides"]["diversity_percent"] == 65
+    assert reset["after"]["diversity_percent"] == 65
+    assert reset["after"]["quality_min_candidates"] == 2
 
 
 def test_run_tool_chat_order_lookup_success(monkeypatch):

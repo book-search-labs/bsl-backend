@@ -364,7 +364,36 @@ async def chat_recommend_experiment_reset(request: Request):
             trace_id = body.get("trace_id")
         if isinstance(body.get("request_id"), str) and body.get("request_id"):
             request_id = body.get("request_id")
-    snapshot = reset_recommend_experiment_state()
+    overrides: dict[str, Any] | None = None
+    clear_overrides = False
+    if isinstance(body, dict):
+        raw_overrides = body.get("overrides")
+        if raw_overrides is not None:
+            if not isinstance(raw_overrides, dict):
+                metrics.inc("chat_recommend_experiment_reset_requests_total", {"result": "invalid_request"})
+                return _error_response(
+                    "invalid_request",
+                    "overrides must be a JSON object when provided.",
+                    trace_id,
+                    request_id,
+                )
+            overrides = raw_overrides
+        raw_clear = body.get("clear_overrides")
+        if raw_clear is not None:
+            if not isinstance(raw_clear, bool):
+                metrics.inc("chat_recommend_experiment_reset_requests_total", {"result": "invalid_request"})
+                return _error_response(
+                    "invalid_request",
+                    "clear_overrides must be boolean when provided.",
+                    trace_id,
+                    request_id,
+                )
+            clear_overrides = raw_clear
+    try:
+        snapshot = reset_recommend_experiment_state(overrides=overrides, clear_overrides=clear_overrides)
+    except ValueError as exc:
+        metrics.inc("chat_recommend_experiment_reset_requests_total", {"result": "invalid_override"})
+        return _error_response("invalid_request", str(exc), trace_id, request_id)
     metrics.inc("chat_recommend_experiment_reset_requests_total", {"result": "ok"})
     payload = {
         "version": "v1",

@@ -104,12 +104,15 @@ class QueryServiceClientTest {
             .thenReturn(ResponseEntity.ok(ok));
 
         AuthContextHolder.set(new AuthContext("101", "42"));
-        client.resetChatRecommendExperiment(null);
+        client.resetChatRecommendExperiment(null, java.util.Map.of("clear_overrides", true));
 
         ArgumentCaptor<HttpEntity> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
         verify(restTemplate).exchange(eq("http://localhost:8001/internal/chat/recommend/experiment/reset"), eq(HttpMethod.POST), entityCaptor.capture(), eq(com.fasterxml.jackson.databind.JsonNode.class));
         assertThat(entityCaptor.getValue().getHeaders().getFirst("x-user-id")).isEqualTo("101");
         assertThat(entityCaptor.getValue().getHeaders().getFirst("x-admin-id")).isEqualTo("42");
+        Object body = entityCaptor.getValue().getBody();
+        assertThat(body).isInstanceOf(java.util.Map.class);
+        assertThat(((java.util.Map<?, ?>) body).get("clear_overrides")).isEqualTo(Boolean.TRUE);
     }
 
     private DownstreamProperties downstream(String queryBaseUrl) {

@@ -319,11 +319,16 @@ public class QueryServiceClient {
     }
 
     public JsonNode resetChatRecommendExperiment(RequestContext context) {
+        return resetChatRecommendExperiment(context, null);
+    }
+
+    public JsonNode resetChatRecommendExperiment(RequestContext context, Map<String, Object> requestBody) {
         String url = properties.getBaseUrl() + "/internal/chat/recommend/experiment/reset";
         HttpHeaders headers = DownstreamHeaders.from(context);
         enrichAuthHeaders(headers);
         headers.add(HttpHeaders.CONTENT_TYPE, "application/json");
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(new HashMap<>(), headers);
+        Map<String, Object> body = requestBody == null ? new HashMap<>() : requestBody;
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
         try {
             ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.POST, entity, JsonNode.class);

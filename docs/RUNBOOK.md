@@ -160,12 +160,29 @@ curl -s http://localhost:8001/internal/chat/providers
 curl -s http://localhost:8001/internal/chat/recommend/experiment
 ```
 응답의 `experiment.total/blocked/block_rate`, `auto_disabled`로 실험 상태를 즉시 확인한다.
+`experiment.diversity_percent`, `experiment.quality_min_candidates`, `experiment.config_overrides`로 현재 runtime 설정/override를 함께 점검한다.
 
 추천 실험 상태를 수동 초기화하려면:
 ```bash
 curl -s -X POST http://localhost:8001/internal/chat/recommend/experiment/reset \
   -H "content-type: application/json" \
   -d '{}'
+```
+runtime override를 적용하면서 초기화하려면:
+```bash
+curl -s -X POST http://localhost:8001/internal/chat/recommend/experiment/reset \
+  -H "content-type: application/json" \
+  -d '{
+    "clear_overrides": true,
+    "overrides": {
+      "enabled": true,
+      "diversity_percent": 70,
+      "min_samples": 20,
+      "max_block_rate": 0.4,
+      "quality_min_candidates": 2,
+      "quality_min_diversity": 2
+    }
+  }'
 ```
 초기화 관측은 `chat_recommend_experiment_reset_total{result}`와 `chat_recommend_experiment_reset_requests_total{result}`로 확인한다.
 
@@ -231,7 +248,7 @@ curl -s "http://localhost:8088/chat/recommend/experiment" \
 curl -s -X POST "http://localhost:8088/chat/recommend/experiment/reset" \
   -H "x-admin-id: 1" \
   -H "content-type: application/json" \
-  -d '{}'
+  -d '{"clear_overrides":true,"overrides":{"diversity_percent":70}}'
 ```
 
 ## Sample Dev Bootstrap (Recommended)

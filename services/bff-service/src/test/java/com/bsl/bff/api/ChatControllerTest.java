@@ -542,7 +542,7 @@ class ChatControllerTest {
             .andExpect(status().isForbidden())
             .andExpect(jsonPath("$.error.code").value("forbidden"));
 
-        verify(queryServiceClient, never()).resetChatRecommendExperiment(any());
+        verify(queryServiceClient, never()).resetChatRecommendExperiment(any(), anyMap());
     }
 
     @Test
@@ -561,7 +561,7 @@ class ChatControllerTest {
                 + "}"
                 + "}"
         );
-        when(queryServiceClient.resetChatRecommendExperiment(any())).thenReturn(responseNode);
+        when(queryServiceClient.resetChatRecommendExperiment(any(), anyMap())).thenReturn(responseNode);
 
         mockMvc.perform(post("/chat/recommend/experiment/reset")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -570,6 +570,8 @@ class ChatControllerTest {
             .andExpect(jsonPath("$.status").value("ok"))
             .andExpect(jsonPath("$.reset.reset_applied").value(true))
             .andExpect(jsonPath("$.reset.after.total").value(0));
+
+        verify(queryServiceClient).resetChatRecommendExperiment(any(), anyMap());
     }
 
     @Test
@@ -588,7 +590,7 @@ class ChatControllerTest {
                 + "}"
                 + "}"
         );
-        when(queryServiceClient.resetChatRecommendExperiment(any())).thenReturn(responseNode);
+        when(queryServiceClient.resetChatRecommendExperiment(any(), anyMap())).thenReturn(responseNode);
 
         mockMvc.perform(post("/v1/chat/recommend/experiment/reset")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -597,5 +599,44 @@ class ChatControllerTest {
             .andExpect(jsonPath("$.status").value("ok"))
             .andExpect(jsonPath("$.reset.reset_applied").value(true))
             .andExpect(jsonPath("$.reset.before.total").value(9));
+
+        verify(queryServiceClient).resetChatRecommendExperiment(any(), anyMap());
+    }
+
+    @Test
+    void chatRecommendExperimentResetForwardsOverridePayload() throws Exception {
+        AuthContextHolder.set(new AuthContext("101", "1"));
+        JsonNode responseNode = objectMapper.readTree(
+            "{"
+                + "\"version\":\"v1\","
+                + "\"trace_id\":\"trace_a\","
+                + "\"request_id\":\"req_a\","
+                + "\"status\":\"ok\","
+                + "\"reset\":{"
+                + "\"reset_applied\":true,"
+                + "\"before\":{\"total\":5},"
+                + "\"after\":{\"total\":0}"
+                + "}"
+                + "}"
+        );
+        when(queryServiceClient.resetChatRecommendExperiment(any(), anyMap())).thenReturn(responseNode);
+
+        String body = "{"
+            + "\"clear_overrides\":true,"
+            + "\"overrides\":{\"enabled\":true,\"diversity_percent\":70}"
+            + "}";
+
+        mockMvc.perform(post("/chat/recommend/experiment/reset")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"));
+
+        ArgumentCaptor<Map<String, Object>> mapCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(queryServiceClient).resetChatRecommendExperiment(any(), mapCaptor.capture());
+        Map<String, Object> payload = mapCaptor.getValue();
+        assertEquals(Boolean.TRUE, payload.get("clear_overrides"));
+        Map<String, Object> overrides = (Map<String, Object>) payload.get("overrides");
+        assertEquals(70, ((Number) overrides.get("diversity_percent")).intValue());
     }
 }

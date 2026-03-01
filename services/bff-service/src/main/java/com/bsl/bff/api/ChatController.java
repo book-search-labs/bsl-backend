@@ -156,11 +156,11 @@ public class ChatController {
 
     @PostMapping("/recommend/experiment/reset")
     public ResponseEntity<JsonNode> recommendExperimentReset(
-        @RequestBody(required = false) Map<String, Object> ignored
+        @RequestBody(required = false) Map<String, Object> request
     ) {
         RequestContext context = RequestContextHolder.get();
         requireAdminContext();
-        JsonNode response = queryServiceClient.resetChatRecommendExperiment(context);
+        JsonNode response = queryServiceClient.resetChatRecommendExperiment(context, request == null ? Map.of() : request);
         if (response == null) {
             throw new DownstreamException(HttpStatus.BAD_GATEWAY, "query_service_error", "Query service response is empty");
         }
