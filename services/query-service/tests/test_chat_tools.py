@@ -100,6 +100,49 @@ def test_run_tool_chat_book_recommendation_without_login(monkeypatch):
     assert result["sources"][0]["url"] == "OS /books_doc_read/_search"
 
 
+def test_run_tool_chat_book_recommendation_uses_normalized_isbn_seed(monkeypatch):
+    captured = {"queries": [], "standalone_query": None, "slots": None}
+    real_build_understanding = chat_tools.build_understanding
+
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        captured["queries"].append(query)
+        return [
+            {"doc_id": "doc-seed", "title": "시드 도서", "author": "저자A", "isbn": "978-0-306-40615-7", "score": 0.99},
+            {"doc_id": "doc-b", "title": "비슷한 도서 B", "author": "저자B", "isbn": "9780306406158", "score": 0.82},
+        ]
+
+    def spy_build_understanding(*, query, intent, slots, standalone_query=None, risk_level=None, q_key=None):
+        captured["standalone_query"] = standalone_query
+        captured["slots"] = slots
+        return real_build_understanding(
+            query=query,
+            intent=intent,
+            slots=slots,
+            standalone_query=standalone_query,
+            risk_level=risk_level,
+            q_key=q_key,
+        )
+
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+    monkeypatch.setattr(chat_tools, "build_understanding", spy_build_understanding)
+
+    payload = {
+        "message": {"role": "user", "content": "ISBN 978-0-306-40615-7 기준으로 비슷한 책 추천해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_book_recommend_isbn"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert captured["queries"]
+    assert captured["queries"][0] == "9780306406157"
+    assert captured["standalone_query"] == "9780306406157"
+    assert captured["slots"]["book_query"]["isbn"] == "9780306406157"
+    assert "1) 시드 도서" not in result["answer"]["content"]
+    assert "비슷한 도서 B" in result["answer"]["content"]
+
+
 def test_run_tool_chat_book_recommendation_persists_selection_state(monkeypatch):
     captured = {}
 
@@ -130,6 +173,29 @@ def test_run_tool_chat_book_recommendation_persists_selection_state(monkeypatch)
     assert isinstance(captured["selection"], dict)
     assert captured["selection"]["type"] == "BOOK_RECOMMENDATION"
     assert len(captured["selection"]["last_candidates"]) >= 2
+
+
+def test_build_selection_candidates_normalizes_book_metadata():
+    candidates = chat_tools._build_selection_candidates(
+        [
+            {
+                "doc_id": "doc-1",
+                "title": "추천 도서 A",
+                "author": "저자A",
+                "isbn": "978-0-306-40615-7",
+                "series": "시리즈A",
+                "volume": "2",
+                "format": "전자책",
+            }
+        ]
+    )
+
+    assert len(candidates) == 1
+    first = candidates[0]
+    assert first["isbn"] == "9780306406157"
+    assert first["series"] == "시리즈A"
+    assert first["volume"] == 2
+    assert first["format"] == "ebook"
 
 
 def test_run_tool_chat_resolves_second_reference_from_selection_state(monkeypatch):

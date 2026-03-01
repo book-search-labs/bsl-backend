@@ -13,6 +13,11 @@ import httpx
 
 from app.core.chat_action_protocol import build_action_draft
 from app.core.chat_action_protocol import validate_action_draft
+from app.core.chat_book_normalization import BookQuerySlots
+from app.core.chat_book_normalization import canonical_book_query
+from app.core.chat_book_normalization import extract_book_query_slots
+from app.core.chat_book_normalization import normalize_isbn
+from app.core.chat_book_normalization import slots_to_dict
 from app.core.chat_policy_engine import build_understanding
 from app.core.chat_policy_engine import decide_route
 from app.core.chat_policy_engine import infer_risk_level
@@ -290,10 +295,18 @@ def _format_krw(amount: Any) -> str:
     return f"{value:,}원"
 
 
-def _extract_recommendation_seed_query(query: str) -> str:
+def _extract_recommendation_seed_query(query: str, *, book_slots: BookQuerySlots | None = None) -> str:
     raw = (query or "").strip()
     if not raw:
         return ""
+
+    slots = book_slots if isinstance(book_slots, BookQuerySlots) else extract_book_query_slots(raw)
+    if isinstance(slots.isbn, str) and slots.isbn:
+        return slots.isbn
+    if isinstance(slots.title, str) and slots.title:
+        return slots.title
+    if isinstance(slots.series, str) and slots.series and isinstance(slots.volume, int) and slots.volume > 0:
+        return f"{slots.series} {slots.volume}권"
 
     quoted_patterns = [
         r"[\"'“”‘’「」『』《》〈〉]\s*([^\"'“”‘’「」『』《》〈〉]{2,120})\s*[\"'“”‘’「」『』《》〈〉]",
@@ -393,13 +406,36 @@ def _build_selection_candidates(candidates: list[dict[str, Any]], *, max_items: 
         title = str(item.get("title") or "").strip()
         if not title:
             continue
+        raw_isbn = str(item.get("isbn") or "").strip()
+        series = str(item.get("series") or item.get("series_title") or "").strip()
+        raw_format = str(item.get("format") or item.get("book_format") or item.get("media_type") or "").strip().lower()
+        if raw_format in {"ebook", "e-book", "electronic", "전자책"}:
+            normalized_format = "ebook"
+        elif raw_format in {"print", "paperback", "hardcover", "종이책", "양장", "무선"}:
+            normalized_format = "print"
+        else:
+            normalized_format = None
+        volume_value = item.get("volume")
+        if volume_value is None:
+            volume_value = item.get("series_no")
+        normalized_volume: int | None = None
+        if isinstance(volume_value, (int, float, str)):
+            try:
+                parsed_volume = int(str(volume_value).strip())
+            except Exception:
+                parsed_volume = 0
+            if parsed_volume > 0:
+                normalized_volume = parsed_volume
         built.append(
             {
                 "index": idx,
                 "doc_id": str(item.get("doc_id") or "").strip(),
                 "title": title,
                 "author": str(item.get("author") or "").strip(),
-                "isbn": str(item.get("isbn") or "").strip(),
+                "isbn": normalize_isbn(raw_isbn) or raw_isbn,
+                "series": series or None,
+                "volume": normalized_volume,
+                "format": normalized_format,
             }
         )
     return built
@@ -475,12 +511,19 @@ def _render_selection_options(selection_state: dict[str, Any], *, max_items: int
         index = int(item.get("index") or 0)
         title = str(item.get("title") or "").strip()
         author = str(item.get("author") or "").strip()
+        isbn = str(item.get("isbn") or "").strip()
+        volume = item.get("volume")
         if index <= 0 or not title:
             continue
+        meta_parts: list[str] = []
         if author:
-            lines.append(f"{index}) {title} ({author})")
-        else:
-            lines.append(f"{index}) {title}")
+            meta_parts.append(author)
+        if isinstance(volume, int) and volume > 0:
+            meta_parts.append(f"{volume}권")
+        if isbn:
+            meta_parts.append(f"ISBN {isbn}")
+        meta = f" ({' / '.join(meta_parts)})" if meta_parts else ""
+        lines.append(f"{index}) {title}{meta}")
     if not lines:
         return "선택 가능한 추천 목록이 없습니다. 다시 추천해달라고 요청해 주세요."
     return "어떤 후보를 말하시는지 번호로 선택해 주세요.\n" + "\n".join(lines)
@@ -490,9 +533,18 @@ def _render_selected_candidate(candidate: dict[str, Any], selected_index: int) -
     title = str(candidate.get("title") or "").strip()
     author = str(candidate.get("author") or "").strip()
     doc_id = str(candidate.get("doc_id") or "").strip()
+    isbn = str(candidate.get("isbn") or "").strip()
+    volume = candidate.get("volume")
+    book_format = str(candidate.get("format") or "").strip().lower()
     parts: list[str] = []
     if author:
         parts.append(f"저자 {author}")
+    if isbn:
+        parts.append(f"ISBN {isbn}")
+    if isinstance(volume, int) and volume > 0:
+        parts.append(f"{volume}권")
+    if book_format in {"ebook", "print"}:
+        parts.append("전자책" if book_format == "ebook" else "종이책")
     if doc_id:
         parts.append(f"ID {doc_id}")
     suffix = f" ({', '.join(parts)})" if parts else ""
@@ -1771,8 +1823,9 @@ async def _handle_book_recommendation(
     trace_id: str,
     request_id: str,
 ) -> dict[str, Any]:
-    seed_query = _extract_recommendation_seed_query(query)
-    lookup_query = seed_query or query
+    book_slots = extract_book_query_slots(query)
+    seed_query = _extract_recommendation_seed_query(query, book_slots=book_slots)
+    lookup_query = canonical_book_query(book_slots, seed_query or query) or query
     candidates = await retrieve_candidates(lookup_query, trace_id, request_id, top_k=10)
 
     if not candidates and seed_query and seed_query != query:
@@ -1786,16 +1839,20 @@ async def _handle_book_recommendation(
             "추천 후보를 찾지 못했습니다. 도서 제목/저자/ISBN 중 하나를 함께 입력해 주세요.",
             tool_name="book_recommend",
             endpoint="OS /books_doc_read/_search",
-            source_snippet=f"seed_query={lookup_query}, candidate_count=0",
+            source_snippet=f"seed_query={lookup_query}, slots={slots_to_dict(book_slots)}, candidate_count=0",
         )
 
-    normalized_seed = _normalize_title_for_compare(seed_query)
+    normalized_seed = _normalize_title_for_compare(seed_query or str(book_slots.title or ""))
+    seed_isbn = book_slots.isbn
     filtered: list[dict[str, Any]] = []
     seed_hit: dict[str, Any] | None = None
     for candidate in candidates:
         title = str(candidate.get("title") or "").strip()
         normalized_title = _normalize_title_for_compare(title)
-        if normalized_seed and normalized_title and normalized_title == normalized_seed:
+        candidate_isbn = normalize_isbn(str(candidate.get("isbn") or "").strip())
+        same_seed_by_isbn = bool(seed_isbn and candidate_isbn and seed_isbn == candidate_isbn)
+        same_seed_by_title = bool(normalized_seed and normalized_title and normalized_title == normalized_seed)
+        if same_seed_by_isbn or same_seed_by_title:
             if seed_hit is None:
                 seed_hit = candidate
             continue
@@ -1813,12 +1870,19 @@ async def _handle_book_recommendation(
             "현재 기준으로 동일 도서 외 유사 후보를 찾지 못했습니다. 제목/저자/카테고리를 함께 입력해 주세요.",
             tool_name="book_recommend",
             endpoint="OS /books_doc_read/_search",
-            source_snippet=f"seed_query={lookup_query}, candidate_count={len(candidates)}, filtered_count={len(filtered)}",
+            source_snippet=(
+                f"seed_query={lookup_query}, slots={slots_to_dict(book_slots)}, "
+                f"candidate_count={len(candidates)}, filtered_count={len(filtered)}"
+            ),
         )
 
     seed_title = ""
     if isinstance(seed_hit, dict):
         seed_title = str(seed_hit.get("title") or "").strip()
+    elif isinstance(book_slots.title, str) and book_slots.title:
+        seed_title = book_slots.title
+    elif isinstance(book_slots.series, str) and book_slots.series and isinstance(book_slots.volume, int) and book_slots.volume > 0:
+        seed_title = f"{book_slots.series} {book_slots.volume}권"
     elif seed_query:
         seed_title = str(seed_query).strip()
     prefix = f"'{seed_title}' 기준 추천 도서입니다.\n" if seed_title else "요청하신 기준으로 추천 도서를 정리했습니다.\n"
@@ -1840,7 +1904,7 @@ async def _handle_book_recommendation(
         content,
         tool_name="book_recommend",
         endpoint="OS /books_doc_read/_search",
-        source_snippet=f"seed_query={lookup_query}, candidate_count={len(candidates)}",
+        source_snippet=f"seed_query={lookup_query}, slots={slots_to_dict(book_slots)}, candidate_count={len(candidates)}",
     )
 
 
@@ -2967,14 +3031,22 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
     order_ref = _extract_order_ref(query)
     has_order_ref = order_ref.order_id is not None or order_ref.order_no is not None
     slots: dict[str, Any] = {"order_ref": {"order_id": order_ref.order_id, "order_no": order_ref.order_no} if has_order_ref else None}
+    book_slots = extract_book_query_slots(query)
+    book_slot_payload = slots_to_dict(book_slots)
+    if any(value is not None and value != "" for value in book_slot_payload.values()):
+        slots["book_query"] = book_slot_payload
     ticket_no = _extract_ticket_no(query)
     if ticket_no:
         slots["ticket_no"] = ticket_no
+    standalone_query = query
+    if intent.name == "BOOK_RECOMMEND":
+        recommendation_seed = _extract_recommendation_seed_query(query, book_slots=book_slots)
+        standalone_query = canonical_book_query(book_slots, recommendation_seed or query) or query
     understanding = build_understanding(
         query=query,
         intent=intent.name,
         slots=slots,
-        standalone_query=query,
+        standalone_query=standalone_query,
         risk_level=infer_risk_level(intent.name),
     )
     decision = decide_route(
