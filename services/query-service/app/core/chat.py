@@ -583,6 +583,28 @@ def _load_llm_call_budget_count(session_id: Optional[str], user_id: Optional[str
     return max(0, max_count)
 
 
+def _load_llm_call_budget_snapshot(session_id: Optional[str], user_id: Optional[str]) -> Dict[str, Any]:
+    limit = _llm_max_calls_per_minute()
+    best_count = 0
+    best_window_start = 0
+    for key in _llm_call_rate_cache_keys(session_id, user_id):
+        cached = _CACHE.get_json(key)
+        if not isinstance(cached, dict):
+            continue
+        count = max(0, int(cached.get("count") or 0))
+        window_start = max(0, int(cached.get("window_start") or 0))
+        if count > best_count or (count == best_count and window_start > best_window_start):
+            best_count = count
+            best_window_start = window_start
+    return {
+        "count": best_count,
+        "limit": limit,
+        "limited": bool(limit > 0 and best_count >= limit),
+        "window_sec": 60,
+        "window_start": best_window_start if best_window_start > 0 else None,
+    }
+
+
 def _clear_llm_call_budget(session_id: Optional[str], user_id: Optional[str]) -> None:
     now_ts = int(time.time())
     for key in _llm_call_rate_cache_keys(session_id, user_id):
@@ -3330,6 +3352,7 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
     if escalation_ready:
         recommended_action = "OPEN_SUPPORT_TICKET"
         recommended_message = "반복 실패가 임계치를 초과했습니다. 상담 티켓 접수를 권장합니다."
+    llm_budget_snapshot = _load_llm_call_budget_snapshot(session_id, _session_user_from_session_id(session_id))
     return {
         "session_id": session_id,
         "state_version": int(durable_state.get("state_version")) if isinstance(durable_state, dict) and isinstance(durable_state.get("state_version"), int) else None,
@@ -3340,6 +3363,7 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
         "recommended_action": recommended_action,
         "recommended_message": recommended_message,
         "unresolved_context": unresolved_context,
+        "llm_call_budget": llm_budget_snapshot,
         "trace_id": trace_id,
         "request_id": request_id,
     }

@@ -251,6 +251,25 @@ def test_get_chat_session_state_prefers_durable_store(monkeypatch):
     assert state["unresolved_context"]["reason_code"] == "LLM_NO_CITATIONS"
 
 
+def test_get_chat_session_state_includes_llm_call_budget_snapshot(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_MAX_LLM_CALLS_PER_MINUTE", "2")
+    session_id = "u:351:default"
+    user_id = "351"
+
+    assert chat._reserve_llm_call_budget(session_id, user_id, mode="json") is None
+    assert chat._reserve_llm_call_budget(session_id, user_id, mode="json") is None
+
+    state = chat.get_chat_session_state(session_id, "trace_now", "req_now")
+    llm_budget = state.get("llm_call_budget")
+
+    assert isinstance(llm_budget, dict)
+    assert llm_budget["limit"] == 2
+    assert llm_budget["count"] >= 2
+    assert llm_budget["limited"] is True
+    assert llm_budget["window_sec"] == 60
+
+
 def test_reset_chat_session_state_appends_action_audit(monkeypatch):
     chat._CACHE = CacheClient(None)
     session_id = "u:302:default"
