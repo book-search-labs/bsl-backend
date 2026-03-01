@@ -133,6 +133,24 @@ class ChatControllerTest {
     }
 
     @Test
+    void chatRejectsCrossUserSessionWhenAuthenticated() throws Exception {
+        AuthContextHolder.set(new AuthContext("101", null));
+        String body = "{"
+            + "\"version\":\"v1\","
+            + "\"session_id\":\"u:999:default\","
+            + "\"message\":{\"role\":\"user\",\"content\":\"hello\"}"
+            + "}";
+
+        mockMvc.perform(post("/chat")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error.code").value("forbidden"));
+
+        verify(queryServiceClient, never()).chat(anyMap(), any());
+    }
+
+    @Test
     void chatStreamUsesStreamingDownstream() throws Exception {
         QueryServiceClient.ChatStreamResult streamResult = new QueryServiceClient.ChatStreamResult();
         streamResult.addCitation("chunk-1");
@@ -326,6 +344,19 @@ class ChatControllerTest {
                 .content("{}"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.error.code").value("bad_request"));
+
+        verify(queryServiceClient, never()).resetChatSession(any(), any());
+    }
+
+    @Test
+    void chatSessionResetRejectsCrossUserSessionWhenAuthenticated() throws Exception {
+        AuthContextHolder.set(new AuthContext("101", null));
+
+        mockMvc.perform(post("/chat/session/reset")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"session_id\":\"u:999:default\"}"))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error.code").value("forbidden"));
 
         verify(queryServiceClient, never()).resetChatSession(any(), any());
     }
