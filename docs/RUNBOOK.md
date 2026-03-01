@@ -99,6 +99,28 @@ curl -s -XPOST http://localhost:8088/chat \
 - `chat_memory_retrieval_total{result}`
 - `chat_memory_delete_total{result}`
 
+### Recommendation quality periodic report
+추천 실험 품질 상태를 리포트/게이트로 점검하려면:
+```bash
+python3 scripts/eval/chat_recommend_eval.py \
+  --metrics-url http://localhost:8001/metrics \
+  --session-id u:101:default \
+  --require-min-samples \
+  --min-samples 20 \
+  --max-block-rate 0.4 \
+  --max-auto-disable-total 0 \
+  --out data/eval/reports
+```
+품질 게이트를 강제하려면 `--gate`를 추가한다.
+
+피드백 집계와 개선 백로그 시드 생성:
+```bash
+python3 scripts/chat/aggregate_feedback.py \
+  --input evaluation/chat/feedback.jsonl \
+  --output evaluation/chat/feedback_summary.json \
+  --backlog-output evaluation/chat/feedback_backlog.json
+```
+
 ### Debug endpoint
 운영 중 라우팅 의사결정을 빠르게 확인하려면:
 ```bash

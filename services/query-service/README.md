@@ -121,3 +121,12 @@ CORS_ALLOW_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:
 ```bash
 python3 -m pytest
 ```
+
+## Chat recommend experiment report
+```bash
+python3 ../../scripts/eval/chat_recommend_eval.py \
+  --metrics-url http://localhost:8001/metrics \
+  --session-id u:101:default \
+  --require-min-samples \
+  --gate
+```
