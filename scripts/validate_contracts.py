@@ -26,7 +26,18 @@ SCHEMA_FILES = {
     "autocomplete-admin-update-request.sample.json": CONTRACTS_DIR / "autocomplete-admin-update-request.schema.json",
     "autocomplete-admin-update-response.sample.json": CONTRACTS_DIR / "autocomplete-admin-update-response.schema.json",
     "autocomplete-admin-trends-response.sample.json": CONTRACTS_DIR / "autocomplete-admin-trends-response.schema.json",
+    "admin-ops-metrics-summary-response.sample.json": CONTRACTS_DIR / "admin-ops-metrics-summary-response.schema.json",
+    "admin-ops-metrics-timeseries-response.sample.json": CONTRACTS_DIR / "admin-ops-metrics-timeseries-response.schema.json",
     "book-detail-response.sample.json": CONTRACTS_DIR / "book-detail-response.schema.json",
+    "home-collections-response.sample.json": CONTRACTS_DIR / "home-collections-response.schema.json",
+    "home-benefits-response.sample.json": CONTRACTS_DIR / "home-benefits-response.schema.json",
+    "home-preorders-response.sample.json": CONTRACTS_DIR / "home-preorders-response.schema.json",
+    "home-preorder-reserve-request.sample.json": CONTRACTS_DIR / "home-preorder-reserve-request.schema.json",
+    "home-preorder-reserve-response.sample.json": CONTRACTS_DIR / "home-preorder-reserve-response.schema.json",
+    "auth-login-request.sample.json": CONTRACTS_DIR / "auth-login-request.schema.json",
+    "auth-session-response.sample.json": CONTRACTS_DIR / "auth-session-response.schema.json",
+    "payment-create-request.sample.json": CONTRACTS_DIR / "payment-create-request.schema.json",
+    "payment-response.sample.json": CONTRACTS_DIR / "payment-response.schema.json",
     "error.sample.json": CONTRACTS_DIR / "error.schema.json",
     "reindex-job-create-request.sample.json": CONTRACTS_DIR / "reindex-job-create-request.schema.json",
     "reindex-job-response.sample.json": CONTRACTS_DIR / "reindex-job-response.schema.json",
@@ -40,6 +51,9 @@ SCHEMA_FILES = {
     "agent-alias-list-response.sample.json": CONTRACTS_DIR / "agent-alias-list-response.schema.json",
     "agent-alias-upsert-request.sample.json": CONTRACTS_DIR / "agent-alias-upsert-request.schema.json",
     "agent-alias-response.sample.json": CONTRACTS_DIR / "agent-alias-response.schema.json",
+    "chat-provider-snapshot-response.sample.json": CONTRACTS_DIR / "chat-provider-snapshot-response.schema.json",
+    "chat-session-state-response.sample.json": CONTRACTS_DIR / "chat-session-state-response.schema.json",
+    "chat-session-reset-response.sample.json": CONTRACTS_DIR / "chat-session-reset-response.schema.json",
 }
 
 def load_json(p: Path) -> dict:

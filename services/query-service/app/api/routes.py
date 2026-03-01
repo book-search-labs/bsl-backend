@@ -16,7 +16,14 @@ from app.core.rewrite import run_rewrite
 from app.core.metrics import metrics
 from app.core.rewrite_log import get_rewrite_log, now_iso
 from app.core.spell import run_spell
-from app.core.chat import explain_chat_rag, run_chat, run_chat_stream
+from app.core.chat import (
+    explain_chat_rag,
+    get_chat_provider_snapshot,
+    get_chat_session_state,
+    reset_chat_session_state,
+    run_chat,
+    run_chat_stream,
+)
 from app.core.understanding import parse_understanding
 
 router = APIRouter()
@@ -246,7 +253,15 @@ async def query_enhance(request: Request):
 @router.post("/chat")
 async def chat(request: Request):
     trace_id, request_id, _, traceparent = _extract_ids(request)
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        return _error_response(
+            "invalid_request",
+            "Request body must be a valid JSON object.",
+            trace_id,
+            request_id,
+        )
     if not isinstance(body, dict):
         return _error_response(
             "invalid_request",
@@ -259,6 +274,8 @@ async def chat(request: Request):
         trace_id = body.get("trace_id")
     if isinstance(body.get("request_id"), str) and body.get("request_id"):
         request_id = body.get("request_id")
+
+    _inject_chat_identity(body, request)
 
     options = body.get("options") if isinstance(body.get("options"), dict) else {}
     body_stream = bool(options.get("stream")) if isinstance(options.get("stream"), bool) else False
@@ -280,7 +297,15 @@ async def chat(request: Request):
 @router.post("/internal/rag/explain")
 async def rag_explain(request: Request):
     trace_id, request_id, _, traceparent = _extract_ids(request)
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        return _error_response(
+            "invalid_request",
+            "Request body must be a valid JSON object.",
+            trace_id,
+            request_id,
+        )
     if not isinstance(body, dict):
         return _error_response(
             "invalid_request",
@@ -296,6 +321,135 @@ async def rag_explain(request: Request):
 
     response = await explain_chat_rag(body, trace_id, request_id)
     return JSONResponse(content=response, headers=_response_headers(trace_id, request_id, traceparent))
+
+
+@router.get("/internal/chat/providers")
+async def chat_provider_snapshot(request: Request):
+    trace_id, request_id, _, traceparent = _extract_ids(request)
+    payload = {
+        "version": "v1",
+        "trace_id": trace_id,
+        "request_id": request_id,
+        "status": "ok",
+        "snapshot": get_chat_provider_snapshot(trace_id, request_id),
+    }
+    return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
+
+
+@router.get("/internal/chat/session/state")
+async def chat_session_state(request: Request):
+    trace_id, request_id, _, traceparent = _extract_ids(request)
+    session_id = str(request.query_params.get("session_id") or "").strip()
+    if not session_id:
+        metrics.inc("chat_session_state_requests_total", {"result": "missing_session_id"})
+        return _error_response(
+            "invalid_request",
+            "Query parameter session_id is required.",
+            trace_id,
+            request_id,
+        )
+    try:
+        snapshot = get_chat_session_state(session_id, trace_id, request_id)
+    except ValueError:
+        metrics.inc("chat_session_state_requests_total", {"result": "invalid_session_id"})
+        return _error_response(
+            "invalid_request",
+            "Invalid session_id format.",
+            trace_id,
+            request_id,
+        )
+    metrics.inc(
+        "chat_session_state_requests_total",
+        {
+            "result": "ok",
+            "has_unresolved": "true" if isinstance(snapshot.get("unresolved_context"), dict) else "false",
+        },
+    )
+    payload = {
+        "version": "v1",
+        "trace_id": trace_id,
+        "request_id": request_id,
+        "status": "ok",
+        "session": {
+            "session_id": snapshot["session_id"],
+            "fallback_count": snapshot["fallback_count"],
+            "fallback_escalation_threshold": snapshot["fallback_escalation_threshold"],
+            "escalation_ready": snapshot["escalation_ready"],
+            "recommended_action": snapshot["recommended_action"],
+            "recommended_message": snapshot["recommended_message"],
+            "unresolved_context": snapshot["unresolved_context"],
+        },
+    }
+    return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
+
+
+@router.post("/internal/chat/session/reset")
+async def chat_session_reset(request: Request):
+    trace_id, request_id, _, traceparent = _extract_ids(request)
+    try:
+        body = await request.json()
+    except Exception:
+        metrics.inc("chat_session_reset_requests_total", {"result": "invalid_json"})
+        return _error_response(
+            "invalid_request",
+            "Request body must be a valid JSON object.",
+            trace_id,
+            request_id,
+        )
+    if not isinstance(body, dict):
+        metrics.inc("chat_session_reset_requests_total", {"result": "invalid_body"})
+        return _error_response(
+            "invalid_request",
+            "Request body must be a JSON object.",
+            trace_id,
+            request_id,
+        )
+
+    if isinstance(body.get("trace_id"), str) and body.get("trace_id"):
+        trace_id = body.get("trace_id")
+    if isinstance(body.get("request_id"), str) and body.get("request_id"):
+        request_id = body.get("request_id")
+
+    session_id = str(body.get("session_id") or "").strip()
+    if not session_id:
+        metrics.inc("chat_session_reset_requests_total", {"result": "missing_session_id"})
+        return _error_response(
+            "invalid_request",
+            "Field session_id is required.",
+            trace_id,
+            request_id,
+        )
+    try:
+        snapshot = reset_chat_session_state(session_id, trace_id, request_id)
+    except ValueError:
+        metrics.inc("chat_session_reset_requests_total", {"result": "invalid_session_id"})
+        return _error_response(
+            "invalid_request",
+            "Invalid session_id format.",
+            trace_id,
+            request_id,
+        )
+    metrics.inc(
+        "chat_session_reset_requests_total",
+        {
+            "result": "ok",
+            "had_unresolved": "true" if bool(snapshot.get("previous_unresolved_context")) else "false",
+        },
+    )
+    payload = {
+        "version": "v1",
+        "trace_id": trace_id,
+        "request_id": request_id,
+        "status": "ok",
+        "session": {
+            "session_id": snapshot["session_id"],
+            "reset_applied": snapshot["reset_applied"],
+            "previous_fallback_count": snapshot["previous_fallback_count"],
+            "previous_unresolved_context": snapshot["previous_unresolved_context"],
+            "reset_at_ms": snapshot["reset_at_ms"],
+        },
+    }
+    return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
 
 
 @router.get("/internal/qc/rewrite/failures")
@@ -374,6 +528,22 @@ def _response_headers(trace_id: str, request_id: str, traceparent: str | None) -
     if traceparent:
         headers["traceparent"] = traceparent
     return headers
+
+
+def _inject_chat_identity(body: dict, request: Request) -> None:
+    if not isinstance(body, dict):
+        return
+    client = body.get("client")
+    if not isinstance(client, dict):
+        client = {}
+        body["client"] = client
+
+    user_id = request.headers.get("x-user-id")
+    if isinstance(user_id, str) and user_id.strip():
+        client["user_id"] = user_id.strip()
+    admin_id = request.headers.get("x-admin-id")
+    if isinstance(admin_id, str) and admin_id.strip():
+        client["admin_id"] = admin_id.strip()
 
 
 def _prepare_analysis(raw: str, body: dict) -> tuple[dict[str, Any], bool]:
@@ -1009,7 +1179,7 @@ def _build_retrieval_hints(plan_id: str, canonical_key: str, tenant_id: str) -> 
         "vector": {
             "enabled": True,
             "topKHint": 200,
-            "embedModelHint": "bge-m3-v1",
+            "embedModelHint": "multilingual-e5-small",
             "fusionHint": {
                 "method": "rrf",
                 "k": 60,
@@ -1052,7 +1222,7 @@ def _build_retrieval_hints(plan_id: str, canonical_key: str, tenant_id: str) -> 
             "maxVectorTopK": 500,
             "maxRerankTopK": 200,
             "allowedFusionMethods": ["rrf", "weighted_sum"],
-            "allowedEmbedModels": ["bge-m3-v1"],
+            "allowedEmbedModels": ["multilingual-e5-small"],
             "allowedRerankModels": ["toy_rerank_v1", "minilm-cross-v2"],
         },
     }

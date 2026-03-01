@@ -21,6 +21,15 @@ import org.springframework.web.client.RestTemplate;
 
 @Component
 public class OpenSearchGateway {
+    private static final Map<String, Double> DEFAULT_PRIMARY_FIELD_BOOST = Map.ofEntries(
+        Map.entry("title_ko", 8.0d),
+        Map.entry("title_en", 7.0d),
+        Map.entry("series_name", 4.0d),
+        Map.entry("author_names_ko", 3.0d),
+        Map.entry("author_names_en", 2.5d),
+        Map.entry("publisher_name", 2.0d)
+    );
+
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final OpenSearchProperties properties;
@@ -78,27 +87,24 @@ public class OpenSearchGateway {
         List<String> fieldsOverride,
         boolean explain
     ) {
-        List<String> fields = buildFields(boost, fieldsOverride);
-
-        Map<String, Object> multiMatch = new LinkedHashMap<>();
-        multiMatch.put("query", query);
-        multiMatch.put("fields", fields);
-        if (operator != null && !operator.isBlank()) {
-            multiMatch.put("operator", operator);
+        String trimmed = trimToNull(query);
+        List<String> fields = buildPrimaryFields(boost, fieldsOverride);
+        List<Map<String, Object>> shouldQueries = new ArrayList<>();
+        shouldQueries.add(Map.of("multi_match", buildPrimaryMultiMatch(query, fields, operator, minimumShouldMatch)));
+        if (trimmed != null) {
+            shouldQueries.add(buildPhraseBoostClause(trimmed));
         }
-        if (minimumShouldMatch != null && !minimumShouldMatch.isBlank()) {
-            multiMatch.put("minimum_should_match", minimumShouldMatch);
-        }
+        shouldQueries.add(Map.of("multi_match", buildCompactMultiMatch(query)));
+        shouldQueries.add(Map.of("multi_match", buildAutoPrefixMultiMatch(query)));
 
         Map<String, Object> boolQuery = new LinkedHashMap<>();
-        boolQuery.put("must", List.of(Map.of("multi_match", multiMatch)));
-        boolQuery.put("must_not", List.of(Map.of("term", Map.of("is_hidden", true))));
-        if (filters != null && !filters.isEmpty()) {
-            boolQuery.put("filter", filters);
-        }
+        boolQuery.put("should", shouldQueries);
+        boolQuery.put("minimum_should_match", 1);
+        boolQuery.put("filter", buildBooleanFilterClauses(filters, true));
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("size", topK);
+        body.put("track_total_hits", false);
         body.put("query", Map.of("bool", boolQuery));
         if (explain) {
             body.put("explain", true);
@@ -106,6 +112,89 @@ public class OpenSearchGateway {
 
         JsonNode response = postJson("/" + properties.getDocIndex() + "/_search", body, timeBudgetMs);
         return new OpenSearchQueryResult(extractDocIds(response), body, extractScoresByDocId(response));
+    }
+
+    private Map<String, Object> buildPrimaryMultiMatch(
+        String query,
+        List<String> fields,
+        String operator,
+        String minimumShouldMatch
+    ) {
+        Map<String, Object> multiMatch = new LinkedHashMap<>();
+        multiMatch.put("query", query);
+        multiMatch.put("fields", fields);
+        multiMatch.put("lenient", true);
+        if (operator != null && !operator.isBlank()) {
+            multiMatch.put("operator", operator);
+        }
+        if (minimumShouldMatch != null && !minimumShouldMatch.isBlank()) {
+            multiMatch.put("minimum_should_match", minimumShouldMatch);
+        }
+        multiMatch.put("type", "best_fields");
+        return multiMatch;
+    }
+
+    private Map<String, Object> buildPhraseBoostClause(String trimmedQuery) {
+        return Map.of(
+            "dis_max",
+            Map.of(
+                "tie_breaker",
+                0.2d,
+                "queries",
+                List.of(
+                    Map.of("match_phrase", Map.of("title_ko", Map.of("query", trimmedQuery, "slop", 1, "boost", 15.0d))),
+                    Map.of("match_phrase", Map.of("title_en", Map.of("query", trimmedQuery, "slop", 1, "boost", 12.0d))),
+                    Map.of("match_phrase", Map.of("series_name", Map.of("query", trimmedQuery, "slop", 1, "boost", 6.0d)))
+                )
+            )
+        );
+    }
+
+    private Map<String, Object> buildCompactMultiMatch(String query) {
+        Map<String, Object> multiMatch = new LinkedHashMap<>();
+        multiMatch.put("query", query);
+        multiMatch.put(
+            "fields",
+            List.of(
+                "title_ko.compact^6",
+                "title_en.compact^5",
+                "series_name.compact^3",
+                "author_names_ko.compact^2.5",
+                "author_names_en.compact^2.0",
+                "publisher_name.compact^2"
+            )
+        );
+        multiMatch.put("type", "best_fields");
+        multiMatch.put("operator", "or");
+        multiMatch.put("lenient", true);
+        return multiMatch;
+    }
+
+    private Map<String, Object> buildAutoPrefixMultiMatch(String query) {
+        Map<String, Object> multiMatch = new LinkedHashMap<>();
+        multiMatch.put("query", query);
+        multiMatch.put("type", "bool_prefix");
+        multiMatch.put(
+            "fields",
+            List.of(
+                "title_ko.auto^4",
+                "title_en.auto^3.5",
+                "series_name.auto^2.8",
+                "author_names_ko.auto^2.2",
+                "author_names_en.auto^1.8",
+                "publisher_name.auto^1.8"
+            )
+        );
+        multiMatch.put("lenient", true);
+        return multiMatch;
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     public OpenSearchQueryResult searchLexicalByDslDetailed(
@@ -117,6 +206,7 @@ public class OpenSearchGateway {
     ) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("size", topK);
+        body.put("track_total_hits", false);
         body.put("query", applyGlobalConstraints(queryDsl, filters));
         if (explain) {
             body.put("explain", true);
@@ -134,13 +224,11 @@ public class OpenSearchGateway {
     ) {
         Map<String, Object> boolQuery = new LinkedHashMap<>();
         boolQuery.put("must", List.of(Map.of("match_all", Map.of())));
-        boolQuery.put("must_not", List.of(Map.of("term", Map.of("is_hidden", true))));
-        if (filters != null && !filters.isEmpty()) {
-            boolQuery.put("filter", filters);
-        }
+        boolQuery.put("filter", buildBooleanFilterClauses(filters, true));
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("size", topK);
+        body.put("track_total_hits", false);
         body.put("query", Map.of("bool", boolQuery));
         if (explain) {
             body.put("explain", true);
@@ -159,7 +247,7 @@ public class OpenSearchGateway {
                 "bool",
                 Map.of(
                     "must", List.of(Map.of("match_all", Map.of())),
-                    "must_not", List.of(Map.of("term", Map.of("is_hidden", true)))
+                    "filter", buildBooleanFilterClauses(filters, true)
                 )
             );
         }
@@ -172,25 +260,27 @@ public class OpenSearchGateway {
                 }
             }
 
-            List<Object> mustNot = toClauseList(boolQuery.get("must_not"));
-            mustNot.add(Map.of("term", Map.of("is_hidden", true)));
-            boolQuery.put("must_not", mustNot);
-
-            if (filters != null && !filters.isEmpty()) {
-                List<Object> filterClauses = toClauseList(boolQuery.get("filter"));
-                filterClauses.addAll(filters);
-                boolQuery.put("filter", filterClauses);
-            }
+            List<Object> filterClauses = toClauseList(boolQuery.get("filter"));
+            filterClauses.addAll(buildBooleanFilterClauses(filters, true));
+            boolQuery.put("filter", filterClauses);
             return Map.of("bool", boolQuery);
         }
 
         Map<String, Object> boolQuery = new LinkedHashMap<>();
         boolQuery.put("must", List.of(queryDsl));
-        boolQuery.put("must_not", List.of(Map.of("term", Map.of("is_hidden", true))));
-        if (filters != null && !filters.isEmpty()) {
-            boolQuery.put("filter", filters);
-        }
+        boolQuery.put("filter", buildBooleanFilterClauses(filters, true));
         return Map.of("bool", boolQuery);
+    }
+
+    private List<Object> buildBooleanFilterClauses(List<Map<String, Object>> filters, boolean includeVisibilityFilter) {
+        List<Object> filterClauses = new ArrayList<>();
+        if (includeVisibilityFilter) {
+            filterClauses.add(Map.of("term", Map.of("is_hidden", false)));
+        }
+        if (filters != null && !filters.isEmpty()) {
+            filterClauses.addAll(filters);
+        }
+        return filterClauses;
     }
 
     private List<Object> toClauseList(Object value) {
@@ -230,7 +320,7 @@ public class OpenSearchGateway {
         List<Map<String, Object>> filters,
         boolean explain
     ) {
-        return searchVectorDetailedOnIndex(vector, topK, properties.getVecIndex(), timeBudgetMs, filters, explain);
+        return searchVectorDetailedOnIndex(vector, topK, properties.getVecIndex(), timeBudgetMs, filters, explain, true);
     }
 
     public OpenSearchQueryResult searchChunkVectorDetailed(
@@ -244,7 +334,7 @@ public class OpenSearchGateway {
         if (indexName == null || indexName.isBlank()) {
             throw new OpenSearchRequestException("chunk index is not configured", null);
         }
-        return searchVectorDetailedOnIndex(vector, topK, indexName, timeBudgetMs, filters, explain);
+        return searchVectorDetailedOnIndex(vector, topK, indexName, timeBudgetMs, filters, explain, false);
     }
 
     private OpenSearchQueryResult searchVectorDetailedOnIndex(
@@ -253,13 +343,15 @@ public class OpenSearchGateway {
         String indexName,
         Integer timeBudgetMs,
         List<Map<String, Object>> filters,
-        boolean explain
+        boolean explain,
+        boolean includeVisibilityFilter
     ) {
         Map<String, Object> embedding = new LinkedHashMap<>();
         embedding.put("vector", vector);
         embedding.put("k", topK);
-        if (filters != null && !filters.isEmpty()) {
-            embedding.put("filter", Map.of("bool", Map.of("filter", filters)));
+        List<Object> filterClauses = buildBooleanFilterClauses(filters, includeVisibilityFilter);
+        if (!filterClauses.isEmpty()) {
+            embedding.put("filter", Map.of("bool", Map.of("filter", filterClauses)));
         }
 
         Map<String, Object> knn = new LinkedHashMap<>();
@@ -267,6 +359,8 @@ public class OpenSearchGateway {
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("size", topK);
+        body.put("track_total_hits", false);
+        body.put("_source", List.of("doc_id"));
         body.put("query", Map.of("knn", knn));
         if (explain) {
             body.put("explain", true);
@@ -289,13 +383,16 @@ public class OpenSearchGateway {
         embedding.put("query_text", queryText);
         embedding.put("model_id", modelId);
         embedding.put("k", topK);
-        if (filters != null && !filters.isEmpty()) {
-            embedding.put("filter", Map.of("bool", Map.of("filter", filters)));
+        List<Object> filterClauses = buildBooleanFilterClauses(filters, true);
+        if (!filterClauses.isEmpty()) {
+            embedding.put("filter", Map.of("bool", Map.of("filter", filterClauses)));
         }
         neural.put("embedding", embedding);
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("size", topK);
+        body.put("track_total_hits", false);
+        body.put("_source", List.of("doc_id"));
         body.put("query", Map.of("neural", neural));
         if (explain) {
             body.put("explain", true);
@@ -438,31 +535,57 @@ public class OpenSearchGateway {
         return scores;
     }
 
-    private List<String> buildFields(Map<String, Double> boost, List<String> fieldsOverride) {
+    private List<String> buildPrimaryFields(Map<String, Double> boost, List<String> fieldsOverride) {
         List<String> baseFields = fieldsOverride == null || fieldsOverride.isEmpty()
             ? List.of(
                 "title_ko",
                 "title_en",
-                "authors.name_ko",
                 "series_name",
+                "author_names_ko",
+                "author_names_en",
                 "publisher_name"
             )
             : fieldsOverride;
 
-        if (boost == null || boost.isEmpty()) {
-            return baseFields;
-        }
-
         List<String> fields = new ArrayList<>(baseFields.size());
         for (String field : baseFields) {
-            Double weight = boost.get(field);
-            if (weight != null && weight > 0) {
-                fields.add(field + "^" + weight);
+            if (field == null) {
+                continue;
+            }
+            String normalized = field.trim();
+            if (normalized.isEmpty()) {
+                continue;
+            }
+            if (normalized.contains("^")) {
+                fields.add(normalized);
+                continue;
+            }
+            Double weighted = null;
+            if (boost != null && !boost.isEmpty()) {
+                weighted = boost.get(normalized);
+            }
+            if (weighted == null) {
+                weighted = DEFAULT_PRIMARY_FIELD_BOOST.get(normalized);
+            }
+            if (weighted != null && weighted > 0) {
+                fields.add(normalized + "^" + weighted);
             } else {
-                fields.add(field);
+                fields.add(normalized);
             }
         }
-        return fields;
+
+        if (!fields.isEmpty()) {
+            return fields;
+        }
+
+        return List.of(
+            "title_ko^8.0",
+            "title_en^7.0",
+            "series_name^4.0",
+            "author_names_ko^3.0",
+            "author_names_en^2.5",
+            "publisher_name^2.0"
+        );
     }
 
     private RestTemplate restTemplateFor(Integer timeBudgetMs) {

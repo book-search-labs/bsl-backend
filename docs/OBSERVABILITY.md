@@ -111,7 +111,7 @@ Common:
 
 Prometheus scrape targets (local):
 - `http://localhost:8088/actuator/prometheus` (BFF)
-- `http://localhost:8080/actuator/prometheus` (Search)
+- `http://localhost:18087/actuator/prometheus` (Search)
 - `http://localhost:8081/actuator/prometheus` (Autocomplete)
 - `http://localhost:8082/actuator/prometheus` (Ranking)
 - `http://localhost:8091/actuator/prometheus` (Commerce)

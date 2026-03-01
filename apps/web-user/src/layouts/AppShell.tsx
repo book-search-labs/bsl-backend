@@ -11,9 +11,16 @@ import {
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { fetchAutocomplete, postAutocompleteSelect, type AutocompleteSuggestion } from '../api/autocomplete'
+import { logoutSession } from '../api/auth'
+import { getCart } from '../api/cart'
 import { fetchKdcCategories, type KdcCategoryNode } from '../api/categories'
+import IconNav from '../components/header/IconNav'
+import UtilityMenu from '../components/header/UtilityMenu'
+import { MY_DROPDOWN_LINKS } from '../components/my/myNavigation'
+import FloatingChatWidget from '../components/chat/FloatingChatWidget'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { useOutsideClick } from '../hooks/useOutsideClick'
+import { clearSession, getSessionId } from '../services/mySession'
 import { getTopLevelKdc } from '../utils/kdc'
 
 const AUTOCOMPLETE_SIZE = 8
@@ -22,14 +29,6 @@ const MIN_QUERY_LENGTH = 1
 const AUTOCOMPLETE_LISTBOX_ID = 'global-search-suggestions'
 const RECENT_STORAGE_KEY = 'bsl.recentSearches'
 const MAX_RECENT = 6
-const DEFAULT_RECOMMENDED = [
-  '베스트셀러',
-  '신간',
-  '에세이',
-  '자기계발',
-  '해리포터',
-  '어린이',
-]
 
 type SelectableItem = {
   kind: 'suggestion' | 'recent' | 'recommended'
@@ -58,13 +57,12 @@ function saveRecentQueries(items: string[]) {
   }
 }
 
-function resolveRecommendedQueries() {
-  const raw = import.meta.env.VITE_AUTOCOMPLETE_RECOMMENDED ?? ''
-  const parsed = raw
+function resolveEnvRecommendedQueries(): string[] {
+  const raw = String(import.meta.env.VITE_AUTOCOMPLETE_RECOMMENDED ?? '')
+  return raw
     .split(',')
     .map((item) => item.trim())
     .filter((item) => item.length > 0)
-  return parsed.length > 0 ? parsed : DEFAULT_RECOMMENDED
 }
 
 export default function AppShell() {
@@ -73,6 +71,7 @@ export default function AppShell() {
   const [searchParams] = useSearchParams()
   const [query, setQuery] = useState('')
   const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([])
+  const [recommendedQueries, setRecommendedQueries] = useState<string[]>(() => resolveEnvRecommendedQueries())
   const [recentQueries, setRecentQueries] = useState<string[]>(() => loadRecentQueries())
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -82,10 +81,13 @@ export default function AppShell() {
   const [kdcCategories, setKdcCategories] = useState<KdcCategoryNode[]>([])
   const [isCategoryOpen, setIsCategoryOpen] = useState(false)
   const [activeTopCode, setActiveTopCode] = useState<string | null>(null)
+  const [cartCount, setCartCount] = useState(0)
+  const [myMenuOpen, setMyMenuOpen] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(() => getSessionId() !== null)
   const formRef = useRef<HTMLFormElement>(null)
+  const myMenuRef = useRef<HTMLDivElement>(null)
   const shouldSuggestRef = useRef(false)
   const debouncedQuery = useDebouncedValue(query, AUTOCOMPLETE_DEBOUNCE_MS)
-  const recommendedQueries = useMemo(() => resolveRecommendedQueries(), [])
   const topCategories = useMemo(() => getTopLevelKdc(kdcCategories), [kdcCategories])
   const categoryLinks = useMemo(() => {
     if (topCategories.length > 0) {
@@ -115,7 +117,33 @@ export default function AppShell() {
 
   useEffect(() => {
     setIsCategoryOpen(false)
+    setMyMenuOpen(false)
+    setIsLoggedIn(getSessionId() !== null)
   }, [location.pathname])
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setCartCount(0)
+      return
+    }
+
+    let active = true
+    getCart()
+      .then((cart) => {
+        if (!active) return
+        const nextCount = cart.items.reduce((sum, item) => sum + item.qty, 0)
+        setCartCount(nextCount)
+      })
+      .catch(() => {
+        if (active) {
+          setCartCount(0)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [isLoggedIn, location.pathname])
 
   const closeSuggestions = useCallback(() => {
     setIsOpen(false)
@@ -129,6 +157,33 @@ export default function AppShell() {
   const openCategoryDrawer = useCallback(() => {
     setIsCategoryOpen(true)
   }, [])
+
+  const closeMyMenu = useCallback(() => {
+    setMyMenuOpen(false)
+  }, [])
+
+  const toggleMyMenu = useCallback(() => {
+    setMyMenuOpen((prev) => !prev)
+  }, [])
+
+  const handleLogout = useCallback(() => {
+    void logoutSession()
+      .catch(() => {
+        // ignore logout api failures and clear local session anyway
+      })
+      .finally(() => {
+        clearSession()
+        setMyMenuOpen(false)
+        setIsLoggedIn(false)
+        navigate('/login', { replace: true })
+      })
+  }, [navigate])
+
+  const handleLogin = useCallback(() => {
+    setMyMenuOpen(false)
+    const redirect = `${location.pathname}${location.search}`
+    navigate(`/login?redirect=${encodeURIComponent(redirect)}`)
+  }, [location.pathname, location.search, navigate])
 
   const activeTopCategory =
     topCategories.find((node) => node.code === activeTopCode) ?? topCategories[0] ?? null
@@ -149,6 +204,10 @@ export default function AppShell() {
 
   useOutsideClick(formRef, () => {
     suppressSuggestions()
+  })
+
+  useOutsideClick(myMenuRef, () => {
+    closeMyMenu()
   })
 
   useEffect(() => {
@@ -281,6 +340,22 @@ export default function AppShell() {
 
   useEffect(() => {
     let active = true
+    fetchAutocomplete('', AUTOCOMPLETE_SIZE)
+      .then((response) => {
+        if (!active) return
+        const fromBackend = Array.isArray(response?.suggestions)
+          ? response.suggestions
+              .map((item) => item.text?.trim())
+              .filter((item): item is string => Boolean(item))
+          : []
+        if (fromBackend.length > 0) {
+          setRecommendedQueries(fromBackend.slice(0, MAX_RECENT))
+        }
+      })
+      .catch(() => {
+        // keep env fallback
+      })
+
     fetchKdcCategories()
       .then((categories) => {
         if (!active) return
@@ -391,27 +466,13 @@ export default function AppShell() {
 
   const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
     `nav-link ${isActive ? 'active' : ''}`
-  const utilityLinkClassName = ({ isActive }: { isActive: boolean }) =>
-    `utility-link ${isActive ? 'active' : ''}`
 
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="top-strip">
-          <div className="container">
-            <div className="top-strip-inner">
-              <div className="top-strip-left">
-                <span className="top-pill">무료배송</span>
-                <span className="top-note">2만원 이상 주문 시</span>
-              </div>
-              <div className="top-strip-links">
-                <span className="top-note">밤 11시 전 주문 시 내일 도착</span>
-                <span className="top-divider" />
-                <Link to="/about">고객센터</Link>
-                <span className="top-divider" />
-                <Link to="/orders">주문/배송</Link>
-              </div>
-            </div>
+        <div className="utility-strip">
+          <div className="container utility-strip-inner">
+            <UtilityMenu isLoggedIn={isLoggedIn} onLogin={handleLogin} onLogout={handleLogout} />
           </div>
         </div>
         <div className="main-header">
@@ -572,24 +633,14 @@ export default function AppShell() {
                   </div>
                 </div>
               </div>
-              <div className="utility-links">
-                <NavLink to="/about" className={utilityLinkClassName}>
-                  <span className="utility-icon">HELP</span>
-                  고객센터
-                </NavLink>
-                <NavLink to="/cart" className={utilityLinkClassName}>
-                  <span className="utility-icon">CART</span>
-                  장바구니
-                </NavLink>
-                <NavLink to="/orders" className={utilityLinkClassName}>
-                  <span className="utility-icon">MY</span>
-                  주문/배송
-                </NavLink>
-                <NavLink to="/chat" className={utilityLinkClassName}>
-                  <span className="utility-icon">BOT</span>
-                  책봇
-                </NavLink>
-              </div>
+              <IconNav
+                cartCount={cartCount}
+                myMenuOpen={myMenuOpen}
+                onToggleMyMenu={toggleMyMenu}
+                onCloseMyMenu={closeMyMenu}
+                dropdownItems={MY_DROPDOWN_LINKS}
+                dropdownRef={myMenuRef}
+              />
             </div>
           </div>
         </div>
@@ -611,11 +662,11 @@ export default function AppShell() {
                 </NavLink>
               </nav>
               <div className="nav-extra">
-                <Link to="/search?q=할인" className="nav-extra-link">
+                <Link to="/benefits" className="nav-extra-link">
                   오늘의 혜택
                 </Link>
-                <Link to="/search?q=예약" className="nav-extra-link">
-                  예약판매
+                <Link to="/preorders" className="nav-extra-link">
+                  예약구매
                 </Link>
                 <Link to="/about" className="nav-extra-link">
                   이용안내
@@ -701,10 +752,103 @@ export default function AppShell() {
       <main className="app-main">
         <Outlet context={{ kdcCategories }} />
       </main>
+      <FloatingChatWidget />
 
       <footer className="app-footer mt-auto">
-        <div className="container py-4">
-          <small>BSL Book Search Labs — MVP</small>
+        <div className="app-footer-notice-strip">
+          <div className="container app-footer-notice-inner">
+            <Link className="app-footer-notice-item" to="/events">
+              <strong>공지사항</strong>
+              <span>일부 영업점 서비스 종료 안내</span>
+            </Link>
+            <span className="app-footer-notice-divider" aria-hidden="true">
+              |
+            </span>
+            <Link className="app-footer-notice-item" to="/events">
+              <strong>당첨자발표</strong>
+              <span>[단독/e캐시] 이벤트 당첨자 발표</span>
+            </Link>
+          </div>
+        </div>
+
+        <div className="container app-footer-inner">
+          <div className="app-footer-body">
+            <section className="app-footer-company">
+              <div className="footer-company-logo">BSL Books</div>
+              <nav className="footer-company-links" aria-label="푸터 바로가기">
+                <Link to="/about">회사소개</Link>
+                <Link to="/events">이용약관</Link>
+                <Link to="/my/profile">개인정보처리방침</Link>
+                <Link to="/events">청소년보호정책</Link>
+                <Link to="/my/support/inquiries">대량구매문의</Link>
+                <Link to="/events">채용정보</Link>
+                <Link to="/events">광고소개</Link>
+              </nav>
+              <div className="footer-company-meta">
+                <p>(주)BSL Books | 서울특별시 중구 을지로 1 | 대표이사: 홍길동 | 사업자등록번호: 102-81-11670</p>
+                <p>대표전화: 1544-1900 | FAX: 0502-987-5711 | 통신판매업신고: 제 653호</p>
+                <p>운영시간: 09:00 - 18:00 (주말/공휴일 제외)</p>
+              </div>
+            </section>
+
+            <section className="app-footer-side">
+              <div className="footer-select-row">
+                <label className="footer-select-wrap">
+                  <span className="visually-hidden">Family site</span>
+                  <select
+                    className="footer-select"
+                    defaultValue=""
+                    onChange={(event) => {
+                      const targetUrl = event.currentTarget.value
+                      if (targetUrl) {
+                        window.open(targetUrl, '_blank', 'noopener,noreferrer')
+                      }
+                      event.currentTarget.value = ''
+                    }}
+                  >
+                    <option value="">Family Site</option>
+                    <option value="https://www.booklog.co.kr">북로그</option>
+                  </select>
+                </label>
+                <label className="footer-select-wrap">
+                  <span className="visually-hidden">SNS 바로가기</span>
+                  <select
+                    className="footer-select"
+                    defaultValue=""
+                    onChange={(event) => {
+                      const targetUrl = event.currentTarget.value
+                      if (targetUrl) {
+                        window.open(targetUrl, '_blank', 'noopener,noreferrer')
+                      }
+                      event.currentTarget.value = ''
+                    }}
+                  >
+                    <option value="">SNS 바로가기</option>
+                    <option value="https://www.instagram.com">Instagram</option>
+                    <option value="https://www.youtube.com">YouTube</option>
+                    <option value="https://blog.naver.com">Naver Blog</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="footer-security">
+                <div className="footer-security-badge">토스페이먼츠 구매안전서비스</div>
+                <p>고객님의 안전한 거래를 위해 결제 보호 서비스를 제공합니다.</p>
+              </div>
+
+              <div className="footer-certification">
+                <strong>ISMS 인증획득</strong>
+                <span>정보보호 관리체계 운영</span>
+                <span>유효기간 2023.11.15 ~ 2026.11.14</span>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <div className="app-footer-copy">
+          <div className="container app-footer-copy-inner">
+            <small>© {new Date().getFullYear()} BSL BOOK CENTRE</small>
+          </div>
         </div>
       </footer>
     </div>

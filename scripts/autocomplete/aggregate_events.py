@@ -22,7 +22,7 @@ MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "bsl")
 MYSQL_DATABASE = os.environ.get("MYSQL_DATABASE", "bsl")
 
 OS_URL = os.environ.get("OS_URL", "http://localhost:9200")
-AC_ALIAS = os.environ.get("AC_ALIAS", "ac_write")
+AC_ALIAS = os.environ.get("AC_ALIAS", "ac_candidates_write")
 
 REDIS_URL = os.environ.get("REDIS_URL")
 CACHE_KEY_PREFIX = os.environ.get("AUTOCOMPLETE_CACHE_KEY_PREFIX", "ac:prefix:")

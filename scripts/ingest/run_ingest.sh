@@ -9,9 +9,21 @@ RAW_DIR="$DATA_ROOT/raw"
 REQUIREMENTS_FILE="$SCRIPT_DIR/requirements.txt"
 INSTALL_DEPS="${INSTALL_DEPS:-0}"
 INGEST_TARGETS="${INGEST_TARGETS:-mysql,opensearch}"
+NLK_INPUT_MODE="${NLK_INPUT_MODE:-sample}"
+RAW_NODE_SYNC="${RAW_NODE_SYNC:-1}"
 BOOTSTRAP_OS="${BOOTSTRAP_OS:-1}"
 OS_URL="${OS_URL:-http://localhost:9200}"
 FAST_MODE="${FAST_MODE:-0}"
+
+case "$NLK_INPUT_MODE" in
+  sample|full|all)
+    ;;
+  *)
+    echo "Unsupported NLK_INPUT_MODE: $NLK_INPUT_MODE (use sample|full|all)" >&2
+    exit 1
+    ;;
+esac
+export NLK_INPUT_MODE
 
 if [ "$FAST_MODE" = "1" ]; then
   : "${MYSQL_BATCH_SIZE:=20000}"
@@ -30,6 +42,13 @@ if [ "$FAST_MODE" = "1" ]; then
   export MYSQL_BULK_MODE MYSQL_LOAD_BATCH
 fi
 
+if [ "$NLK_INPUT_MODE" = "sample" ] && [ -z "${EMBED_PROVIDER:-}" ] && [ -z "${MIS_URL:-}" ]; then
+  export EMBED_PROVIDER="toy"
+fi
+if [ "${EMBED_PROVIDER:-}" = "toy" ] && [ -z "${EMBED_DIM:-}" ]; then
+  export EMBED_DIM="384"
+fi
+
 if ! command -v python3 >/dev/null 2>&1; then
   echo "python3 is required for NLK ingestion. Install Python 3 and retry." >&2
   exit 1
@@ -45,7 +64,7 @@ check_python_deps() {
   python3 - <<'PY'
 import importlib
 missing = []
-for name in ("pymysql", "ijson"):
+for name in ("pymysql", "ijson", "cryptography"):
     try:
         importlib.import_module(name)
     except Exception:
@@ -68,6 +87,12 @@ if ! check_python_deps; then
   fi
 fi
 
+echo "NLK input mode: $NLK_INPUT_MODE"
+if [ "${EMBED_PROVIDER:-}" != "" ]; then
+  echo "Embedding provider: ${EMBED_PROVIDER}"
+fi
+echo "Raw-node sync: $RAW_NODE_SYNC"
+
 alias_exists() {
   local alias_name="$1"
   local code
@@ -79,7 +104,7 @@ bootstrap_opensearch_if_needed() {
   if [ "$BOOTSTRAP_OS" = "0" ]; then
     return 0
   fi
-  if alias_exists "books_doc_write" && alias_exists "ac_write"; then
+  if alias_exists "books_doc_write" && (alias_exists "ac_candidates_write" || alias_exists "ac_write"); then
     return 0
   fi
   echo "Bootstrapping OpenSearch indices/aliases (KEEP_INDEX=1)..."
@@ -93,6 +118,10 @@ for target in "${targets[@]}"; do
     mysql)
       echo "Starting MySQL ingestion..."
       python3 "$SCRIPT_DIR/ingest_mysql.py"
+      if [ "$RAW_NODE_SYNC" = "1" ]; then
+        echo "Syncing nlk_raw_nodes -> raw_node..."
+        python3 "$SCRIPT_DIR/sync_raw_node.py"
+      fi
       ;;
     opensearch)
       bootstrap_opensearch_if_needed

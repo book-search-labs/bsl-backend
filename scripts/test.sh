@@ -66,7 +66,60 @@ echo "[6/9] Rerank eval gate (optional)"
 if [ "${RUN_RERANK_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     RERANK_BASELINE_PATH="${RERANK_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/rerank_eval_sample.json}"
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/rerank_eval.py" --baseline-report "$RERANK_BASELINE_PATH" --gate || exit 1
+    RERANK_MIS_URL="${RERANK_MIS_URL:-http://localhost:8005}"
+    RERANK_RANKING_URL="${RERANK_RANKING_URL:-http://localhost:8082}"
+    RERANK_OS_URL="${RERANK_OS_URL:-http://localhost:9200}"
+    RERANK_MIS_MODEL="${RERANK_MIS_MODEL:-multilingual-e5-small}"
+    RERANK_ALLOW_MODEL_FALLBACK_GATE="${RERANK_ALLOW_MODEL_FALLBACK_GATE:-0}"
+    RERANK_DEPS_OK=1
+    RERANK_MODEL_FALLBACK_USED=0
+
+    if command -v curl >/dev/null 2>&1; then
+      if ! curl -fsS --max-time 2 "$RERANK_RANKING_URL/health" >/dev/null; then
+        echo "  - rerank eval skipped: ranking service unavailable ($RERANK_RANKING_URL)"
+        RERANK_DEPS_OK=0
+      fi
+      if ! curl -fsS --max-time 2 "$RERANK_OS_URL" >/dev/null; then
+        echo "  - rerank eval skipped: OpenSearch unavailable ($RERANK_OS_URL)"
+        RERANK_DEPS_OK=0
+      fi
+      if ! curl -fsS --max-time 2 -X POST "$RERANK_MIS_URL/v1/embed" \
+        -H "Content-Type: application/json" \
+        -d "{\"model\":\"$RERANK_MIS_MODEL\",\"texts\":[\"probe\"],\"normalize\":true}" >/dev/null; then
+        if ! curl -fsS --max-time 2 -X POST "$RERANK_MIS_URL/v1/embed" \
+          -H "Content-Type: application/json" \
+          -d '{"texts":["probe"],"normalize":true}' >/dev/null; then
+          echo "  - rerank eval skipped: MIS embed unavailable ($RERANK_MIS_URL, model=$RERANK_MIS_MODEL)"
+          RERANK_DEPS_OK=0
+        else
+          echo "  - rerank eval: requested MIS model unavailable, using MIS default embed model"
+          RERANK_MIS_MODEL=""
+          RERANK_MODEL_FALLBACK_USED=1
+        fi
+      fi
+    else
+      echo "  - curl not found; running rerank eval without dependency precheck"
+    fi
+
+    if [ "$RERANK_MODEL_FALLBACK_USED" = "1" ] && [ "$RERANK_ALLOW_MODEL_FALLBACK_GATE" != "1" ]; then
+      echo "  - rerank eval skipped: baseline comparability requires requested MIS model (set RERANK_ALLOW_MODEL_FALLBACK_GATE=1 to force)"
+      RERANK_DEPS_OK=0
+    fi
+
+    if [ "$RERANK_DEPS_OK" = "1" ]; then
+      RERANK_ARGS=(
+        "$ROOT_DIR/scripts/eval/rerank_eval.py"
+        --baseline-report "$RERANK_BASELINE_PATH"
+        --gate
+        --mis-url "$RERANK_MIS_URL"
+        --ranking-url "$RERANK_RANKING_URL"
+        --os-url "$RERANK_OS_URL"
+      )
+      if [ -n "$RERANK_MIS_MODEL" ]; then
+        RERANK_ARGS+=(--mis-model "$RERANK_MIS_MODEL")
+      fi
+      $PYTHON_BIN "${RERANK_ARGS[@]}" || exit 1
+    fi
   else
     echo "  - python not found; skipping rerank eval gate"
   fi

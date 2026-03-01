@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "admin-ops-metrics-timeseries-response.schema.json",
+  "title": "AdminOpsMetricsTimeseriesResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "trace_id", "request_id", "metric", "items"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "metric": {
+      "type": "string",
+      "enum": ["query_count", "p95_ms", "p99_ms", "zero_result_rate", "rerank_rate", "error_rate"]
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ts", "value"],
+        "properties": {
+          "ts": { "type": "string", "format": "date-time" },
+          "value": { "type": "number" }
+        }
+      }
+    }
+  }
+}

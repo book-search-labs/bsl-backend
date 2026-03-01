@@ -4,9 +4,10 @@ set -euo pipefail
 OS_URL="${OS_URL:-http://localhost:9200}"
 DOC_ALIAS="${DOC_ALIAS:-books_doc_write}"
 VEC_ALIAS="${VEC_ALIAS:-books_vec_write}"
-AC_ALIAS="${AC_ALIAS:-ac_write}"
+AC_ALIAS="${AC_ALIAS:-ac_candidates_write}"
 AUTHORS_ALIAS="${AUTHORS_ALIAS:-authors_doc_write}"
 SERIES_ALIAS="${SERIES_ALIAS:-series_doc_write}"
+VEC_DIM="${VEC_DIM:-384}"
 
 if command -v python3 >/dev/null 2>&1; then
   PYTHON="python3"
@@ -32,16 +33,17 @@ done
 
 vector_for_doc() {
   local doc_id="$1"
-  "$PYTHON" - "$doc_id" <<'PY'
+  "$PYTHON" - "$doc_id" "$VEC_DIM" <<'PY'
 import sys
 import hashlib
 import json
 import random
 
 doc_id = sys.argv[1]
+vec_dim = int(sys.argv[2])
 seed = int(hashlib.sha256(doc_id.encode("utf-8")).hexdigest()[:8], 16)
 rng = random.Random(seed)
-vec = [round(rng.random(), 6) for _ in range(1024)]
+vec = [round(rng.random(), 6) for _ in range(vec_dim)]
 print(json.dumps(vec))
 PY
 }
@@ -56,15 +58,15 @@ vec_b5="$(vector_for_doc "b5")"
 
 DOC_BULK="$(cat <<'DOC_EOF'
 { "index": { "_index": "__DOC_ALIAS__", "_id": "b1" } }
-{ "doc_id": "b1", "title_ko": "해리 포터와 마법사의 돌", "title_en": "Harry Potter and the Philosopher's Stone", "authors": [{ "agent_id": "a1", "name_ko": "J.K. 롤링", "name_en": "J.K. Rowling", "role": "author", "ord": 1 }], "publisher_name": "문학수첩", "identifiers": { "isbn13": "9788983920772" }, "language_code": "ko", "issued_year": 1999, "volume": 1, "edition_labels": ["recover"], "category_paths": ["books>fiction>fantasy"], "concept_ids": ["c_fantasy", "c_magic"], "is_hidden": false, "updated_at": "__UPDATED_AT__" }
+{ "doc_id": "b1", "title_ko": "해리 포터와 마법사의 돌", "title_en": "Harry Potter and the Philosopher's Stone", "series_name": "해리 포터", "authors": [{ "agent_id": "a1", "name_ko": "J.K. 롤링", "name_en": "J.K. Rowling", "role": "author", "ord": 1 }], "author_names_ko": ["J.K. 롤링"], "author_names_en": ["J.K. Rowling"], "publisher_name": "문학수첩", "identifiers": { "isbn13": "9788983920772" }, "language_code": "ko", "issued_year": 1999, "volume": 1, "edition_labels": ["recover"], "category_paths": ["books>fiction>fantasy"], "concept_ids": ["c_fantasy", "c_magic"], "is_hidden": false, "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__DOC_ALIAS__", "_id": "b2" } }
-{ "doc_id": "b2", "title_ko": "해리 포터와 비밀의 방", "title_en": "Harry Potter and the Chamber of Secrets", "authors": [{ "agent_id": "a1", "name_ko": "J.K. 롤링", "name_en": "J.K. Rowling", "role": "author", "ord": 1 }], "publisher_name": "문학수첩", "identifiers": { "isbn13": "9788983920789" }, "language_code": "ko", "issued_year": 2000, "volume": 2, "edition_labels": [], "category_paths": ["books>fiction>fantasy"], "concept_ids": ["c_fantasy", "c_wizard"], "is_hidden": false, "updated_at": "__UPDATED_AT__" }
+{ "doc_id": "b2", "title_ko": "해리 포터와 비밀의 방", "title_en": "Harry Potter and the Chamber of Secrets", "series_name": "해리 포터", "authors": [{ "agent_id": "a1", "name_ko": "J.K. 롤링", "name_en": "J.K. Rowling", "role": "author", "ord": 1 }], "author_names_ko": ["J.K. 롤링"], "author_names_en": ["J.K. Rowling"], "publisher_name": "문학수첩", "identifiers": { "isbn13": "9788983920789" }, "language_code": "ko", "issued_year": 2000, "volume": 2, "edition_labels": [], "category_paths": ["books>fiction>fantasy"], "concept_ids": ["c_fantasy", "c_wizard"], "is_hidden": false, "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__DOC_ALIAS__", "_id": "b3" } }
-{ "doc_id": "b3", "title_ko": "클린 코드", "title_en": "Clean Code", "authors": [{ "agent_id": "a2", "name_ko": "로버트 C. 마틴", "name_en": "Robert C. Martin", "role": "author", "ord": 1 }], "publisher_name": "인사이트", "identifiers": { "isbn13": "9788966260959" }, "language_code": "ko", "issued_year": 2013, "edition_labels": [], "category_paths": ["books>software>engineering"], "concept_ids": ["c_clean_code", "c_quality"], "is_hidden": false, "updated_at": "__UPDATED_AT__" }
+{ "doc_id": "b3", "title_ko": "클린 코드", "title_en": "Clean Code", "authors": [{ "agent_id": "a2", "name_ko": "로버트 C. 마틴", "name_en": "Robert C. Martin", "role": "author", "ord": 1 }], "author_names_ko": ["로버트 C. 마틴"], "author_names_en": ["Robert C. Martin"], "publisher_name": "인사이트", "identifiers": { "isbn13": "9788966260959" }, "language_code": "ko", "issued_year": 2013, "edition_labels": [], "category_paths": ["books>software>engineering"], "concept_ids": ["c_clean_code", "c_quality"], "is_hidden": false, "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__DOC_ALIAS__", "_id": "b4" } }
-{ "doc_id": "b4", "title_ko": "도메인 주도 설계", "title_en": "Domain-Driven Design", "authors": [{ "agent_id": "a3", "name_ko": "에릭 에반스", "name_en": "Eric Evans", "role": "author", "ord": 1 }], "publisher_name": "위키북스", "identifiers": { "isbn13": "9788992939278" }, "language_code": "ko", "issued_year": 2011, "edition_labels": [], "category_paths": ["books>software>architecture"], "concept_ids": ["c_domain_driven", "c_design"], "is_hidden": false, "updated_at": "__UPDATED_AT__" }
+{ "doc_id": "b4", "title_ko": "도메인 주도 설계", "title_en": "Domain-Driven Design", "authors": [{ "agent_id": "a3", "name_ko": "에릭 에반스", "name_en": "Eric Evans", "role": "author", "ord": 1 }], "author_names_ko": ["에릭 에반스"], "author_names_en": ["Eric Evans"], "publisher_name": "위키북스", "identifiers": { "isbn13": "9788992939278" }, "language_code": "ko", "issued_year": 2011, "edition_labels": [], "category_paths": ["books>software>architecture"], "concept_ids": ["c_domain_driven", "c_design"], "is_hidden": false, "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__DOC_ALIAS__", "_id": "b5" } }
-{ "doc_id": "b5", "title_ko": "엘라스틱서치 실무", "title_en": "Elasticsearch in Practice", "authors": [{ "agent_id": "a4", "name_ko": "김OO", "name_en": "Kim", "role": "author", "ord": 1 }], "publisher_name": "한빛미디어", "identifiers": { "isbn13": "9788968481239" }, "language_code": "ko", "issued_year": 2022, "edition_labels": [], "category_paths": ["books>software>search"], "concept_ids": ["c_search", "c_opensearch"], "is_hidden": false, "updated_at": "__UPDATED_AT__" }
+{ "doc_id": "b5", "title_ko": "엘라스틱서치 실무", "title_en": "Elasticsearch in Practice", "authors": [{ "agent_id": "a4", "name_ko": "김OO", "name_en": "Kim", "role": "author", "ord": 1 }], "author_names_ko": ["김OO"], "author_names_en": ["Kim"], "publisher_name": "한빛미디어", "identifiers": { "isbn13": "9788968481239" }, "language_code": "ko", "issued_year": 2022, "edition_labels": [], "category_paths": ["books>software>search"], "concept_ids": ["c_search", "c_opensearch"], "is_hidden": false, "updated_at": "__UPDATED_AT__" }
 DOC_EOF
 )"
 
@@ -85,15 +87,15 @@ echo "$DOC_RES" | grep -q '"errors":false' || {
 
 VEC_BULK="$(cat <<'VEC_EOF'
 { "index": { "_index": "__VEC_ALIAS__", "_id": "b1" } }
-{ "doc_id": "b1", "language_code": "ko", "category_paths": ["books>fiction>fantasy"], "concept_ids": ["c_fantasy", "c_magic"], "embedding": __VEC_B1__, "updated_at": "__UPDATED_AT__" }
+{ "doc_id": "b1", "is_hidden": false, "language_code": "ko", "category_paths": ["books>fiction>fantasy"], "concept_ids": ["c_fantasy", "c_magic"], "embedding": __VEC_B1__, "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__VEC_ALIAS__", "_id": "b2" } }
-{ "doc_id": "b2", "language_code": "ko", "category_paths": ["books>fiction>fantasy"], "concept_ids": ["c_fantasy", "c_wizard"], "embedding": __VEC_B2__, "updated_at": "__UPDATED_AT__" }
+{ "doc_id": "b2", "is_hidden": false, "language_code": "ko", "category_paths": ["books>fiction>fantasy"], "concept_ids": ["c_fantasy", "c_wizard"], "embedding": __VEC_B2__, "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__VEC_ALIAS__", "_id": "b3" } }
-{ "doc_id": "b3", "language_code": "ko", "category_paths": ["books>software>engineering"], "concept_ids": ["c_clean_code", "c_quality"], "embedding": __VEC_B3__, "updated_at": "__UPDATED_AT__" }
+{ "doc_id": "b3", "is_hidden": false, "language_code": "ko", "category_paths": ["books>software>engineering"], "concept_ids": ["c_clean_code", "c_quality"], "embedding": __VEC_B3__, "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__VEC_ALIAS__", "_id": "b4" } }
-{ "doc_id": "b4", "language_code": "ko", "category_paths": ["books>software>architecture"], "concept_ids": ["c_domain_driven", "c_design"], "embedding": __VEC_B4__, "updated_at": "__UPDATED_AT__" }
+{ "doc_id": "b4", "is_hidden": false, "language_code": "ko", "category_paths": ["books>software>architecture"], "concept_ids": ["c_domain_driven", "c_design"], "embedding": __VEC_B4__, "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__VEC_ALIAS__", "_id": "b5" } }
-{ "doc_id": "b5", "language_code": "ko", "category_paths": ["books>software>search"], "concept_ids": ["c_search", "c_opensearch"], "embedding": __VEC_B5__, "updated_at": "__UPDATED_AT__" }
+{ "doc_id": "b5", "is_hidden": false, "language_code": "ko", "category_paths": ["books>software>search"], "concept_ids": ["c_search", "c_opensearch"], "embedding": __VEC_B5__, "updated_at": "__UPDATED_AT__" }
 VEC_EOF
 )"
 
@@ -119,17 +121,17 @@ echo "$VEC_RES" | grep -q '"errors":false' || {
 
 AC_BULK="$(cat <<'AC_EOF'
 { "index": { "_index": "__AC_ALIAS__", "_id": "ac_q1" } }
-{ "suggest_id": "ac_q1", "type": "QUERY", "lang": "ko", "text": "해리포터", "text_kw": "해리포터", "weight": 100, "popularity_7d": 0.80, "ctr_7d": 0.12, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+{ "suggest_id": "ac_q1", "type": "QUERY", "lang": "ko", "text": "해리포터", "weight": 100, "popularity_7d": 0.80, "ctr_7d": 0.12, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__AC_ALIAS__", "_id": "ac_q2" } }
-{ "suggest_id": "ac_q2", "type": "QUERY", "lang": "ko", "text": "클린 코드", "text_kw": "클린 코드", "weight": 90, "popularity_7d": 0.60, "ctr_7d": 0.08, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+{ "suggest_id": "ac_q2", "type": "QUERY", "lang": "ko", "text": "클린 코드", "weight": 90, "popularity_7d": 0.60, "ctr_7d": 0.08, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__AC_ALIAS__", "_id": "ac_t1" } }
-{ "suggest_id": "ac_t1", "type": "TITLE", "lang": "ko", "text": "해리 포터와 마법사의 돌", "text_kw": "해리 포터와 마법사의 돌", "target_doc_id": "b1", "weight": 95, "popularity_7d": 0.70, "ctr_7d": 0.10, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+{ "suggest_id": "ac_t1", "type": "TITLE", "lang": "ko", "text": "해리 포터와 마법사의 돌", "target_doc_id": "b1", "weight": 95, "popularity_7d": 0.70, "ctr_7d": 0.10, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__AC_ALIAS__", "_id": "ac_t2" } }
-{ "suggest_id": "ac_t2", "type": "TITLE", "lang": "ko", "text": "클린 코드", "text_kw": "클린 코드", "target_doc_id": "b3", "weight": 85, "popularity_7d": 0.55, "ctr_7d": 0.06, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+{ "suggest_id": "ac_t2", "type": "TITLE", "lang": "ko", "text": "클린 코드", "target_doc_id": "b3", "weight": 85, "popularity_7d": 0.55, "ctr_7d": 0.06, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__AC_ALIAS__", "_id": "ac_a1" } }
-{ "suggest_id": "ac_a1", "type": "AUTHOR", "lang": "ko", "text": "J.K. 롤링", "text_kw": "J.K. 롤링", "target_id": "a1", "weight": 88, "popularity_7d": 0.65, "ctr_7d": 0.09, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+{ "suggest_id": "ac_a1", "type": "AUTHOR", "lang": "ko", "text": "J.K. 롤링", "target_id": "a1", "weight": 88, "popularity_7d": 0.65, "ctr_7d": 0.09, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
 { "index": { "_index": "__AC_ALIAS__", "_id": "ac_s1" } }
-{ "suggest_id": "ac_s1", "type": "SERIES", "lang": "ko", "text": "해리 포터", "text_kw": "해리 포터", "target_id": "s1", "weight": 92, "popularity_7d": 0.68, "ctr_7d": 0.11, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
+{ "suggest_id": "ac_s1", "type": "SERIES", "lang": "ko", "text": "해리 포터", "target_id": "s1", "weight": 92, "popularity_7d": 0.68, "ctr_7d": 0.11, "is_blocked": false, "payload": {}, "last_seen_at": "__UPDATED_AT__", "updated_at": "__UPDATED_AT__" }
 AC_EOF
 )"
 
@@ -234,7 +236,7 @@ fi
 echo "OK: knn hits=$KNN_HITS"
 
 echo "Running autocomplete smoke check (text match: 해)..."
-AC_RES_QUERY="$(curl -sS -XPOST "$OS_URL/ac_read/_search" \
+AC_RES_QUERY="$(curl -sS -XPOST "$OS_URL/ac_candidates_read/_search" \
   -H "Content-Type: application/json" \
   -d '{"query":{"match":{"text":"해"}},"size":5}')"
 

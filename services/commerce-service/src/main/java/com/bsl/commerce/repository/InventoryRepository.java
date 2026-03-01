@@ -38,10 +38,16 @@ public class InventoryRepository {
     }
 
     public void insertBalance(long skuId, long sellerId) {
+        insertBalance(skuId, sellerId, 0, 0);
+    }
+
+    public void insertBalance(long skuId, long sellerId, int onHand, int reserved) {
         jdbcTemplate.update(
-            "INSERT INTO inventory_balance (sku_id, seller_id, on_hand, reserved) VALUES (?, ?, 0, 0)",
+            "INSERT INTO inventory_balance (sku_id, seller_id, on_hand, reserved) VALUES (?, ?, ?, ?)",
             skuId,
-            sellerId
+            sellerId,
+            onHand,
+            reserved
         );
     }
 

@@ -24,6 +24,20 @@ public class SellerRepository {
         );
     }
 
+    public Long findActiveSellerId() {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+            "SELECT seller_id FROM seller WHERE status = 'ACTIVE' ORDER BY seller_id ASC LIMIT 1"
+        );
+        if (rows.isEmpty()) {
+            return null;
+        }
+        Object raw = rows.get(0).get("seller_id");
+        if (raw instanceof Number number) {
+            return number.longValue();
+        }
+        return null;
+    }
+
     public Map<String, Object> findSeller(long sellerId) {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
             "SELECT seller_id, name, status, policy_json, created_at FROM seller WHERE seller_id = ?",

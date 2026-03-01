@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -44,7 +45,7 @@ public class AddressController {
         @RequestBody AddressRequest request
     ) {
         if (request == null || request.name == null || request.phone == null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "bad_request", "name and phone are required");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "bad_request", "받는 분 이름과 연락처는 필수입니다.");
         }
         long userId = RequestUtils.resolveUserId(userIdHeader, 1L);
         if (Boolean.TRUE.equals(request.isDefault)) {
@@ -74,10 +75,56 @@ public class AddressController {
         long userId = RequestUtils.resolveUserId(userIdHeader, 1L);
         Map<String, Object> address = addressRepository.findAddress(addressId);
         if (address == null || com.bsl.commerce.common.JdbcUtils.asLong(address.get("user_id")) != userId) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "address not found");
+            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "배송지를 찾을 수 없습니다.");
         }
         addressRepository.clearDefault(userId);
         addressRepository.setDefault(addressId);
+        Map<String, Object> response = base();
+        response.put("address", addressRepository.findAddress(addressId));
+        return response;
+    }
+
+    @PatchMapping("/addresses/{addressId}")
+    @Transactional
+    public Map<String, Object> updateAddress(
+        @RequestHeader(value = "x-user-id", required = false) String userIdHeader,
+        @PathVariable long addressId,
+        @RequestBody AddressRequest request
+    ) {
+        long userId = RequestUtils.resolveUserId(userIdHeader, 1L);
+        Map<String, Object> existing = addressRepository.findAddress(addressId);
+        if (existing == null || !userIdEquals(existing.get("user_id"), userId)) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "배송지를 찾을 수 없습니다.");
+        }
+
+        String resolvedName = resolvedText(request == null ? null : request.name, existing.get("name"));
+        String resolvedPhone = resolvedText(request == null ? null : request.phone, existing.get("phone"));
+        String resolvedZip = resolvedNullable(request == null ? null : request.zip, existing.get("zip"));
+        String resolvedAddr1 = resolvedNullable(request == null ? null : request.addr1, existing.get("addr1"));
+        String resolvedAddr2 = resolvedNullable(request == null ? null : request.addr2, existing.get("addr2"));
+
+        if (resolvedName == null || resolvedName.isBlank() || resolvedPhone == null || resolvedPhone.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "bad_request", "받는 분 이름과 연락처는 필수입니다.");
+        }
+
+        boolean currentDefault = asBoolean(existing.get("is_default"));
+        boolean requestedDefault = request != null && Boolean.TRUE.equals(request.isDefault);
+        boolean resolvedDefault = requestedDefault || currentDefault;
+
+        if (resolvedDefault) {
+            addressRepository.clearDefault(userId);
+        }
+
+        addressRepository.updateAddress(
+            addressId,
+            resolvedName,
+            resolvedPhone,
+            resolvedZip,
+            resolvedAddr1,
+            resolvedAddr2,
+            resolvedDefault
+        );
+
         Map<String, Object> response = base();
         response.put("address", addressRepository.findAddress(addressId));
         return response;
@@ -99,5 +146,40 @@ public class AddressController {
         public String addr1;
         public String addr2;
         public Boolean isDefault;
+    }
+
+    private boolean userIdEquals(Object ownerValue, long userId) {
+        if (ownerValue instanceof Number number) {
+            return number.longValue() == userId;
+        }
+        return false;
+    }
+
+    private String resolvedText(String requestValue, Object currentValue) {
+        if (requestValue != null) {
+            return requestValue.trim();
+        }
+        return currentValue == null ? null : String.valueOf(currentValue);
+    }
+
+    private String resolvedNullable(String requestValue, Object currentValue) {
+        if (requestValue != null) {
+            String trimmed = requestValue.trim();
+            return trimmed.isEmpty() ? null : trimmed;
+        }
+        return currentValue == null ? null : String.valueOf(currentValue);
+    }
+
+    private boolean asBoolean(Object value) {
+        if (value instanceof Boolean bool) {
+            return bool;
+        }
+        if (value instanceof Number number) {
+            return number.intValue() != 0;
+        }
+        if (value instanceof String text) {
+            return "1".equals(text) || "true".equalsIgnoreCase(text);
+        }
+        return false;
     }
 }

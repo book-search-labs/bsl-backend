@@ -1,0 +1,978 @@
+{
+  "@graph" : [ {
+    "@id" : "nlk:CountryMark",
+    "@type" : "nlon:Concept",
+    "broader" : "nlk:MarkUsingInNLK"
+  }, {
+    "@id" : "nlk:ForeignLocationMark",
+    "@type" : "nlon:Concept",
+    "broader" : "nlk:MarkUsingInNLK"
+  }, {
+    "@id" : "nlk:KSH1997000001",
+    "@type" : "nlon:Concept",
+    "label" : "대립 개념[對立槪念]",
+    "sameAs" : "http://lod.nl.go.kr/subject/대립_개념_對立槪念",
+    "altLabel" : [ "다와 일[多--一]", "개념[槪念]" ],
+    "broader" : "nlk:KSH1998007636",
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : "nlk:KSH1997000002"
+  }, {
+    "@id" : "nlk:KSH1997000002",
+    "@type" : "nlon:Concept",
+    "label" : "다와 일[多--一]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다와_일_多--一",
+    "altLabel" : [ "대립 개념[對立槪念]", "일과 다[一--多]", "plurality and unity@en", "plurality and unity" ],
+    "broader" : "nlk:KSH1997000001",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다와 일[多--一]"
+  }, {
+    "@id" : "nlk:KSH1997000003",
+    "@type" : "nlon:Concept",
+    "label" : "다운 링크[down link]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다운_링크_down_link",
+    "altLabel" : [ "down link@en", "down link", "우주 통신[宇宙通信]", "무선 통신[無線通信]" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다운 링크[down link]",
+    "related" : [ "nlk:KSH1998022199", "nlk:KSH1998002782" ]
+  }, {
+    "@id" : "nlk:KSH1997000004",
+    "@type" : "nlon:Concept",
+    "label" : "다운사이징[downsizing]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다운사이징_downsizing",
+    "altLabel" : [ "downsizing", "근거리 통신망[近距離通信網]", "감량 경영[減量經營]", "downsizing@en", "구조 조정[構造調整]", "리엔지니어링[reengineering]", "분산 처리[分散處理]", "기업 구조 조정[企業構造調整]" ],
+    "broader" : "nlk:KSH1998024760",
+    "definition" : "기업 등에서 사용하는 컴퓨터 시스템을 소형의 것으로 대체하는 것. 개인용 컴퓨터(PC)나 워크스테이션 등 소형 컴퓨터의 성능이 현저하게 향상되어 메인 프레임보다 가격 대 성능비가 우수하고, 구내 정보 통신망(LAN) 환경이나 분산 데이터베이스, 트랜잭션 처리 시스템 등 분산 처리에 적합한 환경이 정비되어 있어서 다운사이징을 가능하게 하고 필요하게 하였다. 이전에는 메인 프레임으로 하던 처리를 LAN상에서 PC나 워크스테이션으로 처리하고 있다. 초기 도입 비용의 절감, 개량·확장의 유연성 등의 이점이 있으나 운영과 관리가 어렵다.",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다운사이징[downsizing]",
+    "related" : [ "nlk:KSH1998008179", "nlk:KSH2001001416", "nlk:KSH1998000006", "nlk:KSH2000001303", "nlk:KSH1998000005" ]
+  }, {
+    "@id" : "nlk:KSH1997000005",
+    "@type" : "nlon:Concept",
+    "label" : "전해기[電解器]",
+    "sameAs" : "http://lod.nl.go.kr/subject/전해기_電解器",
+    "altLabel" : [ "전기 분해[電氣分解]", "다운스 전해기[--電解器]" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : "nlk:KSH1997000006",
+    "related" : "nlk:KSH1998032827"
+  }, {
+    "@id" : "nlk:KSH1997000006",
+    "@type" : "nlon:Concept",
+    "label" : "다운스 전해기[--電解器]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다운스_전해기_--電解器",
+    "altLabel" : [ "Downs electrolytic cell@en", "전해기[電解器]", "Downs electrolytic cell" ],
+    "broader" : "nlk:KSH1997000005",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다운스 전해기[--電解器]"
+  }, {
+    "@id" : "nlk:KSH1997000007",
+    "@type" : "nlon:Concept",
+    "label" : "전해액[電解液]",
+    "sameAs" : "http://lod.nl.go.kr/subject/전해액_電解液",
+    "altLabel" : [ "전해질[電解質]", "전기 분해[電氣分解]", "electrolytic solution@en", "electrolyte", "강전해질[强電解質]", "운반율[運搬率]", "전해질 수용액[電解質水溶液]", "오스트발트의 희석률[--稀釋率]", "아레니우스의 이온화설[--化說]", "electrolytic solution", "electrolyte@en", "전해조[電解槽]", "전해질 용액[電解質溶液]" ],
+    "definition" : "전기분해할 때 전해조(電解槽)에 넣어서 이온 전도의 매체(媒體) 역할을 하는 용액. 전해질용액의 약칭으로도 쓰인다.",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "전해액[電解液]",
+    "related" : [ "nlk:KSH2002024893", "nlk:KSH2002011457", "nlk:KSH1998006143", "nlk:KSH1998008121", "nlk:KSH2002007117", "nlk:KSH2002006041", "nlk:KSH1998032827" ]
+  }, {
+    "@id" : "nlk:KSH1997000008",
+    "@type" : "nlon:Concept",
+    "label" : "다운 증후군[--症候群]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다운_증후군_--症候群",
+    "altLabel" : [ "몽골리스무스[Mongolismus]", "Mongolismus", "다운 증후군 장애[-- 症候群障碍]", "Mongolismus@de", "증후군[症候群]", "Down's syndrome@en", "정신 지체[精神遲滯]", "Mongolism@en", "몽고증[蒙古症]", "몰골증[蒙古症]", "중추 신경계 장애[中樞神經系障碍]", "염색체 이상[染色體異常]", "Down's syndrome", "선천성 이상[先天性異常]", "솜털 증후군[--症候群]", "프래자일 엑스 증후군[--症候群]", "Mongolism", "선천적 소아증[先天的小兒症]", "몽골리즘[Mongolism]" ],
+    "broader" : "nlk:KSH2001007226",
+    "definition" : "선천성 정신박약의 한 가지. 대부분 21번 염색체가 정상보다 한 개 더 많은 데서 비롯되는 질환으로, 지능 장애가 심하고 특이한 용모를 보이는 것이 특징임.",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다운 증후군[--症候群]",
+    "related" : [ "nlk:KSH1998003061", "nlk:KSH2004022002", "nlk:KSH1998029338", "nlk:KSH2005010188", "nlk:KSH1998000672", "nlk:KSH2000030496", "nlk:KSH2001014619" ]
+  }, {
+    "@id" : "nlk:KSH1997000009",
+    "@type" : "nlon:Concept",
+    "isSubjectOf" : [ "nlk:WMO200312001", "nlk:WMO000035378", "nlk:WMO201212411", "nlk:WMO201304246", "nlk:WMO201509757", "nlk:WMO200010669" ],
+    "label" : "일원론[一元論]",
+    "sameAs" : "http://lod.nl.go.kr/subject/일원론_一元論",
+    "altLabel" : [ "주관적 일원론[主觀的一元論]", "존재론적 일원론[存在論的一元論]", "사회적 일원론[社會的一元論]", "단원론[單元論]", "다원론[多元論]", "인식론적 일원론[認識論的一元論]", "자연 주의적 일원론[自然主義的一元論]", "이원론[二元論]", "범신론[汎神論]", "monism", "형이상학적 일원론[形而上學的一元論]", "방법적 일원론[方法的一元論]", "monism@en", "윤리적 일원론[倫理的一元論]" ],
+    "closeMatch" : "http://id.loc.gov/authorities/subjects/sh85086855",
+    "definition" : "철학적인 사상(事象)의 설명에서 유일의 궁극적인 존재·원리·개념·방법 등을 생각하는 입장 또는 경향의 총칭.",
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : [ "nlk:KSH2002024817", "nlk:KSH2000018633", "nlk:KSH2002024820", "nlk:KSH2002024819", "nlk:KSH2000029013", "nlk:KSH2002024816", "nlk:KSH2002024818", "nlk:KSH2002024821" ],
+    "prefLabel" : "일원론[一元論]",
+    "related" : [ "nlk:KSH1998025977", "nlk:KSH1998031947", "nlk:KSH2000002209", "nlk:KSH2002031681" ]
+  }, {
+    "@id" : "nlk:KSH1997000010",
+    "@type" : "nlon:Concept",
+    "label" : "형이상학적 다원론[形而上學的多元論]",
+    "sameAs" : "http://lod.nl.go.kr/subject/형이상학적_다원론_形而上學的多元論",
+    "altLabel" : [ "양적 다원론[量的多元論]", "다원론[多元論]", "종교적 다원론[宗敎的多元論]", "존재론적 다원론[存在論的多元論]" ],
+    "broader" : "nlk:KSH1998025977",
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : [ "nlk:KSH1997000012", "nlk:KSH1997000011" ],
+    "prefLabel" : "형이상학적 다원론[形而上學的多元論]"
+  }, {
+    "@id" : "nlk:KSH1997000011",
+    "@type" : "nlon:Concept",
+    "label" : "양적 다원론[量的多元論]",
+    "sameAs" : "http://lod.nl.go.kr/subject/양적_다원론_量的多元論",
+    "altLabel" : "형이상학적 다원론[形而上學的多元論]",
+    "broader" : "nlk:KSH1997000010",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000012",
+    "@type" : "nlon:Concept",
+    "isSubjectOf" : "nlk:KMO200309002",
+    "label" : "종교적 다원론[宗敎的多元論]",
+    "sameAs" : "http://lod.nl.go.kr/subject/종교적_다원론_宗敎的多元論",
+    "altLabel" : "형이상학적 다원론[形而上學的多元論]",
+    "broader" : "nlk:KSH1997000010",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000013",
+    "@type" : "nlon:Concept",
+    "label" : "인식론적 다원론[認識論的多元論]",
+    "sameAs" : "http://lod.nl.go.kr/subject/인식론적_다원론_認識論的多元論",
+    "altLabel" : "다원론[多元論]",
+    "broader" : "nlk:KSH1998025977",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000014",
+    "@type" : "nlon:Concept",
+    "label" : "윤리적 다원론[倫理的多元論]",
+    "sameAs" : "http://lod.nl.go.kr/subject/윤리적_다원론_倫理的多元論",
+    "altLabel" : "다원론[多元論]",
+    "broader" : "nlk:KSH1998025977",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000015",
+    "@type" : "nlon:Concept",
+    "label" : "방법적 다원론[方法的多元論]",
+    "sameAs" : "http://lod.nl.go.kr/subject/방법적_다원론_方法的多元論",
+    "altLabel" : "다원론[多元論]",
+    "broader" : "nlk:KSH1998025977",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000016",
+    "@type" : "nlon:Concept",
+    "label" : "다원 방송[多元放送]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다원_방송_多元放送",
+    "altLabel" : [ "multiorganization broadcasting", "2원 방송[二元放送]", "방송[放送]", "3원 방송[三元放送]", "multiorganization broadcasting@en" ],
+    "broader" : "nlk:KSH1998001301",
+    "definition" : "여러 지점으로부터 소재를 받아 하나의 중계 프로그램을 제작, 방송하는 것. 여러 국의 스튜디오나 중계 취재 지점에 마이크나 텔레비전 카메라를 설치해 두고 그 출력을 본국에서 제어하여 하나의 프로그램을 완성시키는 것이다.",
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : [ "nlk:KSH1997000017", "nlk:KSH1997000018" ],
+    "prefLabel" : "다원 방송[多元放送]"
+  }, {
+    "@id" : "nlk:KSH1997000017",
+    "@type" : "nlon:Concept",
+    "label" : "2원 방송[二元放送]",
+    "sameAs" : "http://lod.nl.go.kr/subject/2원_방송_二元放送",
+    "altLabel" : "다원 방송[多元放送]",
+    "broader" : "nlk:KSH1997000016",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000018",
+    "@type" : "nlon:Concept",
+    "label" : "3원 방송[三元放送]",
+    "sameAs" : "http://lod.nl.go.kr/subject/3원_방송_三元放送",
+    "altLabel" : "다원 방송[多元放送]",
+    "broader" : "nlk:KSH1997000016",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000019",
+    "@type" : "nlon:Concept",
+    "label" : "다원적 국가론[多元的國家論]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다원적_국가론_多元的國家論",
+    "altLabel" : [ "다원 주의 국가[多元主義國家]", "(다원적)[多元的]", "정치 체제론[政治體制論]", "pluralistic theory of the state@en", "주권(권리)[主權]", "pluralistic theory of the state", "다원 주의론[多元主義論]", "국가론[國家論]", "다원 주의[多元主義]", "정치적 다원론[政治的多元論]", "다원 주의 국가론[多元主義國家論]" ],
+    "broader" : "nlk:KSH1998044911",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다원적 국가론[多元的國家論]",
+    "related" : [ "nlk:KSH2006001916", "nlk:KSH2005018124", "nlk:KSH2002033228", "nlk:KSH2006000133", "nlk:KSH1998015753", "nlk:KSH1997000021" ]
+  }, {
+    "@id" : "nlk:KSH1997000020",
+    "@type" : "nlon:Concept",
+    "label" : "다원적 사회[多元的社會]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다원적_사회_多元的社會",
+    "altLabel" : [ "사회(공동체)[社會]", "compound society", "(다원적)[多元的]", "compound society@en" ],
+    "broader" : "nlk:KSH1998013286",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다원적 사회[多元的社會]",
+    "related" : "nlk:KSH2002033228"
+  }, {
+    "@id" : "nlk:KSH1997000021",
+    "@type" : "nlon:Concept",
+    "isSubjectOf" : [ "nlk:CNTS-00114628092", "nlk:WMO199314609", "nlk:WMO201001946", "nlk:WMO200103860", "nlk:KMO201852125", "nlk:WMO201010024", "nlk:KMO201339140", "nlk:WMO201506486", "nlk:CNTS-00114628095", "nlk:WMO200913108", "nlk:WMO202004674", "nlk:WMO201207851", "nlk:WMO200003146", "nlk:KMO201155956", "nlk:WMO202103576", "nlk:WMO201807318", "nlk:WMO201808600", "nlk:WMO200702489", "nlk:WMO201215639", "nlk:WMO200313699", "nlk:WMO200104639", "nlk:WMO199901248", "nlk:WMO201405234", "nlk:CNTS-00114628094", "nlk:KMO201146489", "nlk:WMO201215630", "nlk:WMO200308682", "nlk:WMO201807355", "nlk:WMO200802376", "nlk:WMO201509500", "nlk:WMO201411232", "nlk:WMO202102733", "nlk:WMO200904679", "nlk:KMO201756232", "nlk:WMO202202373", "nlk:CNTS-00114628093", "nlk:WMO201111881", "nlk:WMO200218456", "nlk:WMO200808163", "nlk:WMO201107742", "nlk:WMO201208404", "nlk:WMO201807333", "nlk:WMO201504348", "nlk:WMO199802677", "nlk:WMO201405637", "nlk:WMO202003717", "nlk:CNTS-00114628091", "nlk:KMO200607323", "nlk:WMO200807788", "nlk:WMO200809754" ],
+    "label" : "다원 주의[多元主義]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다원_주의_多元主義",
+    "altLabel" : [ "pluralism@en", "다원 주의 정치학[多元主義政治學]", "종교 다원 주의[宗敎多元主義]", "사회 사상[社會思想]", "커뮤니케이션적 입법관[--的立法觀]", "다원 정치[多元政治]", "다원적 국가론[多元的國家論]", "공공 선택 이론[公共選擇理論]", "다원 주의 사회[多元主義社會]", "사회적 부정의[社會的不正義]", "이데올로기[ideology]", "정치 체제론[政治體制論]", "도덕 다원 주의[道德多元主義]", "사회 다원 주의[社會多元主義]", "다원 주의론[多元主義論]", "多元主義@ja", "공화 주의[共和主義]", "다원 민주 주의[多元民主主義]", "pluralism", "다원 주의 국가[多元主義國家]", "多元主義" ],
+    "broader" : [ "nlk:KSH2000003152", "nlk:KSH1998007894" ],
+    "closeMatch" : "http://id.loc.gov/authorities/subjects/sh85103570",
+    "definition" : "사회는 여러 독립적인 이익집단이나 결사체로 이루어져 있으므로 권력 엘리트에 의하여 지배되기보다는 그 집단의 경쟁·갈등·협력 등에 의하여 민주주의적으로 운영된다고 보는 사상.",
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : [ "nlk:KSH2002025727", "nlk:KSH2001020537", "nlk:KSH2001001920" ],
+    "prefLabel" : "다원 주의[多元主義]",
+    "related" : [ "nlk:KSH2006001918", "nlk:KSH2006001915", "nlk:KSH2006002799", "nlk:KSH2006000133", "nlk:KSH2005018124", "nlk:KSH2006007543", "nlk:KSH1997000019", "nlk:KSH2006001916", "nlk:KSH2006006065", "nlk:KSH2006001917", "nlk:KSH2006001914", "nlk:KSH2006002940" ]
+  }, {
+    "@id" : "nlk:KSH1997000022",
+    "@type" : "nlon:Concept",
+    "label" : "전개 도법[展開圖法]",
+    "sameAs" : "http://lod.nl.go.kr/subject/전개_도법_展開圖法",
+    "altLabel" : [ "developed projection", "지도 투영법[地圖投影法]", "developed projection@en", "전개도[展開圖]" ],
+    "broader" : "nlk:KSH1998042030",
+    "definition" : "기하학적 원리에 의하여 작성된 도법.",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "전개 도법[展開圖法]",
+    "related" : "nlk:KSH2001007573"
+  }, {
+    "@id" : "nlk:KSH1997000023",
+    "@type" : "nlon:Concept",
+    "label" : "영다원환[零多元環]",
+    "sameAs" : "http://lod.nl.go.kr/subject/영다원환_零多元環",
+    "altLabel" : "다원환[多元環]",
+    "broader" : "nlk:KSH1999014354",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000024",
+    "@type" : "nlon:Concept",
+    "label" : "가환 다원환[可換多元環]",
+    "sameAs" : "http://lod.nl.go.kr/subject/가환_다원환_可換多元環",
+    "altLabel" : "다원환[多元環]",
+    "broader" : "nlk:KSH1999014354",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000025",
+    "@type" : "nlon:Concept",
+    "label" : "단위적 다원환[單位的多元環]",
+    "sameAs" : "http://lod.nl.go.kr/subject/단위적_다원환_單位的多元環",
+    "altLabel" : "다원환[多元環]",
+    "broader" : "nlk:KSH1999014354",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000026",
+    "@type" : "nlon:Concept",
+    "label" : "다원체[多元體]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다원체_多元體",
+    "altLabel" : "다원환[多元環]",
+    "inScheme" : "nlk:subjectTermScheme",
+    "related" : "nlk:KSH1999014354"
+  }, {
+    "@id" : "nlk:KSH1997000027",
+    "@type" : "nlon:Concept",
+    "label" : "부분 다원환[部分多元環]",
+    "sameAs" : "http://lod.nl.go.kr/subject/부분_다원환_部分多元環",
+    "altLabel" : "다원환[多元環]",
+    "broader" : "nlk:KSH1999014354",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000028",
+    "@type" : "nlon:Concept",
+    "label" : "자연 도태설[自然淘汰說]",
+    "sameAs" : "http://lod.nl.go.kr/subject/자연_도태설_自然淘汰說",
+    "altLabel" : [ "적자 생존설[適者生存說]", "자연 선택설[自然選擇說]", "자연 도태[自然淘汰]", "다윈 주의[--主義]", "적자 생존[適者生存]" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "자연 도태설[自然淘汰說]",
+    "related" : [ "nlk:KSH2006004108", "nlk:KSH1998028665", "nlk:KSH2002037081", "nlk:KSH2000020876" ]
+  }, {
+    "@id" : "nlk:KSH1997000029",
+    "@type" : "nlon:Concept",
+    "label" : "진화 요인론[進化要因論]",
+    "sameAs" : "http://lod.nl.go.kr/subject/진화_요인론_進化要因論",
+    "altLabel" : "다윈 주의[--主義]",
+    "inScheme" : "nlk:subjectTermScheme",
+    "related" : "nlk:KSH2006004108"
+  }, {
+    "@id" : "nlk:KSH1997000030",
+    "@type" : "nlon:Concept",
+    "label" : "다윈 결절[--結節]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다윈_결절_--結節",
+    "altLabel" : "귓바퀴",
+    "inScheme" : "nlk:subjectTermScheme",
+    "related" : "nlk:KSH1999014103"
+  }, {
+    "@id" : "nlk:KSH1997000031",
+    "@type" : "nlon:Concept",
+    "label" : "다유 부선[多油浮選]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다유_부선_多油浮選",
+    "altLabel" : [ "bulk oil floatation@en", "부유 선광[浮游選鑛]", "bulk oil floatation" ],
+    "broader" : "nlk:KSH1998009068",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다유 부선[多油浮選]"
+  }, {
+    "@id" : "nlk:KSH1997000032",
+    "@type" : "nlon:Concept",
+    "label" : "포말 부선[泡沫浮選]",
+    "sameAs" : "http://lod.nl.go.kr/subject/포말_부선_泡沫浮選",
+    "altLabel" : "부유 선광[浮游選鑛]",
+    "broader" : "nlk:KSH1998009068",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000033",
+    "@type" : "nlon:Concept",
+    "label" : "다육 식물[多肉植物]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다육_식물_多肉植物",
+    "altLabel" : [ "succulent plant", "식물(생물)[植物]", "succulent plant@en" ],
+    "broader" : "nlk:KSH1998003210",
+    "definition" : "식물체의 일부(열매는 제외) 또는 전체가 비대하고 다육질의 저수조직(貯水組織)으로 되어 있어 건조에 강한 식물. 덩이줄기식물이나 덩이뿌리식물의 일부 및 알줄기식물·비늘줄기식물은 포함시키지 않는다.",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다육 식물[多肉植物]"
+  }, {
+    "@id" : "nlk:KSH1997000034",
+    "@type" : "nlon:Concept",
+    "label" : "다음성[多音性]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다음성_多音性",
+    "altLabel" : [ "Mehrstimmigkeit@de", "다성성[多聲性]", "Mehrstimmigkeit" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다음성[多音性]"
+  }, {
+    "@id" : "nlk:KSH1997000035",
+    "@type" : "nlon:Concept",
+    "label" : "다의 도형[多義圖形]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다의_도형_多義圖形",
+    "altLabel" : [ "도형(그림)[圖形]", "ambiguous figures", "반전 도형[反轉圖形]", "애매 도형[曖昧圖形]", "ambiguous figures@en" ],
+    "broader" : "nlk:KSH1998015341",
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : "nlk:KSH1997000036",
+    "prefLabel" : "다의 도형[多義圖形]"
+  }, {
+    "@id" : "nlk:KSH1997000036",
+    "@type" : "nlon:Concept",
+    "label" : "반전 도형[反轉圖形]",
+    "sameAs" : "http://lod.nl.go.kr/subject/반전_도형_反轉圖形",
+    "altLabel" : [ "도형(그림)[圖形]", "reversible figure@en", "다의 도형[多義圖形]", "reversible figure", "도지 반전 도형[圖地反轉圖形]" ],
+    "broader" : [ "nlk:KSH1997000035", "nlk:KSH1998015341" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : "nlk:KSH2000031651",
+    "prefLabel" : "반전 도형[反轉圖形]"
+  }, {
+    "@id" : "nlk:KSH1997000037",
+    "@type" : "nlon:Concept",
+    "label" : "단의어[單義語]",
+    "sameAs" : "http://lod.nl.go.kr/subject/단의어_單義語",
+    "altLabel" : [ "monosemy@en", "다의어[多義語]", "monosemy" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "단의어[單義語]",
+    "related" : "nlk:KSH1998025983"
+  }, {
+    "@id" : "nlk:KSH1997000038",
+    "@type" : "nlon:Concept",
+    "label" : "다이내믹[dynamic]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이내믹_dynamic",
+    "altLabel" : [ "피아노(셈여림표)[piano]", "다카포[da capo]", "포르테[forte]", "dynamic", "dynamic@en" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : [ "nlk:KSH1997000040", "nlk:KSH1997000039", "nlk:KSH1997000177" ],
+    "prefLabel" : "다이내믹[dynamic]"
+  }, {
+    "@id" : "nlk:KSH1997000039",
+    "@type" : "nlon:Concept",
+    "label" : "포르테[forte]",
+    "sameAs" : "http://lod.nl.go.kr/subject/포르테_forte",
+    "altLabel" : [ "포르티시시모[fortssissimo]", "세게", "포르테 피아노[forte piano]", "피우 포르테[piu forte]", "forte@en", "셈여림표[--標]", "포르티시모[fortissimo]", "forte", "다이내믹[dynamic]", "메조 포르테[mezzo forte]" ],
+    "broader" : [ "nlk:KSH1997000038", "nlk:KSH1999016938" ],
+    "definition" : "음악에서 ‘세게’를 뜻하는 나타냄말. 악보에는 f로 약해서 적으며, 그것이 붙은 음을 세게 연주할 것을 지시한다. f의 수가 많아지면 세기도 더해간다.",
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : [ "nlk:KSH1997000041", "nlk:KSH2001012283", "nlk:KSH2004008899", "nlk:KSH1997000042", "nlk:KSH2004007702" ],
+    "prefLabel" : "포르테[forte]"
+  }, {
+    "@id" : "nlk:KSH1997000040",
+    "@type" : "nlon:Concept",
+    "isSubjectOf" : [ "nlk:WMO200207325", "nlk:WJU202002408", "nlk:WMO200101154", "nlk:WMO000063561", "nlk:WMO200306057", "nlk:WMO200900676", "nlk:WMO200711388", "nlk:WMO200405441", "nlk:WMO201902973", "nlk:WMO000063331", "nlk:WMO201402830", "nlk:WMO201500027", "nlk:WDM201502264", "nlk:WMO200103572", "nlk:WMO201606401", "nlk:WMO200903715", "nlk:WMO199400524", "nlk:WMO202201905", "nlk:WMO200701142", "nlk:WMO202201907", "nlk:WJU201603397", "nlk:WMO200304179", "nlk:WMO200405910", "nlk:WJU202201068", "nlk:WMO200311849", "nlk:WMO200304980", "nlk:WMO201800866", "nlk:WMO201004276", "nlk:WJU201802712", "nlk:WMO200900095", "nlk:WMO201502071", "nlk:WMO201800990", "nlk:WMO201504142", "nlk:WMO200101250", "nlk:WMO200900318", "nlk:WDM200900708", "nlk:WJU200601102", "nlk:WMO201111651", "nlk:WMO200101156", "nlk:WJU201404529", "nlk:WMO201606402", "nlk:WMO200405238", "nlk:WMO201706498", "nlk:WJU201704966", "nlk:WMO201800531", "nlk:WMO201509317", "nlk:WDM201500848", "nlk:WMO000063473", "nlk:WMO201900922", "nlk:WMO200213144", "nlk:WMO201800508", "nlk:WMO201000643", "nlk:WJU200701050", "nlk:WMO201101775", "nlk:WJU202000364", "nlk:WMO201115023", "nlk:WJU200900759", "nlk:WMO200215813", "nlk:WMO201502073", "nlk:WMO201502072", "nlk:WJU201803072", "nlk:WMO201303499", "nlk:WMO000063526", "nlk:WMO201800504", "nlk:WMO200711010", "nlk:WMO201900219", "nlk:WMO199607230", "nlk:WMO201506675", "nlk:WMO201211949", "nlk:WDM201100143", "nlk:WMO000063557", "nlk:WMO200302706", "nlk:WMO201903324", "nlk:WMO201309486", "nlk:WMO200405061", "nlk:WMO200304383", "nlk:WMO200406643", "nlk:WMO201800863", "nlk:WMO201409052", "nlk:WMO200408570" ],
+    "label" : "피아노(셈여림표)[piano]",
+    "sameAs" : "http://lod.nl.go.kr/subject/피아노(셈여림표)_piano",
+    "altLabel" : [ "메조 피아노[mezzo piano]", "셈여림표[--標]", "피아니시모[pianissimo]", "다이내믹[dynamic]", "piano", "피아니시시모[pianississimo]", "여리게", "piano@en" ],
+    "broader" : [ "nlk:KSH1999016938", "nlk:KSH1997000038" ],
+    "closeMatch" : [ "http://id.loc.gov/authorities/subjects/sh85101722", "http://id.ndl.go.jp/auth/ndlsh/00569107" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : [ "nlk:KSH1997000044", "nlk:KSH2001012279", "nlk:KSH1997000043" ],
+    "prefLabel" : "피아노(셈여림표)[piano]"
+  }, {
+    "@id" : "nlk:KSH1997000041",
+    "@type" : "nlon:Concept",
+    "label" : "포르티시모[fortissimo]",
+    "sameAs" : "http://lod.nl.go.kr/subject/포르티시모_fortissimo",
+    "altLabel" : [ "fortissimo", "포르테[forte]", "fortissimo@en", "매우 세게" ],
+    "broader" : "nlk:KSH1997000039",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "포르티시모[fortissimo]"
+  }, {
+    "@id" : "nlk:KSH1997000042",
+    "@type" : "nlon:Concept",
+    "label" : "메조 포르테[mezzo forte]",
+    "sameAs" : "http://lod.nl.go.kr/subject/메조_포르테_mezzo_forte",
+    "altLabel" : [ "mezzo forte@en", "조금 세게", "포르테[forte]", "mezzo forte", "메조[mezzo]" ],
+    "broader" : "nlk:KSH1997000039",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "메조 포르테[mezzo forte]",
+    "related" : "nlk:KSH2002039704"
+  }, {
+    "@id" : "nlk:KSH1997000043",
+    "@type" : "nlon:Concept",
+    "label" : "피아니시모[pianissimo]",
+    "sameAs" : "http://lod.nl.go.kr/subject/피아니시모_pianissimo",
+    "altLabel" : [ "pianissimo", "매우 여리게", "피아노(셈여림표)[piano]", "피아니시시모[pianississimo]", "pianissimo@it" ],
+    "broader" : "nlk:KSH1997000040",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "피아니시모[pianissimo]",
+    "related" : "nlk:KSH1997000044"
+  }, {
+    "@id" : "nlk:KSH1997000044",
+    "@type" : "nlon:Concept",
+    "label" : "피아니시시모[pianississimo]",
+    "sameAs" : "http://lod.nl.go.kr/subject/피아니시시모_pianississimo",
+    "altLabel" : [ "피아노(셈여림표)[piano]", "피아니시모[pianissimo]", "pianississimo@it", "pianississimo" ],
+    "broader" : "nlk:KSH1997000040",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "피아니시시모[pianississimo]",
+    "related" : "nlk:KSH1997000043"
+  }, {
+    "@id" : "nlk:KSH1997000045",
+    "@type" : "nlon:Concept",
+    "label" : "지오퍼텐셜 고도[--高度]",
+    "sameAs" : "http://lod.nl.go.kr/subject/지오퍼텐셜_고도_--高度",
+    "altLabel" : [ "지오퍼텐셜", "다이내믹 고도[--高度]" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "related" : [ "nlk:KSH1998019482", "nlk:KSH1997000046" ]
+  }, {
+    "@id" : "nlk:KSH1997000046",
+    "@type" : "nlon:Concept",
+    "label" : "다이내믹 고도[--高度]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이내믹_고도_--高度",
+    "altLabel" : [ "geodynamic height@en", "지오퍼텐셜 고도[--高度]", "지오퍼텐셜", "dynamic height", "geodynamic height", "dynamic height@en" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다이내믹 고도[--高度]",
+    "related" : [ "nlk:KSH1997000045", "nlk:KSH1998019482" ]
+  }, {
+    "@id" : "nlk:KSH1997000047",
+    "@type" : "nlon:Concept",
+    "label" : "다이내믹 레인지[dynamic range]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이내믹_레인지_dynamic_range",
+    "altLabel" : [ "dynamic range@en", "동작 범위[動作範圍]", "증폭기[增幅器]", "dynamic range", "진폭[振幅]" ],
+    "definition" : "①소리 또는 신호의 최대 레벨과 최소 레벨(잡음 레벨)의 폭. 이를테면, 생음악 연주 등에서는 최대 음량이 되는 곳이 최대 레벨이고 연주 장소의 소음 레벨이 최소 레벨이 된다. 또 재생 기기에서는 일그러짐 없이 취급할 수 있는 최대 레벨과 잡음 레벨의 폭을 말하며 데시벨(dB)로 표시한다. \n②증폭기가 유효하게 작동하는 진폭 범위 허용 출력 일그러짐으로 제한된 최대 신호 진폭과 잡음 및 드리프트(drift)가 허용되는 최소 신호 진폭과의 비. dB로 나타내는 경우가 많다. \n③동조 회로의 주파수 및 동작 특성의 가변 범위.",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다이내믹 레인지[dynamic range]",
+    "related" : [ "nlk:KSH1998004196", "nlk:KSH1998034715" ]
+  }, {
+    "@id" : "nlk:KSH1997000048",
+    "@type" : "nlon:Concept",
+    "label" : "다이내믹 마이크로폰[dynamic microphone]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이내믹_마이크로폰_dynamic_microphone",
+    "altLabel" : [ "동전기형 마이크로폰[動電氣型--]", "가동 코일 마이크로폰[可動--]", "dynamic microphone", "dynamic microphone@en", "마이크로폰[microphone]" ],
+    "broader" : "nlk:KSH1998017744",
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : "nlk:KSH1997000049",
+    "prefLabel" : "다이내믹 마이크로폰[dynamic microphone]"
+  }, {
+    "@id" : "nlk:KSH1997000049",
+    "@type" : "nlon:Concept",
+    "label" : "가동 코일 마이크로폰[可動--]",
+    "sameAs" : "http://lod.nl.go.kr/subject/가동_코일_마이크로폰_可動--",
+    "altLabel" : [ "다이내믹 마이크로폰[dynamic microphone]", "moving coil microphone", "마이크로폰[microphone]", "moving coil microphone@en" ],
+    "broader" : [ "nlk:KSH1998017744", "nlk:KSH1997000048" ],
+    "definition" : "정자계 내에서 음파 입력으로 도체가 운동하면 전자 유도로 운동 속도에 비례하는 전류를 발생, 이것을 출력으로 끄집어내는 형식의 마이크로폰. 정(靜) 흡인력이 없으므로 진동계가 낮은 스티프니스를 갖도록 설계할 수 있어 낮은 공진 주파수의 음압 경사도 마이크로폰에 적합하다. 가동 코일 마이크로폰이라고도 한다.",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "가동 코일 마이크로폰[可動--]"
+  }, {
+    "@id" : "nlk:KSH1997000050",
+    "@type" : "nlon:Concept",
+    "label" : "중력 퍼텐셜[重力--]",
+    "sameAs" : "http://lod.nl.go.kr/subject/중력_퍼텐셜_重力--",
+    "altLabel" : [ "gravitational potential", "gravitational potential@en", "중력 가속도[重力加速度]", "다이내믹 미터[dynamic meter]" ],
+    "definition" : "지구중력의 퍼텐셜.",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "중력 퍼텐셜[重力--]",
+    "related" : [ "nlk:KSH1997000051", "nlk:KSH1997000052" ]
+  }, {
+    "@id" : "nlk:KSH1997000051",
+    "@type" : "nlon:Concept",
+    "label" : "다이내믹 미터[dynamic meter]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이내믹_미터_dynamic_meter",
+    "altLabel" : [ "dynamic meter@en", "중력 퍼텐셜[重力--]", "dynamic meter" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다이내믹 미터[dynamic meter]",
+    "related" : "nlk:KSH1997000050"
+  }, {
+    "@id" : "nlk:KSH1997000052",
+    "@type" : "nlon:Concept",
+    "label" : "중력 가속도[重力加速度]",
+    "sameAs" : "http://lod.nl.go.kr/subject/중력_가속도_重力加速度",
+    "altLabel" : [ "중력 퍼텐셜[重力--]", "자유 낙하[自由落下]", "가속도[加速度]", "애트우드의 기계[--機械]", "gravitational acceleration", "중력 측정[重力測定]", "gravitational acceleration@en", "자유 낙하 가속도[自由落下加速度]" ],
+    "broader" : "nlk:KSH1998003367",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "중력 가속도[重力加速度]",
+    "related" : [ "nlk:KSH1997000050", "nlk:KSH1998014730", "nlk:KSH2003006521", "nlk:KSH2002002067", "nlk:KSH2003004416" ]
+  }, {
+    "@id" : "nlk:KSH1997000053",
+    "@type" : "nlon:Concept",
+    "label" : "다이내믹 스피커[dynamic speaker]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이내믹_스피커_dynamic_speaker",
+    "altLabel" : [ "dynamic speaker", "dynamic speaker@en", "확성기[擴聲器]", "리본형 고음 스피커[--形高音--]" ],
+    "broader" : "nlk:KSH1998004298",
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : "nlk:KSH2004031611",
+    "prefLabel" : "다이내믹 스피커[dynamic speaker]"
+  }, {
+    "@id" : "nlk:KSH1997000054",
+    "@type" : "nlon:Concept",
+    "label" : "니트로글리콜[nitroglycol]",
+    "sameAs" : "http://lod.nl.go.kr/subject/니트로글리콜_nitroglycol",
+    "altLabel" : [ "nitroglycol@en", "다이나마이트[dynamite]", "nitroglycol" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "니트로글리콜[nitroglycol]",
+    "related" : "nlk:KSH1998021917"
+  }, {
+    "@id" : "nlk:KSH1997000055",
+    "@type" : "nlon:Concept",
+    "label" : "혼합 다이나마이트[混合--]",
+    "sameAs" : "http://lod.nl.go.kr/subject/혼합_다이나마이트_混合--",
+    "altLabel" : "다이나마이트[dynamite]",
+    "broader" : "nlk:KSH1998021917",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000056",
+    "@type" : "nlon:Concept",
+    "label" : "스트레이트 다이나마이트",
+    "sameAs" : "http://lod.nl.go.kr/subject/스트레이트_다이나마이트",
+    "altLabel" : "다이나마이트[dynamite]",
+    "broader" : "nlk:KSH1998021917",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000057",
+    "@type" : "nlon:Concept",
+    "label" : "질산 암모늄 다이나마이트[窒酸--]",
+    "sameAs" : "http://lod.nl.go.kr/subject/질산_암모늄_다이나마이트_窒酸--",
+    "altLabel" : "다이나마이트[dynamite]",
+    "broader" : "nlk:KSH1998021917",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000058",
+    "@type" : "nlon:Concept",
+    "label" : "규조토 다이나마이트[硅藻土--]",
+    "sameAs" : "http://lod.nl.go.kr/subject/규조토_다이나마이트_硅藻土--",
+    "altLabel" : "다이나마이트[dynamite]",
+    "broader" : "nlk:KSH1998021917",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000059",
+    "@type" : "nlon:Concept",
+    "label" : "교질 다이나마이트[膠質--]",
+    "sameAs" : "http://lod.nl.go.kr/subject/교질_다이나마이트_膠質--",
+    "altLabel" : [ "다이나마이트 1호", "비교질 다이나마이트[非膠質--]", "다이나마이트 4호", "다이나마이트 2호", "다이나마이트 3호", "다이나마이트[dynamite]" ],
+    "broader" : "nlk:KSH1998021917",
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : [ "nlk:KSH1997000067", "nlk:KSH1997000065", "nlk:KSH1997000068", "nlk:KSH1997000066" ],
+    "related" : "nlk:KSH1997000060"
+  }, {
+    "@id" : "nlk:KSH1997000060",
+    "@type" : "nlon:Concept",
+    "label" : "비교질 다이나마이트[非膠質--]",
+    "sameAs" : "http://lod.nl.go.kr/subject/비교질_다이나마이트_非膠質--",
+    "altLabel" : [ "다이나마이트[dynamite]", "교질 다이나마이트[膠質--]" ],
+    "broader" : "nlk:KSH1998021917",
+    "inScheme" : "nlk:subjectTermScheme",
+    "related" : "nlk:KSH1997000059"
+  }, {
+    "@id" : "nlk:KSH1997000061",
+    "@type" : "nlon:Concept",
+    "label" : "세미젤라틴 다이나마이트",
+    "sameAs" : "http://lod.nl.go.kr/subject/세미젤라틴_다이나마이트",
+    "altLabel" : "다이나마이트[dynamite]",
+    "broader" : "nlk:KSH1998021917",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000062",
+    "@type" : "nlon:Concept",
+    "label" : "난동 다이나마이트[難凍--]",
+    "sameAs" : "http://lod.nl.go.kr/subject/난동_다이나마이트_難凍--",
+    "altLabel" : [ "부동 다이나마이트[不凍--]", "다이나마이트[dynamite]" ],
+    "broader" : "nlk:KSH1998021917",
+    "inScheme" : "nlk:subjectTermScheme",
+    "related" : "nlk:KSH1997000063"
+  }, {
+    "@id" : "nlk:KSH1997000063",
+    "@type" : "nlon:Concept",
+    "label" : "부동 다이나마이트[不凍--]",
+    "sameAs" : "http://lod.nl.go.kr/subject/부동_다이나마이트_不凍--",
+    "altLabel" : [ "다이나마이트[dynamite]", "난동 다이나마이트[難凍--]" ],
+    "broader" : "nlk:KSH1998021917",
+    "inScheme" : "nlk:subjectTermScheme",
+    "related" : "nlk:KSH1997000062"
+  }, {
+    "@id" : "nlk:KSH1997000064",
+    "@type" : "nlon:Concept",
+    "label" : "가루 다이나마이트",
+    "sameAs" : "http://lod.nl.go.kr/subject/가루_다이나마이트",
+    "altLabel" : [ "가루 다이나마이트 1호", "다이나마이트[dynamite]", "가루 다이나마이트 2호" ],
+    "broader" : "nlk:KSH1998021917",
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : [ "nlk:KSH1997000070", "nlk:KSH1997000069" ]
+  }, {
+    "@id" : "nlk:KSH1997000065",
+    "@type" : "nlon:Concept",
+    "label" : "다이나마이트 1호",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이나마이트_1호",
+    "altLabel" : "교질 다이나마이트[膠質--]",
+    "broader" : "nlk:KSH1997000059",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000066",
+    "@type" : "nlon:Concept",
+    "label" : "다이나마이트 2호",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이나마이트_2호",
+    "altLabel" : "교질 다이나마이트[膠質--]",
+    "broader" : "nlk:KSH1997000059",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000067",
+    "@type" : "nlon:Concept",
+    "label" : "다이나마이트 3호",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이나마이트_3호",
+    "altLabel" : "교질 다이나마이트[膠質--]",
+    "broader" : "nlk:KSH1997000059",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000068",
+    "@type" : "nlon:Concept",
+    "label" : "다이나마이트 4호",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이나마이트_4호",
+    "altLabel" : "교질 다이나마이트[膠質--]",
+    "broader" : "nlk:KSH1997000059",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000069",
+    "@type" : "nlon:Concept",
+    "label" : "가루 다이나마이트 1호",
+    "sameAs" : "http://lod.nl.go.kr/subject/가루_다이나마이트_1호",
+    "altLabel" : "가루 다이나마이트",
+    "broader" : "nlk:KSH1997000064",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000070",
+    "@type" : "nlon:Concept",
+    "label" : "가루 다이나마이트 2호",
+    "sameAs" : "http://lod.nl.go.kr/subject/가루_다이나마이트_2호",
+    "altLabel" : "가루 다이나마이트",
+    "broader" : "nlk:KSH1997000064",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000071",
+    "@type" : "nlon:Concept",
+    "label" : "다이너모 이론[--理論]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이너모_이론_--理論",
+    "altLabel" : [ "dynamo theory", "dynamo theory@en", "원판 다이너모[圓板--]", "자기장[磁氣場]", "불러드형 다이너모", "천체[天體]", "로즈와 윌킨슨형 다이너모", "발전기[發電機]" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : [ "nlk:KSH1997000098", "nlk:KSH2002011599", "nlk:KSH1997000072" ],
+    "prefLabel" : "다이너모 이론[--理論]",
+    "related" : [ "nlk:KSH1998001640", "nlk:KSH1998007992", "nlk:KSH1998002606" ]
+  }, {
+    "@id" : "nlk:KSH1997000072",
+    "@type" : "nlon:Concept",
+    "label" : "로즈와 윌킨슨형 다이너모",
+    "sameAs" : "http://lod.nl.go.kr/subject/로즈와_윌킨슨형_다이너모",
+    "altLabel" : "다이너모 이론[--理論]",
+    "broader" : "nlk:KSH1997000071",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000073",
+    "@type" : "nlon:Concept",
+    "label" : "유도 자기장[誘導磁氣場]",
+    "sameAs" : "http://lod.nl.go.kr/subject/유도_자기장_誘導磁氣場",
+    "altLabel" : "자기장[磁氣場]",
+    "broader" : "nlk:KSH1998007992",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000074",
+    "@type" : "nlon:Concept",
+    "label" : "다이너미즘[dynamism]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이너미즘_dynamism",
+    "altLabel" : [ "역동설[力動說]", "dynamism", "dynamism@en", "역본설[力本說]", "철학 이론[哲學理論]" ],
+    "broader" : "nlk:KSH1998013068",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다이너미즘[dynamism]"
+  }, {
+    "@id" : "nlk:KSH1997000075",
+    "@type" : "nlon:Concept",
+    "label" : "다원적 우주[多元的宇宙]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다원적_우주_多元的宇宙",
+    "altLabel" : [ "우주[宇宙]", "pluralistic universe", "pluralistic universe@en", "(다원적)[多元的]" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다원적 우주[多元的宇宙]",
+    "related" : [ "nlk:KSH2002033228", "nlk:KSH1998032878" ]
+  }, {
+    "@id" : "nlk:KSH1997000076",
+    "@type" : "nlon:Concept",
+    "label" : "다이너트론 발진기[--發振器]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이너트론_발진기_--發振器",
+    "altLabel" : [ "다이나트론[dynatron]", "dynatron", "dynatron@en", "발진기[發振器]", "다이너트론[dynatron]", "dyantron oscillator@en", "dyantron oscillator" ],
+    "broader" : "nlk:KSH1998004177",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다이너트론 발진기[--發振器]"
+  }, {
+    "@id" : "nlk:KSH1997000077",
+    "@type" : "nlon:Concept",
+    "label" : "다이넬[Dynel]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이넬_Dynel",
+    "altLabel" : [ "Dynel@en", "합성 섬유[合成纖維]", "Dynel" ],
+    "broader" : "nlk:KSH1998007579",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다이넬[Dynel]"
+  }, {
+    "@id" : "nlk:KSH1997000078",
+    "@type" : "nlon:Concept",
+    "label" : "다이닝 리빙 룸[dining living room]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이닝_리빙_룸_dining_living_room",
+    "altLabel" : [ "living dining@en", "주택[住宅]", "거실[居室]", "dining living room@en", "dining living room", "living dining", "리빙 다이닝[living dining]" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다이닝 리빙 룸[dining living room]",
+    "related" : [ "nlk:KSH1998008803", "nlk:KSH1998004278" ]
+  }, {
+    "@id" : "nlk:KSH1997000079",
+    "@type" : "nlon:Concept",
+    "label" : "다이닝 키친[dining kitchen]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이닝_키친_dining_kitchen",
+    "altLabel" : [ "living dining kitchen", "리빙 다이닝 키친[living dining kitchen]", "주택[住宅]", "living dining kitchen@en", "dining kitchen@en", "부엌", "dining kitchen" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다이닝 키친[dining kitchen]",
+    "related" : [ "nlk:KSH1998004278", "nlk:KSH1998008975" ]
+  }, {
+    "@id" : "nlk:KSH1997000080",
+    "@type" : "nlon:Concept",
+    "label" : "다이달로스[Daidalos]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이달로스_Daidalos",
+    "altLabel" : [ "Daidalos@en", "Daidalos", "그리스 신화[--神話]" ],
+    "definition" : "그리스 신화에 나오는 인물. ‘명장(名匠)’이라는 뜻의 이름인데, 대장간의 신(神) 헤파이스토스의 자손이다. 여신 아테네로부터 기술을 전수받은 건축과 공예의 명인으로서 각지에서 존경받았다. 도끼·송곳·자 등 많은 연장을 발명하였다.",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다이달로스[Daidalos]",
+    "related" : "nlk:KSH1999014512"
+  }, {
+    "@id" : "nlk:KSH1997000081",
+    "@type" : "nlon:Concept",
+    "label" : "산성 아조 염료[酸性--染料]",
+    "sameAs" : "http://lod.nl.go.kr/subject/산성_아조_염료_酸性--染料",
+    "altLabel" : [ "다이렉트 디프 블랙[direct deep black]", "아조 염료[--染料]", "산성 염료[酸性染料]", "메틸 오렌지[methyl orange]" ],
+    "broader" : [ "nlk:KSH1998038749", "nlk:KSH1998036709" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : [ "nlk:KSH2000027049", "nlk:KSH1997000082" ]
+  }, {
+    "@id" : "nlk:KSH1997000082",
+    "@type" : "nlon:Concept",
+    "label" : "다이렉트 디프 블랙[direct deep black]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이렉트_디프_블랙_direct_deep_black",
+    "altLabel" : [ "산성 아조 염료[酸性--染料]", "흑색[黑色]", "direct deep black@en", "황화 블랙[黃化--]", "direct deep black", "아닐린 블랙[aniline black]" ],
+    "broader" : [ "nlk:KSH2000030310", "nlk:KSH1997000081" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다이렉트 디프 블랙[direct deep black]",
+    "related" : [ "nlk:KSH1997000083", "nlk:KSH1997000084" ]
+  }, {
+    "@id" : "nlk:KSH1997000083",
+    "@type" : "nlon:Concept",
+    "label" : "황화 블랙[黃化--]",
+    "sameAs" : "http://lod.nl.go.kr/subject/황화_블랙_黃化--",
+    "altLabel" : [ "흑색[黑色]", "아닐린 블랙[aniline black]", "다이렉트 디프 블랙[direct deep black]" ],
+    "broader" : "nlk:KSH2000030310",
+    "inScheme" : "nlk:subjectTermScheme",
+    "related" : [ "nlk:KSH1997000084", "nlk:KSH1997000082" ]
+  }, {
+    "@id" : "nlk:KSH1997000084",
+    "@type" : "nlon:Concept",
+    "label" : "아닐린 블랙[aniline black]",
+    "sameAs" : "http://lod.nl.go.kr/subject/아닐린_블랙_aniline_black",
+    "altLabel" : [ "흑색[黑色]", "aniline black@en", "황화 블랙[黃化--]", "aniline black", "아닐린[aniline]", "물감", "다이렉트 디프 블랙[direct deep black]", "산화 염료[酸化染料]" ],
+    "broader" : [ "nlk:KSH1998036227", "nlk:KSH2000030310", "nlk:KSH1998032707" ],
+    "closeMatch" : "http://id.loc.gov/authorities/subjects/sh85005158",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "아닐린 블랙[aniline black]",
+    "related" : [ "nlk:KSH1997000082", "nlk:KSH1998035108", "nlk:KSH1997000083" ]
+  }, {
+    "@id" : "nlk:KSH1997000085",
+    "@type" : "nlon:Concept",
+    "isSubjectOf" : [ "nlk:WMO201700546", "nlk:WMO201211320", "nlk:WMF200500647", "nlk:WMO200006808", "nlk:WMO199506009", "nlk:WMO200712024", "nlk:WMO200014008", "nlk:WMO199403037", "nlk:WMO199400024", "nlk:WMF200700161", "nlk:WMO199603160", "nlk:WMO200711714", "nlk:WMO000059691", "nlk:WMO199604167", "nlk:WMF200502528", "nlk:WMO200712012", "nlk:WMO200100899", "nlk:WMO200215568", "nlk:WMO200808093", "nlk:WMO199603018", "nlk:WMO200208558", "nlk:WMO200301190", "nlk:WMO199300064", "nlk:WMO199604817", "nlk:WMO201211380", "nlk:WMO200403162", "nlk:WMO201003073", "nlk:WMO200510862", "nlk:WMO199306225", "nlk:WMO000059815", "nlk:WMO200006746", "nlk:WMF201500866", "nlk:WMO200210255", "nlk:WMO199504125", "nlk:WMO200707152", "nlk:WMO200705441", "nlk:WMO200003870", "nlk:WMO199604816", "nlk:WMO200303541", "nlk:WMO199604275", "nlk:WMO200110350" ],
+    "label" : "다이렉트 마케팅[direct marketing]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이렉트_마케팅_direct_marketing",
+    "altLabel" : [ "직접 마케팅[直接--]", "direct marketing", "direct marketing@en", "마케팅[marketing]" ],
+    "broader" : "nlk:KSH1998011716",
+    "closeMatch" : [ "http://id.ndl.go.jp/auth/ndlsh/00966601", "http://id.loc.gov/authorities/subjects/sh85038256" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다이렉트 마케팅[direct marketing]"
+  }, {
+    "@id" : "nlk:KSH1997000086",
+    "@type" : "nlon:Concept",
+    "label" : "다이렉트 제판[--製版]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이렉트_제판_--製版",
+    "altLabel" : [ "direct process@en", "제판[製版]", "direct process" ],
+    "broader" : "nlk:KSH1998036198",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다이렉트 제판[--製版]"
+  }, {
+    "@id" : "nlk:KSH1997000087",
+    "@type" : "nlon:Concept",
+    "label" : "부분 원가 계산[部分原價計算]",
+    "sameAs" : "http://lod.nl.go.kr/subject/부분_원가_계산_部分原價計算",
+    "altLabel" : [ "직접 원가 계산[直接原價計算]", "원가 계산[原價計算]" ],
+    "broader" : "nlk:KSH1998011733",
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : "nlk:KSH1997000088"
+  }, {
+    "@id" : "nlk:KSH1997000088",
+    "@type" : "nlon:Concept",
+    "isSubjectOf" : "nlk:WMO200107840",
+    "label" : "직접 원가 계산[直接原價計算]",
+    "sameAs" : "http://lod.nl.go.kr/subject/직접_원가_계산_直接原價計算",
+    "altLabel" : [ "부분 원가 계산[部分原價計算]", "direct costing", "direct costing@en" ],
+    "broader" : "nlk:KSH1997000087",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "직접 원가 계산[直接原價計算]"
+  }, {
+    "@id" : "nlk:KSH1997000089",
+    "@type" : "nlon:Concept",
+    "label" : "공간 다이버시티[空間--]",
+    "sameAs" : "http://lod.nl.go.kr/subject/공간_다이버시티_空間--",
+    "altLabel" : [ "space diversity", "space diversity@en", "분산 수신[分散受信]" ],
+    "broader" : "nlk:KSH1998034710",
+    "definition" : "중거리 내지 원거리의 단파 회선에 생기는 페이딩을 방지하기 위한 방법. 수신 안테나의 위치가 틀리면 전파의 페이딩 상태도 다르기 때문에 2개 이상의 안테나 출력을 합성하거나 선택하는 방식이다. 마이크로파 대역에서는 위아래로 안테나를 설치하는 경우도 있다. 보통 2개의 안테나를 사용하는 것이 표준이다.",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "공간 다이버시티[空間--]"
+  }, {
+    "@id" : "nlk:KSH1997000090",
+    "@type" : "nlon:Concept",
+    "label" : "주파수 다이버시티[周波數--]",
+    "sameAs" : "http://lod.nl.go.kr/subject/주파수_다이버시티_周波數--",
+    "altLabel" : "분산 수신[分散受信]",
+    "broader" : "nlk:KSH1998034710",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000091",
+    "@type" : "nlon:Concept",
+    "label" : "편파 다이버시티[偏波--]",
+    "sameAs" : "http://lod.nl.go.kr/subject/편파_다이버시티_偏波--",
+    "altLabel" : "분산 수신[分散受信]",
+    "broader" : "nlk:KSH1998034710",
+    "inScheme" : "nlk:subjectTermScheme"
+  }, {
+    "@id" : "nlk:KSH1997000092",
+    "@type" : "nlon:Concept",
+    "label" : "하이 다이빙[high diving]",
+    "sameAs" : "http://lod.nl.go.kr/subject/하이_다이빙_high_diving",
+    "altLabel" : [ "high diving@en", "다이빙[diving]", "high diving" ],
+    "broader" : "nlk:KSH1998025992",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "하이 다이빙[high diving]"
+  }, {
+    "@id" : "nlk:KSH1997000093",
+    "@type" : "nlon:Concept",
+    "label" : "스프링보드 다이빙[spring board diving]",
+    "sameAs" : "http://lod.nl.go.kr/subject/스프링보드_다이빙_spring_board_diving",
+    "altLabel" : [ "spring board diving@en", "다이빙[diving]", "spring board diving" ],
+    "broader" : "nlk:KSH1998025992",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "스프링보드 다이빙[spring board diving]"
+  }, {
+    "@id" : "nlk:KSH1997000094",
+    "@type" : "nlon:Concept",
+    "label" : "주사위 놀이",
+    "sameAs" : "http://lod.nl.go.kr/subject/주사위_놀이",
+    "altLabel" : [ "게임[game]", "백가몬[backgammon]", "dice@en", "dice", "놀이", "주사위", "쌍륙[雙六]" ],
+    "broader" : [ "nlk:KSH1998003472", "nlk:KSH1998008279" ],
+    "inScheme" : "nlk:subjectTermScheme",
+    "narrower" : [ "nlk:KSH2002003257", "nlk:KSH2004022359" ],
+    "prefLabel" : "주사위 놀이",
+    "related" : "nlk:KSH2001003353"
+  }, {
+    "@id" : "nlk:KSH1997000095",
+    "@type" : "nlon:Concept",
+    "label" : "다이아몬드 게임[diamond game]",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이아몬드_게임_diamond_game",
+    "altLabel" : [ "diamond game@en", "게임[game]", "diamond game" ],
+    "broader" : "nlk:KSH1998008279",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "다이아몬드 게임[diamond game]"
+  }, {
+    "@id" : "nlk:KSH1997000096",
+    "@type" : "nlon:Concept",
+    "label" : "천연 다이아몬드[天然--]",
+    "sameAs" : "http://lod.nl.go.kr/subject/천연_다이아몬드_天然--",
+    "altLabel" : [ "natural diamond@en", "인조 다이아몬드[人造--]", "다이아몬드(보석)[diamond]", "natural diamond" ],
+    "broader" : "nlk:KSH1998012572",
+    "inScheme" : "nlk:subjectTermScheme",
+    "prefLabel" : "천연 다이아몬드[天然--]",
+    "related" : "nlk:KSH1998019460"
+  }, {
+    "@id" : "nlk:KSH1997000097",
+    "@type" : "nlon:Concept",
+    "label" : "다이아몬드 드레서",
+    "sameAs" : "http://lod.nl.go.kr/subject/다이아몬드_드레서",
+    "altLabel" : "다이아몬드 공구[--工具]",
+    "broader" : "nlk:KSH1998002968",
+    "inScheme" : "nlk:subjectTermScheme"
+  } ],
+  "@context" : {
+    "label" : {
+      "@id" : "http://www.w3.org/2000/01/rdf-schema#label"
+    },
+    "altLabel" : {
+      "@id" : "http://www.w3.org/2004/02/skos/core#altLabel"
+    },
+    "sameAs" : {
+      "@id" : "http://www.w3.org/2002/07/owl#sameAs"
+    },
+    "inScheme" : {
+      "@id" : "http://www.w3.org/2004/02/skos/core#inScheme",
+      "@type" : "@id"
+    },
+    "broader" : {
+      "@id" : "http://www.w3.org/2004/02/skos/core#broader",
+      "@type" : "@id"
+    },
+    "prefLabel" : {
+      "@id" : "http://www.w3.org/2004/02/skos/core#prefLabel"
+    },
+    "definition" : {
+      "@id" : "http://www.w3.org/2004/02/skos/core#definition"
+    },
+    "related" : {
+      "@id" : "http://www.w3.org/2004/02/skos/core#related",
+      "@type" : "@id"
+    },
+    "narrower" : {
+      "@id" : "http://www.w3.org/2004/02/skos/core#narrower",
+      "@type" : "@id"
+    },
+    "isSubjectOf" : {
+      "@id" : "http://lod.nl.go.kr/ontology/isSubjectOf",
+      "@type" : "@id"
+    },
+    "closeMatch" : {
+      "@id" : "http://www.w3.org/2004/02/skos/core#closeMatch"
+    },
+    "schema" : "http://schema.org/",
+    "@vocab" : "http://lod.nl.go.kr/resource/",
+    "nlloc" : "http://lod.nl.go.kr/location/",
+    "geonames" : "http://www.geonames.org/ontology#",
+    "nlcon" : "http://lod.nl.go.kr/countries/",
+    "owl" : "http://www.w3.org/2002/07/owl#",
+    "nllib" : "http://lod.nl.go.kr/library/",
+    "xsd" : "http://www.w3.org/2001/XMLSchema#",
+    "skos" : "http://www.w3.org/2004/02/skos/core#",
+    "rdfs" : "http://www.w3.org/2000/01/rdf-schema#",
+    "units" : "http://lod.nl.go.kr/units/",
+    "nlfloc" : "http://lod.nl.go.kr/foreignLocation/",
+    "geo" : "http://www.w3.org/2003/01/geo/wgs84_pos#",
+    "nlgov" : "http://lod.nl.go.kr/government/",
+    "dcterms" : "http://purl.org/dc/terms/",
+    "vann" : "http://purl.org/vocab/vann/",
+    "event" : "http://purl.org/NET/c4dm/event.owl#",
+    "foaf" : "http://xmlns.com/foaf/0.1/",
+    "cc" : "http://creativecommons.org/ns#",
+    "nla" : "http://lod.nl.go.kr/author/",
+    "org" : "http://www.w3.org/ns/org#",
+    "nlddc" : "http://lod.nl.go.kr/ddc/",
+    "voaf" : "http://purl.org/vocommons/voaf#",
+    "nlkdc" : "http://lod.nl.go.kr/kdc/",
+    "nluv" : "http://lod.nl.go.kr/university/",
+    "nlk" : "http://lod.nl.go.kr/resource/",
+    "nlon" : "http://lod.nl.go.kr/ontology/",
+    "tmon" : "http://t-mon/",
+    "nls" : "http://lod.nl.go.kr/subject/",
+    "rdf" : "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "bibo" : "http://purl.org/ontology/bibo/",
+    "vs" : "http://www.w3.org/2003/06/sw-vocab-status/ns#",
+    "bibframe" : "http://bibframe.org/vocab/",
+    "nlsc" : "http://lod.nl.go.kr/scheme/",
+    "dc" : "http://purl.org/dc/elements/1.1/"
+  }
+}

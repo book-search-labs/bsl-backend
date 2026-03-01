@@ -10,6 +10,7 @@ import httpx
 from app.core.analyzer import analyze_query
 from app.core.cache import get_cache
 from app.core.metrics import metrics
+from app.core.chat_tools import reset_ticket_session_context, run_tool_chat
 from app.core.rag import retrieve_chunks_with_trace
 from app.core.rag_candidates import retrieve_candidates
 from app.core.rewrite import run_rewrite
@@ -17,8 +18,468 @@ from app.core.rewrite import run_rewrite
 _CACHE = get_cache()
 
 
+def _llm_provider_cooldown_sec() -> int:
+    return max(0, int(os.getenv("QS_LLM_PROVIDER_COOLDOWN_SEC", "15")))
+
+
+def _llm_provider_stats_ttl_sec() -> int:
+    return max(300, int(os.getenv("QS_LLM_PROVIDER_STATS_TTL_SEC", "86400")))
+
+
+def _llm_health_routing_enabled() -> bool:
+    return str(os.getenv("QS_LLM_HEALTH_ROUTING_ENABLED", "1")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _llm_health_min_sample() -> int:
+    return max(1, int(os.getenv("QS_LLM_HEALTH_MIN_SAMPLE", "3")))
+
+
+def _llm_health_streak_penalty_step() -> float:
+    return max(0.0, float(os.getenv("QS_LLM_HEALTH_STREAK_PENALTY_STEP", "0.1")))
+
+
+def _llm_health_streak_penalty_max() -> float:
+    return min(0.95, max(0.0, float(os.getenv("QS_LLM_HEALTH_STREAK_PENALTY_MAX", "0.5"))))
+
+
 def _llm_url() -> str:
     return os.getenv("QS_LLM_URL", "http://localhost:8010").rstrip("/")
+
+
+def _llm_fallback_urls() -> List[str]:
+    raw = os.getenv("QS_LLM_FALLBACK_URLS", "")
+    urls = [item.strip().rstrip("/") for item in raw.split(",") if item.strip()]
+    return [url for url in urls if url]
+
+
+def _llm_provider_chain() -> List[tuple[str, str]]:
+    providers: List[tuple[str, str]] = [("primary", _llm_url())]
+    for idx, url in enumerate(_llm_fallback_urls(), start=1):
+        if url and url != providers[0][1]:
+            providers.append((f"fallback_{idx}", url))
+    return providers
+
+
+def _llm_forced_provider() -> str:
+    return os.getenv("QS_LLM_FORCE_PROVIDER", "").strip()
+
+
+def _llm_cost_steering_enabled() -> bool:
+    return str(os.getenv("QS_LLM_COST_STEERING_ENABLED", "0")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _llm_low_cost_provider() -> str:
+    return os.getenv("QS_LLM_LOW_COST_PROVIDER", "").strip()
+
+
+def _llm_provider_by_intent() -> Dict[str, str]:
+    raw = os.getenv("QS_LLM_PROVIDER_BY_INTENT_JSON", "").strip()
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except Exception:
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    result: Dict[str, str] = {}
+    for key, value in parsed.items():
+        if not isinstance(key, str) or not isinstance(value, str):
+            continue
+        intent = key.strip().upper()
+        target = value.strip()
+        if intent and target:
+            result[intent] = target
+    return result
+
+
+def _extract_user_query_from_llm_payload(payload: Dict[str, Any]) -> str:
+    messages = payload.get("messages")
+    if not isinstance(messages, list):
+        return ""
+    for item in reversed(messages):
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("role") or "").strip().lower() != "user":
+            continue
+        content = item.get("content")
+        if isinstance(content, str) and content.strip():
+            return content.strip()
+    return ""
+
+
+def _apply_cost_steering(providers: List[tuple[str, str]], payload: Dict[str, Any], mode: str) -> List[tuple[str, str]]:
+    if not _llm_cost_steering_enabled():
+        return providers
+    query = _extract_user_query_from_llm_payload(payload)
+    if query and _is_high_risk_query(query):
+        metrics.inc("chat_provider_cost_steer_total", {"provider": "none", "reason": "high_risk_bypass", "mode": mode})
+        return providers
+    target = _llm_low_cost_provider()
+    if not target:
+        metrics.inc("chat_provider_cost_steer_total", {"provider": "none", "reason": "not_configured", "mode": mode})
+        return providers
+    for idx, (name, url) in enumerate(providers):
+        if target == name or target == url:
+            metrics.inc("chat_provider_cost_steer_total", {"provider": name, "reason": "selected", "mode": mode})
+            if idx == 0:
+                return providers
+            selected = providers[idx]
+            return [selected] + [item for pos, item in enumerate(providers) if pos != idx]
+    metrics.inc("chat_provider_cost_steer_total", {"provider": "unknown", "reason": "not_found", "mode": mode})
+    return providers
+
+
+def _query_intent(query: str) -> str:
+    text = (query or "").lower()
+    if not text:
+        return "GENERAL"
+    if any(keyword in text for keyword in ("환불", "취소", "refund", "cancel")):
+        return "REFUND"
+    if any(keyword in text for keyword in ("배송", "shipping", "tracking")):
+        return "SHIPPING"
+    if any(keyword in text for keyword in ("주문", "결제", "order", "payment")):
+        return "ORDER"
+    return "GENERAL"
+
+
+def _apply_intent_routing(providers: List[tuple[str, str]], payload: Dict[str, Any], mode: str) -> List[tuple[str, str]]:
+    query = _extract_user_query_from_llm_payload(payload)
+    intent = _query_intent(query)
+    policy = _llm_provider_by_intent()
+    target = policy.get(intent)
+    if not target:
+        metrics.inc("chat_provider_intent_route_total", {"intent": intent, "provider": "none", "reason": "no_policy", "mode": mode})
+        return providers
+    for idx, (name, url) in enumerate(providers):
+        if target == name or target == url:
+            metrics.inc("chat_provider_intent_route_total", {"intent": intent, "provider": name, "reason": "selected", "mode": mode})
+            if idx == 0:
+                return providers
+            selected = providers[idx]
+            return [selected] + [item for pos, item in enumerate(providers) if pos != idx]
+    metrics.inc("chat_provider_intent_route_total", {"intent": intent, "provider": target, "reason": "not_found", "mode": mode})
+    return providers
+
+
+def _provider_health_cache_key(provider: str) -> str:
+    return f"chat:provider:cooldown:{provider}"
+
+
+def _provider_stats_cache_key(provider: str) -> str:
+    return f"chat:provider:stats:{provider}"
+
+
+def _llm_provider_blocklist() -> set[str]:
+    raw = os.getenv("QS_LLM_PROVIDER_BLOCKLIST", "")
+    return {item.strip() for item in raw.split(",") if item.strip()}
+
+
+def _provider_matches_target(provider: tuple[str, str], target: str) -> bool:
+    name, url = provider
+    return target == name or target == url
+
+
+def _is_forced_provider_blocked(all_providers: List[tuple[str, str]], filtered_providers: List[tuple[str, str]]) -> bool:
+    forced = _llm_forced_provider()
+    if not forced:
+        return False
+    in_all = any(_provider_matches_target(provider, forced) for provider in all_providers)
+    if not in_all:
+        return False
+    in_filtered = any(_provider_matches_target(provider, forced) for provider in filtered_providers)
+    return not in_filtered
+
+
+def _provider_effective_score(provider: str) -> Optional[float]:
+    raw = _CACHE.get_json(_provider_stats_cache_key(provider))
+    if not isinstance(raw, dict):
+        return None
+    effective = raw.get("effective_score")
+    if isinstance(effective, (int, float)):
+        return min(1.0, max(0.0, float(effective)))
+    ok = raw.get("ok")
+    fail = raw.get("fail")
+    streak_fail = raw.get("streak_fail")
+    if not isinstance(ok, int) or not isinstance(fail, int):
+        return None
+    if not isinstance(streak_fail, int):
+        streak_fail = 0
+    if ok < 0 or fail < 0:
+        return None
+    total = ok + fail
+    if total < _llm_health_min_sample():
+        return None
+    base_score = float(ok + 1) / float(total + 2)
+    penalty = min(_llm_health_streak_penalty_max(), float(streak_fail) * _llm_health_streak_penalty_step())
+    return max(0.0, base_score - penalty)
+
+
+def _llm_provider_costs() -> Dict[str, float]:
+    raw = os.getenv("QS_LLM_PROVIDER_COSTS_JSON", "").strip()
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except Exception:
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    costs: Dict[str, float] = {}
+    for key, value in parsed.items():
+        if not isinstance(key, str):
+            continue
+        try:
+            costs[key.strip()] = float(value)
+        except Exception:
+            continue
+    return costs
+
+
+def _record_provider_telemetry(provider: str, base_url: str, success: bool) -> None:
+    cost_map = _llm_provider_costs()
+    cost = cost_map.get(provider)
+    if cost is None:
+        cost = cost_map.get(base_url)
+    if cost is not None:
+        metrics.set("chat_provider_cost_per_1k", {"provider": provider}, value=float(cost))
+
+    key = _provider_stats_cache_key(provider)
+    raw = _CACHE.get_json(key)
+    ok = 0
+    fail = 0
+    streak_fail = 0
+    if isinstance(raw, dict):
+        raw_ok = raw.get("ok")
+        raw_fail = raw.get("fail")
+        raw_streak = raw.get("streak_fail")
+        if isinstance(raw_ok, int) and raw_ok >= 0:
+            ok = raw_ok
+        if isinstance(raw_fail, int) and raw_fail >= 0:
+            fail = raw_fail
+        if isinstance(raw_streak, int) and raw_streak >= 0:
+            streak_fail = raw_streak
+    if success:
+        ok += 1
+        streak_fail = 0
+    else:
+        fail += 1
+        streak_fail += 1
+    base_score = float(ok + 1) / float(ok + fail + 2)
+    penalty = min(_llm_health_streak_penalty_max(), float(streak_fail) * _llm_health_streak_penalty_step())
+    effective_score = max(0.0, base_score - penalty)
+    _CACHE.set_json(
+        key,
+        {
+            "ok": ok,
+            "fail": fail,
+            "streak_fail": streak_fail,
+            "base_score": base_score,
+            "effective_score": effective_score,
+            "updated_at": int(time.time()),
+        },
+        ttl=_llm_provider_stats_ttl_sec(),
+    )
+    metrics.set("chat_provider_health_penalty", {"provider": provider}, value=penalty)
+    metrics.set("chat_provider_health_score", {"provider": provider}, value=effective_score)
+
+
+def _apply_provider_blocklist(providers: List[tuple[str, str]], mode: str) -> List[tuple[str, str]]:
+    blocklist = _llm_provider_blocklist()
+    if not blocklist:
+        return providers
+    kept: List[tuple[str, str]] = []
+    blocked: List[tuple[str, str]] = []
+    for name, url in providers:
+        if name in blocklist or url in blocklist:
+            metrics.inc("chat_provider_block_total", {"provider": name, "reason": "blocklist", "mode": mode})
+            blocked.append((name, url))
+            continue
+        kept.append((name, url))
+    # keep service available if all providers are blocked by mistake
+    return kept or providers
+
+
+def _mark_provider_unhealthy(provider: str, reason: str) -> None:
+    ttl = _llm_provider_cooldown_sec()
+    if ttl <= 0:
+        return
+    _CACHE.set_json(
+        _provider_health_cache_key(provider),
+        {"reason": reason, "updated_at": int(time.time())},
+        ttl=ttl,
+    )
+
+
+def _clear_provider_unhealthy(provider: str) -> None:
+    _CACHE.set_json(_provider_health_cache_key(provider), {"cleared": True}, ttl=1)
+
+
+def _is_provider_unhealthy(provider: str) -> bool:
+    if _llm_provider_cooldown_sec() <= 0:
+        return False
+    value = _CACHE.get_json(_provider_health_cache_key(provider))
+    return isinstance(value, dict) and not bool(value.get("cleared"))
+
+
+def _apply_provider_health(providers: List[tuple[str, str]], mode: str) -> List[tuple[str, str]]:
+    if _llm_provider_cooldown_sec() <= 0:
+        active = providers
+    else:
+        healthy: List[tuple[str, str]] = []
+        unhealthy: List[tuple[str, str]] = []
+        for provider in providers:
+            name = provider[0]
+            if _is_provider_unhealthy(name):
+                metrics.inc("chat_provider_route_total", {"provider": name, "result": "cooldown_skip", "mode": mode})
+                unhealthy.append(provider)
+                continue
+            healthy.append(provider)
+        if not healthy:
+            active = providers
+        else:
+            active = healthy + unhealthy
+    if not _llm_health_routing_enabled():
+        return active
+    scored: List[tuple[float, int, tuple[str, str]]] = []
+    for idx, provider in enumerate(active):
+        name = provider[0]
+        ratio = _provider_effective_score(name)
+        # keep unknown providers at neutral score to avoid starvation.
+        score = 0.5 if ratio is None else ratio
+        scored.append((score, -idx, provider))
+        metrics.set("chat_provider_health_score", {"provider": name}, value=score)
+    scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return [item[2] for item in scored]
+
+
+def _apply_provider_override(providers: List[tuple[str, str]], mode: str) -> List[tuple[str, str]]:
+    forced = _llm_forced_provider()
+    if not forced:
+        return providers
+    for idx, (name, url) in enumerate(providers):
+        if forced == name or forced == url:
+            metrics.inc("chat_provider_forced_route_total", {"provider": name, "reason": "selected", "mode": mode})
+            if idx == 0:
+                return providers
+            selected = providers[idx]
+            return [selected] + [item for pos, item in enumerate(providers) if pos != idx]
+    metrics.inc("chat_provider_forced_route_total", {"provider": "unknown", "reason": "not_found", "mode": mode})
+    return providers
+
+
+def _move_provider_to_front(
+    providers: List[tuple[str, str]],
+    target: str,
+) -> tuple[List[tuple[str, str]], Optional[str]]:
+    for idx, provider in enumerate(providers):
+        if _provider_matches_target(provider, target):
+            if idx == 0:
+                return providers, provider[0]
+            selected = providers[idx]
+            reordered = [selected] + [item for pos, item in enumerate(providers) if pos != idx]
+            return reordered, selected[0]
+    return providers, None
+
+
+def _provider_stats_view(provider: str) -> Dict[str, Any]:
+    raw = _CACHE.get_json(_provider_stats_cache_key(provider))
+    if not isinstance(raw, dict):
+        return {
+            "ok": 0,
+            "fail": 0,
+            "streak_fail": 0,
+            "base_score": None,
+            "effective_score": None,
+            "updated_at": None,
+        }
+    return {
+        "ok": int(raw.get("ok")) if isinstance(raw.get("ok"), int) else 0,
+        "fail": int(raw.get("fail")) if isinstance(raw.get("fail"), int) else 0,
+        "streak_fail": int(raw.get("streak_fail")) if isinstance(raw.get("streak_fail"), int) else 0,
+        "base_score": float(raw.get("base_score")) if isinstance(raw.get("base_score"), (int, float)) else None,
+        "effective_score": float(raw.get("effective_score")) if isinstance(raw.get("effective_score"), (int, float)) else None,
+        "updated_at": int(raw.get("updated_at")) if isinstance(raw.get("updated_at"), int) else None,
+    }
+
+
+def _preview_provider_routing(payload: Dict[str, Any], mode: str) -> Dict[str, Any]:
+    all_providers = _llm_provider_chain()
+    blocklist = _llm_provider_blocklist()
+    blocked: List[str] = []
+    filtered: List[tuple[str, str]] = []
+    for provider in all_providers:
+        name, url = provider
+        if name in blocklist or url in blocklist:
+            blocked.append(name)
+            continue
+        filtered.append(provider)
+    all_blocked_fallback = False
+    providers = filtered
+    if not providers:
+        providers = list(all_providers)
+        all_blocked_fallback = True
+
+    forced_provider = _llm_forced_provider()
+    forced_blocked = _is_forced_provider_blocked(all_providers, providers)
+    query = _extract_user_query_from_llm_payload(payload)
+    intent = _query_intent(query)
+    intent_policy = _llm_provider_by_intent()
+    intent_target = intent_policy.get(intent)
+    intent_selected: Optional[str] = None
+    if intent_target:
+        providers, intent_selected = _move_provider_to_front(providers, intent_target)
+
+    cost_target: Optional[str] = None
+    cost_reason = "disabled"
+    if _llm_cost_steering_enabled():
+        if query and _is_high_risk_query(query):
+            cost_reason = "high_risk_bypass"
+        else:
+            target = _llm_low_cost_provider()
+            if not target:
+                cost_reason = "not_configured"
+            else:
+                providers, cost_target = _move_provider_to_front(providers, target)
+                cost_reason = "selected" if cost_target else "not_found"
+
+    health_enabled = _llm_health_routing_enabled()
+    health_scores: Dict[str, float] = {}
+    if health_enabled:
+        scored: List[tuple[float, int, tuple[str, str]]] = []
+        for idx, provider in enumerate(providers):
+            name = provider[0]
+            score = _provider_effective_score(name)
+            effective = 0.5 if score is None else float(score)
+            scored.append((effective, -idx, provider))
+            health_scores[name] = effective
+        scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
+        providers = [item[2] for item in scored]
+
+    forced_selected: Optional[str] = None
+    if forced_provider and not forced_blocked:
+        providers, forced_selected = _move_provider_to_front(providers, forced_provider)
+
+    return {
+        "mode": mode,
+        "query_intent": intent,
+        "forced_provider": forced_provider or None,
+        "forced_blocked": forced_blocked,
+        "forced_selected": forced_selected,
+        "blocklist": sorted(blocklist),
+        "blocked_providers": blocked,
+        "all_blocked_fallback": all_blocked_fallback,
+        "intent_policy_target": intent_target,
+        "intent_policy_selected": intent_selected,
+        "cost_steering_enabled": _llm_cost_steering_enabled(),
+        "cost_target": _llm_low_cost_provider() or None,
+        "cost_selected": cost_target,
+        "cost_reason": cost_reason,
+        "health_routing_enabled": health_enabled,
+        "health_scores": health_scores,
+        "final_chain": [name for name, _ in providers],
+        "provider_stats": {name: _provider_stats_view(name) for name, _ in all_providers},
+    }
 
 
 def _llm_model() -> str:
@@ -31,6 +492,10 @@ def _llm_timeout_sec() -> float:
 
 def _llm_stream_enabled() -> bool:
     return str(os.getenv("QS_LLM_STREAM_ENABLED", "1")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _is_failover_status(status_code: int) -> bool:
+    return status_code == 429 or status_code >= 500
 
 
 def _rewrite_on_bad_enabled() -> bool:
@@ -59,6 +524,70 @@ def _min_diversity_ratio() -> float:
 
 def _prompt_version() -> str:
     return os.getenv("QS_CHAT_PROMPT_VERSION", "v1")
+
+
+def _output_guard_enabled() -> bool:
+    return str(os.getenv("QS_CHAT_OUTPUT_GUARD_ENABLED", "1")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _guard_high_risk_min_citations() -> int:
+    return max(1, int(os.getenv("QS_CHAT_GUARD_HIGH_RISK_MIN_CITATIONS", "1")))
+
+
+def _risk_band_high_keywords() -> List[str]:
+    raw = os.getenv(
+        "QS_CHAT_RISK_HIGH_KEYWORDS",
+        "주문,결제,환불,취소,배송,주소,payment,refund,cancel,shipping,address",
+    )
+    return [item.strip().lower() for item in raw.split(",") if item.strip()]
+
+
+def _guard_forbidden_answer_keywords() -> List[str]:
+    raw = os.getenv(
+        "QS_CHAT_GUARD_FORBIDDEN_ANSWER_KEYWORDS",
+        "무조건,반드시,절대,100% 보장,guarantee,always",
+    )
+    return [item.strip().lower() for item in raw.split(",") if item.strip()]
+
+
+def _chat_min_citation_coverage_ratio() -> float:
+    return min(1.0, max(0.0, float(os.getenv("QS_CHAT_MIN_CITATION_COVERAGE_RATIO", "0.2"))))
+
+
+def _chat_high_risk_min_citation_coverage_ratio() -> float:
+    return min(1.0, max(0.0, float(os.getenv("QS_CHAT_HIGH_RISK_MIN_CITATION_COVERAGE_RATIO", "0.5"))))
+
+
+def _record_chat_timeout(stage: str) -> None:
+    metrics.inc("chat_timeout_total", {"stage": stage})
+
+
+def _chat_max_message_chars() -> int:
+    return max(100, int(os.getenv("QS_CHAT_MAX_MESSAGE_CHARS", "1200")))
+
+
+def _chat_max_history_turns() -> int:
+    return max(1, int(os.getenv("QS_CHAT_MAX_HISTORY_TURNS", "12")))
+
+
+def _chat_max_total_chars() -> int:
+    return max(_chat_max_message_chars(), int(os.getenv("QS_CHAT_MAX_TOTAL_CHARS", "6000")))
+
+
+def _chat_max_top_k() -> int:
+    return max(1, int(os.getenv("QS_CHAT_MAX_TOP_K", "20")))
+
+
+def _chat_session_id_max_len() -> int:
+    return max(16, int(os.getenv("QS_CHAT_SESSION_ID_MAX_LEN", "64")))
+
+
+def _chat_session_id_pattern() -> re.Pattern[str]:
+    return re.compile(os.getenv("QS_CHAT_SESSION_ID_PATTERN", r"^[A-Za-z0-9:_-]+$"))
+
+
+def _unresolved_context_ttl_sec() -> int:
+    return max(300, int(os.getenv("QS_CHAT_UNRESOLVED_CONTEXT_TTL_SEC", "1800")))
 
 
 def _extract_citations_from_text(text: str) -> List[str]:
@@ -135,20 +664,230 @@ def _format_sources(chunks: List[dict[str, Any]]) -> List[dict[str, Any]]:
     return sources
 
 
-def _fallback(trace_id: str, request_id: str, message: str, reason_code: str) -> Dict[str, Any]:
+def _fallback_defaults(reason_code: str) -> Dict[str, Any]:
+    defaults: Dict[str, Dict[str, Any]] = {
+        "NO_MESSAGES": {
+            "message": "질문을 입력해 주세요.",
+            "recoverable": True,
+            "next_action": "PROVIDE_REQUIRED_INFO",
+            "retry_after_ms": None,
+        },
+        "CHAT_BAD_REQUEST": {
+            "message": "요청 형식이 올바르지 않습니다. 질문 내용을 다시 입력해 주세요.",
+            "recoverable": True,
+            "next_action": "PROVIDE_REQUIRED_INFO",
+            "retry_after_ms": None,
+        },
+        "CHAT_INVALID_SESSION_ID": {
+            "message": "세션 정보 형식이 올바르지 않습니다. 다시 시도해 주세요.",
+            "recoverable": True,
+            "next_action": "RETRY",
+            "retry_after_ms": 1000,
+        },
+        "CHAT_MESSAGE_TOO_LONG": {
+            "message": f"질문이 너무 깁니다. {_chat_max_message_chars()}자 이내로 입력해 주세요.",
+            "recoverable": True,
+            "next_action": "REFINE_QUERY",
+            "retry_after_ms": None,
+        },
+        "CHAT_HISTORY_TOO_LONG": {
+            "message": f"대화 기록이 너무 깁니다. 최근 {_chat_max_history_turns()}개 발화만 남겨 주세요.",
+            "recoverable": True,
+            "next_action": "REFINE_QUERY",
+            "retry_after_ms": None,
+        },
+        "CHAT_PAYLOAD_TOO_LARGE": {
+            "message": f"요청 본문이 너무 큽니다. 총 {_chat_max_total_chars()}자 이하로 줄여 주세요.",
+            "recoverable": True,
+            "next_action": "REFINE_QUERY",
+            "retry_after_ms": None,
+        },
+        "CHAT_TOP_K_TOO_LARGE": {
+            "message": f"요청 옵션 값이 너무 큽니다. top_k를 {_chat_max_top_k()} 이하로 설정해 주세요.",
+            "recoverable": True,
+            "next_action": "PROVIDE_REQUIRED_INFO",
+            "retry_after_ms": None,
+        },
+        "RAG_NO_CHUNKS": {
+            "message": "현재 근거 문서를 찾지 못해 확정 답변을 드리기 어렵습니다. 키워드나 조건을 조금 더 구체적으로 입력해 주세요.",
+            "recoverable": True,
+            "next_action": "REFINE_QUERY",
+            "retry_after_ms": None,
+        },
+        "RAG_LOW_SCORE": {
+            "message": "관련 근거의 신뢰도가 낮아 확정 답변이 어렵습니다. 질문을 구체화하거나 다른 표현으로 다시 시도해 주세요.",
+            "recoverable": True,
+            "next_action": "REFINE_QUERY",
+            "retry_after_ms": None,
+        },
+        "LLM_NO_CITATIONS": {
+            "message": "생성된 답변과 근거 문서가 일치하지 않아 답변을 보류했습니다. 잠시 후 다시 시도해 주세요.",
+            "recoverable": True,
+            "next_action": "RETRY",
+            "retry_after_ms": 2000,
+        },
+        "LLM_LOW_CITATION_COVERAGE": {
+            "message": "답변이 참조한 근거 범위가 충분하지 않아 확정 답변을 보류했습니다. 질문을 조금 더 구체화해 주세요.",
+            "recoverable": True,
+            "next_action": "REFINE_QUERY",
+            "retry_after_ms": None,
+        },
+        "PROVIDER_TIMEOUT": {
+            "message": "응답 시간이 지연되어 답변을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+            "recoverable": True,
+            "next_action": "RETRY",
+            "retry_after_ms": 3000,
+        },
+        "OUTPUT_GUARD_EMPTY_ANSWER": {
+            "message": "응답 품질 검증에 실패해 답변을 보류했습니다. 다시 시도해 주세요.",
+            "recoverable": True,
+            "next_action": "RETRY",
+            "retry_after_ms": 2000,
+        },
+        "OUTPUT_GUARD_INSUFFICIENT_CITATIONS": {
+            "message": "근거 확인이 충분하지 않아 확정 답변을 제공할 수 없습니다.",
+            "recoverable": True,
+            "next_action": "REFINE_QUERY",
+            "retry_after_ms": None,
+        },
+        "OUTPUT_GUARD_FORBIDDEN_CLAIM": {
+            "message": "정책상 확정 답변이 어려운 요청입니다. 주문번호/상세 조건을 포함해 다시 질문해 주세요.",
+            "recoverable": True,
+            "next_action": "OPEN_SUPPORT_TICKET",
+            "retry_after_ms": None,
+        },
+    }
+    return defaults.get(
+        reason_code,
+        {
+            "message": "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+            "recoverable": True,
+            "next_action": "RETRY",
+            "retry_after_ms": 3000,
+        },
+    )
+
+
+def _guard_blocked_message() -> str:
+    return "응답 품질 검증에서 차단되었습니다."
+
+
+def _fallback(
+    trace_id: str,
+    request_id: str,
+    message: str | None,
+    reason_code: str,
+    *,
+    session_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    defaults = _fallback_defaults(reason_code)
+    resolved_message = (message or "").strip() or str(defaults["message"])
+    fallback_count = _increment_fallback_count(session_id) if session_id else None
+    escalated = False
+    next_action = str(defaults["next_action"])
+    if user_id and fallback_count is not None and fallback_count >= _fallback_escalation_threshold():
+        next_action = "OPEN_SUPPORT_TICKET"
+        escalated = True
     metrics.inc("chat_fallback_total", {"reason": reason_code})
+    metrics.inc(
+        "chat_error_recovery_hint_total",
+        {
+            "next_action": next_action,
+            "reason_code": reason_code,
+            "source": "rag",
+        },
+    )
+    if escalated:
+        metrics.inc("chat_fallback_escalated_total", {"reason": reason_code})
     return {
         "version": "v1",
         "trace_id": trace_id,
         "request_id": request_id,
         "answer": {
             "role": "assistant",
-            "content": message,
+            "content": resolved_message,
         },
         "sources": [],
         "citations": [],
         "status": "insufficient_evidence",
+        "reason_code": reason_code,
+        "recoverable": bool(defaults["recoverable"]),
+        "next_action": next_action,
+        "retry_after_ms": defaults["retry_after_ms"],
+        "fallback_count": fallback_count,
+        "escalated": escalated,
     }
+
+
+def _is_high_risk_query(query: str) -> bool:
+    q = (query or "").lower()
+    if not q:
+        return False
+    return any(keyword in q for keyword in _risk_band_high_keywords())
+
+
+def _contains_forbidden_claim(answer: str) -> bool:
+    text = (answer or "").lower()
+    if not text:
+        return False
+    return any(keyword in text for keyword in _guard_forbidden_answer_keywords())
+
+
+def _compute_risk_band(query: str, status: str, citations: List[str], guard_reason: Optional[str]) -> str:
+    if status in {"error", "insufficient_evidence"}:
+        return "R3"
+    if guard_reason:
+        return "R3"
+    high_risk = _is_high_risk_query(query)
+    citation_count = len(citations or [])
+    if high_risk and citation_count <= 0:
+        return "R3"
+    if high_risk:
+        return "R2"
+    if citation_count <= 0:
+        return "R1"
+    return "R0"
+
+
+def _guard_answer(
+    query: str,
+    answer_text: str,
+    citations: List[str],
+    trace_id: str,
+    request_id: str,
+    *,
+    session_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+) -> tuple[Optional[Dict[str, Any]], Optional[str]]:
+    if not _output_guard_enabled():
+        return None, None
+    answer = (answer_text or "").strip()
+    if not answer:
+        return _fallback(trace_id, request_id, None, "OUTPUT_GUARD_EMPTY_ANSWER", session_id=session_id, user_id=user_id), "OUTPUT_GUARD_EMPTY_ANSWER"
+
+    high_risk = _is_high_risk_query(query)
+    min_citations = _guard_high_risk_min_citations() if high_risk else 1
+    if len(citations or []) < min_citations:
+        return _fallback(
+            trace_id,
+            request_id,
+            None,
+            "OUTPUT_GUARD_INSUFFICIENT_CITATIONS",
+            session_id=session_id,
+            user_id=user_id,
+        ), "OUTPUT_GUARD_INSUFFICIENT_CITATIONS"
+
+    if high_risk and _contains_forbidden_claim(answer):
+        return _fallback(
+            trace_id,
+            request_id,
+            None,
+            "OUTPUT_GUARD_FORBIDDEN_CLAIM",
+            session_id=session_id,
+            user_id=user_id,
+        ), "OUTPUT_GUARD_FORBIDDEN_CLAIM"
+    return None, None
 
 
 def _validate_citations(raw_citations: List[str], chunks: List[dict[str, Any]]) -> List[str]:
@@ -165,6 +904,44 @@ def _validate_citations(raw_citations: List[str], chunks: List[dict[str, Any]]) 
         if citation in allowed and citation not in valid:
             valid.append(citation)
     return valid
+
+
+def _citation_doc_coverage(citations: List[str], chunks: List[dict[str, Any]]) -> float:
+    if not chunks:
+        return 0.0
+    citation_to_doc: Dict[str, str] = {}
+    selected_docs: set[str] = set()
+    for chunk in chunks:
+        doc_id = str(chunk.get("doc_id") or "").strip()
+        if not doc_id:
+            continue
+        selected_docs.add(doc_id)
+        citation_key = str(chunk.get("citation_key") or "").strip()
+        chunk_id = str(chunk.get("chunk_id") or "").strip()
+        if citation_key:
+            citation_to_doc[citation_key] = doc_id
+        if chunk_id:
+            citation_to_doc[chunk_id] = doc_id
+    if not selected_docs:
+        return 0.0
+    cited_docs: set[str] = set()
+    for citation in citations:
+        doc_id = citation_to_doc.get(str(citation))
+        if doc_id:
+            cited_docs.add(doc_id)
+    return float(len(cited_docs)) / float(len(selected_docs))
+
+
+def _citation_coverage_threshold(query: str) -> float:
+    if _is_high_risk_query(query):
+        return _chat_high_risk_min_citation_coverage_ratio()
+    return _chat_min_citation_coverage_ratio()
+
+
+def _is_citation_coverage_sufficient(query: str, citations: List[str], chunks: List[dict[str, Any]]) -> tuple[bool, float, float]:
+    coverage = _citation_doc_coverage(citations, chunks)
+    threshold = _citation_coverage_threshold(query)
+    return coverage >= threshold, coverage, threshold
 
 
 def _diversity_ratio(chunks: List[dict[str, Any]]) -> float:
@@ -197,12 +974,180 @@ def _extract_query_text(request: Dict[str, Any]) -> str:
     return content if isinstance(content, str) else ""
 
 
+def _is_valid_session_id(raw: Any) -> bool:
+    if not isinstance(raw, str):
+        return False
+    session_id = raw.strip()
+    if not session_id:
+        return False
+    if len(session_id) > _chat_session_id_max_len():
+        return False
+    return _chat_session_id_pattern().fullmatch(session_id) is not None
+
+
+def _validate_chat_request(request: Dict[str, Any]) -> Optional[str]:
+    if not isinstance(request, dict):
+        return "CHAT_BAD_REQUEST"
+    message = request.get("message")
+    if not isinstance(message, dict):
+        return "CHAT_BAD_REQUEST"
+    content = message.get("content")
+    if content is None:
+        return "NO_MESSAGES"
+    if not isinstance(content, str):
+        return "CHAT_BAD_REQUEST"
+    query = content.strip()
+    if not query:
+        return "NO_MESSAGES"
+    if len(query) > _chat_max_message_chars():
+        return "CHAT_MESSAGE_TOO_LONG"
+
+    history = request.get("history")
+    if history is not None and not isinstance(history, list):
+        return "CHAT_BAD_REQUEST"
+    history_items = history if isinstance(history, list) else []
+    if len(history_items) > _chat_max_history_turns():
+        return "CHAT_HISTORY_TOO_LONG"
+
+    total_chars = len(query)
+    for item in history_items:
+        if not isinstance(item, dict):
+            return "CHAT_BAD_REQUEST"
+        text = item.get("content")
+        if not isinstance(text, str):
+            return "CHAT_BAD_REQUEST"
+        if len(text) > _chat_max_message_chars():
+            return "CHAT_MESSAGE_TOO_LONG"
+        total_chars += len(text)
+
+    if total_chars > _chat_max_total_chars():
+        return "CHAT_PAYLOAD_TOO_LARGE"
+
+    options = request.get("options")
+    if options is not None and not isinstance(options, dict):
+        return "CHAT_BAD_REQUEST"
+    if isinstance(options, dict):
+        top_k = options.get("top_k")
+        if top_k is not None and (not isinstance(top_k, int) or top_k < 1):
+            return "CHAT_BAD_REQUEST"
+        if isinstance(top_k, int) and top_k > _chat_max_top_k():
+            return "CHAT_TOP_K_TOO_LARGE"
+
+    session_id = request.get("session_id")
+    if session_id is not None and not _is_valid_session_id(session_id):
+        return "CHAT_INVALID_SESSION_ID"
+    return None
+
+
+def _extract_user_id(request: Dict[str, Any]) -> Optional[str]:
+    client = request.get("client") if isinstance(request.get("client"), dict) else {}
+    user_id = client.get("user_id") if isinstance(client, dict) else None
+    if isinstance(user_id, str) and user_id.strip():
+        return user_id.strip()
+    return None
+
+
+def _resolve_session_id(request: Dict[str, Any], user_id: Optional[str]) -> str:
+    session_id = request.get("session_id")
+    if _is_valid_session_id(session_id):
+        return str(session_id).strip()
+    if user_id:
+        return f"u:{user_id}:default"
+    return "anon:default"
+
+
+def _fallback_escalation_threshold() -> int:
+    return max(2, int(os.getenv("QS_CHAT_FALLBACK_ESCALATE_THRESHOLD", "3")))
+
+
+def _fallback_counter_key(session_id: str) -> str:
+    return f"chat:fallback:count:{session_id}"
+
+
+def _increment_fallback_count(session_id: str) -> int:
+    key = _fallback_counter_key(session_id)
+    cached = _CACHE.get_json(key)
+    count = 0
+    if isinstance(cached, dict):
+        raw_count = cached.get("count")
+        if isinstance(raw_count, int) and raw_count >= 0:
+            count = raw_count
+    count += 1
+    _CACHE.set_json(key, {"count": count}, ttl=max(60, _answer_cache_ttl_sec() * 2))
+    return count
+
+
+def _reset_fallback_count(session_id: Optional[str]) -> None:
+    if not session_id:
+        return
+    _CACHE.set_json(_fallback_counter_key(session_id), {"count": 0}, ttl=5)
+
+
+def _load_fallback_count(session_id: str) -> int:
+    cached = _CACHE.get_json(_fallback_counter_key(session_id))
+    if isinstance(cached, dict):
+        raw_count = cached.get("count")
+        if isinstance(raw_count, int) and raw_count >= 0:
+            return raw_count
+    return 0
+
+
+def _unresolved_context_key(session_id: str) -> str:
+    return f"chat:unresolved:{session_id}"
+
+
+def _save_unresolved_context(
+    session_id: Optional[str],
+    query: str,
+    reason_code: str,
+    *,
+    trace_id: str,
+    request_id: str,
+) -> None:
+    if not session_id:
+        return
+    trimmed_query = (query or "").strip()
+    _CACHE.set_json(
+        _unresolved_context_key(session_id),
+        {
+            "query": trimmed_query,
+            "reason_code": reason_code,
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "updated_at": int(time.time()),
+        },
+        ttl=_unresolved_context_ttl_sec(),
+    )
+
+
+def _clear_unresolved_context(session_id: Optional[str]) -> None:
+    if not session_id:
+        return
+    _CACHE.set_json(_unresolved_context_key(session_id), {"cleared": True}, ttl=1)
+
+
+def _load_unresolved_context(session_id: str) -> Optional[Dict[str, Any]]:
+    cached = _CACHE.get_json(_unresolved_context_key(session_id))
+    if not isinstance(cached, dict):
+        return None
+    if cached.get("cleared") is True:
+        return None
+    return cached
+
+
+def _query_preview(text: str, *, max_len: int = 120) -> str:
+    normalized = " ".join((text or "").split()).strip()
+    if len(normalized) <= max_len:
+        return normalized
+    return f"{normalized[: max_len - 1]}..."
+
+
 def _resolve_top_k(request: Dict[str, Any]) -> int:
     options = request.get("options") if isinstance(request.get("options"), dict) else {}
     top_k = options.get("top_k")
     if isinstance(top_k, int) and top_k > 0:
-        return top_k
-    return int(os.getenv("QS_RAG_TOP_K", "6"))
+        return min(top_k, _chat_max_top_k())
+    return min(int(os.getenv("QS_RAG_TOP_K", "6")), _chat_max_top_k())
 
 
 def _resolve_top_n(request: Dict[str, Any]) -> Optional[int]:
@@ -327,13 +1272,66 @@ def _build_llm_payload(request: Dict[str, Any], trace_id: str, request_id: str, 
 async def _call_llm_json(payload: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
     headers = {"x-trace-id": trace_id, "x-request-id": request_id}
     started = time.perf_counter()
+    all_providers = _llm_provider_chain()
+    providers = _apply_provider_blocklist(all_providers, mode="json")
+    forced = _llm_forced_provider()
+    forced_blocked = _is_forced_provider_blocked(all_providers, providers)
+    if forced_blocked and forced:
+        metrics.inc("chat_provider_forced_route_total", {"provider": forced, "reason": "blocked", "mode": "json"})
+    providers = _apply_intent_routing(providers, payload, mode="json")
+    providers = _apply_cost_steering(providers, payload, mode="json")
+    providers = _apply_provider_health(providers, mode="json")
+    if not forced_blocked:
+        providers = _apply_provider_override(providers, mode="json")
+    last_error: Exception | None = None
     async with httpx.AsyncClient() as client:
-        response = await client.post(f"{_llm_url()}/v1/generate", json=payload, headers=headers, timeout=_llm_timeout_sec())
-        response.raise_for_status()
-        data = response.json()
-    took_ms = int((time.perf_counter() - started) * 1000)
-    metrics.inc("llm_generate_latency_ms", value=max(0, took_ms))
-    return data
+        for idx, (provider, base_url) in enumerate(providers):
+            try:
+                response = await client.post(f"{base_url}/v1/generate", json=payload, headers=headers, timeout=_llm_timeout_sec())
+            except (httpx.TimeoutException, httpx.NetworkError) as exc:
+                last_error = exc
+                metrics.inc("chat_provider_route_total", {"provider": provider, "result": "timeout", "mode": "json"})
+                _record_provider_telemetry(provider, base_url, success=False)
+                _mark_provider_unhealthy(provider, "timeout")
+                if idx + 1 < len(providers):
+                    metrics.inc(
+                        "chat_provider_failover_total",
+                        {"from": provider, "to": providers[idx + 1][0], "reason": "timeout", "mode": "json"},
+                    )
+                    continue
+                raise
+            except Exception as exc:
+                last_error = exc
+                metrics.inc("chat_provider_route_total", {"provider": provider, "result": "error", "mode": "json"})
+                _record_provider_telemetry(provider, base_url, success=False)
+                raise
+            status_code = int(response.status_code)
+            if status_code >= 400:
+                reason = f"http_{status_code}"
+                metrics.inc("chat_provider_route_total", {"provider": provider, "result": reason, "mode": "json"})
+                _record_provider_telemetry(provider, base_url, success=False)
+                if _is_failover_status(status_code) and idx + 1 < len(providers):
+                    _mark_provider_unhealthy(provider, reason)
+                    metrics.inc(
+                        "chat_provider_failover_total",
+                        {"from": provider, "to": providers[idx + 1][0], "reason": reason, "mode": "json"},
+                    )
+                    continue
+                response.raise_for_status()
+            try:
+                data = response.json()
+            except Exception as exc:
+                last_error = exc
+                metrics.inc("chat_provider_route_total", {"provider": provider, "result": "invalid_json", "mode": "json"})
+                _record_provider_telemetry(provider, base_url, success=False)
+                raise
+            metrics.inc("chat_provider_route_total", {"provider": provider, "result": "ok", "mode": "json"})
+            _record_provider_telemetry(provider, base_url, success=True)
+            _clear_provider_unhealthy(provider)
+            took_ms = int((time.perf_counter() - started) * 1000)
+            metrics.inc("llm_generate_latency_ms", value=max(0, took_ms))
+            return data
+    raise last_error or RuntimeError("llm_provider_unavailable")
 
 
 async def _stream_llm(
@@ -353,64 +1351,118 @@ async def _stream_llm(
 
     async def generator() -> AsyncIterator[str]:
         nonlocal first_token_reported
-        event_name = "message"
-        data_lines: List[str] = []
-        try:
-            async with httpx.AsyncClient() as client:
-                async with client.stream(
-                    "POST",
-                    f"{_llm_url()}/v1/generate?stream=true",
-                    json={**payload, "stream": True},
-                    headers=headers,
-                    timeout=_llm_timeout_sec(),
-                ) as response:
-                    response.raise_for_status()
-                    async for raw_line in response.aiter_lines():
-                        line = raw_line if raw_line is not None else ""
-                        if line.startswith("event:"):
-                            event_name = line.split(":", 1)[1].strip() or "message"
-                        elif line.startswith("data:"):
-                            data_lines.append(line.split(":", 1)[1].strip())
-                        elif line == "":
-                            if not data_lines:
-                                event_name = "message"
+        all_providers = _llm_provider_chain()
+        providers = _apply_provider_blocklist(all_providers, mode="stream")
+        forced = _llm_forced_provider()
+        forced_blocked = _is_forced_provider_blocked(all_providers, providers)
+        if forced_blocked and forced:
+            metrics.inc("chat_provider_forced_route_total", {"provider": forced, "reason": "blocked", "mode": "stream"})
+        providers = _apply_intent_routing(providers, payload, mode="stream")
+        providers = _apply_cost_steering(providers, payload, mode="stream")
+        providers = _apply_provider_health(providers, mode="stream")
+        if not forced_blocked:
+            providers = _apply_provider_override(providers, mode="stream")
+        last_error: Optional[Exception] = None
+        async with httpx.AsyncClient() as client:
+            for idx, (provider, base_url) in enumerate(providers):
+                event_name = "message"
+                data_lines: List[str] = []
+                try:
+                    async with client.stream(
+                        "POST",
+                        f"{base_url}/v1/generate?stream=true",
+                        json={**payload, "stream": True},
+                        headers=headers,
+                        timeout=_llm_timeout_sec(),
+                    ) as response:
+                        status_code = int(response.status_code)
+                        if status_code >= 400:
+                            reason = f"http_{status_code}"
+                            metrics.inc(
+                                "chat_provider_route_total",
+                                {"provider": provider, "result": reason, "mode": "stream"},
+                            )
+                            _record_provider_telemetry(provider, base_url, success=False)
+                            if _is_failover_status(status_code) and idx + 1 < len(providers):
+                                _mark_provider_unhealthy(provider, reason)
+                                metrics.inc(
+                                    "chat_provider_failover_total",
+                                    {"from": provider, "to": providers[idx + 1][0], "reason": reason, "mode": "stream"},
+                                )
                                 continue
-                            data = "\n".join(data_lines)
-                            if event_name == "delta":
-                                if not first_token_reported:
-                                    first_token_reported = True
-                                    first_token_ms = int((time.perf_counter() - started) * 1000)
-                                    metrics.inc("chat_first_token_latency_ms", value=max(0, first_token_ms))
-                                try:
-                                    parsed = json.loads(data)
-                                    delta = parsed.get("delta") if isinstance(parsed, dict) else None
-                                    if isinstance(delta, str):
-                                        stream_state["answer"] += delta
-                                except Exception:
-                                    stream_state["answer"] += data
-                            elif event_name == "done":
-                                try:
-                                    parsed = json.loads(data)
-                                    if isinstance(parsed, dict):
-                                        done_status = parsed.get("status")
-                                        if isinstance(done_status, str) and done_status:
-                                            stream_state["done_status"] = done_status
-                                        if isinstance(parsed.get("citations"), list):
-                                            stream_state["citations"] = [str(item) for item in parsed.get("citations") if isinstance(item, str)]
-                                except Exception:
-                                    pass
+                            response.raise_for_status()
+                        async for raw_line in response.aiter_lines():
+                            line = raw_line if raw_line is not None else ""
+                            if line.startswith("event:"):
+                                event_name = line.split(":", 1)[1].strip() or "message"
+                            elif line.startswith("data:"):
+                                data_lines.append(line.split(":", 1)[1].strip())
+                            elif line == "":
+                                if not data_lines:
+                                    event_name = "message"
+                                    continue
+                                data = "\n".join(data_lines)
+                                if event_name == "delta":
+                                    if not first_token_reported:
+                                        first_token_reported = True
+                                        first_token_ms = int((time.perf_counter() - started) * 1000)
+                                        metrics.inc("chat_first_token_latency_ms", value=max(0, first_token_ms))
+                                    try:
+                                        parsed = json.loads(data)
+                                        delta = parsed.get("delta") if isinstance(parsed, dict) else None
+                                        if isinstance(delta, str):
+                                            stream_state["answer"] += delta
+                                    except Exception:
+                                        stream_state["answer"] += data
+                                elif event_name == "done":
+                                    try:
+                                        parsed = json.loads(data)
+                                        if isinstance(parsed, dict):
+                                            done_status = parsed.get("status")
+                                            if isinstance(done_status, str) and done_status:
+                                                stream_state["done_status"] = done_status
+                                            if isinstance(parsed.get("citations"), list):
+                                                stream_state["citations"] = [str(item) for item in parsed.get("citations") if isinstance(item, str)]
+                                    except Exception:
+                                        pass
+                                    data_lines = []
+                                    event_name = "message"
+                                    continue
+                                yield _sse_event(event_name, data)
                                 data_lines = []
                                 event_name = "message"
-                                continue
-                            yield _sse_event(event_name, data)
-                            data_lines = []
-                            event_name = "message"
-            took_ms = int((time.perf_counter() - started) * 1000)
-            metrics.inc("llm_generate_latency_ms", value=max(0, took_ms))
-        except Exception as exc:
-            stream_state["llm_error"] = str(exc)
+                    metrics.inc("chat_provider_route_total", {"provider": provider, "result": "ok", "mode": "stream"})
+                    _record_provider_telemetry(provider, base_url, success=True)
+                    _clear_provider_unhealthy(provider)
+                    took_ms = int((time.perf_counter() - started) * 1000)
+                    metrics.inc("llm_generate_latency_ms", value=max(0, took_ms))
+                    return
+                except (httpx.TimeoutException, httpx.NetworkError) as exc:
+                    last_error = exc
+                    metrics.inc("chat_provider_route_total", {"provider": provider, "result": "timeout", "mode": "stream"})
+                    _record_provider_telemetry(provider, base_url, success=False)
+                    _mark_provider_unhealthy(provider, "timeout")
+                    if idx + 1 < len(providers) and not stream_state.get("answer"):
+                        metrics.inc(
+                            "chat_provider_failover_total",
+                            {"from": provider, "to": providers[idx + 1][0], "reason": "timeout", "mode": "stream"},
+                        )
+                        continue
+                    stream_state["llm_error"] = str(exc)
+                    break
+                except Exception as exc:
+                    last_error = exc
+                    stream_state["llm_error"] = str(exc)
+                    metrics.inc("chat_provider_route_total", {"provider": provider, "result": "error", "mode": "stream"})
+                    _record_provider_telemetry(provider, base_url, success=False)
+                    break
+
+        if stream_state.get("llm_error") is None and last_error is not None:
+            stream_state["llm_error"] = str(last_error)
+        if stream_state.get("llm_error"):
             metrics.inc("chat_fallback_total", {"reason": "PROVIDER_TIMEOUT"})
-            yield _sse_event("error", {"code": "PROVIDER_TIMEOUT", "message": "LLM gateway unavailable"})
+            _record_chat_timeout("llm_stream")
+            yield _sse_event("error", {"code": "PROVIDER_TIMEOUT", "message": "LLM 응답 지연으로 처리하지 못했습니다."})
             yield _sse_event("done", {"status": "error", "citations": []})
 
     return generator(), stream_state
@@ -420,13 +1472,16 @@ async def _prepare_chat(
     request: Dict[str, Any],
     trace_id: str,
     request_id: str,
+    *,
+    session_id: Optional[str] = None,
+    user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     query = _extract_query_text(request)
     if not query.strip():
         return {
             "ok": False,
             "reason": "NO_MESSAGES",
-            "response": _fallback(trace_id, request_id, "Missing user message.", "NO_MESSAGES"),
+            "response": _fallback(trace_id, request_id, None, "NO_MESSAGES", session_id=session_id, user_id=user_id),
         }
 
     locale = _locale_from_request(request)
@@ -437,7 +1492,7 @@ async def _prepare_chat(
         return {
             "ok": False,
             "reason": "RAG_NO_CHUNKS",
-            "response": _fallback(trace_id, request_id, "Insufficient evidence to answer with citations.", "RAG_NO_CHUNKS"),
+            "response": _fallback(trace_id, request_id, None, "RAG_NO_CHUNKS", session_id=session_id, user_id=user_id),
             "canonical_key": canonical_key,
             "locale": locale,
             "trace": trace,
@@ -456,11 +1511,38 @@ async def _prepare_chat(
 
 
 async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
-    prepared = await _prepare_chat(request, trace_id, request_id)
+    user_id = _extract_user_id(request)
+    session_id = _resolve_session_id(request, user_id)
+    query_text = _extract_query_text(request)
+    validation_reason = _validate_chat_request(request)
+    if validation_reason:
+        metrics.inc("chat_validation_fail_total", {"reason": validation_reason})
+        metrics.inc("chat_requests_total", {"decision": "fallback"})
+        response = _fallback(trace_id, request_id, None, validation_reason, session_id=session_id, user_id=user_id)
+        _save_unresolved_context(session_id, query_text, validation_reason, trace_id=trace_id, request_id=request_id)
+        return response
+    tool_response = await run_tool_chat(request, trace_id, request_id)
+    if tool_response is not None:
+        _reset_fallback_count(session_id)
+        _clear_unresolved_context(session_id)
+        metrics.inc("chat_requests_total", {"decision": "tool_path"})
+        return tool_response
+
+    prepared = await _prepare_chat(request, trace_id, request_id, session_id=session_id, user_id=user_id)
     if not prepared.get("ok"):
         metrics.inc("chat_requests_total", {"decision": "fallback"})
-        return prepared.get("response")
+        response = prepared.get("response")
+        if isinstance(response, dict):
+            _save_unresolved_context(
+                session_id,
+                query_text,
+                str(response.get("reason_code") or str(prepared.get("reason") or "RAG_NO_CHUNKS")),
+                trace_id=trace_id,
+                request_id=request_id,
+            )
+        return response
 
+    query = prepared.get("query") or ""
     canonical_key = prepared.get("canonical_key")
     locale = prepared.get("locale")
     selected = prepared.get("selected") or []
@@ -469,22 +1551,67 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
     if _answer_cache_enabled():
         cached = _CACHE.get_json(answer_cache_key)
         if isinstance(cached, dict) and cached.get("response"):
+            _reset_fallback_count(session_id)
+            _clear_unresolved_context(session_id)
             metrics.inc("chat_requests_total", {"decision": "answer_cache_hit"})
             return cached.get("response")
 
-    payload = _build_llm_payload(request, trace_id, request_id, prepared.get("query") or "", selected)
+    payload = _build_llm_payload(request, trace_id, request_id, query, selected)
     try:
         data = await _call_llm_json(payload, trace_id, request_id)
     except Exception:
         metrics.inc("chat_requests_total", {"decision": "fallback"})
-        return _fallback(trace_id, request_id, "LLM gateway unavailable.", "PROVIDER_TIMEOUT")
+        _record_chat_timeout("llm_generate")
+        response = _fallback(trace_id, request_id, None, "PROVIDER_TIMEOUT", session_id=session_id, user_id=user_id)
+        _save_unresolved_context(session_id, query, "PROVIDER_TIMEOUT", trace_id=trace_id, request_id=request_id)
+        return response
 
     answer_text = str(data.get("content") or "")
     raw_citations = data.get("citations") if isinstance(data.get("citations"), list) else _extract_citations_from_text(answer_text)
     citations = _validate_citations([str(item) for item in raw_citations if isinstance(item, str)], selected)
     if not citations:
         metrics.inc("chat_requests_total", {"decision": "fallback"})
-        return _fallback(trace_id, request_id, "Insufficient evidence to answer with citations.", "LLM_NO_CITATIONS")
+        response = _fallback(trace_id, request_id, None, "LLM_NO_CITATIONS", session_id=session_id, user_id=user_id)
+        _save_unresolved_context(session_id, query, "LLM_NO_CITATIONS", trace_id=trace_id, request_id=request_id)
+        return response
+    coverage_ok, coverage, coverage_threshold = _is_citation_coverage_sufficient(query, citations, selected)
+    if not coverage_ok:
+        metrics.inc(
+            "chat_citation_coverage_block_total",
+            {
+                "risk": "high" if _is_high_risk_query(query) else "normal",
+                "threshold": f"{coverage_threshold:.2f}",
+            },
+        )
+        metrics.inc("chat_requests_total", {"decision": "fallback"})
+        response = _fallback(trace_id, request_id, None, "LLM_LOW_CITATION_COVERAGE", session_id=session_id, user_id=user_id)
+        _save_unresolved_context(session_id, query, "LLM_LOW_CITATION_COVERAGE", trace_id=trace_id, request_id=request_id)
+        return response
+
+    guarded_response, guard_reason = _guard_answer(
+        query,
+        answer_text,
+        citations,
+        trace_id,
+        request_id,
+        session_id=session_id,
+        user_id=user_id,
+    )
+    if guarded_response is not None:
+        metrics.inc("chat_output_guard_total", {"result": "blocked", "reason": guard_reason or "unknown"})
+        metrics.inc(
+            "chat_answer_risk_band_total",
+            {"band": _compute_risk_band(query, guarded_response.get("status", "insufficient_evidence"), [], guard_reason)},
+        )
+        metrics.inc("chat_requests_total", {"decision": "fallback"})
+        _save_unresolved_context(
+            session_id,
+            query,
+            str(guarded_response.get("reason_code") or guard_reason or "OUTPUT_GUARD_BLOCKED"),
+            trace_id=trace_id,
+            request_id=request_id,
+        )
+        return guarded_response
 
     response = {
         "version": "v1",
@@ -494,28 +1621,184 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
         "sources": _format_sources(selected),
         "citations": citations,
         "status": "ok",
+        "reason_code": "OK",
+        "recoverable": False,
+        "next_action": "NONE",
+        "retry_after_ms": None,
+        "fallback_count": 0,
+        "escalated": False,
     }
+    metrics.inc("chat_output_guard_total", {"result": "pass", "reason": "ok"})
+    metrics.inc("chat_answer_risk_band_total", {"band": _compute_risk_band(query, "ok", citations, None)})
     if _answer_cache_enabled():
         _CACHE.set_json(answer_cache_key, {"response": response}, ttl=max(1, _answer_cache_ttl_sec()))
 
+    _reset_fallback_count(session_id)
+    _clear_unresolved_context(session_id)
     metrics.inc("chat_requests_total", {"decision": "ok"})
     return response
 
 
 async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: str) -> AsyncIterator[str]:
-    prepared = await _prepare_chat(request, trace_id, request_id)
+    user_id = _extract_user_id(request)
+    session_id = _resolve_session_id(request, user_id)
+    query_text = _extract_query_text(request)
+    validation_reason = _validate_chat_request(request)
+    if validation_reason:
+        metrics.inc("chat_validation_fail_total", {"reason": validation_reason})
+        response = _fallback(trace_id, request_id, None, validation_reason, session_id=session_id, user_id=user_id)
+        _save_unresolved_context(session_id, query_text, validation_reason, trace_id=trace_id, request_id=request_id)
+        risk_band = _compute_risk_band("", response.get("status", "insufficient_evidence"), [], validation_reason)
+        yield _sse_event(
+            "meta",
+            {
+                "trace_id": trace_id,
+                "request_id": request_id,
+                "status": response.get("status"),
+                "risk_band": risk_band,
+                "reason_code": response.get("reason_code"),
+                "recoverable": response.get("recoverable"),
+                "next_action": response.get("next_action"),
+                "retry_after_ms": response.get("retry_after_ms"),
+                "fallback_count": response.get("fallback_count"),
+                "escalated": response.get("escalated"),
+            },
+        )
+        yield _sse_event("delta", {"delta": str(response.get("answer", {}).get("content") if isinstance(response.get("answer"), dict) else "")})
+        yield _sse_event(
+            "done",
+            {
+                "status": response.get("status"),
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": response.get("reason_code"),
+                "recoverable": response.get("recoverable"),
+                "next_action": response.get("next_action"),
+                "retry_after_ms": response.get("retry_after_ms"),
+                "fallback_count": response.get("fallback_count"),
+                "escalated": response.get("escalated"),
+            },
+        )
+        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
+        metrics.inc("chat_requests_total", {"decision": "fallback"})
+        return
+    tool_response = await run_tool_chat(request, trace_id, request_id)
+    if tool_response is not None:
+        _reset_fallback_count(session_id)
+        _clear_unresolved_context(session_id)
+        answer = tool_response.get("answer", {}) if isinstance(tool_response.get("answer"), dict) else {}
+        citations = [str(item) for item in (tool_response.get("citations") or []) if isinstance(item, str)]
+        sources = tool_response.get("sources") if isinstance(tool_response.get("sources"), list) else []
+        status = str(tool_response.get("status") or "ok")
+        reason_code = str(tool_response.get("reason_code") or "OK")
+        recoverable = bool(tool_response.get("recoverable")) if isinstance(tool_response.get("recoverable"), bool) else False
+        next_action = str(tool_response.get("next_action") or "NONE")
+        retry_after_ms = tool_response.get("retry_after_ms")
+        fallback_count = tool_response.get("fallback_count")
+        escalated = bool(tool_response.get("escalated")) if isinstance(tool_response.get("escalated"), bool) else False
+        risk_band = _compute_risk_band(_extract_query_text(request), status, citations, None)
+        yield _sse_event(
+            "meta",
+            {
+                "trace_id": trace_id,
+                "request_id": request_id,
+                "status": "tool_path",
+                "sources": sources,
+                "citations": citations,
+                "risk_band": risk_band,
+                "reason_code": reason_code,
+                "recoverable": recoverable,
+                "next_action": next_action,
+                "retry_after_ms": retry_after_ms,
+                "fallback_count": fallback_count,
+                "escalated": escalated,
+            },
+        )
+        yield _sse_event("delta", {"delta": str(answer.get("content") or "")})
+        yield _sse_event(
+            "done",
+            {
+                "status": status,
+                "citations": citations,
+                "risk_band": risk_band,
+                "reason_code": reason_code,
+                "recoverable": recoverable,
+                "next_action": next_action,
+                "retry_after_ms": retry_after_ms,
+                "fallback_count": fallback_count,
+                "escalated": escalated,
+            },
+        )
+        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
+        metrics.inc("chat_requests_total", {"decision": "tool_path"})
+        return
+
+    prepared = await _prepare_chat(request, trace_id, request_id, session_id=session_id, user_id=user_id)
     if not prepared.get("ok"):
-        response = prepared.get("response") or _fallback(trace_id, request_id, "Insufficient evidence to answer with citations.", "RAG_NO_CHUNKS")
+        response = prepared.get("response") or _fallback(
+            trace_id,
+            request_id,
+            None,
+            "RAG_NO_CHUNKS",
+            session_id=session_id,
+            user_id=user_id,
+        )
         answer = response.get("answer", {}).get("content") if isinstance(response.get("answer"), dict) else ""
-        yield _sse_event("meta", {"trace_id": trace_id, "request_id": request_id, "status": "fallback"})
+        reason_code = str(response.get("reason_code") or "RAG_NO_CHUNKS")
+        recoverable = bool(response.get("recoverable")) if isinstance(response.get("recoverable"), bool) else True
+        next_action = str(response.get("next_action") or "REFINE_QUERY")
+        retry_after_ms = response.get("retry_after_ms")
+        fallback_count = response.get("fallback_count")
+        escalated = bool(response.get("escalated")) if isinstance(response.get("escalated"), bool) else False
+        risk_band = _compute_risk_band("", response.get("status", "insufficient_evidence"), [], "RAG_NO_CHUNKS")
+        yield _sse_event(
+            "meta",
+            {
+                "trace_id": trace_id,
+                "request_id": request_id,
+                "status": "fallback",
+                "sources": [],
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": reason_code,
+                "recoverable": recoverable,
+                "next_action": next_action,
+                "retry_after_ms": retry_after_ms,
+                "fallback_count": fallback_count,
+                "escalated": escalated,
+            },
+        )
         yield _sse_event("delta", {"delta": answer})
-        yield _sse_event("done", {"status": response.get("status", "insufficient_evidence"), "citations": []})
+        yield _sse_event(
+            "done",
+            {
+                "status": response.get("status", "insufficient_evidence"),
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": reason_code,
+                "recoverable": recoverable,
+                "next_action": next_action,
+                "retry_after_ms": retry_after_ms,
+                "fallback_count": fallback_count,
+                "escalated": escalated,
+            },
+        )
+        _save_unresolved_context(
+            session_id,
+            query_text,
+            str(reason_code or str(prepared.get("reason") or "RAG_NO_CHUNKS")),
+            trace_id=trace_id,
+            request_id=request_id,
+        )
+        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return
 
+    query = prepared.get("query") or ""
     canonical_key = prepared.get("canonical_key")
     locale = prepared.get("locale")
     selected = prepared.get("selected") or []
+    sources = _format_sources(selected)
     answer_cache_key = _answer_cache_key(canonical_key, locale)
 
     if _answer_cache_enabled():
@@ -523,13 +1806,56 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
         if isinstance(cached, dict) and isinstance(cached.get("response"), dict):
             cached_response = cached.get("response")
             cached_answer = cached_response.get("answer") if isinstance(cached_response.get("answer"), dict) else {}
-            yield _sse_event("meta", {"trace_id": trace_id, "request_id": request_id, "status": "cached"})
+            cached_citations = [str(item) for item in (cached_response.get("citations") or []) if isinstance(item, str)]
+            cached_status = str(cached_response.get("status") or "ok")
+            cached_reason_code = str(cached_response.get("reason_code") or "OK")
+            cached_recoverable = (
+                bool(cached_response.get("recoverable")) if isinstance(cached_response.get("recoverable"), bool) else False
+            )
+            cached_next_action = str(cached_response.get("next_action") or "NONE")
+            cached_retry_after_ms = cached_response.get("retry_after_ms")
+            cached_fallback_count = cached_response.get("fallback_count")
+            cached_escalated = bool(cached_response.get("escalated")) if isinstance(cached_response.get("escalated"), bool) else False
+            risk_band = _compute_risk_band(query, cached_status, cached_citations, None)
+            yield _sse_event(
+                "meta",
+                {
+                    "trace_id": trace_id,
+                    "request_id": request_id,
+                    "status": "cached",
+                    "sources": sources,
+                    "citations": cached_citations,
+                    "risk_band": risk_band,
+                    "reason_code": cached_reason_code,
+                    "recoverable": cached_recoverable,
+                    "next_action": cached_next_action,
+                    "retry_after_ms": cached_retry_after_ms,
+                    "fallback_count": cached_fallback_count,
+                    "escalated": cached_escalated,
+                },
+            )
             yield _sse_event("delta", {"delta": cached_answer.get("content") or ""})
-            yield _sse_event("done", {"status": "ok", "citations": cached_response.get("citations") or []})
+            yield _sse_event(
+                "done",
+                {
+                    "status": cached_status,
+                    "citations": cached_citations,
+                    "risk_band": risk_band,
+                    "reason_code": cached_reason_code,
+                    "recoverable": cached_recoverable,
+                    "next_action": cached_next_action,
+                    "retry_after_ms": cached_retry_after_ms,
+                    "fallback_count": cached_fallback_count,
+                    "escalated": cached_escalated,
+                },
+            )
+            _reset_fallback_count(session_id)
+            _clear_unresolved_context(session_id)
+            metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
             metrics.inc("chat_requests_total", {"decision": "answer_cache_hit"})
             return
 
-    payload = _build_llm_payload(request, trace_id, request_id, prepared.get("query") or "", selected)
+    payload = _build_llm_payload(request, trace_id, request_id, query, selected)
     if not _llm_stream_enabled():
         try:
             data = await _call_llm_json(payload, trace_id, request_id)
@@ -537,13 +1863,158 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
             raw_citations = data.get("citations") if isinstance(data.get("citations"), list) else _extract_citations_from_text(answer_text)
             citations = _validate_citations([str(item) for item in raw_citations if isinstance(item, str)], selected)
             if not citations:
-                yield _sse_event("error", {"code": "LLM_NO_CITATIONS", "message": "citation mapping failed"})
-                yield _sse_event("done", {"status": "insufficient_evidence", "citations": []})
+                yield _sse_event("error", {"code": "LLM_NO_CITATIONS", "message": "근거 문서 매핑에 실패했습니다."})
+                risk_band = _compute_risk_band(query, "insufficient_evidence", [], "LLM_NO_CITATIONS")
+                fallback_response = _fallback(
+                    trace_id,
+                    request_id,
+                    None,
+                    "LLM_NO_CITATIONS",
+                    session_id=session_id,
+                    user_id=user_id,
+                )
+                yield _sse_event(
+                    "done",
+                    {
+                        "status": "insufficient_evidence",
+                        "citations": [],
+                        "risk_band": risk_band,
+                        "reason_code": fallback_response.get("reason_code"),
+                        "recoverable": fallback_response.get("recoverable"),
+                        "next_action": fallback_response.get("next_action"),
+                        "retry_after_ms": fallback_response.get("retry_after_ms"),
+                        "fallback_count": fallback_response.get("fallback_count"),
+                        "escalated": fallback_response.get("escalated"),
+                    },
+                )
+                _save_unresolved_context(session_id, query, "LLM_NO_CITATIONS", trace_id=trace_id, request_id=request_id)
+                metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
                 metrics.inc("chat_requests_total", {"decision": "fallback"})
                 return
-            yield _sse_event("meta", {"trace_id": trace_id, "request_id": request_id, "status": "ok"})
+            coverage_ok, coverage, coverage_threshold = _is_citation_coverage_sufficient(query, citations, selected)
+            if not coverage_ok:
+                metrics.inc(
+                    "chat_citation_coverage_block_total",
+                    {
+                        "risk": "high" if _is_high_risk_query(query) else "normal",
+                        "threshold": f"{coverage_threshold:.2f}",
+                    },
+                )
+                yield _sse_event("error", {"code": "LLM_LOW_CITATION_COVERAGE", "message": "근거 커버리지가 부족합니다."})
+                risk_band = _compute_risk_band(query, "insufficient_evidence", [], "LLM_LOW_CITATION_COVERAGE")
+                fallback_response = _fallback(
+                    trace_id,
+                    request_id,
+                    None,
+                    "LLM_LOW_CITATION_COVERAGE",
+                    session_id=session_id,
+                    user_id=user_id,
+                )
+                yield _sse_event(
+                    "done",
+                    {
+                        "status": "insufficient_evidence",
+                        "citations": [],
+                        "risk_band": risk_band,
+                        "reason_code": fallback_response.get("reason_code"),
+                        "recoverable": fallback_response.get("recoverable"),
+                        "next_action": fallback_response.get("next_action"),
+                        "retry_after_ms": fallback_response.get("retry_after_ms"),
+                        "fallback_count": fallback_response.get("fallback_count"),
+                        "escalated": fallback_response.get("escalated"),
+                    },
+                )
+                _save_unresolved_context(session_id, query, "LLM_LOW_CITATION_COVERAGE", trace_id=trace_id, request_id=request_id)
+                metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
+                metrics.inc("chat_requests_total", {"decision": "fallback"})
+                return
+
+            guarded_response, guard_reason = _guard_answer(
+                query,
+                answer_text,
+                citations,
+                trace_id,
+                request_id,
+                session_id=session_id,
+                user_id=user_id,
+            )
+            if guarded_response is not None:
+                metrics.inc("chat_output_guard_total", {"result": "blocked", "reason": guard_reason or "unknown"})
+                risk_band = _compute_risk_band(query, guarded_response.get("status", "insufficient_evidence"), [], guard_reason)
+                yield _sse_event(
+                    "meta",
+                    {
+                        "trace_id": trace_id,
+                        "request_id": request_id,
+                        "status": "guard_blocked",
+                        "sources": sources,
+                        "citations": [],
+                        "risk_band": risk_band,
+                    },
+                )
+                yield _sse_event(
+                    "error",
+                    {"code": guard_reason or "OUTPUT_GUARD_BLOCKED", "message": _guard_blocked_message()},
+                )
+                yield _sse_event(
+                    "done",
+                    {
+                        "status": guarded_response.get("status", "insufficient_evidence"),
+                        "citations": [],
+                        "risk_band": risk_band,
+                        "reason_code": guarded_response.get("reason_code"),
+                        "recoverable": guarded_response.get("recoverable"),
+                        "next_action": guarded_response.get("next_action"),
+                        "retry_after_ms": guarded_response.get("retry_after_ms"),
+                        "fallback_count": guarded_response.get("fallback_count"),
+                        "escalated": guarded_response.get("escalated"),
+                    },
+                )
+                _save_unresolved_context(
+                    session_id,
+                    query,
+                    str(guarded_response.get("reason_code") or guard_reason or "OUTPUT_GUARD_BLOCKED"),
+                    trace_id=trace_id,
+                    request_id=request_id,
+                )
+                metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
+                metrics.inc("chat_requests_total", {"decision": "fallback"})
+                return
+
+            risk_band = _compute_risk_band(query, "ok", citations, None)
+            metrics.inc("chat_output_guard_total", {"result": "pass", "reason": "ok"})
+            yield _sse_event(
+                "meta",
+                {
+                    "trace_id": trace_id,
+                    "request_id": request_id,
+                    "status": "ok",
+                    "sources": sources,
+                    "citations": citations,
+                    "risk_band": risk_band,
+                "reason_code": "OK",
+                "recoverable": False,
+                "next_action": "NONE",
+                "retry_after_ms": None,
+                "fallback_count": 0,
+                "escalated": False,
+            },
+        )
             yield _sse_event("delta", {"delta": answer_text})
-            yield _sse_event("done", {"status": "ok", "citations": citations})
+            yield _sse_event(
+                "done",
+                {
+                    "status": "ok",
+                    "citations": citations,
+                    "risk_band": risk_band,
+                    "reason_code": "OK",
+                    "recoverable": False,
+                    "next_action": "NONE",
+                    "retry_after_ms": None,
+                    "fallback_count": 0,
+                    "escalated": False,
+                },
+            )
             response = {
                 "version": "v1",
                 "trace_id": trace_id,
@@ -552,22 +2023,102 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
                 "sources": _format_sources(selected),
                 "citations": citations,
                 "status": "ok",
+                "reason_code": "OK",
+                "recoverable": False,
+                "next_action": "NONE",
+                "retry_after_ms": None,
+                "fallback_count": 0,
+                "escalated": False,
             }
             if _answer_cache_enabled():
                 _CACHE.set_json(answer_cache_key, {"response": response}, ttl=max(1, _answer_cache_ttl_sec()))
+            _reset_fallback_count(session_id)
+            _clear_unresolved_context(session_id)
+            metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
             metrics.inc("chat_requests_total", {"decision": "ok"})
             return
         except Exception:
-            yield _sse_event("error", {"code": "PROVIDER_TIMEOUT", "message": "LLM gateway unavailable"})
-            yield _sse_event("done", {"status": "error", "citations": []})
+            yield _sse_event("error", {"code": "PROVIDER_TIMEOUT", "message": "LLM 응답 지연으로 처리하지 못했습니다."})
+            risk_band = _compute_risk_band(query, "error", [], "PROVIDER_TIMEOUT")
+            _record_chat_timeout("llm_generate")
+            fallback_response = _fallback(
+                trace_id,
+                request_id,
+                None,
+                "PROVIDER_TIMEOUT",
+                session_id=session_id,
+                user_id=user_id,
+            )
+            yield _sse_event(
+                "done",
+                {
+                    "status": "error",
+                    "citations": [],
+                    "risk_band": risk_band,
+                    "reason_code": fallback_response.get("reason_code"),
+                    "recoverable": fallback_response.get("recoverable"),
+                    "next_action": fallback_response.get("next_action"),
+                    "retry_after_ms": fallback_response.get("retry_after_ms"),
+                    "fallback_count": fallback_response.get("fallback_count"),
+                    "escalated": fallback_response.get("escalated"),
+                },
+            )
+            _save_unresolved_context(session_id, query, "PROVIDER_TIMEOUT", trace_id=trace_id, request_id=request_id)
+            metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
             metrics.inc("chat_requests_total", {"decision": "fallback"})
             return
 
+    yield _sse_event(
+        "meta",
+        {
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "status": "streaming",
+            "sources": sources,
+            "citations": [],
+            "reason_code": "IN_PROGRESS",
+            "recoverable": True,
+            "next_action": "WAIT",
+            "retry_after_ms": None,
+            "fallback_count": None,
+            "escalated": False,
+        },
+    )
     stream_iter, stream_state = await _stream_llm(payload, trace_id, request_id)
     async for event in stream_iter:
+        if event.startswith("event: done"):
+            continue
+        if event.startswith("event: meta"):
+            continue
         yield event
 
     if stream_state.get("llm_error"):
+        risk_band = _compute_risk_band(query, "error", [], "PROVIDER_TIMEOUT")
+        _record_chat_timeout("llm_stream")
+        fallback_response = _fallback(
+            trace_id,
+            request_id,
+            None,
+            "PROVIDER_TIMEOUT",
+            session_id=session_id,
+            user_id=user_id,
+        )
+        yield _sse_event(
+            "done",
+            {
+                "status": "error",
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": fallback_response.get("reason_code"),
+                "recoverable": fallback_response.get("recoverable"),
+                "next_action": fallback_response.get("next_action"),
+                "retry_after_ms": fallback_response.get("retry_after_ms"),
+                "fallback_count": fallback_response.get("fallback_count"),
+                "escalated": fallback_response.get("escalated"),
+            },
+        )
+        _save_unresolved_context(session_id, query, "PROVIDER_TIMEOUT", trace_id=trace_id, request_id=request_id)
+        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return
 
@@ -576,8 +2127,110 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
     citations = _validate_citations([str(item) for item in raw_citations if isinstance(item, str)], selected)
     if not citations:
         metrics.inc("chat_fallback_total", {"reason": "LLM_NO_CITATIONS"})
-        yield _sse_event("error", {"code": "LLM_NO_CITATIONS", "message": "citation mapping failed"})
-        yield _sse_event("done", {"status": "insufficient_evidence", "citations": []})
+        yield _sse_event("error", {"code": "LLM_NO_CITATIONS", "message": "근거 문서 매핑에 실패했습니다."})
+        risk_band = _compute_risk_band(query, "insufficient_evidence", [], "LLM_NO_CITATIONS")
+        fallback_response = _fallback(
+            trace_id,
+            request_id,
+            None,
+            "LLM_NO_CITATIONS",
+            session_id=session_id,
+            user_id=user_id,
+        )
+        yield _sse_event(
+            "done",
+            {
+                "status": "insufficient_evidence",
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": fallback_response.get("reason_code"),
+                "recoverable": fallback_response.get("recoverable"),
+                "next_action": fallback_response.get("next_action"),
+                "retry_after_ms": fallback_response.get("retry_after_ms"),
+                "fallback_count": fallback_response.get("fallback_count"),
+                "escalated": fallback_response.get("escalated"),
+            },
+        )
+        _save_unresolved_context(session_id, query, "LLM_NO_CITATIONS", trace_id=trace_id, request_id=request_id)
+        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
+        metrics.inc("chat_requests_total", {"decision": "fallback"})
+        return
+    coverage_ok, coverage, coverage_threshold = _is_citation_coverage_sufficient(query, citations, selected)
+    if not coverage_ok:
+        metrics.inc(
+            "chat_citation_coverage_block_total",
+            {
+                "risk": "high" if _is_high_risk_query(query) else "normal",
+                "threshold": f"{coverage_threshold:.2f}",
+            },
+        )
+        yield _sse_event("error", {"code": "LLM_LOW_CITATION_COVERAGE", "message": "근거 커버리지가 부족합니다."})
+        risk_band = _compute_risk_band(query, "insufficient_evidence", [], "LLM_LOW_CITATION_COVERAGE")
+        fallback_response = _fallback(
+            trace_id,
+            request_id,
+            None,
+            "LLM_LOW_CITATION_COVERAGE",
+            session_id=session_id,
+            user_id=user_id,
+        )
+        yield _sse_event(
+            "done",
+            {
+                "status": "insufficient_evidence",
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": fallback_response.get("reason_code"),
+                "recoverable": fallback_response.get("recoverable"),
+                "next_action": fallback_response.get("next_action"),
+                "retry_after_ms": fallback_response.get("retry_after_ms"),
+                "fallback_count": fallback_response.get("fallback_count"),
+                "escalated": fallback_response.get("escalated"),
+            },
+        )
+        _save_unresolved_context(session_id, query, "LLM_LOW_CITATION_COVERAGE", trace_id=trace_id, request_id=request_id)
+        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
+        metrics.inc("chat_requests_total", {"decision": "fallback"})
+        return
+
+    guarded_response, guard_reason = _guard_answer(
+        query,
+        answer_text,
+        citations,
+        trace_id,
+        request_id,
+        session_id=session_id,
+        user_id=user_id,
+    )
+    if guarded_response is not None:
+        metrics.inc("chat_output_guard_total", {"result": "blocked", "reason": guard_reason or "unknown"})
+        risk_band = _compute_risk_band(query, guarded_response.get("status", "insufficient_evidence"), [], guard_reason)
+        yield _sse_event(
+            "error",
+            {"code": guard_reason or "OUTPUT_GUARD_BLOCKED", "message": _guard_blocked_message()},
+        )
+        yield _sse_event(
+            "done",
+            {
+                "status": guarded_response.get("status", "insufficient_evidence"),
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": guarded_response.get("reason_code"),
+                "recoverable": guarded_response.get("recoverable"),
+                "next_action": guarded_response.get("next_action"),
+                "retry_after_ms": guarded_response.get("retry_after_ms"),
+                "fallback_count": guarded_response.get("fallback_count"),
+                "escalated": guarded_response.get("escalated"),
+            },
+        )
+        _save_unresolved_context(
+            session_id,
+            query,
+            str(guarded_response.get("reason_code") or guard_reason or "OUTPUT_GUARD_BLOCKED"),
+            trace_id=trace_id,
+            request_id=request_id,
+        )
+        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return
 
@@ -589,11 +2242,34 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
         "sources": _format_sources(selected),
         "citations": citations,
         "status": "ok",
+        "reason_code": "OK",
+        "recoverable": False,
+        "next_action": "NONE",
+        "retry_after_ms": None,
     }
     if _answer_cache_enabled():
         _CACHE.set_json(answer_cache_key, {"response": response}, ttl=max(1, _answer_cache_ttl_sec()))
 
-    yield _sse_event("done", {"status": stream_state.get("done_status") or "ok", "citations": citations})
+    final_status = stream_state.get("done_status") or "ok"
+    risk_band = _compute_risk_band(query, final_status, citations, None)
+    metrics.inc("chat_output_guard_total", {"result": "pass", "reason": "ok"})
+    metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
+    _reset_fallback_count(session_id)
+    _clear_unresolved_context(session_id)
+    yield _sse_event(
+        "done",
+        {
+            "status": final_status,
+            "citations": citations,
+            "risk_band": risk_band,
+            "reason_code": "OK",
+            "recoverable": False,
+            "next_action": "NONE",
+            "retry_after_ms": None,
+            "fallback_count": 0,
+            "escalated": False,
+        },
+    )
     metrics.inc("chat_requests_total", {"decision": "ok"})
 
 
@@ -619,6 +2295,9 @@ async def explain_chat_rag(request: Dict[str, Any], trace_id: str, request_id: s
         reason_codes.append("REWRITE_APPLIED")
     if rewrite_meta.get("rewrite_reason"):
         reason_codes.append(str(rewrite_meta.get("rewrite_reason")))
+    selected = trace.get("selected") or []
+    debug_payload = _build_llm_payload(request, trace_id, request_id, rewrite_meta.get("rewritten_query") or query, selected)
+    llm_routing = _preview_provider_routing(debug_payload, mode="json")
 
     return {
         "version": "v1",
@@ -643,5 +2322,104 @@ async def explain_chat_rag(request: Dict[str, Any], trace_id: str, request_id: s
             "took_ms": trace.get("took_ms") or 0,
             "degraded": bool(trace.get("degraded")),
         },
+        "llm_routing": llm_routing,
         "reason_codes": reason_codes,
+    }
+
+
+def get_chat_provider_snapshot(trace_id: str, request_id: str) -> Dict[str, Any]:
+    providers = _llm_provider_chain()
+    preview = _preview_provider_routing(
+        {
+            "version": "v1",
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "messages": [{"role": "user", "content": ""}],
+            "context": {"chunks": []},
+            "citations_required": True,
+        },
+        mode="json",
+    )
+    details: List[Dict[str, Any]] = []
+    for name, url in providers:
+        details.append(
+            {
+                "name": name,
+                "url": url,
+                "cooldown": _is_provider_unhealthy(name),
+                "stats": _provider_stats_view(name),
+            }
+        )
+    return {
+        "routing": preview,
+        "providers": details,
+        "config": {
+            "forced_provider": _llm_forced_provider() or None,
+            "blocklist": sorted(_llm_provider_blocklist()),
+            "health_routing_enabled": _llm_health_routing_enabled(),
+            "health_min_sample": _llm_health_min_sample(),
+            "cost_steering_enabled": _llm_cost_steering_enabled(),
+            "low_cost_provider": _llm_low_cost_provider() or None,
+            "intent_policy": _llm_provider_by_intent(),
+        },
+    }
+
+
+def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> Dict[str, Any]:
+    if not _is_valid_session_id(session_id):
+        raise ValueError("invalid_session_id")
+
+    fallback_count = _load_fallback_count(session_id)
+    threshold = _fallback_escalation_threshold()
+    escalation_ready = fallback_count >= threshold
+    unresolved = _load_unresolved_context(session_id)
+    unresolved_context: Optional[Dict[str, Any]] = None
+    recommended_action = "NONE"
+    recommended_message = "현재 챗봇 세션 상태는 정상입니다."
+    if isinstance(unresolved, dict):
+        reason_code = str(unresolved.get("reason_code") or "")
+        defaults = _fallback_defaults(reason_code)
+        unresolved_context = {
+            "reason_code": reason_code,
+            "reason_message": str(defaults.get("message") or ""),
+            "next_action": str(defaults.get("next_action") or "RETRY"),
+            "trace_id": str(unresolved.get("trace_id") or ""),
+            "request_id": str(unresolved.get("request_id") or ""),
+            "updated_at": int(unresolved.get("updated_at") or 0),
+            "query_preview": _query_preview(str(unresolved.get("query") or "")),
+        }
+        recommended_action = str(defaults.get("next_action") or "RETRY")
+        recommended_message = str(defaults.get("message") or "직전 미해결 사유를 확인해 주세요.")
+    if escalation_ready:
+        recommended_action = "OPEN_SUPPORT_TICKET"
+        recommended_message = "반복 실패가 임계치를 초과했습니다. 상담 티켓 접수를 권장합니다."
+    return {
+        "session_id": session_id,
+        "fallback_count": fallback_count,
+        "fallback_escalation_threshold": threshold,
+        "escalation_ready": escalation_ready,
+        "recommended_action": recommended_action,
+        "recommended_message": recommended_message,
+        "unresolved_context": unresolved_context,
+        "trace_id": trace_id,
+        "request_id": request_id,
+    }
+
+
+def reset_chat_session_state(session_id: str, trace_id: str, request_id: str) -> Dict[str, Any]:
+    if not _is_valid_session_id(session_id):
+        raise ValueError("invalid_session_id")
+    previous_fallback_count = _load_fallback_count(session_id)
+    previous_unresolved_context = isinstance(_load_unresolved_context(session_id), dict)
+    _reset_fallback_count(session_id)
+    _clear_unresolved_context(session_id)
+    reset_ticket_session_context(session_id)
+    return {
+        "session_id": session_id,
+        "reset_applied": True,
+        "previous_fallback_count": previous_fallback_count,
+        "previous_unresolved_context": previous_unresolved_context,
+        "reset_at_ms": int(time.time() * 1000),
+        "trace_id": trace_id,
+        "request_id": request_id,
     }

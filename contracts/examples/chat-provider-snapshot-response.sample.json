@@ -1,0 +1,52 @@
+{
+  "version": "v1",
+  "trace_id": "trace_01",
+  "request_id": "req_01",
+  "status": "ok",
+  "snapshot": {
+    "routing": {
+      "mode": "json",
+      "query_intent": "GENERAL",
+      "forced_provider": null,
+      "forced_blocked": false,
+      "final_chain": ["primary", "fallback_1"]
+    },
+    "providers": [
+      {
+        "name": "primary",
+        "url": "http://localhost:8010",
+        "cooldown": false,
+        "stats": {
+          "ok": 12,
+          "fail": 3,
+          "streak_fail": 0,
+          "base_score": 0.7647,
+          "effective_score": 0.7647,
+          "updated_at": 1760000000
+        }
+      },
+      {
+        "name": "fallback_1",
+        "url": "http://localhost:8011",
+        "cooldown": false,
+        "stats": {
+          "ok": 8,
+          "fail": 1,
+          "streak_fail": 0,
+          "base_score": 0.8181,
+          "effective_score": 0.8181,
+          "updated_at": 1760000001
+        }
+      }
+    ],
+    "config": {
+      "forced_provider": null,
+      "blocklist": [],
+      "health_routing_enabled": true,
+      "health_min_sample": 3,
+      "cost_steering_enabled": false,
+      "low_cost_provider": null,
+      "intent_policy": {}
+    }
+  }
+}

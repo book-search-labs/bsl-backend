@@ -1,6 +1,8 @@
 package com.bsl.commerce.common;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -9,6 +11,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    private static final Logger logger = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApiException(ApiException ex) {
         RequestContext context = RequestContextHolder.get();
@@ -26,7 +30,7 @@ public class ApiExceptionHandler {
         RequestContext context = RequestContextHolder.get();
         ErrorResponse response = new ErrorResponse(
             "bad_request",
-            "invalid JSON",
+            "요청 본문 형식이 올바르지 않습니다.",
             context == null ? null : context.getTraceId(),
             context == null ? null : context.getRequestId()
         );
@@ -36,9 +40,17 @@ public class ApiExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex, HttpServletRequest request) {
         RequestContext context = RequestContextHolder.get();
+        logger.error(
+            "unexpected_exception request_id={} trace_id={} method={} path={}",
+            context == null ? null : context.getRequestId(),
+            context == null ? null : context.getTraceId(),
+            request == null ? null : request.getMethod(),
+            request == null ? null : request.getRequestURI(),
+            ex
+        );
         ErrorResponse response = new ErrorResponse(
             "internal_error",
-            "Unexpected error",
+            "서버 내부 오류가 발생했습니다.",
             context == null ? null : context.getTraceId(),
             context == null ? null : context.getRequestId()
         );

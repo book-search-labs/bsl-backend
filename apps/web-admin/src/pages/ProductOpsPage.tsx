@@ -64,7 +64,7 @@ export default function ProductOpsPage() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [ledger, setLedger] = useState<LedgerEvent[]>([]);
   const [balance, setBalance] = useState<InventoryBalance | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage] = useState<string | null>(null);
 
   const [newSeller, setNewSeller] = useState({ name: "", status: "ACTIVE" });
   const [newSku, setNewSku] = useState({ materialId: "", sellerId: "", format: "PAPERBACK", status: "ACTIVE" });

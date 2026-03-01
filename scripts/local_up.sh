@@ -4,9 +4,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 COMPOSE_FILE="$ROOT_DIR/compose.yaml"
-COMPOSE_PROJECT="${COMPOSE_PROJECT:-bsl-core}"
+COMPOSE_PROJECT="${COMPOSE_PROJECT:-bsl-backend}"
 OS_URL="${OS_URL:-http://localhost:9200}"
 MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-localroot}"
+SEED_DEMO_DATA="${SEED_DEMO_DATA:-1}"
+ENABLE_PG_SIMULATOR="${ENABLE_PG_SIMULATOR:-1}"
 
 print_logs() {
   echo "OpenSearch logs (last 200 lines):"
@@ -16,7 +18,11 @@ print_logs() {
 trap 'print_logs' ERR
 
 echo "Starting OpenSearch + MySQL (docker compose)..."
-docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" up -d mysql opensearch opensearch-dashboards
+if [ "$ENABLE_PG_SIMULATOR" = "1" ]; then
+  docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" up -d mysql opensearch opensearch-dashboards pg-simulator
+else
+  docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" up -d mysql opensearch opensearch-dashboards
+fi
 
 echo "Waiting for OpenSearch to become ready..."
 for i in $(seq 1 60); do
@@ -49,7 +55,11 @@ done
 echo "Bootstrapping indices + aliases..."
 "$SCRIPT_DIR/os_bootstrap_indices_v1_1.sh"
 
-echo "Seeding doc/vec indices..."
-"$SCRIPT_DIR/os_seed_books_v1_1.sh"
+if [ "$SEED_DEMO_DATA" = "1" ]; then
+  echo "Seeding doc/vec indices..."
+  "$SCRIPT_DIR/os_seed_books_v1_1.sh"
+else
+  echo "Skipping demo seed data (SEED_DEMO_DATA=$SEED_DEMO_DATA)."
+fi
 
 echo "Done."

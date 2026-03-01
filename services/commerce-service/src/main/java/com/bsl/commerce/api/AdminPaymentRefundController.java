@@ -31,8 +31,20 @@ public class AdminPaymentRefundController {
     }
 
     @GetMapping("/payments")
-    public Map<String, Object> listPayments(@RequestParam(name = "limit", required = false) Integer limit) {
-        List<Map<String, Object>> payments = paymentService.listPayments(limit == null ? 50 : limit);
+    public Map<String, Object> listPayments(
+        @RequestParam(name = "limit", required = false) Integer limit,
+        @RequestParam(name = "status", required = false) String status,
+        @RequestParam(name = "provider", required = false) String provider,
+        @RequestParam(name = "from", required = false) String from,
+        @RequestParam(name = "to", required = false) String to
+    ) {
+        List<Map<String, Object>> payments = paymentService.listPayments(
+            limit == null ? 50 : limit,
+            status,
+            provider,
+            from,
+            to
+        );
         Map<String, Object> response = base();
         response.put("items", payments);
         response.put("count", payments.size());
@@ -47,11 +59,44 @@ public class AdminPaymentRefundController {
         return response;
     }
 
+    @GetMapping("/payments/{paymentId}/webhook-events")
+    public Map<String, Object> listPaymentWebhookEvents(
+        @PathVariable long paymentId,
+        @RequestParam(name = "limit", required = false) Integer limit
+    ) {
+        List<Map<String, Object>> events = paymentService.listWebhookEvents(paymentId, limit == null ? 50 : limit);
+        Map<String, Object> response = base();
+        response.put("items", events);
+        response.put("count", events.size());
+        return response;
+    }
+
+    @GetMapping("/payments/webhook-events")
+    public Map<String, Object> listWebhookEvents(
+        @RequestParam(name = "limit", required = false) Integer limit,
+        @RequestParam(name = "status", required = false) String status,
+        @RequestParam(name = "provider", required = false) String provider
+    ) {
+        List<Map<String, Object>> events = paymentService.listWebhookEventsForOps(limit == null ? 50 : limit, status, provider);
+        Map<String, Object> response = base();
+        response.put("items", events);
+        response.put("count", events.size());
+        return response;
+    }
+
     @PostMapping("/payments/{paymentId}/cancel")
     public Map<String, Object> cancelPayment(@PathVariable long paymentId, @RequestBody(required = false) CancelRequest request) {
         Map<String, Object> payment = paymentService.cancelPayment(paymentId, request == null ? null : request.reason);
         Map<String, Object> response = base();
         response.put("payment", payment);
+        return response;
+    }
+
+    @PostMapping("/payments/webhook-events/{eventId}/retry")
+    public Map<String, Object> retryWebhookEvent(@PathVariable String eventId) {
+        Map<String, Object> result = paymentService.retryWebhookEvent(eventId);
+        Map<String, Object> response = base();
+        response.putAll(result);
         return response;
     }
 

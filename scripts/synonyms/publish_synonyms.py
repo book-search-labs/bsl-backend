@@ -160,14 +160,14 @@ def main() -> int:
     parser.add_argument(
         "--mapping-template",
         type=str,
-        default=str(ROOT_DIR / "infra/opensearch/books_doc_v1.mapping.json"),
+        default=str(ROOT_DIR / "infra/opensearch/books_doc_v2.mapping.json"),
     )
     parser.add_argument(
         "--mapping-output-dir",
         type=str,
         default=str(ROOT_DIR / "infra/opensearch/generated"),
     )
-    parser.add_argument("--index-prefix", type=str, default="books_doc_v1_syn")
+    parser.add_argument("--index-prefix", type=str, default="books_doc_v2_syn")
     parser.add_argument("--no-reindex", action="store_true")
     parser.add_argument("--activate-only", action="store_true")
     parser.add_argument("--material-kinds", type=str, default="")
@@ -202,7 +202,7 @@ def main() -> int:
     output_dir = Path(args.mapping_output_dir)
     if not output_dir.is_absolute():
         output_dir = ROOT_DIR / output_dir
-    mapping_path = output_dir / f"books_doc_v1_{safe_name}_{version}.mapping.json"
+    mapping_path = output_dir / f"books_doc_v2_{safe_name}_{version}.mapping.json"
 
     if not args.activate_only:
         write_mapping(mapping_path, mapping)

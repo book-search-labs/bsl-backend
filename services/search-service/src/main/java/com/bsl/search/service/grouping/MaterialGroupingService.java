@@ -151,8 +151,8 @@ public class MaterialGroupingService {
             }
             boolean queryPrefersSet = containsAny(queryText, defaultTokens(props.getSetTokens(), defaultSetTokens()));
             Comparator<GroupEntry> comparator = Comparator
-                .comparingDouble((GroupEntry entry) -> adjustedScore(entry, queryPrefersSet, props)).reversed()
-                .thenComparingInt(GroupEntry::order);
+                .comparingDouble((GroupEntry entry) -> adjustedScore(entry, queryPrefersSet, props))
+                .thenComparingInt(entry -> -entry.order());
             return entries.stream().max(comparator).orElse(null);
         }
 

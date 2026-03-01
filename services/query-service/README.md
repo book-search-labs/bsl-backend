@@ -58,6 +58,14 @@ CORS_ALLOW_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:
 # QS_SPELL_DICT_REDIS_URL=redis://localhost:6379/1
 # QS_SPELL_DICT_REDIS_KEY=qs:spell:dict
 # QS_ENHANCE_DEBUG=1
+
+# Chat tool-calling (commerce lookup)
+# QS_CHAT_TOOL_ENABLED=1
+# QS_COMMERCE_URL=http://localhost:8091/api/v1
+# QS_CHAT_TOOL_LOOKUP_TIMEOUT_SEC=2.5
+# QS_CHAT_TOOL_LOOKUP_RETRY=1
+# QS_CHAT_WORKFLOW_TTL_SEC=900
+# QS_CHAT_CONFIRM_TOKEN_TTL_SEC=300
 ```
 
 ## Endpoints

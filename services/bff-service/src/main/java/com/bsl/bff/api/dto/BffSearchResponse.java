@@ -112,6 +112,12 @@ public class BffSearchResponse {
         @JsonProperty("publication_year")
         private Integer publicationYear;
 
+        @JsonProperty("isbn13")
+        private String isbn13;
+
+        @JsonProperty("cover_url")
+        private String coverUrl;
+
         public String getDocId() {
             return docId;
         }
@@ -158,6 +164,22 @@ public class BffSearchResponse {
 
         public void setPublicationYear(Integer publicationYear) {
             this.publicationYear = publicationYear;
+        }
+
+        public String getIsbn13() {
+            return isbn13;
+        }
+
+        public void setIsbn13(String isbn13) {
+            this.isbn13 = isbn13;
+        }
+
+        public String getCoverUrl() {
+            return coverUrl;
+        }
+
+        public void setCoverUrl(String coverUrl) {
+            this.coverUrl = coverUrl;
         }
     }
 }

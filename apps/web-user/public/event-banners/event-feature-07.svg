@@ -1,0 +1,19 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg7" x1="0" y1="0" x2="1200" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E0F2FE"/>
+      <stop offset="1" stop-color="#67E8F9"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg7)"/>
+  <circle cx="960" cy="110" r="142" fill="#FFFFFF" fill-opacity="0.28"/>
+  <circle cx="1050" cy="300" r="120" fill="#FFFFFF" fill-opacity="0.2"/>
+  <rect x="70" y="58" rx="14" ry="14" width="110" height="34" fill="#0F766E"/>
+  <text x="125" y="80" fill="#FFFFFF" text-anchor="middle" font-size="18" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">어린이</text>
+  <text x="70" y="160" fill="#083344" font-size="52" font-weight="800" font-family="Pretendard, Noto Sans KR, sans-serif">어린이 독서 페스티벌</text>
+  <text x="70" y="220" fill="#083344" font-size="34" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">그림책 · 학습만화 · 창작동화 추천</text>
+  <text x="70" y="275" fill="#155E75" font-size="25" font-weight="600" font-family="Pretendard, Noto Sans KR, sans-serif">연령별 베스트셀러와 신간을 한 번에 확인하세요.</text>
+  <rect x="70" y="310" rx="12" ry="12" width="230" height="56" fill="#0F766E"/>
+  <text x="185" y="346" fill="#FFFFFF" text-anchor="middle" font-size="24" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">추천 목록 보기</text>
+</svg>
+

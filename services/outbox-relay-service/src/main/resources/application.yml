@@ -29,6 +29,7 @@ outbox:
     producer-name: ${OUTBOX_RELAY_PRODUCER:outbox-relay}
     topic-mapping:
       search_impression: ${OUTBOX_RELAY_TOPIC_SEARCH_IMPRESSION:search_impression_v1}
+      search_result_summary: ${OUTBOX_RELAY_TOPIC_SEARCH_RESULT_SUMMARY:search_result_summary_v1}
       search_click: ${OUTBOX_RELAY_TOPIC_SEARCH_CLICK:search_click_v1}
       search_dwell: ${OUTBOX_RELAY_TOPIC_SEARCH_DWELL:search_dwell_v1}
       ac_impression: ${OUTBOX_RELAY_TOPIC_AC_IMPRESSION:ac_impression_v1}

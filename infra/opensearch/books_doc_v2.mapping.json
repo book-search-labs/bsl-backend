@@ -1,0 +1,438 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "1s",
+    "analysis": {
+      "char_filter": {
+        "cf_punct_to_space": {
+          "type": "pattern_replace",
+          "pattern": "[\\s\\u00A0]+|[“”‘’`´]|[·•‧ㆍ・]|[\\-_/\\\\.,:;!?()\\[\\]{}]+",
+          "replacement": " "
+        },
+        "cf_ws_collapse": {
+          "type": "pattern_replace",
+          "pattern": "\\s+",
+          "replacement": " "
+        },
+        "cf_compact": {
+          "type": "pattern_replace",
+          "pattern": "[\\s\\u00A0]+|[“”‘’`´]|[·•‧ㆍ・]|[\\-_/\\\\.,:;!?()\\[\\]{}]+",
+          "replacement": ""
+        },
+        "cf_isbn_keep_digits": {
+          "type": "pattern_replace",
+          "pattern": "[^0-9\\p{Nd}Xx]+",
+          "replacement": ""
+        }
+      },
+      "tokenizer": {
+        "ko_nori_userdict": {
+          "type": "nori_tokenizer",
+          "decompound_mode": "mixed",
+          "discard_punctuation": true,
+          "user_dictionary": "analysis/userdict_ko.txt"
+        }
+      },
+      "filter": {
+        "ko_pos": {
+          "type": "nori_part_of_speech",
+          "stoptags": [
+            "E",
+            "IC",
+            "J",
+            "MAG",
+            "MAJ",
+            "MM",
+            "SP",
+            "SSC",
+            "SSO",
+            "SC",
+            "SE",
+            "XPN",
+            "XSA",
+            "XSN",
+            "XSV",
+            "UNA",
+            "NA",
+            "VSV"
+          ]
+        },
+        "en_stop": {
+          "type": "stop",
+          "stopwords": "_english_"
+        },
+        "en_possessive": {
+          "type": "stemmer",
+          "language": "possessive_english"
+        },
+        "en_stem": {
+          "type": "stemmer",
+          "language": "english"
+        },
+        "syn_ko": {
+          "type": "synonym_graph",
+          "synonyms_path": "analysis/synonyms_ko.txt"
+        },
+        "syn_en": {
+          "type": "synonym_graph",
+          "synonyms_path": "analysis/synonyms_en.txt"
+        }
+      },
+      "normalizer": {
+        "keyword_norm": {
+          "type": "custom",
+          "char_filter": [],
+          "filter": [
+            "icu_folding",
+            "trim"
+          ]
+        },
+        "isbn_norm": {
+          "type": "custom",
+          "char_filter": [
+            "cf_isbn_keep_digits"
+          ],
+          "filter": [
+            "decimal_digit",
+            "uppercase",
+            "trim"
+          ]
+        }
+      },
+      "analyzer": {
+        "ko_text_index": {
+          "type": "custom",
+          "char_filter": [
+            "cf_punct_to_space",
+            "cf_ws_collapse"
+          ],
+          "tokenizer": "ko_nori_userdict",
+          "filter": [
+            "nori_readingform",
+            "icu_folding",
+            "ko_pos"
+          ]
+        },
+        "ko_text_search": {
+          "type": "custom",
+          "char_filter": [
+            "cf_punct_to_space",
+            "cf_ws_collapse"
+          ],
+          "tokenizer": "ko_nori_userdict",
+          "filter": [
+            "nori_readingform",
+            "icu_folding",
+            "ko_pos",
+            "syn_ko"
+          ]
+        },
+        "en_text_index": {
+          "type": "custom",
+          "char_filter": [
+            "cf_punct_to_space",
+            "cf_ws_collapse"
+          ],
+          "tokenizer": "standard",
+          "filter": [
+            "icu_folding",
+            "en_stop",
+            "en_possessive",
+            "en_stem"
+          ]
+        },
+        "en_text_search": {
+          "type": "custom",
+          "char_filter": [
+            "cf_punct_to_space",
+            "cf_ws_collapse"
+          ],
+          "tokenizer": "standard",
+          "filter": [
+            "icu_folding",
+            "syn_en",
+            "en_stop",
+            "en_possessive",
+            "en_stem"
+          ]
+        },
+        "univ_auto_index": {
+          "type": "custom",
+          "char_filter": [
+            "cf_punct_to_space",
+            "cf_ws_collapse"
+          ],
+          "tokenizer": "standard",
+          "filter": [
+            "icu_folding"
+          ]
+        },
+        "univ_auto_search": {
+          "type": "custom",
+          "char_filter": [
+            "cf_punct_to_space",
+            "cf_ws_collapse"
+          ],
+          "tokenizer": "standard",
+          "filter": [
+            "icu_folding"
+          ]
+        },
+        "univ_compact_index": {
+          "type": "custom",
+          "char_filter": [
+            "cf_compact"
+          ],
+          "tokenizer": "keyword",
+          "filter": [
+            "icu_folding"
+          ]
+        },
+        "univ_compact_search": {
+          "type": "custom",
+          "char_filter": [
+            "cf_compact"
+          ],
+          "tokenizer": "keyword",
+          "filter": [
+            "icu_folding"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "doc_id": {
+        "type": "keyword"
+      },
+      "title_ko": {
+        "type": "text",
+        "analyzer": "ko_text_index",
+        "search_analyzer": "ko_text_search",
+        "index_phrases": true,
+        "fields": {
+          "exact": {
+            "type": "keyword",
+            "normalizer": "keyword_norm"
+          },
+          "auto": {
+            "type": "text",
+            "analyzer": "univ_auto_index",
+            "search_analyzer": "univ_auto_search",
+            "index_prefixes": {
+              "min_chars": 2,
+              "max_chars": 20
+            }
+          },
+          "compact": {
+            "type": "text",
+            "analyzer": "univ_compact_index",
+            "search_analyzer": "univ_compact_search"
+          }
+        }
+      },
+      "title_en": {
+        "type": "text",
+        "analyzer": "en_text_index",
+        "search_analyzer": "en_text_search",
+        "index_phrases": true,
+        "fields": {
+          "exact": {
+            "type": "keyword",
+            "normalizer": "keyword_norm"
+          },
+          "auto": {
+            "type": "text",
+            "analyzer": "univ_auto_index",
+            "search_analyzer": "univ_auto_search",
+            "index_prefixes": {
+              "min_chars": 2,
+              "max_chars": 20
+            }
+          },
+          "compact": {
+            "type": "text",
+            "analyzer": "univ_compact_index",
+            "search_analyzer": "univ_compact_search"
+          }
+        }
+      },
+      "series_name": {
+        "type": "text",
+        "analyzer": "univ_auto_index",
+        "search_analyzer": "univ_auto_search",
+        "fields": {
+          "exact": {
+            "type": "keyword",
+            "normalizer": "keyword_norm"
+          },
+          "auto": {
+            "type": "text",
+            "analyzer": "univ_auto_index",
+            "search_analyzer": "univ_auto_search",
+            "index_prefixes": {
+              "min_chars": 2,
+              "max_chars": 20
+            }
+          },
+          "compact": {
+            "type": "text",
+            "analyzer": "univ_compact_index",
+            "search_analyzer": "univ_compact_search"
+          }
+        }
+      },
+      "author_names_ko": {
+        "type": "text",
+        "analyzer": "ko_text_index",
+        "search_analyzer": "ko_text_search",
+        "fields": {
+          "exact": {
+            "type": "keyword",
+            "normalizer": "keyword_norm"
+          },
+          "auto": {
+            "type": "text",
+            "analyzer": "univ_auto_index",
+            "search_analyzer": "univ_auto_search",
+            "index_prefixes": {
+              "min_chars": 2,
+              "max_chars": 20
+            }
+          },
+          "compact": {
+            "type": "text",
+            "analyzer": "univ_compact_index",
+            "search_analyzer": "univ_compact_search"
+          }
+        }
+      },
+      "author_names_en": {
+        "type": "text",
+        "analyzer": "en_text_index",
+        "search_analyzer": "en_text_search",
+        "fields": {
+          "exact": {
+            "type": "keyword",
+            "normalizer": "keyword_norm"
+          },
+          "auto": {
+            "type": "text",
+            "analyzer": "univ_auto_index",
+            "search_analyzer": "univ_auto_search",
+            "index_prefixes": {
+              "min_chars": 2,
+              "max_chars": 20
+            }
+          },
+          "compact": {
+            "type": "text",
+            "analyzer": "univ_compact_index",
+            "search_analyzer": "univ_compact_search"
+          }
+        }
+      },
+      "authors": {
+        "type": "nested",
+        "properties": {
+          "agent_id": {
+            "type": "keyword"
+          },
+          "name_ko": {
+            "type": "keyword",
+            "normalizer": "keyword_norm"
+          },
+          "name_en": {
+            "type": "keyword",
+            "normalizer": "keyword_norm"
+          },
+          "role": {
+            "type": "keyword"
+          },
+          "ord": {
+            "type": "short"
+          }
+        }
+      },
+      "publisher_name": {
+        "type": "text",
+        "analyzer": "univ_auto_index",
+        "search_analyzer": "univ_auto_search",
+        "fields": {
+          "exact": {
+            "type": "keyword",
+            "normalizer": "keyword_norm"
+          },
+          "auto": {
+            "type": "text",
+            "analyzer": "univ_auto_index",
+            "search_analyzer": "univ_auto_search",
+            "index_prefixes": {
+              "min_chars": 2,
+              "max_chars": 20
+            }
+          },
+          "compact": {
+            "type": "text",
+            "analyzer": "univ_compact_index",
+            "search_analyzer": "univ_compact_search"
+          }
+        }
+      },
+      "identifiers": {
+        "properties": {
+          "isbn13": {
+            "type": "keyword",
+            "normalizer": "isbn_norm"
+          },
+          "isbn10": {
+            "type": "keyword",
+            "normalizer": "isbn_norm"
+          }
+        }
+      },
+      "language_code": {
+        "type": "keyword"
+      },
+      "issued_year": {
+        "type": "short"
+      },
+      "volume": {
+        "type": "short"
+      },
+      "edition_labels": {
+        "type": "keyword"
+      },
+      "kdc_node_id": {
+        "type": "long"
+      },
+      "kdc_code": {
+        "type": "keyword"
+      },
+      "kdc_edition": {
+        "type": "keyword"
+      },
+      "kdc_path_codes": {
+        "type": "keyword"
+      },
+      "category_paths": {
+        "type": "keyword"
+      },
+      "concept_ids": {
+        "type": "keyword"
+      },
+      "is_hidden": {
+        "type": "boolean"
+      },
+      "redirect_to": {
+        "type": "keyword"
+      },
+      "updated_at": {
+        "type": "date"
+      }
+    }
+  }
+}

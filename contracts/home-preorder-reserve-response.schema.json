@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "home-preorder-reserve-response.schema.json",
+  "title": "HomePreorderReserveResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "trace_id",
+    "request_id",
+    "reservation"
+  ],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": ["string", "null"] },
+    "request_id": { "type": ["string", "null"] },
+    "reservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reservation_id",
+        "preorder_id",
+        "user_id",
+        "qty",
+        "status",
+        "reserved_price",
+        "reserved_total"
+      ],
+      "properties": {
+        "reservation_id": { "type": "integer", "minimum": 1 },
+        "preorder_id": { "type": "integer", "minimum": 1 },
+        "user_id": { "type": "integer", "minimum": 1 },
+        "qty": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "status": { "type": "string", "minLength": 1 },
+        "reserved_price": { "type": "integer", "minimum": 0 },
+        "reserved_price_label": { "type": ["string", "null"] },
+        "reservation_limit": { "type": ["integer", "null"] },
+        "reserved_total": { "type": "integer", "minimum": 0 },
+        "remaining": { "type": ["integer", "null"] },
+        "note": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

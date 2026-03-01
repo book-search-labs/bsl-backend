@@ -1,0 +1,10 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="420" fill="#FFF7ED"/>
+  <rect x="42" y="42" width="1116" height="336" rx="24" fill="#FFFFFF" stroke="#FED7AA" stroke-width="2"/>
+  <rect x="84" y="86" width="98" height="36" rx="10" fill="#C2410C"/>
+  <text x="133" y="110" fill="#FFFFFF" text-anchor="middle" font-size="18" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">중요</text>
+  <text x="84" y="176" fill="#431407" font-size="50" font-weight="800" font-family="Pretendard, Noto Sans KR, sans-serif">정책 및 운영 변경 안내</text>
+  <text x="84" y="232" fill="#7C2D12" font-size="30" font-weight="600" font-family="Pretendard, Noto Sans KR, sans-serif">배송, 반품, 적립 정책의 최신 변경 내용을 확인해 주세요.</text>
+  <rect x="84" y="274" width="1032" height="2" fill="#FFEDD5"/>
+  <text x="84" y="328" fill="#0F172A" font-size="24" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">주문 전 공지 확인으로 불편을 줄일 수 있습니다.</text>
+</svg>

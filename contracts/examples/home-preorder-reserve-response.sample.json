@@ -1,0 +1,18 @@
+{
+  "version": "v1",
+  "trace_id": "trace_home_preorder_reserve_01",
+  "request_id": "req_home_preorder_reserve_01",
+  "reservation": {
+    "reservation_id": 17,
+    "preorder_id": 2,
+    "user_id": 1,
+    "qty": 1,
+    "status": "RESERVED",
+    "reserved_price": 33000,
+    "reserved_price_label": "33,000원",
+    "reservation_limit": 300,
+    "reserved_total": 111,
+    "remaining": 189,
+    "note": "선물용으로 출간 즉시 배송 희망"
+  }
+}

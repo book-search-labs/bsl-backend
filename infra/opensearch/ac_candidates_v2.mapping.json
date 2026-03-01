@@ -1,0 +1,161 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "1s",
+    "analysis": {
+      "char_filter": {
+        "cf_punct_to_space": {
+          "type": "pattern_replace",
+          "pattern": "[\\s\\u00A0]+|[“”‘’`´]|[·•‧ㆍ・]|[\\-_/\\\\.,:;!?()\\[\\]{}]+",
+          "replacement": " "
+        },
+        "cf_ws_collapse": {
+          "type": "pattern_replace",
+          "pattern": "\\s+",
+          "replacement": " "
+        },
+        "cf_compact": {
+          "type": "pattern_replace",
+          "pattern": "[\\s\\u00A0]+|[“”‘’`´]|[·•‧ㆍ・]|[\\-_/\\\\.,:;!?()\\[\\]{}]+",
+          "replacement": ""
+        }
+      },
+      "normalizer": {
+        "keyword_norm": {
+          "type": "custom",
+          "filter": [
+            "icu_folding",
+            "trim"
+          ]
+        },
+        "keyword_compact_norm": {
+          "type": "custom",
+          "char_filter": [
+            "cf_compact"
+          ],
+          "filter": [
+            "icu_folding",
+            "trim"
+          ]
+        }
+      },
+      "analyzer": {
+        "ac_auto_index": {
+          "type": "custom",
+          "char_filter": [
+            "cf_punct_to_space",
+            "cf_ws_collapse"
+          ],
+          "tokenizer": "standard",
+          "filter": [
+            "icu_folding"
+          ]
+        },
+        "ac_auto_search": {
+          "type": "custom",
+          "char_filter": [
+            "cf_punct_to_space",
+            "cf_ws_collapse"
+          ],
+          "tokenizer": "standard",
+          "filter": [
+            "icu_folding"
+          ]
+        },
+        "ac_compact_index": {
+          "type": "custom",
+          "char_filter": [
+            "cf_compact"
+          ],
+          "tokenizer": "keyword",
+          "filter": [
+            "icu_folding"
+          ]
+        },
+        "ac_compact_search": {
+          "type": "custom",
+          "char_filter": [
+            "cf_compact"
+          ],
+          "tokenizer": "keyword",
+          "filter": [
+            "icu_folding"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "suggest_id": {
+        "type": "keyword"
+      },
+      "type": {
+        "type": "keyword"
+      },
+      "lang": {
+        "type": "keyword"
+      },
+      "text": {
+        "type": "text",
+        "analyzer": "ac_auto_index",
+        "search_analyzer": "ac_auto_search",
+        "index_prefixes": {
+          "min_chars": 2,
+          "max_chars": 20
+        },
+        "fields": {
+          "exact": {
+            "type": "keyword",
+            "normalizer": "keyword_norm"
+          },
+          "compact": {
+            "type": "text",
+            "analyzer": "ac_compact_index",
+            "search_analyzer": "ac_compact_search"
+          },
+          "compact_kw": {
+            "type": "keyword",
+            "normalizer": "keyword_compact_norm"
+          }
+        }
+      },
+      "target_doc_id": {
+        "type": "keyword"
+      },
+      "target_id": {
+        "type": "keyword"
+      },
+      "weight": {
+        "type": "integer"
+      },
+      "clicks_7d": {
+        "type": "float"
+      },
+      "impressions_7d": {
+        "type": "float"
+      },
+      "ctr_7d": {
+        "type": "float"
+      },
+      "popularity_7d": {
+        "type": "float"
+      },
+      "is_blocked": {
+        "type": "boolean"
+      },
+      "last_seen_at": {
+        "type": "date"
+      },
+      "updated_at": {
+        "type": "date"
+      },
+      "payload": {
+        "type": "object",
+        "enabled": false
+      }
+    }
+  }
+}

@@ -1,12 +1,12 @@
 import { useCallback, useRef, useState } from 'react'
 import { Button, Card, Col, Form, Row, Spinner } from 'react-bootstrap'
 
-import { streamChat, submitChatFeedback, type ChatResponse, type ChatSource } from '../api/chat'
+import { streamChat, submitChatFeedback, type ChatSource, type ChatStreamMeta } from '../api/chat'
 
 const DEFAULT_PROMPTS = [
-  'What is the shipping policy?',
-  'How do refunds work?',
-  'Summarize membership benefits',
+  '배송 정책을 알려줘',
+  '환불 조건을 정리해줘',
+  '멤버십 혜택을 요약해줘',
 ]
 
 type ChatBubble = {
@@ -16,6 +16,13 @@ type ChatBubble = {
   sources?: ChatSource[]
   citations?: string[]
   status?: string
+  riskBand?: string
+  reasonCode?: string
+  recoverable?: boolean
+  nextAction?: string
+  retryAfterMs?: number | null
+  fallbackCount?: number
+  escalated?: boolean
 }
 
 function uuid() {
@@ -23,6 +30,52 @@ function uuid() {
     return crypto.randomUUID()
   }
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+function statusBadgeVariant(status?: string) {
+  if (!status) return 'text-bg-secondary'
+  if (status === 'ok' || status === 'cached' || status === 'streaming') return 'text-bg-success'
+  if (status === 'insufficient_evidence' || status === 'guard_blocked') return 'text-bg-warning'
+  return 'text-bg-danger'
+}
+
+function statusLabel(status?: string) {
+  if (!status) return '상태 미확인'
+  if (status === 'ok') return '정상 응답'
+  if (status === 'cached') return '캐시 응답'
+  if (status === 'streaming') return '응답 생성 중'
+  if (status === 'insufficient_evidence') return '근거 부족'
+  if (status === 'guard_blocked') return '안전 가드 제한'
+  if (status === 'error') return '오류'
+  return status
+}
+
+function riskBandLabel(riskBand?: string) {
+  if (!riskBand) return null
+  if (riskBand === 'R0') return '위험도 낮음'
+  if (riskBand === 'R1') return '위험도 보통'
+  if (riskBand === 'R2') return '위험도 주의'
+  if (riskBand === 'R3') return '위험도 높음'
+  return `위험도 ${riskBand}`
+}
+
+function nextActionHint(action?: string, retryAfterMs?: number | null) {
+  if (!action || action === 'NONE' || action === 'WAIT') return null
+  const retryText = retryAfterMs && retryAfterMs > 0 ? ` (${Math.ceil(retryAfterMs / 1000)}초 후)` : ''
+  if (action === 'RETRY') return `잠시 후 다시 시도해 주세요.${retryText}`
+  if (action === 'REFINE_QUERY') return '질문을 더 구체적으로 입력해 주세요.'
+  if (action === 'LOGIN_REQUIRED') return '로그인 후 다시 시도해 주세요.'
+  if (action === 'PROVIDE_REQUIRED_INFO') return '주문번호/티켓번호 같은 필수 정보를 입력해 주세요.'
+  if (action === 'CONFIRM_ACTION') return '확인 코드를 포함해 승인 메시지를 입력해 주세요.'
+  if (action === 'OPEN_SUPPORT_TICKET') return '상담 문의 접수로 전환해 주세요.'
+  return null
+}
+
+function nextActionPrompt(action?: string) {
+  if (action === 'OPEN_SUPPORT_TICKET') return '문의 접수해줘'
+  if (action === 'RETRY') return '다시 시도해줘'
+  if (action === 'REFINE_QUERY') return '질문을 더 구체적으로 다시 입력할게'
+  return null
 }
 
 export default function ChatPage() {
@@ -54,15 +107,25 @@ export default function ChatPage() {
           options: { stream: true },
         },
         {
-          onMeta: (response: ChatResponse) => {
+          onMeta: (response: ChatStreamMeta) => {
             setMessages((prev) =>
               prev.map((item) =>
                 item.id === assistantMessage.id
                   ? {
                       ...item,
-                      sources: response.sources,
-                      citations: response.citations,
-                      status: response.status,
+                      sources: Array.isArray(response.sources) ? response.sources : item.sources,
+                      citations: Array.isArray(response.citations) ? response.citations : item.citations,
+                      status: typeof response.status === 'string' ? response.status : item.status,
+                      riskBand: typeof response.risk_band === 'string' ? response.risk_band : item.riskBand,
+                      reasonCode: typeof response.reason_code === 'string' ? response.reason_code : item.reasonCode,
+                      recoverable: typeof response.recoverable === 'boolean' ? response.recoverable : item.recoverable,
+                      nextAction: typeof response.next_action === 'string' ? response.next_action : item.nextAction,
+                      retryAfterMs:
+                        typeof response.retry_after_ms === 'number' || response.retry_after_ms === null
+                          ? response.retry_after_ms
+                          : item.retryAfterMs,
+                      fallbackCount: typeof response.fallback_count === 'number' ? response.fallback_count : item.fallbackCount,
+                      escalated: typeof response.escalated === 'boolean' ? response.escalated : item.escalated,
                     }
                   : item,
               ),
@@ -76,6 +139,34 @@ export default function ChatPage() {
                   : item,
               ),
             )
+          },
+          onDone: (done) => {
+            setMessages((prev) =>
+              prev.map((item) =>
+                item.id === assistantMessage.id
+                  ? {
+                      ...item,
+                      status: typeof done.status === 'string' ? done.status : item.status,
+                      citations: Array.isArray(done.citations) ? done.citations : item.citations,
+                      riskBand: typeof done.risk_band === 'string' ? done.risk_band : item.riskBand,
+                      reasonCode: typeof done.reason_code === 'string' ? done.reason_code : item.reasonCode,
+                      recoverable: typeof done.recoverable === 'boolean' ? done.recoverable : item.recoverable,
+                      nextAction: typeof done.next_action === 'string' ? done.next_action : item.nextAction,
+                      retryAfterMs:
+                        typeof done.retry_after_ms === 'number' || done.retry_after_ms === null
+                          ? done.retry_after_ms
+                          : item.retryAfterMs,
+                      fallbackCount: typeof done.fallback_count === 'number' ? done.fallback_count : item.fallbackCount,
+                      escalated: typeof done.escalated === 'boolean' ? done.escalated : item.escalated,
+                    }
+                  : item,
+              ),
+            )
+          },
+          onError: (streamError) => {
+            if (streamError?.message) {
+              setError(streamError.message)
+            }
           },
         },
       )
@@ -108,8 +199,8 @@ export default function ChatPage() {
             <Card.Body className="chat-body">
               {messages.length === 0 ? (
                 <div className="chat-empty">
-                  <h2>Evidence-based Book Assistant</h2>
-                  <p>Answers are generated only when citations are available.</p>
+                  <h2>근거 기반 도서 도우미</h2>
+                  <p>근거 문서가 확인된 경우에만 답변을 제공합니다.</p>
                   <div className="chat-prompts">
                     {DEFAULT_PROMPTS.map((prompt) => (
                       <Button key={prompt} variant="outline-dark" onClick={() => setInput(prompt)}>
@@ -123,11 +214,38 @@ export default function ChatPage() {
                   {messages.map((message) => (
                     <div key={message.id} className={`chat-bubble ${message.role}`}>
                       <div className="chat-bubble-inner">
-                        <div className="chat-role">{message.role === 'user' ? 'You' : 'Assistant'}</div>
+                        <div className="chat-role">{message.role === 'user' ? '나' : '챗봇'}</div>
+                        {message.role === 'assistant' ? (
+                          <div className="d-flex flex-wrap gap-2 mb-2">
+                            <span className={`badge ${statusBadgeVariant(message.status)}`}>{statusLabel(message.status)}</span>
+                            {riskBandLabel(message.riskBand) ? (
+                              <span className="badge text-bg-light border">{riskBandLabel(message.riskBand)}</span>
+                            ) : null}
+                          </div>
+                        ) : null}
                         <div className="chat-content">{message.content || (message.role === 'assistant' ? '...' : '')}</div>
+                        {message.role === 'assistant' && nextActionHint(message.nextAction, message.retryAfterMs) ? (
+                          <div className="chat-note">
+                            {nextActionHint(message.nextAction, message.retryAfterMs)}
+                            {typeof message.fallbackCount === 'number' && message.fallbackCount > 0
+                              ? ` · 실패 누적 ${message.fallbackCount}회`
+                              : ''}
+                          </div>
+                        ) : null}
+                        {message.role === 'assistant' && message.escalated && nextActionPrompt(message.nextAction) ? (
+                          <div className="chat-feedback">
+                            <Button
+                              size="sm"
+                              variant="outline-primary"
+                              onClick={() => setInput(nextActionPrompt(message.nextAction) ?? '')}
+                            >
+                              상담 전환 진행
+                            </Button>
+                          </div>
+                        ) : null}
                         {message.role === 'assistant' && message.sources && message.sources.length > 0 ? (
                           <div className="chat-sources">
-                            <div className="chat-sources-title">Sources</div>
+                            <div className="chat-sources-title">근거 출처</div>
                             <div className="chat-sources-grid">
                               {message.sources.map((source) => (
                                 <div key={source.citation_key} className="chat-source-card">
@@ -165,7 +283,7 @@ export default function ChatPage() {
                               variant="outline-secondary"
                               onClick={() => handleFeedback(message.id, 'down', { insufficient: true })}
                             >
-                              Insufficient evidence
+                              근거 부족
                             </Button>
                           </div>
                         ) : null}
@@ -186,11 +304,11 @@ export default function ChatPage() {
                 <Form.Group className="d-flex gap-2">
                   <Form.Control
                     value={input}
-                    placeholder="Ask a question"
+                    placeholder="질문을 입력하세요"
                     onChange={(event) => setInput(event.target.value)}
                   />
                   <Button type="submit" disabled={isStreaming}>
-                    {isStreaming ? <Spinner size="sm" /> : 'Send'}
+                    {isStreaming ? <Spinner size="sm" /> : '보내기'}
                   </Button>
                 </Form.Group>
               </Form>
@@ -200,12 +318,12 @@ export default function ChatPage() {
         <Col lg={4}>
           <Card className="chat-side">
             <Card.Body>
-                  <h3>Evidence Rules</h3>
-                  <p>Every answer must cite documents.</p>
+                  <h3>응답 기준</h3>
+                  <p>모든 답변은 근거 문서를 기반으로 검증됩니다.</p>
                   <ul>
-                <li>No evidence means no answer.</li>
-                <li>Open source cards to review citations.</li>
-                <li>Your feedback improves the system.</li>
+                <li>근거가 부족하면 확정 답변을 제한합니다.</li>
+                <li>출처 카드에서 근거를 직접 확인할 수 있습니다.</li>
+                <li>피드백은 챗봇 품질 개선에 반영됩니다.</li>
               </ul>
             </Card.Body>
           </Card>

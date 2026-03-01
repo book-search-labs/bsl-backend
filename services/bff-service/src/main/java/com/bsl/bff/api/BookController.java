@@ -55,6 +55,10 @@ public class BookController {
         source.setIssuedYear(downstream.getSource().getIssuedYear());
         source.setVolume(downstream.getSource().getVolume());
         source.setEditionLabels(downstream.getSource().getEditionLabels());
+        source.setKdcCode(downstream.getSource().getKdcCode());
+        source.setKdcPathCodes(downstream.getSource().getKdcPathCodes());
+        source.setIsbn13(downstream.getSource().getIsbn13());
+        source.setCoverUrl(downstream.getSource().getCoverUrl());
         response.setSource(source);
 
         recordOutbox("book_view", "book", context, Map.of(

@@ -33,7 +33,7 @@ cd /path/to/bsl-backend
 ./gradlew :services:search-service:bootRun
 ```
 
-Default port: `8080` (override with `SEARCH_PORT`).
+Default port: `18087` (override with `SEARCH_PORT`).
 
 ## Key config
 - OpenSearch: `OPENSEARCH_URL`, `OPENSEARCH_DOC_INDEX`, `OPENSEARCH_VEC_INDEX`

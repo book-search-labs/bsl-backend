@@ -12,7 +12,11 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class OrderRepository {
+    private static final String TABLE_ORDERS = "orders";
+    private static final String COLUMN_SHIPPING_MODE = "shipping_mode";
+
     private final JdbcTemplate jdbcTemplate;
+    private volatile Boolean hasShippingModeColumn;
 
     public OrderRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
@@ -20,8 +24,7 @@ public class OrderRepository {
 
     public Map<String, Object> findOrderById(long orderId) {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-            "SELECT order_id, order_no, user_id, cart_id, status, total_amount, currency, shipping_fee, discount_amount, "
-                + "payment_method, idempotency_key, shipping_snapshot_json, created_at, updated_at "
+            orderSelectSql()
                 + "FROM orders WHERE order_id = ?",
             orderId
         );
@@ -33,8 +36,7 @@ public class OrderRepository {
             return null;
         }
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-            "SELECT order_id, order_no, user_id, cart_id, status, total_amount, currency, shipping_fee, discount_amount, "
-                + "payment_method, idempotency_key, shipping_snapshot_json, created_at, updated_at "
+            orderSelectSql()
                 + "FROM orders WHERE idempotency_key = ?",
             idempotencyKey
         );
@@ -43,8 +45,7 @@ public class OrderRepository {
 
     public List<Map<String, Object>> listOrdersByUser(long userId, int limit) {
         return jdbcTemplate.queryForList(
-            "SELECT order_id, order_no, user_id, cart_id, status, total_amount, currency, shipping_fee, discount_amount, "
-                + "payment_method, idempotency_key, shipping_snapshot_json, created_at, updated_at "
+            orderSelectSql()
                 + "FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
             userId,
             limit
@@ -58,6 +59,7 @@ public class OrderRepository {
         int totalAmount,
         String currency,
         int shippingFee,
+        String shippingMode,
         int discountAmount,
         String paymentMethod,
         String idempotencyKey,
@@ -65,13 +67,24 @@ public class OrderRepository {
         String orderNo
     ) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
+        boolean shippingModeSupported = hasShippingModeColumn();
         jdbcTemplate.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(
-                "INSERT INTO orders (order_no, user_id, cart_id, status, total_amount, currency, shipping_fee, "
-                    + "discount_amount, payment_method, idempotency_key, shipping_snapshot_json) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                Statement.RETURN_GENERATED_KEYS
-            );
+            PreparedStatement ps;
+            if (shippingModeSupported) {
+                ps = connection.prepareStatement(
+                    "INSERT INTO orders (order_no, user_id, cart_id, status, total_amount, currency, shipping_fee, "
+                        + "shipping_mode, discount_amount, payment_method, idempotency_key, shipping_snapshot_json) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    Statement.RETURN_GENERATED_KEYS
+                );
+            } else {
+                ps = connection.prepareStatement(
+                    "INSERT INTO orders (order_no, user_id, cart_id, status, total_amount, currency, shipping_fee, "
+                        + "discount_amount, payment_method, idempotency_key, shipping_snapshot_json) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    Statement.RETURN_GENERATED_KEYS
+                );
+            }
             ps.setString(1, orderNo);
             ps.setLong(2, userId);
             if (cartId == null) {
@@ -83,10 +96,18 @@ public class OrderRepository {
             ps.setInt(5, totalAmount);
             ps.setString(6, currency);
             ps.setInt(7, shippingFee);
-            ps.setInt(8, discountAmount);
-            ps.setString(9, paymentMethod);
-            ps.setString(10, idempotencyKey);
-            ps.setString(11, shippingSnapshotJson);
+            if (shippingModeSupported) {
+                ps.setString(8, shippingMode);
+                ps.setInt(9, discountAmount);
+                ps.setString(10, paymentMethod);
+                ps.setString(11, idempotencyKey);
+                ps.setString(12, shippingSnapshotJson);
+            } else {
+                ps.setInt(8, discountAmount);
+                ps.setString(9, paymentMethod);
+                ps.setString(10, idempotencyKey);
+                ps.setString(11, shippingSnapshotJson);
+            }
             return ps;
         }, keyHolder);
         Number key = keyHolder.getKey();
@@ -189,5 +210,41 @@ public class OrderRepository {
         java.time.Instant capturedAt,
         String priceSnapshotJson
     ) {
+    }
+
+    private String orderSelectSql() {
+        String shippingModeExpr = hasShippingModeColumn() ? "shipping_mode" : "'STANDARD'";
+        return "SELECT order_id, order_no, user_id, cart_id, status, total_amount, currency, shipping_fee, "
+            + shippingModeExpr + " AS shipping_mode, "
+            + "discount_amount, payment_method, idempotency_key, shipping_snapshot_json, created_at, updated_at ";
+    }
+
+    private boolean hasShippingModeColumn() {
+        Boolean cached = hasShippingModeColumn;
+        if (cached != null) {
+            return cached;
+        }
+        synchronized (this) {
+            if (hasShippingModeColumn != null) {
+                return hasShippingModeColumn;
+            }
+            hasShippingModeColumn = hasColumn(TABLE_ORDERS, COLUMN_SHIPPING_MODE);
+            return hasShippingModeColumn;
+        }
+    }
+
+    private boolean hasColumn(String tableName, String columnName) {
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.columns "
+                    + "WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?",
+                Integer.class,
+                tableName,
+                columnName
+            );
+            return count != null && count > 0;
+        } catch (Exception ex) {
+            return false;
+        }
     }
 }

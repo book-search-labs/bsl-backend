@@ -13,6 +13,7 @@ Tables are partitioned by `event_date` and use `ReplacingMergeTree` with TTL:
 
 Primary tables:
 - `search_impression`
+- `search_result_summary`
 - `search_click`
 - `search_dwell`
 - `ac_impression`
@@ -27,7 +28,7 @@ Outbox → Kafka → olap-loader-service → ClickHouse
 ```
 
 The loader consumes topics:
-`search_impression_v1`, `search_click_v1`, `search_dwell_v1`, `ac_impression_v1`, `ac_select_v1`
+`search_impression_v1`, `search_result_summary_v1`, `search_click_v1`, `search_dwell_v1`, `ac_impression_v1`, `ac_select_v1`
 and inserts JSONEachRow into ClickHouse.
 
 ## Feature Aggregation (B-0292)

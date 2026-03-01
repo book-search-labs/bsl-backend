@@ -32,6 +32,23 @@ export function collectKdcDescendantIds(node: KdcCategoryNode | null | undefined
   return ids
 }
 
+export function collectKdcDescendantCodes(node: KdcCategoryNode | null | undefined): string[] {
+  const codes: string[] = []
+  const visit = (item: KdcCategoryNode) => {
+    if (!item) return
+    if (typeof item.code === 'string' && item.code.trim().length > 0) {
+      codes.push(item.code)
+    }
+    if (Array.isArray(item.children)) {
+      item.children.forEach(visit)
+    }
+  }
+  if (node) {
+    visit(node)
+  }
+  return codes
+}
+
 export function getTopLevelKdc(nodes: KdcCategoryNode[]): KdcCategoryNode[] {
   if (!Array.isArray(nodes)) return []
   return nodes.filter((node) => node && node.depth === 0)

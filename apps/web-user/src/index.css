@@ -14,8 +14,8 @@
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
   --ink: #1b2430;
   --ink-muted: #5a6470;
-  --paper: #f7f3ee;
-  --paper-deep: #efe7db;
+  --paper: #ffffff;
+  --paper-deep: #f5f7fa;
   --brand: #0b4f6c;
   --brand-strong: #07384d;
   --brand-soft: #dceaf1;
@@ -42,11 +42,6 @@ body {
   min-height: 100vh;
   color: var(--ink);
   background-color: var(--paper);
-  background-image:
-    radial-gradient(circle at 12% 18%, rgba(255, 138, 52, 0.16), transparent 48%),
-    radial-gradient(circle at 86% 8%, rgba(11, 79, 108, 0.18), transparent 45%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(239, 231, 219, 0.92));
-  background-attachment: fixed;
 }
 
 a {

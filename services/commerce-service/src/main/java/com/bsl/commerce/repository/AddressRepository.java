@@ -70,4 +70,25 @@ public class AddressRepository {
     public void setDefault(long addressId) {
         jdbcTemplate.update("UPDATE user_address SET is_default = 1 WHERE address_id = ?", addressId);
     }
+
+    public void updateAddress(
+        long addressId,
+        String name,
+        String phone,
+        String zip,
+        String addr1,
+        String addr2,
+        boolean isDefault
+    ) {
+        jdbcTemplate.update(
+            "UPDATE user_address SET name = ?, phone = ?, zip = ?, addr1 = ?, addr2 = ?, is_default = ? WHERE address_id = ?",
+            name,
+            phone,
+            zip,
+            addr1,
+            addr2,
+            isDefault,
+            addressId
+        );
+    }
 }

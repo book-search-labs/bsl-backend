@@ -14,8 +14,31 @@ commerce:
   cart:
     max-qty-per-item: ${CART_MAX_QTY_PER_ITEM:20}
     max-distinct-items: ${CART_MAX_DISTINCT_ITEMS:200}
+    free-shipping-threshold: ${CART_FREE_SHIPPING_THRESHOLD:20000}
+    bonus-point-threshold: ${CART_BONUS_POINT_THRESHOLD:50000}
+    base-shipping-fee: ${CART_BASE_SHIPPING_FEE:3000}
+    fast-shipping-fee: ${CART_FAST_SHIPPING_FEE:5000}
   inventory:
     default-seller-id: ${INVENTORY_DEFAULT_SELLER_ID:1}
+  loyalty:
+    earn-rate-percent: ${LOYALTY_EARN_RATE_PERCENT:5}
+
+payments:
+  default-provider: ${PAYMENTS_DEFAULT_PROVIDER:MOCK}
+  default-return-url: ${PAYMENTS_DEFAULT_RETURN_URL:http://localhost:5174/payment/result}
+  default-webhook-url: ${PAYMENTS_DEFAULT_WEBHOOK_URL:http://localhost:8091/api/v1/payments/webhook/mock}
+  mock-checkout-base-url: ${PAYMENTS_MOCK_CHECKOUT_BASE_URL:http://localhost:8090/checkout}
+  session-ttl-seconds: ${PAYMENTS_SESSION_TTL_SECONDS:1800}
+  mock-webhook-secret: ${PAYMENTS_MOCK_WEBHOOK_SECRET:dev_mock_webhook_secret}
+  local-sim-webhook-secret: ${PAYMENTS_LOCAL_SIM_WEBHOOK_SECRET:dev_local_sim_webhook_secret}
+  pg-fee-rate-percent: ${PAYMENTS_PG_FEE_RATE_PERCENT:3.0}
+  platform-fee-rate-percent: ${PAYMENTS_PLATFORM_FEE_RATE_PERCENT:10.0}
+  webhook-retry-enabled: ${PAYMENTS_WEBHOOK_RETRY_ENABLED:true}
+  webhook-retry-delay-ms: ${PAYMENTS_WEBHOOK_RETRY_DELAY_MS:30000}
+  webhook-retry-initial-delay-ms: ${PAYMENTS_WEBHOOK_RETRY_INITIAL_DELAY_MS:20000}
+  webhook-retry-batch-size: ${PAYMENTS_WEBHOOK_RETRY_BATCH_SIZE:20}
+  webhook-retry-max-attempts: ${PAYMENTS_WEBHOOK_RETRY_MAX_ATTEMPTS:3}
+  webhook-retry-backoff-seconds: ${PAYMENTS_WEBHOOK_RETRY_BACKOFF_SECONDS:30}
 
 app:
   cors:

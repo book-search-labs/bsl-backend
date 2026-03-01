@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "payment-create-request.schema.json",
+  "title": "PaymentCreateRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["orderId", "amount"],
+  "properties": {
+    "orderId": { "type": "integer", "minimum": 1 },
+    "amount": { "type": "integer", "minimum": 0 },
+    "method": { "type": "string", "minLength": 1 },
+    "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "provider": { "type": "string", "enum": ["MOCK", "LOCAL_SIM", "TOSS", "STRIPE"] },
+    "returnUrl": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "webhookUrl": { "type": "string", "minLength": 1, "maxLength": 512 }
+  }
+}

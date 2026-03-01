@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://booksearch/contracts/chat-provider-snapshot-response.schema.json",
+  "title": "Chat Provider Snapshot Response",
+  "type": "object",
+  "required": ["version", "trace_id", "request_id", "status", "snapshot"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "v1"
+    },
+    "trace_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ok"]
+    },
+    "snapshot": {
+      "type": "object",
+      "required": ["routing", "providers", "config"],
+      "properties": {
+        "routing": {
+          "type": "object",
+          "required": ["mode", "final_chain"],
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["json", "stream"]
+            },
+            "query_intent": {
+              "type": "string"
+            },
+            "final_chain": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "providers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "url", "cooldown", "stats"],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "cooldown": {
+                "type": "boolean"
+              },
+              "stats": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,19 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg6" x1="0" y1="0" x2="1200" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FEF3C7"/>
+      <stop offset="1" stop-color="#FCA5A5"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg6)"/>
+  <rect x="740" y="0" width="460" height="420" fill="#7C2D12" fill-opacity="0.16"/>
+  <rect x="810" y="38" width="320" height="344" rx="28" fill="#FFFFFF" fill-opacity="0.2"/>
+  <rect x="70" y="58" rx="14" ry="14" width="122" height="34" fill="#9A3412"/>
+  <text x="131" y="80" fill="#FFFFFF" text-anchor="middle" font-size="18" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">경제/경영</text>
+  <text x="70" y="160" fill="#431407" font-size="52" font-weight="800" font-family="Pretendard, Noto Sans KR, sans-serif">비즈니스 인사이트 특집</text>
+  <text x="70" y="220" fill="#431407" font-size="34" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">시장 · 투자 · 전략 도서 집중 큐레이션</text>
+  <text x="70" y="275" fill="#7C2D12" font-size="25" font-weight="600" font-family="Pretendard, Noto Sans KR, sans-serif">실무에서 바로 적용할 수 있는 도서를 추천합니다.</text>
+  <rect x="70" y="310" rx="12" ry="12" width="218" height="56" fill="#9A3412"/>
+  <text x="179" y="346" fill="#FFFFFF" text-anchor="middle" font-size="24" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">특집 보기</text>
+</svg>
+

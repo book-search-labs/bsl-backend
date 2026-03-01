@@ -1,4 +1,4 @@
-.PHONY: all eval-embedding eval-rerank local-llm-up local-llm-down local-llm-health local-up up down
+.PHONY: all eval-embedding eval-rerank local-llm-up local-llm-down local-llm-health local-up sample-reset sample-bootstrap up down
 
 LOCAL_LLM_MODEL ?= llama3.1:8b-instruct
 LOCAL_LLM_COMPOSE ?= compose.yaml
@@ -6,7 +6,7 @@ LOCAL_LLM_PROFILE ?= llm
 LOCAL_LLM_PROJECT ?= bsl-llm
 
 all:
-	@echo "Available targets: eval-embedding, eval-rerank, up, down, local-llm-up, local-llm-down, local-llm-health"
+	@echo "Available targets: eval-embedding, eval-rerank, local-up, sample-reset, sample-bootstrap, up, down, local-llm-up, local-llm-down, local-llm-health"
 
 eval-embedding:
 	python3 scripts/eval/embedding_eval.py
@@ -16,6 +16,12 @@ eval-rerank:
 
 local-up:
 	./scripts/local_up.sh
+
+sample-reset:
+	./scripts/local_reset_sample_data.sh
+
+sample-bootstrap:
+	./scripts/bootstrap_sample_dev.sh
 
 local-llm-up:
 	@docker compose -p $(LOCAL_LLM_PROJECT) -f $(LOCAL_LLM_COMPOSE) --profile $(LOCAL_LLM_PROFILE) up -d ollama

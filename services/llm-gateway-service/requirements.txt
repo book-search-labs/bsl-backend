@@ -1,4 +1,5 @@
 fastapi
 httpx
+pymysql
 redis
 uvicorn[standard]

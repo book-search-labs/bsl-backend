@@ -63,6 +63,21 @@ services:
       timeout: 3s
       retries: 20
 
+  pg-simulator:
+    image: python:3.11-slim
+    working_dir: /workspace/services/pg-simulator
+    command: >
+      sh -lc "pip install --no-cache-dir -r requirements.txt
+      && uvicorn app.main:app --host 0.0.0.0 --port 8090"
+    environment:
+      - PG_SIM_WEBHOOK_SECRET=${PG_SIM_WEBHOOK_SECRET:-dev_local_sim_webhook_secret}
+      - PG_SIM_PROVIDER=${PG_SIM_PROVIDER:-LOCAL_SIM}
+      - PG_SIM_WEBHOOK_TIMEOUT_SEC=${PG_SIM_WEBHOOK_TIMEOUT_SEC:-3.0}
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./:/workspace
+
   clickhouse:
     image: clickhouse/clickhouse-server:24.8
     profiles: ["data"]
@@ -189,8 +204,12 @@ volumes:
     external: true
     name: docker_mysql-data
   opensearch-data:
+    external: true
+    name: docker_opensearch-data
   opensearch-backup:
   clickhouse-data:
+    external: true
+    name: docker_clickhouse-data
   metabase-data:
   ollama-data:
   gradle-cache:

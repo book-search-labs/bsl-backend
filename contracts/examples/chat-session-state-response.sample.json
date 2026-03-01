@@ -1,0 +1,23 @@
+{
+  "version": "v1",
+  "trace_id": "trace_01",
+  "request_id": "req_01",
+  "status": "ok",
+  "session": {
+    "session_id": "u:101:default",
+    "fallback_count": 2,
+    "fallback_escalation_threshold": 3,
+    "escalation_ready": false,
+    "recommended_action": "RETRY",
+    "recommended_message": "생성된 답변과 근거 문서가 일치하지 않아 답변을 보류했습니다. 잠시 후 다시 시도해 주세요.",
+    "unresolved_context": {
+      "reason_code": "LLM_NO_CITATIONS",
+      "reason_message": "생성된 답변과 근거 문서가 일치하지 않아 답변을 보류했습니다. 잠시 후 다시 시도해 주세요.",
+      "next_action": "RETRY",
+      "trace_id": "trace_prev",
+      "request_id": "req_prev",
+      "updated_at": 1760000000,
+      "query_preview": "환불 조건을 정리해줘. 주문번호는 1234입니다."
+    }
+  }
+}

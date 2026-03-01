@@ -1,4 +1,5 @@
 import { HttpError } from './http'
+import { getSessionId, getSessionUser } from '../services/mySession'
 
 type ApiMode = 'bff_primary' | 'direct_primary' | 'bff_only' | 'direct_only'
 
@@ -39,14 +40,6 @@ export function resolveCommerceBaseUrl() {
   return import.meta.env.VITE_COMMERCE_BASE_URL ?? 'http://localhost:8091'
 }
 
-function resolveUserId() {
-  return (
-    localStorage.getItem('bsl.userId') ??
-    (import.meta.env.VITE_USER_ID as string | undefined) ??
-    '1'
-  )
-}
-
 function randomHex(bytes: number) {
   if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
     const data = new Uint8Array(bytes)
@@ -65,17 +58,24 @@ export function createRequestContext(): ApiRequestContext {
   const spanId = randomHex(8)
   const requestId = `${traceId}-${spanId}`
   const traceparent = `00-${traceId}-${spanId}-01`
-  const userId = resolveUserId()
+  const sessionId = getSessionId()
+  const user = getSessionUser()
+  const headers: Record<string, string> = {
+    'x-request-id': requestId,
+    'x-trace-id': traceId,
+    traceparent,
+  }
+  if (sessionId) {
+    headers['x-session-id'] = sessionId
+  }
+  if (user) {
+    headers['x-user-id'] = String(user.userId)
+  }
   return {
     requestId,
     traceId,
     traceparent,
-    headers: {
-      'x-request-id': requestId,
-      'x-trace-id': traceId,
-      traceparent,
-      'x-user-id': userId,
-    },
+    headers,
   }
 }
 

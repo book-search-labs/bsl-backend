@@ -1,5 +1,5 @@
 server:
-  port: ${SEARCH_PORT:8080}
+  port: ${SEARCH_PORT:18087}
 
 spring:
   application:
@@ -22,9 +22,9 @@ query-service:
   timeout-ms: ${QUERY_TIMEOUT_MS:120}
 
 embedding:
-  mode: ${EMBEDDING_MODE:TOY}
+  mode: ${EMBEDDING_MODE:HTTP}
   base-url: ${EMBEDDING_BASE_URL:http://localhost:8005}
-  model: ${EMBEDDING_MODEL:}
+  model: ${EMBEDDING_MODEL:multilingual-e5-small}
   timeout-ms: ${EMBEDDING_TIMEOUT_MS:200}
   retry-count: ${EMBEDDING_RETRY_COUNT:0}
   cache:

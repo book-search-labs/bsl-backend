@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "auth-session-response.schema.json",
+  "title": "AuthSessionResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "trace_id", "request_id", "status", "session"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "const": "ok" },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_id", "expires_at", "user"],
+      "properties": {
+        "session_id": { "type": "string", "minLength": 16, "maxLength": 128 },
+        "expires_at": { "type": "string", "format": "date-time" },
+        "user": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["user_id", "email", "name", "membership_label", "phone"],
+          "properties": {
+            "user_id": { "type": "integer", "minimum": 1 },
+            "email": { "type": "string", "format": "email", "minLength": 3, "maxLength": 255 },
+            "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+            "membership_label": { "type": "string", "minLength": 1, "maxLength": 32 },
+            "phone": { "type": "string", "minLength": 1, "maxLength": 32 }
+          }
+        }
+      }
+    }
+  }
+}
