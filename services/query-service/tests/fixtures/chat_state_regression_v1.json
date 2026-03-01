@@ -572,6 +572,26 @@
           "expected": {"status": "ok", "reason_code": "OK"}
         }
       ]
+    },
+    {
+      "id": "S23_refund_policy_possible_question",
+      "turns": [
+        {
+          "query": "환불 가능해?",
+          "user_id": null,
+          "expected": {"status": "ok", "reason_code": "OK"}
+        }
+      ]
+    },
+    {
+      "id": "S24_order_cancel_policy_question",
+      "turns": [
+        {
+          "query": "주문 취소 가능한가요?",
+          "user_id": null,
+          "expected": {"status": "ok", "reason_code": "OK"}
+        }
+      ]
     }
   ]
 }
