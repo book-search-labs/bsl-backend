@@ -542,6 +542,36 @@
           "expected": {"status": "ok", "reason_code": "OK"}
         }
       ]
+    },
+    {
+      "id": "S22_recommend_followup_easier_version",
+      "candidate_sequences": {
+        "책 추천해줘": [
+          {"doc_id": "doc-1", "title": "추천 도서 A", "author": "저자A", "score": 0.91},
+          {"doc_id": "doc-2", "title": "추천 도서 B", "author": "저자B", "score": 0.82}
+        ],
+        "추천 도서 B 더 쉬운 버전 책 추천해줘": [
+          {"doc_id": "doc-2", "title": "추천 도서 B", "author": "저자B", "score": 0.88},
+          {"doc_id": "doc-easy", "title": "추천 도서 B 입문", "author": "저자D", "score": 0.8}
+        ]
+      },
+      "turns": [
+        {
+          "query": "책 추천해줘",
+          "user_id": null,
+          "expected": {"status": "ok", "reason_code": "OK"}
+        },
+        {
+          "query": "2번째로 할게",
+          "user_id": null,
+          "expected": {"status": "ok", "reason_code": "OK"}
+        },
+        {
+          "query": "더 쉬운 버전 책 추천해줘",
+          "user_id": null,
+          "expected": {"status": "ok", "reason_code": "OK"}
+        }
+      ]
     }
   ]
 }

@@ -301,6 +301,49 @@ def test_run_tool_chat_recommend_followup_uses_selected_seed(monkeypatch):
     assert "다른 출판사 도서" in result["answer"]["content"]
 
 
+def test_run_tool_chat_recommend_followup_easier_version_uses_selected_seed(monkeypatch):
+    captured_queries = []
+
+    monkeypatch.setattr(
+        chat_tools,
+        "get_durable_chat_session_state",
+        lambda session_id: {
+            "selection": {
+                "type": "BOOK_RECOMMENDATION",
+                "last_candidates": [
+                    {"index": 1, "doc_id": "doc-1", "title": "추천 도서 A", "author": "저자A", "isbn": "9780306406157"},
+                    {"index": 2, "doc_id": "doc-2", "title": "추천 도서 B", "author": "저자B", "isbn": "9780306406158"},
+                ],
+                "selected_index": 2,
+                "selected_book": {"index": 2, "doc_id": "doc-2", "title": "추천 도서 B", "author": "저자B", "isbn": "9780306406158"},
+            }
+        },
+    )
+
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        captured_queries.append(query)
+        return [
+            {"doc_id": "doc-2", "title": "추천 도서 B", "author": "저자B", "isbn": "9780306406158", "score": 0.94},
+            {"doc_id": "doc-easy", "title": "추천 도서 B 입문", "author": "저자D", "score": 0.83},
+        ]
+
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+
+    payload = {
+        "session_id": "sess-reco-followup-2",
+        "message": {"role": "user", "content": "더 쉬운 버전 책 추천해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_reco_followup_2"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert captured_queries
+    assert captured_queries[0] == "추천 도서 B 더 쉬운 버전 책 추천해줘"
+    assert "1) 추천 도서 B (" not in result["answer"]["content"]
+    assert "추천 도서 B 입문" in result["answer"]["content"]
+
+
 def test_run_tool_chat_reference_without_selection_state_returns_needs_input(monkeypatch):
     monkeypatch.setattr(chat_tools, "get_durable_chat_session_state", lambda session_id: None)
 
