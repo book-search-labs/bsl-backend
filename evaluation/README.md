@@ -118,6 +118,8 @@ RUN_CHAT_ROLLOUT_EVAL=1 ./scripts/test.sh
 python3 scripts/chat/recommend_experiment_ops.py snapshot
 python3 scripts/chat/recommend_experiment_ops.py config --payload-json '{"overrides":{"diversity_percent":70,"max_block_rate":0.35}}'
 python3 scripts/chat/recommend_experiment_ops.py reset --payload-json '{"clear_overrides":true}'
+python3 scripts/chat/rollout_ops.py snapshot
+python3 scripts/chat/rollout_ops.py reset --payload-json '{"engine":"agent","clear_gate":true,"clear_rollback":true}'
 ```
 
 ## Chat feedback aggregation -> backlog seeds
