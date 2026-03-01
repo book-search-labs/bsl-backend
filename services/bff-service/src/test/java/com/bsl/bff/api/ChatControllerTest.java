@@ -509,6 +509,32 @@ class ChatControllerTest {
     }
 
     @Test
+    void v1ChatRecommendExperimentSnapshotProxyForAdmin() throws Exception {
+        AuthContextHolder.set(new AuthContext("101", "1"));
+        JsonNode responseNode = objectMapper.readTree(
+            "{"
+                + "\"version\":\"v1\","
+                + "\"trace_id\":\"trace_a\","
+                + "\"request_id\":\"req_a\","
+                + "\"status\":\"ok\","
+                + "\"experiment\":{"
+                + "\"enabled\":true,"
+                + "\"auto_disabled\":false,"
+                + "\"total\":11,"
+                + "\"blocked\":2,"
+                + "\"block_rate\":0.18"
+                + "}"
+                + "}"
+        );
+        when(queryServiceClient.chatRecommendExperimentSnapshot(any())).thenReturn(responseNode);
+
+        mockMvc.perform(get("/v1/chat/recommend/experiment"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"))
+            .andExpect(jsonPath("$.experiment.total").value(11));
+    }
+
+    @Test
     void chatRecommendExperimentResetRequiresAdmin() throws Exception {
         mockMvc.perform(post("/chat/recommend/experiment/reset")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -544,5 +570,32 @@ class ChatControllerTest {
             .andExpect(jsonPath("$.status").value("ok"))
             .andExpect(jsonPath("$.reset.reset_applied").value(true))
             .andExpect(jsonPath("$.reset.after.total").value(0));
+    }
+
+    @Test
+    void v1ChatRecommendExperimentResetProxyForAdmin() throws Exception {
+        AuthContextHolder.set(new AuthContext("101", "1"));
+        JsonNode responseNode = objectMapper.readTree(
+            "{"
+                + "\"version\":\"v1\","
+                + "\"trace_id\":\"trace_a\","
+                + "\"request_id\":\"req_a\","
+                + "\"status\":\"ok\","
+                + "\"reset\":{"
+                + "\"reset_applied\":true,"
+                + "\"before\":{\"total\":9},"
+                + "\"after\":{\"total\":0}"
+                + "}"
+                + "}"
+        );
+        when(queryServiceClient.resetChatRecommendExperiment(any())).thenReturn(responseNode);
+
+        mockMvc.perform(post("/v1/chat/recommend/experiment/reset")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"))
+            .andExpect(jsonPath("$.reset.reset_applied").value(true))
+            .andExpect(jsonPath("$.reset.before.total").value(9));
     }
 }
