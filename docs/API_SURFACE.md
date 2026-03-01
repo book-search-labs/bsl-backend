@@ -230,7 +230,7 @@ All structured responses that follow `contracts/*` must include:
 ### Response
 - Contract: `contracts/chat-session-reset-response.schema.json`
 - Example: `contracts/examples/chat-session-reset-response.sample.json`
-- Optional diagnostics: `session.state_version`
+- Optional diagnostics: `session.state_version`, `session.previous_llm_call_count`
 
 ## POST `/chat/feedback`
 **Purpose**: user feedback for chat answers (👍/👎 + flags).  
