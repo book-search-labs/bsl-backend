@@ -72,6 +72,22 @@ def test_run_tool_chat_shipping_policy_guide_without_login():
     assert result["sources"][0]["url"] == "POLICY / commerce-shipping-guide"
 
 
+def test_detect_intent_routes_refund_possibility_to_policy():
+    intent = chat_tools._detect_intent("환불 가능해?")
+    assert intent.name == "REFUND_POLICY"
+
+
+def test_detect_intent_routes_order_cancel_question_to_policy():
+    intent = chat_tools._detect_intent("주문 취소 가능한가요?")
+    assert intent.name == "ORDER_POLICY"
+
+
+def test_policy_topic_cache_key_normalizes_aliases():
+    refund_key = chat_tools._policy_topic_cache_key("refund")
+    assert refund_key == chat_tools._policy_topic_cache_key("refund_policy")
+    assert refund_key == chat_tools._policy_topic_cache_key("환불")
+
+
 def test_refund_policy_topic_cache_reuses_composed_content(monkeypatch):
     compose_calls = {"count": 0}
 

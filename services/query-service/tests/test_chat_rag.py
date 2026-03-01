@@ -663,6 +663,7 @@ def test_run_chat_stream_emits_error_when_citation_mapping_fails(monkeypatch):
 
 def test_run_chat_stream_guard_block_message_is_korean(monkeypatch):
     chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_ENGINE_MODE", "legacy")
 
     async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
         return {
@@ -710,6 +711,7 @@ def test_run_chat_stream_guard_block_message_is_korean(monkeypatch):
 
 def test_run_chat_blocks_forbidden_claim_on_high_risk_query(monkeypatch):
     chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_ENGINE_MODE", "legacy")
 
     async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
         return {

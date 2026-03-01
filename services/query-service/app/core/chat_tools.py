@@ -222,6 +222,76 @@ def _normalize_text(text: str) -> str:
     return " ".join((text or "").strip().lower().split())
 
 
+_POLICY_TOPIC_ALIAS = {
+    "refund": "refund",
+    "refund_policy": "refund",
+    "return": "refund",
+    "returns": "refund",
+    "환불": "refund",
+    "반품": "refund",
+    "shipping": "shipping",
+    "shipping_policy": "shipping",
+    "shipment": "shipping",
+    "delivery": "shipping",
+    "배송": "shipping",
+    "order": "order",
+    "order_policy": "order",
+    "payment": "order",
+    "주문": "order",
+    "결제": "order",
+}
+
+_POLICY_QUESTION_KEYWORDS = (
+    "정책",
+    "조건",
+    "정리",
+    "안내",
+    "절차",
+    "규정",
+    "기준",
+    "수수료",
+    "가능",
+    "되나요",
+    "어떻게",
+    "얼마",
+    "방법",
+    "policy",
+    "guide",
+)
+
+_POLICY_REFUND_HINTS = ("환불", "반품", "refund", "return")
+_POLICY_SHIPPING_HINTS = ("배송", "택배", "출고", "배송비", "shipment", "shipping", "delivery")
+_POLICY_ORDER_HINTS = ("주문", "결제", "취소", "order", "payment", "cancel")
+
+
+def _canonical_policy_topic(topic: str) -> str:
+    normalized = _normalize_text(topic)
+    if not normalized:
+        return "generic"
+    compact = normalized.replace(" ", "_")
+    return _POLICY_TOPIC_ALIAS.get(normalized) or _POLICY_TOPIC_ALIAS.get(compact) or compact
+
+
+def _infer_policy_topic(query: str) -> str | None:
+    normalized = _normalize_text(query)
+    if not normalized:
+        return None
+    if any(keyword in normalized for keyword in _POLICY_REFUND_HINTS):
+        return "refund"
+    if any(keyword in normalized for keyword in _POLICY_SHIPPING_HINTS):
+        return "shipping"
+    if any(keyword in normalized for keyword in _POLICY_ORDER_HINTS):
+        return "order"
+    return None
+
+
+def _looks_like_policy_question(query: str) -> bool:
+    normalized = _normalize_text(query)
+    if not normalized:
+        return False
+    return any(keyword in normalized for keyword in _POLICY_QUESTION_KEYWORDS)
+
+
 def _detect_intent(query: str) -> ToolIntent:
     q = _normalize_text(query)
     if not q:
@@ -243,17 +313,29 @@ def _detect_intent(query: str) -> ToolIntent:
     policy_keywords = ["조건", "정리", "안내", "절차", "규정", "기준", "수수료", "policy", "guide"]
     recommendation_keywords = ["추천", "비슷한 책", "유사한 책", "related book", "similar book", "recommend"]
     has_policy_word = any(keyword in q for keyword in policy_keywords)
+    has_policy_question = _looks_like_policy_question(q)
+    policy_topic = _infer_policy_topic(q)
     has_recommend_word = any(keyword in q for keyword in recommendation_keywords)
 
-    if any(keyword in q for keyword in cancel_keywords) and (has_order_ref or "주문" in q or "order" in q) and not has_policy_word:
+    if (
+        any(keyword in q for keyword in cancel_keywords)
+        and (has_order_ref or "주문" in q or "order" in q)
+        and not has_policy_word
+        and not has_policy_question
+    ):
         return ToolIntent("ORDER_CANCEL", 0.96)
-    if any(keyword in q for keyword in refund_create_keywords) and (has_order_ref or "주문" in q or "order" in q) and not has_policy_word:
+    if (
+        any(keyword in q for keyword in refund_create_keywords)
+        and (has_order_ref or "주문" in q or "order" in q)
+        and not has_policy_word
+        and not has_policy_question
+    ):
         return ToolIntent("REFUND_CREATE", 0.95)
-    if has_policy_word and any(keyword in q for keyword in refund_keywords):
+    if policy_topic == "refund" and (has_policy_word or has_policy_question):
         return ToolIntent("REFUND_POLICY", 0.93)
-    if has_policy_word and any(keyword in q for keyword in shipment_keywords):
+    if policy_topic == "shipping" and (has_policy_word or has_policy_question):
         return ToolIntent("SHIPPING_POLICY", 0.9)
-    if has_policy_word and any(keyword in q for keyword in order_keywords):
+    if policy_topic == "order" and (has_policy_word or has_policy_question):
         return ToolIntent("ORDER_POLICY", 0.85)
     if any(keyword in q for keyword in ticket_list_keywords):
         return ToolIntent("TICKET_LIST", 0.95)
@@ -682,7 +764,7 @@ def _build_tool_source(tool_name: str, endpoint: str, snippet: str) -> tuple[lis
 
 
 def _policy_topic_cache_key(topic: str) -> str:
-    normalized_topic = str(topic or "").strip().lower() or "generic"
+    normalized_topic = _canonical_policy_topic(topic)
     return f"chat:policy-topic:{_tenant_id()}:{normalized_topic}"
 
 
@@ -695,13 +777,14 @@ def _build_cached_policy_response(
     endpoint: str,
     content_builder: Callable[[], tuple[str, str]],
 ) -> dict[str, Any]:
-    cache_key = _policy_topic_cache_key(topic)
+    canonical_topic = _canonical_policy_topic(topic)
+    cache_key = _policy_topic_cache_key(canonical_topic)
     cached = _CACHE.get_json(cache_key)
     if isinstance(cached, dict):
         cached_content = str(cached.get("content") or "").strip()
         cached_snippet = str(cached.get("source_snippet") or "").strip()
         if cached_content and cached_snippet:
-            metrics.inc("chat_policy_topic_cache_total", {"topic": topic, "result": "hit"})
+            metrics.inc("chat_policy_topic_cache_total", {"topic": canonical_topic, "result": "hit"})
             return _build_response(
                 trace_id,
                 request_id,
@@ -713,7 +796,7 @@ def _build_cached_policy_response(
             )
 
     content, source_snippet = content_builder()
-    metrics.inc("chat_policy_topic_cache_total", {"topic": topic, "result": "miss"})
+    metrics.inc("chat_policy_topic_cache_total", {"topic": canonical_topic, "result": "miss"})
     _CACHE.set_json(
         cache_key,
         {"content": content, "source_snippet": source_snippet},
