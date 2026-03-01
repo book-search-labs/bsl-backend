@@ -213,3 +213,14 @@ python3 scripts/chat/generate_feedback_regression_seeds.py \
   --output-md tasks/backlog/generated/chat_feedback_regression_seeds.md \
   --allow-empty
 ```
+
+회귀 시드에서 실제 fixture 편입 후보를 만들려면:
+
+```bash
+python3 scripts/chat/build_regression_seed_fixture.py \
+  --seeds-json evaluation/chat/feedback_regression_seeds.json \
+  --base-fixture services/query-service/tests/fixtures/chat_state_regression_v1.json \
+  --output-json evaluation/chat/feedback_regression_fixture_candidates.json \
+  --output-md tasks/backlog/generated/chat_feedback_regression_fixture_candidates.md \
+  --allow-empty
+```
