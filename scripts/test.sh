@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[1/11] Contract validation (optional)"
+echo "[1/12] Contract validation (optional)"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN=""
 if command -v python >/dev/null 2>&1; then
@@ -20,9 +20,9 @@ else
   echo "  - python not found; skipping contract validation"
 fi
 
-echo "[2/11] Contract compatibility gate (optional)"
+echo "[2/12] Contract compatibility gate (optional)"
 
-echo "[3/11] Event schema compatibility check (optional)"
+echo "[3/12] Event schema compatibility check (optional)"
 if [ "${RUN_SCHEMA_CHECK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/kafka/schema_compat_check.py" || exit 1
@@ -38,7 +38,7 @@ else
   echo "  - python not found; skipping contract compatibility check"
 fi
 
-echo "[4/11] Feature spec validation (optional)"
+echo "[4/12] Feature spec validation (optional)"
 if [ -n "$PYTHON_BIN" ]; then
   if $PYTHON_BIN -c "import yaml" >/dev/null 2>&1; then
     $PYTHON_BIN "$ROOT_DIR/scripts/validate_feature_spec.py" || exit 1
@@ -49,7 +49,7 @@ else
   echo "  - python not found; skipping feature spec validation"
 fi
 
-echo "[5/11] Offline eval gate (optional)"
+echo "[5/12] Offline eval gate (optional)"
 if [ "${RUN_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     EVAL_RUN_PATH="${EVAL_RUN_PATH:-$ROOT_DIR/evaluation/runs/sample_run.jsonl}"
@@ -62,7 +62,7 @@ else
   echo "  - set RUN_EVAL=1 to enable"
 fi
 
-echo "[6/11] Rerank eval gate (optional)"
+echo "[6/12] Rerank eval gate (optional)"
 if [ "${RUN_RERANK_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     RERANK_BASELINE_PATH="${RERANK_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/rerank_eval_sample.json}"
@@ -127,7 +127,7 @@ else
   echo "  - set RUN_RERANK_EVAL=1 to enable"
 fi
 
-echo "[7/11] Chat recommend/rollout/semantic eval gate (optional)"
+echo "[7/12] Chat recommend/rollout/semantic eval gate (optional)"
 if [ "${RUN_CHAT_RECOMMEND_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_RECOMMEND_METRICS_URL="${CHAT_RECOMMEND_METRICS_URL:-http://localhost:8001/metrics}"
@@ -277,7 +277,7 @@ else
   echo "  - set RUN_CHAT_SEMANTIC_CACHE_EVAL=1 to enable"
 fi
 
-echo "[8/11] Chat regression suite gate (optional)"
+echo "[8/12] Chat regression suite gate (optional)"
 if [ "${RUN_CHAT_REGRESSION_SUITE_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_REGRESSION_FIXTURE="${CHAT_REGRESSION_FIXTURE:-$ROOT_DIR/services/query-service/tests/fixtures/chat_state_regression_v1.json}"
@@ -342,7 +342,27 @@ else
   echo "  - set RUN_CHAT_AGENT_SUMMARY_EVAL=1 to enable"
 fi
 
-echo "[9/11] Canonical quality checks (optional)"
+echo "[9/12] Chat pipeline tests (optional)"
+if [ "${RUN_CHAT_PIPELINE_TESTS:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    $PYTHON_BIN -m pytest \
+      "$ROOT_DIR/scripts/chat/test_aggregate_feedback.py" \
+      "$ROOT_DIR/scripts/chat/test_sync_feedback_backlog_tickets.py" \
+      "$ROOT_DIR/scripts/chat/test_generate_feedback_regression_seeds.py" \
+      "$ROOT_DIR/scripts/chat/test_build_regression_seed_fixture.py" \
+      "$ROOT_DIR/scripts/eval/test_chat_recommend_eval.py" \
+      "$ROOT_DIR/scripts/eval/test_chat_rollout_eval.py" \
+      "$ROOT_DIR/scripts/eval/test_chat_semantic_cache_eval.py" \
+      "$ROOT_DIR/scripts/eval/test_chat_regression_suite_eval.py" \
+      "$ROOT_DIR/scripts/eval/test_chat_agent_eval_summary.py" || exit 1
+  else
+    echo "  - python not found; skipping chat pipeline tests"
+  fi
+else
+  echo "  - set RUN_CHAT_PIPELINE_TESTS=1 to enable"
+fi
+
+echo "[10/12] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -353,7 +373,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[10/11] E2E tests (optional)"
+echo "[11/12] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -364,4 +384,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[11/11] Done"
+echo "[12/12] Done"

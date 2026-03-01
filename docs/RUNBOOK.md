@@ -150,6 +150,7 @@ python3 scripts/eval/chat_agent_eval_summary.py \
   --gate
 ```
 `RUN_CHAT_AGENT_SUMMARY_EVAL=1 ./scripts/test.sh`로 옵션 게이트를 활성화할 수 있다.
+`RUN_CHAT_PIPELINE_TESTS=1 ./scripts/test.sh`로 chat pipeline 스크립트 단위테스트 묶음을 함께 실행할 수 있다.
 
 semantic cache 안전 게이트를 점검하려면:
 ```bash

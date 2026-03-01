@@ -149,6 +149,12 @@ python3 scripts/eval/chat_agent_eval_summary.py \
 RUN_CHAT_AGENT_SUMMARY_EVAL=1 ./scripts/test.sh
 ```
 
+chat 품질 파이프라인 스크립트 단위테스트 묶음을 실행하려면:
+
+```bash
+RUN_CHAT_PIPELINE_TESTS=1 ./scripts/test.sh
+```
+
 피드백/품질 루프를 한 번에 실행하려면:
 
 ```bash
