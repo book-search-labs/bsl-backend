@@ -3352,6 +3352,27 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
     if escalation_ready:
         recommended_action = "OPEN_SUPPORT_TICKET"
         recommended_message = "반복 실패가 임계치를 초과했습니다. 상담 티켓 접수를 권장합니다."
+    selection_snapshot: Optional[Dict[str, Any]] = None
+    pending_action_snapshot: Optional[Dict[str, Any]] = None
+    if isinstance(durable_state, dict):
+        selection = durable_state.get("selection")
+        if isinstance(selection, dict):
+            last_candidates = selection.get("last_candidates")
+            selected_book = selection.get("selected_book") if isinstance(selection.get("selected_book"), dict) else {}
+            selection_snapshot = {
+                "type": str(selection.get("type") or ""),
+                "candidates_count": len(last_candidates) if isinstance(last_candidates, list) else 0,
+                "selected_index": selection.get("selected_index") if isinstance(selection.get("selected_index"), int) else None,
+                "selected_title": str(selected_book.get("title") or "") or None,
+                "selected_isbn": str(selected_book.get("isbn") or "") or None,
+            }
+        pending_action = durable_state.get("pending_action")
+        if isinstance(pending_action, dict):
+            pending_action_snapshot = {
+                "type": str(pending_action.get("type") or ""),
+                "state": str(pending_action.get("state") or ""),
+                "expires_at": pending_action.get("expires_at"),
+            }
     llm_budget_snapshot = _load_llm_call_budget_snapshot(session_id, _session_user_from_session_id(session_id))
     return {
         "session_id": session_id,
@@ -3363,6 +3384,8 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
         "recommended_action": recommended_action,
         "recommended_message": recommended_message,
         "unresolved_context": unresolved_context,
+        "selection_snapshot": selection_snapshot,
+        "pending_action_snapshot": pending_action_snapshot,
         "llm_call_budget": llm_budget_snapshot,
         "trace_id": trace_id,
         "request_id": request_id,

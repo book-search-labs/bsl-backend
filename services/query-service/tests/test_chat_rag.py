@@ -270,6 +270,44 @@ def test_get_chat_session_state_includes_llm_call_budget_snapshot(monkeypatch):
     assert llm_budget["window_sec"] == 60
 
 
+def test_get_chat_session_state_includes_selection_and_pending_snapshots(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    session_id = "u:460:default"
+
+    monkeypatch.setattr(
+        chat,
+        "get_durable_chat_session_state",
+        lambda _sid: {
+            "conversation_id": _sid,
+            "fallback_count": 0,
+            "selection": {
+                "type": "BOOK_RECOMMENDATION",
+                "last_candidates": [
+                    {"index": 1, "title": "도서 A"},
+                    {"index": 2, "title": "도서 B", "isbn": "9780306406157"},
+                ],
+                "selected_index": 2,
+                "selected_book": {"title": "도서 B", "isbn": "9780306406157"},
+            },
+            "pending_action": {
+                "type": "REFUND_REQUEST",
+                "state": "AWAITING_CONFIRMATION",
+                "expires_at": 1760000000,
+            },
+        },
+    )
+
+    state = chat.get_chat_session_state(session_id, "trace_now", "req_now")
+
+    assert state["selection_snapshot"]["type"] == "BOOK_RECOMMENDATION"
+    assert state["selection_snapshot"]["candidates_count"] == 2
+    assert state["selection_snapshot"]["selected_index"] == 2
+    assert state["selection_snapshot"]["selected_title"] == "도서 B"
+    assert state["pending_action_snapshot"]["type"] == "REFUND_REQUEST"
+    assert state["pending_action_snapshot"]["state"] == "AWAITING_CONFIRMATION"
+    assert state["pending_action_snapshot"]["expires_at"] == 1760000000
+
+
 def test_reset_chat_session_state_appends_action_audit(monkeypatch):
     chat._CACHE = CacheClient(None)
     session_id = "u:302:default"
