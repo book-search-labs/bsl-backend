@@ -189,6 +189,7 @@ def test_chat_session_reset_route_returns_payload(monkeypatch):
             "reset_applied": True,
             "previous_fallback_count": 3,
             "previous_unresolved_context": True,
+            "previous_llm_call_count": 1,
             "reset_at_ms": 1760000000,
             "trace_id": trace_id,
             "request_id": request_id,
@@ -205,6 +206,7 @@ def test_chat_session_reset_route_returns_payload(monkeypatch):
     assert data["status"] == "ok"
     assert data["session"]["reset_applied"] is True
     assert data["session"]["previous_fallback_count"] == 3
+    assert data["session"]["previous_llm_call_count"] == 1
     assert any(name == "chat_session_reset_requests_total" and labels.get("result") == "ok" for name, labels in captured)
 
 

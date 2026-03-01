@@ -451,6 +451,7 @@ async def chat_session_reset(request: Request):
             "reset_applied": snapshot["reset_applied"],
             "previous_fallback_count": snapshot["previous_fallback_count"],
             "previous_unresolved_context": snapshot["previous_unresolved_context"],
+            "previous_llm_call_count": snapshot.get("previous_llm_call_count"),
             "state_version": snapshot.get("state_version"),
             "reset_at_ms": snapshot["reset_at_ms"],
         },
