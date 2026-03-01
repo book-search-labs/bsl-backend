@@ -86,6 +86,7 @@ CORS_ALLOW_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:
 # QS_CHAT_MAX_PROVIDER_ATTEMPTS_PER_TURN=2
 # QS_CHAT_MAX_PROMPT_TOKENS_PER_TURN=6000
 # QS_CHAT_MAX_COMPLETION_TOKENS_PER_TURN=1200
+# QS_CHAT_MAX_LLM_CALLS_PER_MINUTE=0  # 0 disables per-user/session rate limit
 
 # Chat engine rollout (legacy/agent/canary/shadow)
 # QS_CHAT_ENGINE_MODE=agent

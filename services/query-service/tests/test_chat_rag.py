@@ -389,6 +389,105 @@ def test_run_chat_stream_blocks_when_prompt_budget_exceeded(monkeypatch):
     assert any("event: done" in event and "LLM_PROMPT_BUDGET_EXCEEDED" in event for event in events)
 
 
+def test_run_chat_blocks_when_llm_call_rate_limited(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_MAX_LLM_CALLS_PER_MINUTE", "1")
+
+    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
+        return {
+            "ok": True,
+            "query": "배송 정책 알려줘",
+            "canonical_key": "ck:rate-limit",
+            "locale": "ko-KR",
+            "selected": [
+                {
+                    "chunk_id": "chunk-1",
+                    "citation_key": "chunk-1",
+                    "doc_id": "doc-1",
+                    "title": "배송 정책",
+                    "url": "https://example.com/shipping",
+                    "snippet": "배송은 지역에 따라 달라집니다.",
+                    "score": 0.9,
+                }
+            ],
+        }
+
+    async def fake_tool_chat(request, trace_id, request_id):
+        return None
+
+    async def fake_call_llm_json(payload, trace_id, request_id):
+        return {"content": "배송 정책 안내입니다.", "citations": ["chunk-1"]}
+
+    monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
+    monkeypatch.setattr(chat, "run_tool_chat", fake_tool_chat)
+    monkeypatch.setattr(chat, "_call_llm_json", fake_call_llm_json)
+    monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
+
+    payload = {
+        "session_id": "sess-rate-json-1",
+        "message": {"role": "user", "content": "배송 정책 알려줘"},
+        "client": {"user_id": "1", "locale": "ko-KR"},
+    }
+    first = asyncio.run(chat.run_chat(payload, "trace_test", "req_rate_json_1"))
+    second = asyncio.run(chat.run_chat(payload, "trace_test", "req_rate_json_2"))
+
+    assert first["status"] == "ok"
+    assert second["status"] == "insufficient_evidence"
+    assert second["reason_code"] == "LLM_CALL_RATE_LIMITED"
+
+
+def test_run_chat_stream_blocks_when_llm_call_rate_limited(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_MAX_LLM_CALLS_PER_MINUTE", "1")
+
+    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
+        return {
+            "ok": True,
+            "query": "배송 정책 알려줘",
+            "canonical_key": "ck:rate-limit-stream",
+            "locale": "ko-KR",
+            "selected": [
+                {
+                    "chunk_id": "chunk-1",
+                    "citation_key": "chunk-1",
+                    "doc_id": "doc-1",
+                    "title": "배송 정책",
+                    "url": "https://example.com/shipping",
+                    "snippet": "배송은 지역에 따라 달라집니다.",
+                    "score": 0.9,
+                }
+            ],
+        }
+
+    async def fake_tool_chat(request, trace_id, request_id):
+        return None
+
+    async def fake_stream_llm(payload, trace_id, request_id):
+        async def generator():
+            yield chat._sse_event("meta", {"trace_id": trace_id, "request_id": request_id})
+            yield chat._sse_event("delta", {"delta": "안내"})
+
+        return generator(), {"answer": "안내", "citations": ["chunk-1"], "llm_error": None, "done_status": "ok"}
+
+    monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
+    monkeypatch.setattr(chat, "run_tool_chat", fake_tool_chat)
+    monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
+    monkeypatch.setattr(chat, "_llm_stream_enabled", lambda: True)
+    monkeypatch.setattr(chat, "_stream_llm", fake_stream_llm)
+
+    payload = {
+        "session_id": "sess-rate-stream-1",
+        "message": {"role": "user", "content": "배송 정책 알려줘"},
+        "options": {"stream": True},
+        "client": {"user_id": "1", "locale": "ko-KR"},
+    }
+    first_events = _collect_stream_events(payload)
+    second_events = _collect_stream_events(payload)
+
+    assert any("event: done" in event and '"status": "ok"' in event for event in first_events)
+    assert any("event: done" in event and "LLM_CALL_RATE_LIMITED" in event for event in second_events)
+
+
 def test_run_chat_stream_emits_error_when_citation_mapping_fails(monkeypatch):
     chat._CACHE = CacheClient(None)
 

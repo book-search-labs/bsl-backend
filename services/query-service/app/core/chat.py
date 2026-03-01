@@ -509,6 +509,10 @@ def _llm_max_completion_tokens_per_turn() -> int:
     return max(32, int(os.getenv("QS_CHAT_MAX_COMPLETION_TOKENS_PER_TURN", "1200")))
 
 
+def _llm_max_calls_per_minute() -> int:
+    return max(0, int(os.getenv("QS_CHAT_MAX_LLM_CALLS_PER_MINUTE", "0")))
+
+
 def _estimate_token_count(text: str) -> int:
     normalized = (text or "").strip()
     if not normalized:
@@ -541,6 +545,48 @@ def _admission_block_reason(payload: Dict[str, Any]) -> Optional[str]:
         return "LLM_PROMPT_BUDGET_EXCEEDED"
     if _llm_max_completion_tokens_per_turn() <= 0:
         return "LLM_COMPLETION_BUDGET_EXCEEDED"
+    return None
+
+
+def _llm_call_rate_cache_key(session_id: Optional[str], user_id: Optional[str]) -> str:
+    if isinstance(user_id, str) and user_id.strip():
+        return f"chat:llm:call_rate:user:{user_id.strip()}"
+    if isinstance(session_id, str) and session_id.strip():
+        return f"chat:llm:call_rate:session:{session_id.strip()}"
+    return "chat:llm:call_rate:anon"
+
+
+def _reserve_llm_call_budget(session_id: Optional[str], user_id: Optional[str], *, mode: str) -> Optional[str]:
+    limit = _llm_max_calls_per_minute()
+    if limit <= 0:
+        return None
+    now_ts = int(time.time())
+    cache_key = _llm_call_rate_cache_key(session_id, user_id)
+    cached = _CACHE.get_json(cache_key)
+    window_start = now_ts
+    count = 0
+    if isinstance(cached, dict):
+        window_start = int(cached.get("window_start") or now_ts)
+        count = max(0, int(cached.get("count") or 0))
+    if now_ts - window_start >= 60:
+        window_start = now_ts
+        count = 0
+    if count >= limit:
+        metrics.inc("chat_llm_call_budget_total", {"mode": mode, "result": "blocked"})
+        return "LLM_CALL_RATE_LIMITED"
+    count += 1
+    _CACHE.set_json(
+        cache_key,
+        {
+            "window_start": window_start,
+            "count": count,
+            "limit": limit,
+            "updated_at": now_ts,
+        },
+        ttl=120,
+    )
+    metrics.inc("chat_llm_call_budget_total", {"mode": mode, "result": "allow"})
+    metrics.set("chat_llm_call_rate_utilization", {"mode": mode}, value=float(count) / float(max(1, limit)))
     return None
 
 
@@ -999,6 +1045,12 @@ def _fallback_defaults(reason_code: str) -> Dict[str, Any]:
         },
         "LLM_COMPLETION_BUDGET_EXCEEDED": {
             "message": "현재 응답 예산 제한으로 요청을 처리할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+            "recoverable": True,
+            "next_action": "RETRY",
+            "retry_after_ms": 2000,
+        },
+        "LLM_CALL_RATE_LIMITED": {
+            "message": "현재 요청량이 많아 잠시 후 다시 시도해 주세요.",
             "recoverable": True,
             "next_action": "RETRY",
             "retry_after_ms": 2000,
@@ -2121,6 +2173,29 @@ async def _run_chat_impl(
         )
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return response
+    call_budget_reason = _reserve_llm_call_budget(session_id, user_id, mode="json")
+    if call_budget_reason:
+        metrics.inc("chat_admission_block_total", {"reason": call_budget_reason, "mode": "json"})
+        response = _fallback(trace_id, request_id, None, call_budget_reason, session_id=session_id, user_id=user_id)
+        _save_unresolved_context(
+            session_id,
+            query,
+            call_budget_reason,
+            trace_id=trace_id,
+            request_id=request_id,
+            user_id=user_id,
+        )
+        _append_turn_event_safe(
+            session_id,
+            request_id,
+            "TURN_BLOCKED",
+            trace_id=trace_id,
+            route="ADMISSION",
+            reason_code=call_budget_reason,
+            payload={"stream": False},
+        )
+        metrics.inc("chat_requests_total", {"decision": "fallback"})
+        return response
     try:
         data = await _call_llm_json(payload, trace_id, request_id)
     except Exception:
@@ -2538,6 +2613,63 @@ async def _run_chat_stream_impl(
             trace_id=trace_id,
             route="ADMISSION",
             reason_code=admission_reason,
+            payload={"stream": True},
+        )
+        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
+        metrics.inc("chat_requests_total", {"decision": "fallback"})
+        return
+    call_budget_reason = _reserve_llm_call_budget(session_id, user_id, mode="stream")
+    if call_budget_reason:
+        metrics.inc("chat_admission_block_total", {"reason": call_budget_reason, "mode": "stream"})
+        fallback_response = _fallback(trace_id, request_id, None, call_budget_reason, session_id=session_id, user_id=user_id)
+        _save_unresolved_context(
+            session_id,
+            query,
+            call_budget_reason,
+            trace_id=trace_id,
+            request_id=request_id,
+            user_id=user_id,
+        )
+        risk_band = _compute_risk_band(query, "insufficient_evidence", [], call_budget_reason)
+        yield _sse_event(
+            "meta",
+            {
+                "trace_id": trace_id,
+                "request_id": request_id,
+                "status": "fallback",
+                "sources": [],
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": fallback_response.get("reason_code"),
+                "recoverable": fallback_response.get("recoverable"),
+                "next_action": fallback_response.get("next_action"),
+                "retry_after_ms": fallback_response.get("retry_after_ms"),
+                "fallback_count": fallback_response.get("fallback_count"),
+                "escalated": fallback_response.get("escalated"),
+            },
+        )
+        yield _sse_event("delta", {"delta": str(fallback_response.get("answer", {}).get("content") if isinstance(fallback_response.get("answer"), dict) else "")})
+        yield _sse_event(
+            "done",
+            {
+                "status": fallback_response.get("status"),
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": fallback_response.get("reason_code"),
+                "recoverable": fallback_response.get("recoverable"),
+                "next_action": fallback_response.get("next_action"),
+                "retry_after_ms": fallback_response.get("retry_after_ms"),
+                "fallback_count": fallback_response.get("fallback_count"),
+                "escalated": fallback_response.get("escalated"),
+            },
+        )
+        _append_turn_event_safe(
+            session_id,
+            request_id,
+            "TURN_BLOCKED",
+            trace_id=trace_id,
+            route="ADMISSION",
+            reason_code=call_budget_reason,
             payload={"stream": True},
         )
         metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
