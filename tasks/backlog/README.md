@@ -141,3 +141,7 @@
 - B-0625 chat semantic cache safety guardrails v1
 - B-0626 chat episode memory (consent-based retrieval) v1
 - B-0627 chat recommendation experiment loop + quality gate
+
+## Generated Artifacts
+- 자동 생성 backlog 산출물은 `tasks/backlog/generated/` 하위에 기록된다.
+- chat feedback 기반 자동 티켓은 `scripts/chat/run_recommend_quality_loop.sh`로 갱신한다.
