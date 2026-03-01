@@ -100,6 +100,22 @@ python3 scripts/eval/chat_rollout_eval.py \
 RUN_CHAT_ROLLOUT_EVAL=1 ./scripts/test.sh
 ```
 
+semantic cache safety 게이트를 점검하려면:
+
+```bash
+python3 scripts/eval/chat_semantic_cache_eval.py \
+  --metrics-url http://localhost:8001/metrics \
+  --session-id u:101:default \
+  --require-min-samples \
+  --gate
+```
+
+`./scripts/test.sh`에서 옵션 게이트로 실행하려면:
+
+```bash
+RUN_CHAT_SEMANTIC_CACHE_EVAL=1 ./scripts/test.sh
+```
+
 멀티턴 회귀셋 규모/도메인 커버리지 게이트를 점검하려면:
 
 ```bash

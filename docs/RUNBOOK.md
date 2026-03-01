@@ -141,6 +141,16 @@ python3 scripts/eval/chat_regression_suite_eval.py \
 ```
 `RUN_CHAT_REGRESSION_SUITE_EVAL=1 ./scripts/test.sh`로 CI/로컬 옵션 게이트를 활성화할 수 있다.
 
+semantic cache 안전 게이트를 점검하려면:
+```bash
+python3 scripts/eval/chat_semantic_cache_eval.py \
+  --metrics-url http://localhost:8001/metrics \
+  --session-id u:101:default \
+  --require-min-samples \
+  --gate
+```
+`RUN_CHAT_SEMANTIC_CACHE_EVAL=1 ./scripts/test.sh`로 옵션 게이트를 활성화할 수 있다.
+
 피드백 집계와 개선 백로그 시드 생성:
 ```bash
 python3 scripts/chat/export_feedback_events.py \

@@ -127,7 +127,7 @@ else
   echo "  - set RUN_RERANK_EVAL=1 to enable"
 fi
 
-echo "[7/11] Chat recommend/rollout eval gate (optional)"
+echo "[7/11] Chat recommend/rollout/semantic eval gate (optional)"
 if [ "${RUN_CHAT_RECOMMEND_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_RECOMMEND_METRICS_URL="${CHAT_RECOMMEND_METRICS_URL:-http://localhost:8001/metrics}"
@@ -228,6 +228,53 @@ if [ "${RUN_CHAT_ROLLOUT_EVAL:-0}" = "1" ]; then
   fi
 else
   echo "  - set RUN_CHAT_ROLLOUT_EVAL=1 to enable"
+fi
+
+if [ "${RUN_CHAT_SEMANTIC_CACHE_EVAL:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_SEMANTIC_METRICS_URL="${CHAT_SEMANTIC_METRICS_URL:-http://localhost:8001/metrics}"
+    CHAT_SEMANTIC_SESSION_ID="${CHAT_SEMANTIC_SESSION_ID:-u:101:default}"
+    CHAT_SEMANTIC_TIMEOUT="${CHAT_SEMANTIC_TIMEOUT:-2.0}"
+    CHAT_SEMANTIC_MIN_QUALITY_SAMPLES="${CHAT_SEMANTIC_MIN_QUALITY_SAMPLES:-20}"
+    CHAT_SEMANTIC_MAX_ERROR_RATE="${CHAT_SEMANTIC_MAX_ERROR_RATE:-0.2}"
+    CHAT_SEMANTIC_MAX_AUTO_DISABLE_TOTAL="${CHAT_SEMANTIC_MAX_AUTO_DISABLE_TOTAL:-0}"
+    CHAT_SEMANTIC_REQUIRE_MIN_SAMPLES="${CHAT_SEMANTIC_REQUIRE_MIN_SAMPLES:-1}"
+    CHAT_SEMANTIC_BASELINE_PATH="${CHAT_SEMANTIC_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/chat_semantic_cache_eval_baseline.json}"
+
+    CHAT_SEMANTIC_DEPS_OK=1
+    if command -v curl >/dev/null 2>&1; then
+      if ! curl -fsS --max-time 2 "$CHAT_SEMANTIC_METRICS_URL" >/dev/null; then
+        echo "  - chat semantic cache eval skipped: metrics endpoint unavailable ($CHAT_SEMANTIC_METRICS_URL)"
+        CHAT_SEMANTIC_DEPS_OK=0
+      fi
+    else
+      echo "  - curl not found; running chat semantic cache eval without dependency precheck"
+    fi
+
+    if [ "$CHAT_SEMANTIC_DEPS_OK" = "1" ]; then
+      CHAT_SEMANTIC_ARGS=(
+        "$ROOT_DIR/scripts/eval/chat_semantic_cache_eval.py"
+        --metrics-url "$CHAT_SEMANTIC_METRICS_URL"
+        --session-id "$CHAT_SEMANTIC_SESSION_ID"
+        --timeout "$CHAT_SEMANTIC_TIMEOUT"
+        --min-quality-samples "$CHAT_SEMANTIC_MIN_QUALITY_SAMPLES"
+        --max-error-rate "$CHAT_SEMANTIC_MAX_ERROR_RATE"
+        --max-auto-disable-total "$CHAT_SEMANTIC_MAX_AUTO_DISABLE_TOTAL"
+        --gate
+      )
+      if [ "$CHAT_SEMANTIC_REQUIRE_MIN_SAMPLES" = "1" ]; then
+        CHAT_SEMANTIC_ARGS+=(--require-min-samples)
+      fi
+      if [ -f "$CHAT_SEMANTIC_BASELINE_PATH" ]; then
+        CHAT_SEMANTIC_ARGS+=(--baseline-report "$CHAT_SEMANTIC_BASELINE_PATH")
+      fi
+      $PYTHON_BIN "${CHAT_SEMANTIC_ARGS[@]}" || exit 1
+    fi
+  else
+    echo "  - python not found; skipping chat semantic cache eval gate"
+  fi
+else
+  echo "  - set RUN_CHAT_SEMANTIC_CACHE_EVAL=1 to enable"
 fi
 
 echo "[8/11] Chat regression suite gate (optional)"
