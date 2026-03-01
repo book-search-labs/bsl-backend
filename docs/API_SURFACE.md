@@ -184,6 +184,7 @@ All structured responses that follow `contracts/*` must include:
 - `session_id` 형식: `QS_CHAT_SESSION_ID_PATTERN` / 길이 `QS_CHAT_SESSION_ID_MAX_LEN` 검증
 - 인증된 사용자 요청은 `session_id`가 사용자 네임스페이스(`u:{user_id}:...`)로 정규화된다. 교차 사용자 세션(`u:{other_user}:...`)은 `403 forbidden`.
 - `QS_CHAT_SEMANTIC_CACHE_ENABLED=1`인 경우에도 semantic cache는 정책/정적 안내 lane(토픽 일치 + 유사도 임계치 충족)에서만 제한적으로 재사용되며, 조회/쓰기성 질의는 차단된다.
+- `client.memory_opt_in`(또는 `client.episode_memory_opt_in`)이 전달되면 사용자 동의 기반 episode memory 사용 여부를 즉시 갱신한다.
 - 제한 위반 시 HTTP 200 + `status=insufficient_evidence`와 `reason_code`(`CHAT_MESSAGE_TOO_LONG`, `CHAT_HISTORY_TOO_LONG`, `CHAT_PAYLOAD_TOO_LARGE` 등)로 복구 힌트를 반환
 
 ### Response
@@ -217,7 +218,7 @@ All structured responses that follow `contracts/*` must include:
 ### Response
 - Contract: `contracts/chat-session-state-response.schema.json`
 - Example: `contracts/examples/chat-session-state-response.sample.json`
-- Optional diagnostics: `session.state_version`, `session.last_turn_id`, `session.llm_call_budget` (`count/limit/limited/window_sec/window_start`), `session.selection_snapshot`, `session.pending_action_snapshot`, `session.semantic_cache` (`enabled/auto_disabled/disable_reason/drift_total/drift_errors/drift_error_rate`)
+- Optional diagnostics: `session.state_version`, `session.last_turn_id`, `session.llm_call_budget` (`count/limit/limited/window_sec/window_start`), `session.selection_snapshot`, `session.pending_action_snapshot`, `session.semantic_cache` (`enabled/auto_disabled/disable_reason/drift_total/drift_errors/drift_error_rate`), `session.episode_memory` (`enabled/opt_in/count/items`)
 
 ## POST `/chat/session/reset`
 **Purpose**: BFF proxy for chat session diagnostics reset.
@@ -234,7 +235,7 @@ All structured responses that follow `contracts/*` must include:
 ### Response
 - Contract: `contracts/chat-session-reset-response.schema.json`
 - Example: `contracts/examples/chat-session-reset-response.sample.json`
-- Optional diagnostics: `session.state_version`, `session.previous_llm_call_count`
+- Optional diagnostics: `session.state_version`, `session.previous_llm_call_count`, `session.previous_episode_memory_count`, `session.episode_memory_cleared`
 
 ## POST `/chat/feedback`
 **Purpose**: user feedback for chat answers (👍/👎 + flags).  
@@ -649,6 +650,7 @@ If supported, the server should treat it as:
 - Example: `contracts/examples/chat-session-state-response.sample.json`
 - `session.unresolved_context`에는 `reason_code` 뿐 아니라 `reason_message`, `next_action`이 포함되어 상담 티켓/재시도 분기 판단에 바로 사용 가능.
 - `session.recommended_action`, `session.recommended_message`는 현재 세션 상태(임계치 포함)를 반영한 최종 권장 후속 액션이다.
+- `session.episode_memory`는 consent 기반 장기 메모리 스냅샷(`opt_in`, `count`, `items`)을 제공한다.
 
 ## POST `/internal/chat/session/reset`
 **Purpose**: Internal chat session diagnostics reset (fallback counter + unresolved context clear).

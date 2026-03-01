@@ -300,6 +300,35 @@ def test_get_chat_session_state_includes_semantic_cache_snapshot(monkeypatch):
     assert semantic["drift_max_error_rate"] == 0.3
 
 
+def test_get_chat_session_state_includes_episode_memory_snapshot(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_EPISODE_MEMORY_ENABLED", "1")
+    chat._CACHE.set_json(
+        chat._episode_memory_consent_key("801"),
+        {"opt_in": True, "updated_at": 1760000000},
+        ttl=300,
+    )
+    chat._CACHE.set_json(
+        chat._episode_memory_data_key("801"),
+        {
+            "entries": [
+                {"fact": "최근 전자책 위주로 보고 있어요", "updated_at": 1760000001, "session_id": "u:801:default"},
+                {"fact": "입문서 선호", "updated_at": 1760000002, "session_id": "u:801:default"},
+            ]
+        },
+        ttl=300,
+    )
+
+    state = chat.get_chat_session_state("u:801:default", "trace_now", "req_now")
+    episode_memory = state.get("episode_memory")
+
+    assert isinstance(episode_memory, dict)
+    assert episode_memory["enabled"] is True
+    assert episode_memory["opt_in"] is True
+    assert episode_memory["count"] == 2
+    assert episode_memory["items"][0] == "최근 전자책 위주로 보고 있어요"
+
+
 def test_get_chat_session_state_includes_selection_and_pending_snapshots(monkeypatch):
     chat._CACHE = CacheClient(None)
     session_id = "u:460:default"
@@ -338,6 +367,79 @@ def test_get_chat_session_state_includes_selection_and_pending_snapshots(monkeyp
     assert state["pending_action_snapshot"]["expires_at"] == 1760000000
 
 
+def test_run_chat_persists_episode_memory_when_opted_in(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_EPISODE_MEMORY_ENABLED", "1")
+
+    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
+        return {
+            "ok": True,
+            "query": "입문용 인문학 책 추천해줘",
+            "canonical_key": "ck:test",
+            "locale": "ko-KR",
+            "selected": [
+                {
+                    "chunk_id": "chunk-1",
+                    "citation_key": "chunk-1",
+                    "doc_id": "doc-1",
+                    "title": "입문 인문학",
+                    "url": "https://example.com/humanity",
+                    "snippet": "snippet",
+                    "score": 0.9,
+                }
+            ],
+        }
+
+    async def fake_call_llm_json(payload, trace_id, request_id):
+        return {"content": "입문 인문학 도서를 추천합니다. [chunk-1]", "citations": ["chunk-1"]}
+
+    async def fake_run_tool_chat(request, trace_id, request_id):
+        return None
+
+    monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
+    monkeypatch.setattr(chat, "_call_llm_json", fake_call_llm_json)
+    monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
+    monkeypatch.setattr(chat, "_semantic_cache_enabled", lambda: False)
+    monkeypatch.setattr(chat, "run_tool_chat", fake_run_tool_chat)
+
+    response = asyncio.run(
+        chat.run_chat(
+            {
+                "message": {"role": "user", "content": "입문용 인문학 책 추천해줘"},
+                "client": {"locale": "ko-KR", "user_id": "901", "memory_opt_in": True},
+            },
+            "trace_test",
+            "req_test",
+        )
+    )
+
+    assert response["status"] == "ok"
+    entries = chat._load_episode_memory_entries("901")
+    assert len(entries) >= 1
+    assert "입문용 인문학 책 추천해줘" in entries[0]["fact"]
+
+
+def test_run_chat_opt_out_clears_episode_memory(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_EPISODE_MEMORY_ENABLED", "1")
+    chat._CACHE.set_json(
+        chat._episode_memory_data_key("902"),
+        {"entries": [{"fact": "기존 메모리", "updated_at": 1760000000, "session_id": "u:902:default"}]},
+        ttl=300,
+    )
+
+    opted = chat._resolve_episode_memory_opt_in(
+        {"client": {"user_id": "902", "memory_opt_in": False}},
+        user_id="902",
+        session_id="u:902:default",
+        trace_id="trace_now",
+        request_id="req_now",
+    )
+
+    assert opted is False
+    assert chat._load_episode_memory_entries("902") == []
+
+
 def test_reset_chat_session_state_appends_action_audit(monkeypatch):
     chat._CACHE = CacheClient(None)
     session_id = "u:302:default"
@@ -357,6 +459,26 @@ def test_reset_chat_session_state_appends_action_audit(monkeypatch):
     assert "previous_llm_call_count" in audit_calls[0]["metadata"]
     assert len(event_calls) == 1
     assert event_calls[0]["event_type"] == "SESSION_RESET"
+
+
+def test_reset_chat_session_state_clears_episode_memory(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_EPISODE_MEMORY_ENABLED", "1")
+    session_id = "u:903:default"
+    chat._CACHE.set_json(
+        chat._episode_memory_data_key("903"),
+        {"entries": [{"fact": "최근 추천은 철학 입문서", "updated_at": 1760000001, "session_id": session_id}]},
+        ttl=300,
+    )
+
+    monkeypatch.setattr(chat, "reset_ticket_session_context", lambda sid: None)
+    monkeypatch.setattr(chat, "get_durable_chat_session_state", lambda sid: {"state_version": 3})
+
+    reset = chat.reset_chat_session_state(session_id, "trace_now", "req_now")
+
+    assert reset["previous_episode_memory_count"] == 1
+    assert reset["episode_memory_cleared"] is True
+    assert chat._load_episode_memory_entries("903") == []
 
 
 def test_reset_chat_session_state_clears_llm_call_rate_budget(monkeypatch):

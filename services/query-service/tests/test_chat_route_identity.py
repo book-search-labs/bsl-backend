@@ -133,6 +133,12 @@ def test_chat_session_state_route_returns_payload(monkeypatch):
                 "drift_error_rate": 0.0,
                 "drift_max_error_rate": 0.2,
             },
+            "episode_memory": {
+                "enabled": True,
+                "opt_in": True,
+                "count": 2,
+                "items": ["전자책 선호", "입문서 선호"],
+            },
             "trace_id": trace_id,
             "request_id": request_id,
         }
@@ -154,6 +160,7 @@ def test_chat_session_state_route_returns_payload(monkeypatch):
     assert data["session"]["llm_call_budget"]["limit"] == 5
     assert data["session"]["semantic_cache"]["enabled"] is True
     assert data["session"]["semantic_cache"]["drift_total"] == 4
+    assert data["session"]["episode_memory"]["count"] == 2
     assert any(name == "chat_session_state_requests_total" and labels.get("result") == "ok" for name, labels in captured)
 
 
@@ -203,6 +210,8 @@ def test_chat_session_reset_route_returns_payload(monkeypatch):
             "previous_fallback_count": 3,
             "previous_unresolved_context": True,
             "previous_llm_call_count": 1,
+            "previous_episode_memory_count": 2,
+            "episode_memory_cleared": True,
             "reset_at_ms": 1760000000,
             "trace_id": trace_id,
             "request_id": request_id,
@@ -220,6 +229,8 @@ def test_chat_session_reset_route_returns_payload(monkeypatch):
     assert data["session"]["reset_applied"] is True
     assert data["session"]["previous_fallback_count"] == 3
     assert data["session"]["previous_llm_call_count"] == 1
+    assert data["session"]["previous_episode_memory_count"] == 2
+    assert data["session"]["episode_memory_cleared"] is True
     assert any(name == "chat_session_reset_requests_total" and labels.get("result") == "ok" for name, labels in captured)
 
 

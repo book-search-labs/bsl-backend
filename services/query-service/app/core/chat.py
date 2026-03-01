@@ -24,6 +24,14 @@ from app.core.rag_candidates import retrieve_candidates
 from app.core.rewrite import run_rewrite
 
 _CACHE = get_cache()
+_EPISODE_EMAIL_RE = re.compile(r"\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b", flags=re.IGNORECASE)
+_EPISODE_PHONE_RE = re.compile(r"\b(?:\+?82[-\s]?)?0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4}\b")
+_EPISODE_PAYMENT_RE = re.compile(r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{3,4}\b")
+_EPISODE_ADDRESS_RE = re.compile(
+    r"(?:[가-힣A-Za-z0-9]+(?:시|도|군|구)\s+[가-힣A-Za-z0-9]+\s*(?:로|길)\s*\d+)",
+    flags=re.IGNORECASE,
+)
+_EPISODE_ORDER_REF_RE = re.compile(r"\b(?:ORD\d{6,}|STK\d{6,}|\d{8,})\b", flags=re.IGNORECASE)
 
 
 def _llm_provider_cooldown_sec() -> int:
@@ -1003,6 +1011,30 @@ def _unresolved_context_ttl_sec() -> int:
     return max(300, int(os.getenv("QS_CHAT_UNRESOLVED_CONTEXT_TTL_SEC", "1800")))
 
 
+def _episode_memory_enabled() -> bool:
+    return str(os.getenv("QS_CHAT_EPISODE_MEMORY_ENABLED", "1")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _episode_memory_default_opt_in() -> bool:
+    return str(os.getenv("QS_CHAT_EPISODE_MEMORY_DEFAULT_OPT_IN", "0")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _episode_memory_ttl_sec() -> int:
+    return max(300, int(os.getenv("QS_CHAT_EPISODE_MEMORY_TTL_SEC", "2592000")))
+
+
+def _episode_memory_max_items() -> int:
+    return max(1, int(os.getenv("QS_CHAT_EPISODE_MEMORY_MAX_ITEMS", "5")))
+
+
+def _episode_memory_prompt_items() -> int:
+    return max(1, int(os.getenv("QS_CHAT_EPISODE_MEMORY_PROMPT_ITEMS", "3")))
+
+
+def _episode_memory_max_fact_len() -> int:
+    return max(20, int(os.getenv("QS_CHAT_EPISODE_MEMORY_MAX_FACT_LEN", "120")))
+
+
 def _extract_citations_from_text(text: str) -> List[str]:
     matches = re.findall(r"\[([a-zA-Z0-9_\-:#]+)\]", text or "")
     seen: set[str] = set()
@@ -1724,6 +1756,248 @@ def _session_user_from_session_id(session_id: Optional[str]) -> Optional[str]:
     return user_id or None
 
 
+def _episode_memory_consent_key(user_id: str) -> str:
+    return f"chat:memory:consent:{user_id}"
+
+
+def _episode_memory_data_key(user_id: str) -> str:
+    return f"chat:memory:episode:{user_id}"
+
+
+def _parse_optional_bool(raw: Any) -> Optional[bool]:
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, str):
+        normalized = raw.strip().lower()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off"}:
+            return False
+    return None
+
+
+def _extract_episode_memory_opt_in_override(request: Dict[str, Any]) -> Optional[bool]:
+    client = request.get("client") if isinstance(request.get("client"), dict) else {}
+    if not isinstance(client, dict):
+        return None
+    for key in ("memory_opt_in", "episode_memory_opt_in", "memory_consent"):
+        if key not in client:
+            continue
+        parsed = _parse_optional_bool(client.get(key))
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _redact_episode_text(text: str) -> str:
+    redacted = str(text or "")
+    redacted = _EPISODE_EMAIL_RE.sub("[REDACTED:EMAIL]", redacted)
+    redacted = _EPISODE_PHONE_RE.sub("[REDACTED:PHONE]", redacted)
+    redacted = _EPISODE_PAYMENT_RE.sub("[REDACTED:PAYMENT_ID]", redacted)
+    redacted = _EPISODE_ADDRESS_RE.sub("[REDACTED:ADDRESS]", redacted)
+    return redacted
+
+
+def _sanitize_episode_fact(text: str) -> str:
+    normalized = _query_preview(str(text or ""), max_len=_episode_memory_max_fact_len())
+    if not normalized:
+        return ""
+    if _EPISODE_ORDER_REF_RE.search(normalized):
+        return ""
+    redacted = _redact_episode_text(normalized)
+    if "[REDACTED:" in redacted:
+        return ""
+    return redacted
+
+
+def _load_episode_memory_entries(user_id: Optional[str]) -> List[Dict[str, Any]]:
+    if not _episode_memory_enabled():
+        return []
+    if not isinstance(user_id, str) or not user_id.strip():
+        return []
+    cached = _CACHE.get_json(_episode_memory_data_key(user_id.strip()))
+    entries = cached.get("entries") if isinstance(cached, dict) and isinstance(cached.get("entries"), list) else []
+    result: List[Dict[str, Any]] = []
+    for item in entries:
+        if not isinstance(item, dict):
+            continue
+        fact = str(item.get("fact") or "").strip()
+        if not fact:
+            continue
+        result.append(
+            {
+                "fact": fact,
+                "updated_at": int(item.get("updated_at") or 0),
+                "session_id": str(item.get("session_id") or ""),
+            }
+        )
+        if len(result) >= _episode_memory_max_items():
+            break
+    return result
+
+
+def _current_episode_memory_opt_in(user_id: Optional[str]) -> bool:
+    if not _episode_memory_enabled():
+        return False
+    if not isinstance(user_id, str) or not user_id.strip():
+        return False
+    cached = _CACHE.get_json(_episode_memory_consent_key(user_id.strip()))
+    if isinstance(cached, dict) and isinstance(cached.get("opt_in"), bool):
+        return bool(cached.get("opt_in"))
+    return _episode_memory_default_opt_in()
+
+
+def _resolve_episode_memory_opt_in(
+    request: Dict[str, Any],
+    *,
+    user_id: Optional[str],
+    session_id: str,
+    trace_id: str,
+    request_id: str,
+) -> bool:
+    if not _episode_memory_enabled():
+        metrics.inc("chat_memory_opt_in_total", {"result": "disabled", "source": "config"})
+        return False
+    if not isinstance(user_id, str) or not user_id.strip():
+        metrics.inc("chat_memory_opt_in_total", {"result": "missing_user", "source": "request"})
+        return False
+    normalized_user = user_id.strip()
+    override = _extract_episode_memory_opt_in_override(request)
+    if override is None:
+        opted_in = _current_episode_memory_opt_in(normalized_user)
+        metrics.inc(
+            "chat_memory_opt_in_total",
+            {"result": "opt_in" if opted_in else "opt_out", "source": "cached_or_default"},
+        )
+        return opted_in
+
+    ttl_sec = _episode_memory_ttl_sec()
+    _CACHE.set_json(
+        _episode_memory_consent_key(normalized_user),
+        {"opt_in": bool(override), "updated_at": int(time.time()), "request_id": request_id},
+        ttl=ttl_sec,
+    )
+    if not override:
+        _CACHE.set_json(_episode_memory_data_key(normalized_user), {"entries": [], "cleared": True}, ttl=1)
+    _append_action_audit_safe(
+        session_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        action_type="EPISODE_MEMORY_CONSENT",
+        reason_code="MEMORY_OPT_IN" if override else "MEMORY_OPT_OUT",
+        metadata={"user_id": normalized_user, "opt_in": bool(override)},
+    )
+    metrics.inc(
+        "chat_memory_opt_in_total",
+        {"result": "opt_in" if override else "opt_out", "source": "request"},
+    )
+    return bool(override)
+
+
+def _episode_memory_facts(user_id: Optional[str], *, opted_in: bool) -> List[str]:
+    if not _episode_memory_enabled():
+        metrics.inc("chat_memory_retrieval_total", {"result": "disabled"})
+        return []
+    if not isinstance(user_id, str) or not user_id.strip():
+        metrics.inc("chat_memory_retrieval_total", {"result": "no_user"})
+        return []
+    if not opted_in:
+        metrics.inc("chat_memory_retrieval_total", {"result": "no_consent"})
+        return []
+    entries = _load_episode_memory_entries(user_id)
+    if not entries:
+        metrics.inc("chat_memory_retrieval_total", {"result": "miss"})
+        return []
+    facts = [str(item.get("fact") or "").strip() for item in entries if str(item.get("fact") or "").strip()]
+    if not facts:
+        metrics.inc("chat_memory_retrieval_total", {"result": "miss"})
+        return []
+    metrics.inc("chat_memory_retrieval_total", {"result": "hit"})
+    return facts[: _episode_memory_prompt_items()]
+
+
+def _remember_episode_memory_fact(
+    *,
+    user_id: Optional[str],
+    session_id: str,
+    query_text: str,
+    trace_id: str,
+    request_id: str,
+    opted_in: bool,
+) -> None:
+    if not _episode_memory_enabled():
+        return
+    if not isinstance(user_id, str) or not user_id.strip():
+        return
+    if not opted_in:
+        return
+    fact = _sanitize_episode_fact(query_text)
+    if not fact:
+        metrics.inc("chat_memory_store_total", {"result": "filtered"})
+        return
+    normalized_user = user_id.strip()
+    now_ts = int(time.time())
+    entries = _load_episode_memory_entries(normalized_user)
+    next_entries: List[Dict[str, Any]] = [{"fact": fact, "updated_at": now_ts, "session_id": session_id}]
+    for item in entries:
+        item_fact = str(item.get("fact") or "").strip()
+        if not item_fact or item_fact == fact:
+            continue
+        next_entries.append(
+            {
+                "fact": item_fact,
+                "updated_at": int(item.get("updated_at") or 0),
+                "session_id": str(item.get("session_id") or ""),
+            }
+        )
+        if len(next_entries) >= _episode_memory_max_items():
+            break
+    _CACHE.set_json(
+        _episode_memory_data_key(normalized_user),
+        {"entries": next_entries},
+        ttl=_episode_memory_ttl_sec(),
+    )
+    summary = " | ".join([str(item.get("fact") or "") for item in next_entries[: _episode_memory_max_items()] if str(item.get("fact") or "")])
+    _write_durable_session_state(
+        session_id,
+        user_id=normalized_user,
+        trace_id=trace_id,
+        request_id=request_id,
+        summary_short=summary,
+        summary_short_set=True,
+    )
+    metrics.inc("chat_memory_store_total", {"result": "ok"})
+
+
+def _delete_episode_memory(user_id: Optional[str]) -> int:
+    if not _episode_memory_enabled():
+        metrics.inc("chat_memory_delete_total", {"result": "disabled"})
+        return 0
+    if not isinstance(user_id, str) or not user_id.strip():
+        metrics.inc("chat_memory_delete_total", {"result": "no_user"})
+        return 0
+    normalized_user = user_id.strip()
+    entries = _load_episode_memory_entries(normalized_user)
+    _CACHE.set_json(_episode_memory_data_key(normalized_user), {"entries": [], "cleared": True}, ttl=1)
+    metrics.inc("chat_memory_delete_total", {"result": "ok"})
+    return len(entries)
+
+
+def _episode_memory_snapshot(user_id: Optional[str]) -> Optional[Dict[str, Any]]:
+    if not _episode_memory_enabled():
+        return {"enabled": False, "opt_in": False, "count": 0, "items": []}
+    if not isinstance(user_id, str) or not user_id.strip():
+        return None
+    opted_in = _current_episode_memory_opt_in(user_id)
+    entries = _load_episode_memory_entries(user_id) if opted_in else []
+    return {
+        "enabled": True,
+        "opt_in": bool(opted_in),
+        "count": len(entries),
+        "items": [str(item.get("fact") or "") for item in entries[: _episode_memory_prompt_items()] if str(item.get("fact") or "")],
+    }
+
+
 def _query_fingerprint(query: str) -> str:
     normalized = (query or "").strip()
     if not normalized:
@@ -1740,6 +2014,8 @@ def _write_durable_session_state(
     fallback_count: Optional[int] = None,
     unresolved_context: Any = None,
     unresolved_context_set: bool = False,
+    summary_short: Any = None,
+    summary_short_set: bool = False,
 ) -> Optional[Dict[str, Any]]:
     if not session_id:
         return None
@@ -1747,6 +2023,8 @@ def _write_durable_session_state(
     kwargs: Dict[str, Any] = {}
     if unresolved_context_set:
         kwargs["unresolved_context"] = unresolved_context
+    if summary_short_set:
+        kwargs["summary_short"] = summary_short
     return upsert_session_state(
         session_id,
         user_id=durable_user_id,
@@ -2066,8 +2344,30 @@ async def _retrieve_with_optional_rewrite(
     return trace, rewrite_meta
 
 
-def _build_llm_payload(request: Dict[str, Any], trace_id: str, request_id: str, query: str, chunks: List[dict[str, Any]]) -> Dict[str, Any]:
+def _build_llm_payload(
+    request: Dict[str, Any],
+    trace_id: str,
+    request_id: str,
+    query: str,
+    chunks: List[dict[str, Any]],
+    *,
+    memory_facts: Optional[List[str]] = None,
+) -> Dict[str, Any]:
     messages: List[dict[str, Any]] = [{"role": "system", "content": "Answer using provided sources and cite them."}]
+    if isinstance(memory_facts, list):
+        facts = [str(item).strip() for item in memory_facts if isinstance(item, str) and str(item).strip()]
+        if facts:
+            memory_lines = "\n".join([f"- {item}" for item in facts[: _episode_memory_prompt_items()]])
+            messages.append(
+                {
+                    "role": "system",
+                    "content": (
+                        "Use these user-approved long-term memory facts only when relevant.\n"
+                        "Do not infer sensitive details.\n"
+                        f"{memory_lines}"
+                    ),
+                }
+            )
     history = request.get("history") or []
     if isinstance(history, list):
         for item in history[-6:]:
@@ -2350,6 +2650,14 @@ async def _run_chat_impl(
     user_id = _extract_user_id(request)
     session_id = _resolve_session_id(request, user_id)
     query_text = _extract_query_text(request)
+    memory_opt_in = _resolve_episode_memory_opt_in(
+        request,
+        user_id=user_id,
+        session_id=session_id,
+        trace_id=trace_id,
+        request_id=request_id,
+    )
+    memory_facts = _episode_memory_facts(user_id, opted_in=memory_opt_in)
     _append_turn_event_safe(
         session_id,
         request_id,
@@ -2381,6 +2689,15 @@ async def _run_chat_impl(
     if tool_response is not None:
         _reset_fallback_count(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
         _clear_unresolved_context(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
+        if str(tool_response.get("status") or "").strip().lower() == "ok":
+            _remember_episode_memory_fact(
+                user_id=user_id,
+                session_id=session_id,
+                query_text=query_text,
+                trace_id=trace_id,
+                request_id=request_id,
+                opted_in=memory_opt_in,
+            )
         _append_turn_event_safe(
             session_id,
             request_id,
@@ -2419,6 +2736,14 @@ async def _run_chat_impl(
         if isinstance(cached, dict) and cached.get("response"):
             _reset_fallback_count(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
             _clear_unresolved_context(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
+            _remember_episode_memory_fact(
+                user_id=user_id,
+                session_id=session_id,
+                query_text=query_text,
+                trace_id=trace_id,
+                request_id=request_id,
+                opted_in=memory_opt_in,
+            )
             _append_turn_event_safe(
                 session_id,
                 request_id,
@@ -2436,6 +2761,14 @@ async def _run_chat_impl(
         semantic_citations = [str(item) for item in (semantic_cached.get("citations") or []) if isinstance(item, str)]
         _reset_fallback_count(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
         _clear_unresolved_context(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
+        _remember_episode_memory_fact(
+            user_id=user_id,
+            session_id=session_id,
+            query_text=query_text,
+            trace_id=trace_id,
+            request_id=request_id,
+            opted_in=memory_opt_in,
+        )
         _append_turn_event_safe(
             session_id,
             request_id,
@@ -2449,7 +2782,14 @@ async def _run_chat_impl(
         metrics.inc("chat_requests_total", {"decision": "semantic_cache_hit"})
         return semantic_cached
 
-    payload = _build_llm_payload(request, trace_id, request_id, query, selected)
+    payload = _build_llm_payload(
+        request,
+        trace_id,
+        request_id,
+        query,
+        selected,
+        memory_facts=memory_facts,
+    )
     admission_reason = _admission_block_reason(payload)
     if admission_reason:
         metrics.inc("chat_admission_block_total", {"reason": admission_reason, "mode": "json"})
@@ -2613,6 +2953,14 @@ async def _run_chat_impl(
 
     _reset_fallback_count(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
     _clear_unresolved_context(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
+    _remember_episode_memory_fact(
+        user_id=user_id,
+        session_id=session_id,
+        query_text=query_text,
+        trace_id=trace_id,
+        request_id=request_id,
+        opted_in=memory_opt_in,
+    )
     _append_turn_event_safe(
         session_id,
         request_id,
@@ -3693,6 +4041,7 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
             }
     llm_budget_snapshot = _load_llm_call_budget_snapshot(session_id, _session_user_from_session_id(session_id))
     semantic_snapshot = _semantic_cache_snapshot()
+    episode_snapshot = _episode_memory_snapshot(_session_user_from_session_id(session_id))
     return {
         "session_id": session_id,
         "state_version": int(durable_state.get("state_version")) if isinstance(durable_state, dict) and isinstance(durable_state.get("state_version"), int) else None,
@@ -3707,6 +4056,7 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
         "pending_action_snapshot": pending_action_snapshot,
         "llm_call_budget": llm_budget_snapshot,
         "semantic_cache": semantic_snapshot,
+        "episode_memory": episode_snapshot,
         "trace_id": trace_id,
         "request_id": request_id,
     }
@@ -3719,9 +4069,12 @@ def reset_chat_session_state(session_id: str, trace_id: str, request_id: str) ->
     previous_fallback_count = _load_fallback_count(session_id)
     previous_unresolved_context = isinstance(_load_unresolved_context(session_id), dict)
     previous_llm_call_count = _load_llm_call_budget_count(session_id, reset_user_id)
+    previous_episode_memory_count = len(_load_episode_memory_entries(reset_user_id))
     _reset_fallback_count(session_id, trace_id=trace_id, request_id=request_id)
     _clear_unresolved_context(session_id, trace_id=trace_id, request_id=request_id)
     _clear_llm_call_budget(session_id, reset_user_id)
+    deleted_episode_memory_count = _delete_episode_memory(reset_user_id)
+    episode_memory_cleared = bool(reset_user_id)
     _append_action_audit_safe(
         session_id,
         trace_id=trace_id,
@@ -3732,6 +4085,9 @@ def reset_chat_session_state(session_id: str, trace_id: str, request_id: str) ->
             "previous_fallback_count": previous_fallback_count,
             "previous_unresolved_context": previous_unresolved_context,
             "previous_llm_call_count": previous_llm_call_count,
+            "previous_episode_memory_count": previous_episode_memory_count,
+            "deleted_episode_memory_count": deleted_episode_memory_count,
+            "episode_memory_cleared": episode_memory_cleared,
         },
     )
     _append_turn_event_safe(
@@ -3745,6 +4101,9 @@ def reset_chat_session_state(session_id: str, trace_id: str, request_id: str) ->
             "previous_fallback_count": previous_fallback_count,
             "previous_unresolved_context": previous_unresolved_context,
             "previous_llm_call_count": previous_llm_call_count,
+            "previous_episode_memory_count": previous_episode_memory_count,
+            "deleted_episode_memory_count": deleted_episode_memory_count,
+            "episode_memory_cleared": episode_memory_cleared,
         },
     )
     reset_ticket_session_context(session_id)
@@ -3755,6 +4114,8 @@ def reset_chat_session_state(session_id: str, trace_id: str, request_id: str) ->
         "previous_fallback_count": previous_fallback_count,
         "previous_unresolved_context": previous_unresolved_context,
         "previous_llm_call_count": previous_llm_call_count,
+        "previous_episode_memory_count": previous_episode_memory_count,
+        "episode_memory_cleared": episode_memory_cleared,
         "state_version": int(durable_state.get("state_version")) if isinstance(durable_state, dict) and isinstance(durable_state.get("state_version"), int) else None,
         "reset_at_ms": int(time.time() * 1000),
         "trace_id": trace_id,

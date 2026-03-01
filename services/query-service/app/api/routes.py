@@ -384,6 +384,7 @@ async def chat_session_state(request: Request):
             "pending_action_snapshot": snapshot.get("pending_action_snapshot"),
             "llm_call_budget": snapshot.get("llm_call_budget"),
             "semantic_cache": snapshot.get("semantic_cache"),
+            "episode_memory": snapshot.get("episode_memory"),
         },
     }
     return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
@@ -453,6 +454,8 @@ async def chat_session_reset(request: Request):
             "previous_fallback_count": snapshot["previous_fallback_count"],
             "previous_unresolved_context": snapshot["previous_unresolved_context"],
             "previous_llm_call_count": snapshot.get("previous_llm_call_count"),
+            "previous_episode_memory_count": snapshot.get("previous_episode_memory_count"),
+            "episode_memory_cleared": snapshot.get("episode_memory_cleared"),
             "state_version": snapshot.get("state_version"),
             "reset_at_ms": snapshot["reset_at_ms"],
         },
