@@ -112,3 +112,17 @@
 - U-0156 chat omnichannel handoff + notification UX
 - A-0156 chat supervisor copilot + coaching loop console
 - I-0366 chat policy distribution + realtime config control plane
+
+## Chatbot 인터랙션 Agent 전환 (Phase 18, Priority Bundle)
+### P0 (안전/정합성/핵심 상태)
+- B-0601 chat durable state store + turn/audit ledger v1
+- B-0602 chat selection memory + reference resolution v1
+- B-0603 chat policy engine route decision v1
+- B-0604 chat action protocol schema + idempotency v1
+- B-0605 chat confirm FSM v2 for sensitive actions
+- B-0608 chat eval harness (state transition regression)
+- B-0611 chat authz gate v1 (tool/write)
+- B-0612 chat PII redaction + retention v1
+- B-0613 chat tool reliability v1 (timeout/retry/circuit breaker)
+- B-0614 chat LLM budget guard + admission v1
+- B-0620 book entity normalization v1
