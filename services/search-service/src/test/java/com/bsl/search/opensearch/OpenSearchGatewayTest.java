@@ -73,10 +73,36 @@ class OpenSearchGatewayTest {
                 assertThat(hasWildcard).isFalse();
                 assertThat(boolNode.path("must").toString()).contains("title_ko");
                 assertThat(boolNode.path("must").toString()).contains("series_name");
+                assertThat(boolNode.path("must").toString()).contains("author_names_ko.exact");
             })
             .andRespond(withSuccess("{\"hits\":{\"hits\":[]}}", MediaType.APPLICATION_JSON));
 
-        gateway.searchLexicalDetailed("영어교육", 10, null, null, null, null, null, null, false);
+        gateway.searchLexicalDetailed("문화", 10, null, null, null, null, null, null, false);
+        server.verify();
+    }
+
+    @Test
+    void singleTokenHangulNameDoesNotForceKoreanLanguageFilter() throws Exception {
+        RestTemplate restTemplate = new RestTemplate();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        OpenSearchGateway gateway = new OpenSearchGateway(restTemplate, objectMapper, properties());
+
+        server.expect(requestTo("http://localhost:9200/books_doc_read/_search"))
+            .andExpect(method(POST))
+            .andExpect(request -> {
+                String body = ((MockClientHttpRequest) request).getBodyAsString(StandardCharsets.UTF_8);
+                JsonNode root = objectMapper.readTree(body);
+                JsonNode boolNode = root.path("query").path("bool");
+                JsonNode filter = boolNode.path("filter");
+
+                assertThat(filter.isArray()).isTrue();
+                assertThat(filter.toString()).contains("\"is_hidden\":false");
+                assertThat(filter.toString()).doesNotContain("\"language_code\":\"http://id.loc.gov/vocabulary/languages/kor\"");
+                assertThat(boolNode.path("must").toString()).contains("author_names_ko.exact");
+            })
+            .andRespond(withSuccess("{\"hits\":{\"hits\":[]}}", MediaType.APPLICATION_JSON));
+
+        gateway.searchLexicalDetailed("김혜경", 10, null, null, null, null, null, null, false);
         server.verify();
     }
 

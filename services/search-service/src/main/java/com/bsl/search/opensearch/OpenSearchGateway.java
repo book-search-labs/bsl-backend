@@ -126,7 +126,7 @@ public class OpenSearchGateway {
         List<Object> filterClauses = buildBooleanFilterClauses(filters, true);
         if (isSingleTokenQuery(trimmed)) {
             boolQuery.put("must", List.of(buildShortQueryTitleSeriesConstraint(trimmed)));
-            if (containsHangul(trimmed)) {
+            if (shouldApplyKoreanLanguageHardFilter(trimmed)) {
                 filterClauses.add(buildKoreanLanguageFilterClause());
             }
         }
@@ -296,6 +296,14 @@ public class OpenSearchGateway {
         return false;
     }
 
+    private boolean shouldApplyKoreanLanguageHardFilter(String queryText) {
+        if (!containsHangul(queryText)) {
+            return false;
+        }
+        String normalized = queryText.trim();
+        return normalized.length() <= 2;
+    }
+
     private Map<String, Object> buildShortQueryTitleSeriesConstraint(String query) {
         List<Map<String, Object>> should = new ArrayList<>();
         should.add(Map.of("match", Map.of("title_ko", Map.of("query", query, "boost", 10.0d))));
@@ -304,6 +312,10 @@ public class OpenSearchGateway {
         should.add(Map.of("match", Map.of("title_en.compact", Map.of("query", query, "boost", 5.0d))));
         should.add(Map.of("match", Map.of("series_name", Map.of("query", query, "boost", 4.0d))));
         should.add(Map.of("match", Map.of("series_name.compact", Map.of("query", query, "boost", 3.0d))));
+        should.add(Map.of("term", Map.of("author_names_ko.exact", Map.of("value", query, "boost", 22.0d))));
+        should.add(Map.of("term", Map.of("author_names_en.exact", Map.of("value", query, "boost", 14.0d))));
+        should.add(Map.of("match", Map.of("author_names_ko", Map.of("query", query, "boost", 4.0d))));
+        should.add(Map.of("match", Map.of("author_names_ko.reading", Map.of("query", query, "boost", 1.4d))));
         should.add(
             Map.of(
                 "multi_match",
