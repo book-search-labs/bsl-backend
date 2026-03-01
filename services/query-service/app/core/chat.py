@@ -1638,6 +1638,8 @@ def _fallback(
             "source": "rag",
         },
     )
+    metrics.inc("chat_reason_code_total", {"source": "rag", "reason_code": reason_code})
+    metrics.inc("chat_trace_link_total", {"stage": "rag_fallback"})
     if escalated:
         metrics.inc("chat_fallback_escalated_total", {"reason": reason_code})
     _append_turn_event_safe(

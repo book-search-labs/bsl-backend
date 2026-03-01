@@ -1147,6 +1147,8 @@ def _build_response(
             "source": "tool",
         },
     )
+    metrics.inc("chat_reason_code_total", {"source": "tool", "reason_code": resolved_reason_code})
+    metrics.inc("chat_trace_link_total", {"stage": "tool_response"})
     response = {
         "version": "v1",
         "trace_id": trace_id,

@@ -2466,8 +2466,12 @@ def test_build_response_emits_recovery_hint_metric():
         "chat_error_recovery_hint_total{next_action=PROVIDE_REQUIRED_INFO,"
         "reason_code=MISSING_INPUT,source=tool}"
     )
+    reason_key = "chat_reason_code_total{reason_code=MISSING_INPUT,source=tool}"
+    trace_key = "chat_trace_link_total{stage=tool_response}"
     assert response["next_action"] == "PROVIDE_REQUIRED_INFO"
     assert after.get(key, 0) >= before.get(key, 0) + 1
+    assert after.get(reason_key, 0) >= before.get(reason_key, 0) + 1
+    assert after.get(trace_key, 0) >= before.get(trace_key, 0) + 1
 
 
 def test_build_response_repairs_success_claim_without_evidence():

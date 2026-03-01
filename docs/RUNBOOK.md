@@ -98,6 +98,8 @@ curl -s -XPOST http://localhost:8088/chat \
 - `chat_provider_health_penalty{provider}`
 - `chat_provider_cost_per_1k{provider}`
 - `chat_admission_block_total{reason,mode}`
+- `chat_reason_code_total{source,reason_code}`
+- `chat_trace_link_total{stage}`
 - `chat_llm_call_budget_total{mode,result}`
 - `chat_llm_call_rate_utilization{mode}`
 - `chat_llm_prompt_tokens_estimate{mode}`

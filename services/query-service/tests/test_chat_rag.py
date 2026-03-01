@@ -1532,7 +1532,11 @@ def test_fallback_emits_recovery_hint_metric(monkeypatch):
         f"chat_error_recovery_hint_total{{next_action={response['next_action']},"
         "reason_code=PROVIDER_TIMEOUT,source=rag}"
     )
+    reason_key = "chat_reason_code_total{reason_code=PROVIDER_TIMEOUT,source=rag}"
+    trace_key = "chat_trace_link_total{stage=rag_fallback}"
     assert after.get(expected_key, 0) >= before.get(expected_key, 0) + 1
+    assert after.get(reason_key, 0) >= before.get(reason_key, 0) + 1
+    assert after.get(trace_key, 0) >= before.get(trace_key, 0) + 1
 
 
 def test_run_chat_blocks_when_citation_coverage_is_too_low(monkeypatch):
