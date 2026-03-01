@@ -214,7 +214,7 @@ All structured responses that follow `contracts/*` must include:
 ### Response
 - Contract: `contracts/chat-session-state-response.schema.json`
 - Example: `contracts/examples/chat-session-state-response.sample.json`
-- Optional diagnostics: `session.state_version`, `session.last_turn_id`, `session.llm_call_budget` (`count/limit/limited/window_sec/window_start`)
+- Optional diagnostics: `session.state_version`, `session.last_turn_id`, `session.llm_call_budget` (`count/limit/limited/window_sec/window_start`), `session.selection_snapshot`, `session.pending_action_snapshot`
 
 ## POST `/chat/session/reset`
 **Purpose**: BFF proxy for chat session diagnostics reset.
