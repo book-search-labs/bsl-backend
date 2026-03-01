@@ -362,6 +362,11 @@ def test_chat_session_state_route_returns_payload(monkeypatch):
                 "block_rate": 0.25,
                 "min_samples": 20,
                 "max_block_rate": 0.4,
+                "diversity_percent": 70,
+                "auto_disable_sec": 600,
+                "quality_min_candidates": 2,
+                "quality_min_diversity": 2,
+                "config_overrides": {"enabled": True, "diversity_percent": 70},
             },
             "trace_id": trace_id,
             "request_id": request_id,
@@ -386,6 +391,9 @@ def test_chat_session_state_route_returns_payload(monkeypatch):
     assert data["session"]["semantic_cache"]["drift_total"] == 4
     assert data["session"]["episode_memory"]["count"] == 2
     assert data["session"]["recommend_experiment"]["block_rate"] == 0.25
+    assert data["session"]["recommend_experiment"]["diversity_percent"] == 70
+    assert data["session"]["recommend_experiment"]["quality_min_candidates"] == 2
+    assert data["session"]["recommend_experiment"]["config_overrides"]["enabled"] is True
     assert any(name == "chat_session_state_requests_total" and labels.get("result") == "ok" for name, labels in captured)
 
 

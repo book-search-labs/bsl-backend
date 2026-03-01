@@ -90,9 +90,118 @@
             }
           },
           "additionalProperties": true
+        },
+        "recommend_experiment": {
+          "$ref": "#/$defs/recommendExperimentSnapshot"
         }
       },
       "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "recommendExperimentSnapshot": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "auto_disabled",
+        "total",
+        "blocked",
+        "block_rate",
+        "min_samples",
+        "max_block_rate"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "auto_disabled": {
+          "type": "boolean"
+        },
+        "disabled_until": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "disable_reason": {
+          "type": ["string", "null"]
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "block_rate": {
+          "type": "number",
+          "minimum": 0
+        },
+        "min_samples": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_block_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "diversity_percent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "auto_disable_sec": {
+          "type": "integer",
+          "minimum": 60
+        },
+        "quality_min_candidates": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "quality_min_diversity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "config_overrides": {
+          "$ref": "#/$defs/configOverrides"
+        }
+      },
+      "additionalProperties": true
+    },
+    "configOverrides": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "diversity_percent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "min_samples": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_block_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "auto_disable_sec": {
+          "type": "integer",
+          "minimum": 60
+        },
+        "quality_min_candidates": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "quality_min_diversity": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": true

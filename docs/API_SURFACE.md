@@ -218,7 +218,7 @@ All structured responses that follow `contracts/*` must include:
 ### Response
 - Contract: `contracts/chat-session-state-response.schema.json`
 - Example: `contracts/examples/chat-session-state-response.sample.json`
-- Optional diagnostics: `session.state_version`, `session.last_turn_id`, `session.llm_call_budget` (`count/limit/limited/window_sec/window_start`), `session.selection_snapshot`, `session.pending_action_snapshot`, `session.semantic_cache` (`enabled/auto_disabled/disable_reason/drift_total/drift_errors/drift_error_rate`), `session.episode_memory` (`enabled/opt_in/count/items`), `session.recommend_experiment` (`enabled/auto_disabled/block_rate/total/blocked`)
+- Optional diagnostics: `session.state_version`, `session.last_turn_id`, `session.llm_call_budget` (`count/limit/limited/window_sec/window_start`), `session.selection_snapshot`, `session.pending_action_snapshot`, `session.semantic_cache` (`enabled/auto_disabled/disable_reason/drift_total/drift_errors/drift_error_rate`), `session.episode_memory` (`enabled/opt_in/count/items`), `session.recommend_experiment` (`enabled/auto_disabled/block_rate/total/blocked/diversity_percent/quality_min_candidates/config_overrides`)
 
 ## POST `/chat/session/reset`
 **Purpose**: BFF proxy for chat session diagnostics reset.
@@ -723,7 +723,7 @@ If supported, the server should treat it as:
 - `session.unresolved_context`에는 `reason_code` 뿐 아니라 `reason_message`, `next_action`이 포함되어 상담 티켓/재시도 분기 판단에 바로 사용 가능.
 - `session.recommended_action`, `session.recommended_message`는 현재 세션 상태(임계치 포함)를 반영한 최종 권장 후속 액션이다.
 - `session.episode_memory`는 consent 기반 장기 메모리 스냅샷(`opt_in`, `count`, `items`)을 제공한다.
-- `session.recommend_experiment`는 추천 실험 상태(자동 비활성화 여부, 누적 block rate)를 제공한다.
+- `session.recommend_experiment`는 추천 실험 상태(자동 비활성화 여부, 누적 block rate)와 runtime 설정(`diversity_percent`, `quality_min_candidates`, `config_overrides`)을 함께 제공한다.
 
 ## POST `/internal/chat/session/reset`
 **Purpose**: Internal chat session diagnostics reset (fallback counter + unresolved context clear).
