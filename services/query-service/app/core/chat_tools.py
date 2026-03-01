@@ -1896,7 +1896,44 @@ def _handle_order_policy_guide(trace_id: str, request_id: str) -> dict[str, Any]
     )
 
 
-def _format_recommendation_lines(items: list[dict[str, Any]], *, max_items: int = 5) -> list[str]:
+def _build_recommendation_reason(
+    item: dict[str, Any],
+    *,
+    seed_book: dict[str, Any] | None = None,
+    query_context: str = "",
+) -> str:
+    normalized_context = _normalize_text(query_context)
+    score = item.get("score")
+    if "더 쉬운" in normalized_context or "쉬운 버전" in normalized_context:
+        title = str(item.get("title") or "").lower()
+        easy_tokens = ["입문", "기초", "초급", "easy", "beginner", "첫걸음"]
+        if any(token in title for token in easy_tokens):
+            return "난이도 완화 요청에 맞는 입문/기초 성격의 후보입니다."
+        return "난이도 완화 요청을 반영해 비교적 쉬운 후보를 우선 반영했습니다."
+
+    if "다른 출판사" in normalized_context:
+        candidate_publisher = str(item.get("publisher") or "").strip()
+        seed_publisher = str((seed_book or {}).get("publisher") or "").strip()
+        if candidate_publisher and seed_publisher and candidate_publisher != seed_publisher:
+            return f"선택 도서와 다른 출판사({candidate_publisher}) 후보입니다."
+        return "출판사 다양화 요청을 반영한 대체 후보입니다."
+
+    if isinstance(score, (int, float)):
+        numeric = float(score)
+        if numeric >= 0.9:
+            return "시드 도서와 주제/키워드 유사도가 높습니다."
+        if numeric >= 0.75:
+            return "시드 도서와 유사 주제를 다루는 후보입니다."
+    return "시드 기준으로 장르/주제를 확장한 후보입니다."
+
+
+def _format_recommendation_lines(
+    items: list[dict[str, Any]],
+    *,
+    max_items: int = 5,
+    seed_book: dict[str, Any] | None = None,
+    query_context: str = "",
+) -> list[str]:
     lines: list[str] = []
     for idx, item in enumerate(items[:max_items], start=1):
         if not isinstance(item, dict):
@@ -1912,7 +1949,8 @@ def _format_recommendation_lines(items: list[dict[str, Any]], *, max_items: int 
             score_text = f" · 유사도 {float(score):.2f}"
         meta_parts = [part for part in [author, doc_id] if part]
         meta = f" ({' / '.join(meta_parts)})" if meta_parts else ""
-        lines.append(f"{idx}) {title}{meta}{score_text}")
+        reason = _build_recommendation_reason(item, seed_book=seed_book, query_context=query_context)
+        lines.append(f"{idx}) {title}{meta}{score_text}\n   - 추천 이유: {reason}")
     return lines
 
 
@@ -1979,7 +2017,12 @@ async def _handle_book_recommendation(
     recommended = filtered
     if not recommended and not normalized_seed:
         recommended = candidates
-    lines = _format_recommendation_lines(recommended, max_items=5)
+    lines = _format_recommendation_lines(
+        recommended,
+        max_items=5,
+        seed_book=context_seed_book if context_seed_book else seed_hit,
+        query_context=followup_text or query,
+    )
     if not lines:
         return _build_response(
             trace_id,
@@ -2105,7 +2148,7 @@ async def _handle_cart_recommendation(
             source_snippet=f"cart_item_count={len(items)}, seed_count={len(seed_titles)}, recommendation_count=0",
         )
 
-    lines = _format_recommendation_lines(merged, max_items=5)
+    lines = _format_recommendation_lines(merged, max_items=5, query_context="cart")
     content = "장바구니 도서를 기준으로 추천 도서를 정리했습니다.\n" + "\n".join(lines)
     selection_candidates = _build_selection_candidates(merged, max_items=5)
     if selection_candidates:

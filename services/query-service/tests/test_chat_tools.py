@@ -116,6 +116,7 @@ def test_run_tool_chat_book_recommendation_without_login(monkeypatch):
     assert "周易辭典" in result["answer"]["content"]
     assert "中國民間宗教史" in result["answer"]["content"]
     assert "馬列主義與宗敎的衝突" in result["answer"]["content"]
+    assert "추천 이유:" in result["answer"]["content"]
     assert result["citations"]
     assert result["sources"][0]["url"] == "OS /books_doc_read/_search"
 
@@ -299,6 +300,7 @@ def test_run_tool_chat_recommend_followup_uses_selected_seed(monkeypatch):
     assert captured_queries[0] == "추천 도서 B 다른 출판사 책 추천해줘"
     assert "1) 추천 도서 B" not in result["answer"]["content"]
     assert "다른 출판사 도서" in result["answer"]["content"]
+    assert "출판사 다양화 요청" in result["answer"]["content"]
 
 
 def test_run_tool_chat_recommend_followup_easier_version_uses_selected_seed(monkeypatch):
@@ -342,6 +344,7 @@ def test_run_tool_chat_recommend_followup_easier_version_uses_selected_seed(monk
     assert captured_queries[0] == "추천 도서 B 더 쉬운 버전 책 추천해줘"
     assert "1) 추천 도서 B (" not in result["answer"]["content"]
     assert "추천 도서 B 입문" in result["answer"]["content"]
+    assert "난이도 완화 요청" in result["answer"]["content"]
 
 
 def test_run_tool_chat_reference_without_selection_state_returns_needs_input(monkeypatch):
@@ -402,6 +405,7 @@ def test_run_tool_chat_cart_recommendation_with_login(monkeypatch):
     assert "장바구니 도서를 기준으로 추천 도서를 정리했습니다." in result["answer"]["content"]
     assert "영미문화 교육론" in result["answer"]["content"]
     assert "中國民間宗教史" in result["answer"]["content"]
+    assert "추천 이유:" in result["answer"]["content"]
     assert result["citations"]
     assert result["sources"][0]["url"] == "GET /api/v1/cart"
 
