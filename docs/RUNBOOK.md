@@ -127,6 +127,10 @@ python3 scripts/chat/aggregate_feedback.py \
 python3 scripts/chat/render_feedback_backlog_md.py \
   --input evaluation/chat/feedback_backlog.json \
   --output tasks/backlog/generated/chat_feedback_auto.md
+
+python3 scripts/chat/sync_feedback_backlog_tickets.py \
+  --input evaluation/chat/feedback_backlog.json \
+  --output-dir tasks/backlog/generated/feedback
 ```
 위 단계를 한 번에 수행하려면:
 ```bash

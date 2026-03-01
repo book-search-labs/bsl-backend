@@ -20,6 +20,7 @@ FEEDBACK_JSONL="${CHAT_FEEDBACK_JSONL:-$ROOT_DIR/evaluation/chat/feedback.jsonl}
 FEEDBACK_SUMMARY="${CHAT_FEEDBACK_SUMMARY:-$ROOT_DIR/evaluation/chat/feedback_summary.json}"
 FEEDBACK_BACKLOG="${CHAT_FEEDBACK_BACKLOG:-$ROOT_DIR/evaluation/chat/feedback_backlog.json}"
 FEEDBACK_BACKLOG_MD="${CHAT_FEEDBACK_BACKLOG_MD:-$ROOT_DIR/tasks/backlog/generated/chat_feedback_auto.md}"
+FEEDBACK_BACKLOG_TICKETS_DIR="${CHAT_FEEDBACK_BACKLOG_TICKETS_DIR:-$ROOT_DIR/tasks/backlog/generated/feedback}"
 FEEDBACK_DAYS="${CHAT_FEEDBACK_DAYS:-7}"
 FEEDBACK_SINCE="${CHAT_FEEDBACK_SINCE:-}"
 FEEDBACK_INCLUDE_COMMENT="${CHAT_FEEDBACK_INCLUDE_COMMENT:-0}"
@@ -55,6 +56,9 @@ if [ -s "$FEEDBACK_JSONL" ]; then
     "$PYTHON_BIN" "$ROOT_DIR/scripts/chat/render_feedback_backlog_md.py" \
       --input "$FEEDBACK_BACKLOG" \
       --output "$FEEDBACK_BACKLOG_MD"
+    "$PYTHON_BIN" "$ROOT_DIR/scripts/chat/sync_feedback_backlog_tickets.py" \
+      --input "$FEEDBACK_BACKLOG" \
+      --output-dir "$FEEDBACK_BACKLOG_TICKETS_DIR"
   fi
 else
   echo "  - feedback jsonl is empty; skipping aggregate/backlog"
