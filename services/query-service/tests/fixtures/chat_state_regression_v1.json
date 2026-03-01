@@ -917,6 +917,57 @@
           "expected": {"status": "needs_input", "reason_code": "MISSING_INPUT"}
         }
       ]
+    },
+    {
+      "id": "S37_book_recommend_ambiguous_title_routes_options",
+      "candidate_sequences": {
+        "공통 제목": [
+          {
+            "doc_id": "doc-seed-a",
+            "title": "공통 제목",
+            "author": "저자A",
+            "isbn": "9780306406157",
+            "score": 0.98
+          },
+          {
+            "doc_id": "doc-seed-b",
+            "title": "공통 제목",
+            "author": "저자B",
+            "isbn": "9780306406158",
+            "score": 0.97
+          },
+          {
+            "doc_id": "doc-other",
+            "title": "다른 제목",
+            "author": "저자C",
+            "isbn": "9780306406159",
+            "score": 0.81
+          }
+        ]
+      },
+      "turns": [
+        {
+          "query": "도서 '공통 제목' 기준으로 추천해줘",
+          "expected": {"status": "needs_input", "reason_code": "ROUTE:OPTIONS:DISAMBIGUATE:BOOK"}
+        }
+      ]
+    },
+    {
+      "id": "S38_ticket_create_timeout_status_check",
+      "commerce_sequences": {
+        "POST /support/tickets": [
+          {
+            "error": {"code": "tool_timeout", "message": "timeout", "status_code": 504}
+          }
+        ]
+      },
+      "turns": [
+        {
+          "query": "문의 접수해줘 결제 실패가 반복돼요",
+          "user_id": "1",
+          "expected": {"status": "tool_fallback", "reason_code": "TOOL_RETRYABLE_FAILURE"}
+        }
+      ]
     }
   ]
 }
