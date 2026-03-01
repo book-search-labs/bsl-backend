@@ -174,10 +174,15 @@ def _audit_tool_authz_decision(
     reason_code: str,
     status_code: int | None = None,
 ) -> None:
+    action_state = "BLOCKED"
+    if result == "SUCCESS":
+        action_state = "EXECUTED"
+    elif result == "FAIL":
+        action_state = "FAILED"
     append_action_audit(
         conversation_id=conversation_id,
         action_type=action_type,
-        action_state="EXECUTED" if result == "SUCCESS" else "BLOCKED",
+        action_state=action_state,
         decision=decision,
         result=result,
         actor_user_id=user_id,
@@ -1501,6 +1506,18 @@ async def _call_commerce(
     metrics.inc("chat_authz_check_total", {"result": "allow", "action": intent, "reason": "context_ok"})
     if _is_tool_circuit_open(tool_name):
         metrics.inc("chat_circuit_breaker_state", {"tool": tool_name, "state": "open_reject"})
+        _audit_tool_authz_decision(
+            conversation_id=conversation_id,
+            action_type=tool_name,
+            user_id=user_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            path=path,
+            decision="DENY",
+            result="BLOCKED",
+            reason_code="TOOL_CIRCUIT_OPEN",
+            status_code=503,
+        )
         raise ToolCallError("tool_circuit_open", "일시적으로 툴 호출이 제한되었습니다. 잠시 후 다시 시도해 주세요.", status_code=503)
 
     url = f"{_commerce_base_url()}{path}"
@@ -1580,6 +1597,18 @@ async def _call_commerce(
             if attempt < retries:
                 await asyncio.sleep(0.12 * (attempt + 1))
                 continue
+            _audit_tool_authz_decision(
+                conversation_id=conversation_id,
+                action_type=tool_name,
+                user_id=user_id,
+                trace_id=trace_id,
+                request_id=request_id,
+                path=path,
+                decision="ALLOW",
+                result="FAIL",
+                reason_code="TOOL_TIMEOUT",
+                status_code=504,
+            )
             _record_tool_metrics(intent, tool_name, "timeout")
             metrics.inc("chat_timeout_total", {"stage": "tool_lookup"})
             metrics.inc("chat_tool_fallback_total", {"reason_code": "tool_timeout"})
@@ -1591,6 +1620,19 @@ async def _call_commerce(
             if attempt < retries and (exc.status_code is None or exc.status_code >= 500):
                 await asyncio.sleep(0.12 * (attempt + 1))
                 continue
+            if exc.status_code != 403:
+                _audit_tool_authz_decision(
+                    conversation_id=conversation_id,
+                    action_type=tool_name,
+                    user_id=user_id,
+                    trace_id=trace_id,
+                    request_id=request_id,
+                    path=path,
+                    decision="ALLOW",
+                    result="FAIL",
+                    reason_code=f"TOOL_FAIL:{str(exc.code or 'unknown').upper()}",
+                    status_code=exc.status_code,
+                )
             _record_tool_metrics(intent, tool_name, "error")
             metrics.inc("chat_tool_fallback_total", {"reason_code": exc.code})
             raise exc

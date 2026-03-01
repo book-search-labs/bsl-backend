@@ -2093,6 +2093,39 @@ def test_call_commerce_timeout_emits_chat_timeout_metric(monkeypatch):
     assert after.get(key, 0) >= before.get(key, 0) + 1
 
 
+def test_call_commerce_timeout_appends_failure_audit(monkeypatch):
+    audit_calls = []
+
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def request(self, method, url, headers=None, json=None, timeout=None):
+            raise httpx.TimeoutException("timeout")
+
+    monkeypatch.setattr(chat_tools.httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(chat_tools, "_tool_lookup_retry_count", lambda: 0)
+    monkeypatch.setattr(chat_tools, "append_action_audit", lambda **kwargs: audit_calls.append(kwargs) or True)
+
+    with pytest.raises(chat_tools.ToolCallError):
+        asyncio.run(
+            chat_tools._call_commerce(
+                "GET",
+                "/orders/12",
+                user_id="1",
+                trace_id="trace_test",
+                request_id="req_timeout_audit",
+                tool_name="order_lookup",
+                intent="ORDER_LOOKUP",
+            )
+        )
+
+    assert any(call.get("result") == "FAIL" and call.get("reason_code") == "TOOL_TIMEOUT" for call in audit_calls)
+
+
 def test_call_commerce_includes_tenant_header_and_appends_audit(monkeypatch):
     captured_headers = {}
     audit_calls = []
@@ -2140,6 +2173,28 @@ def test_call_commerce_includes_tenant_header_and_appends_audit(monkeypatch):
     assert audit_calls[0]["result"] == "SUCCESS"
 
 
+def test_call_commerce_blocks_when_circuit_open_with_audit(monkeypatch):
+    audit_calls = []
+    chat_tools._CACHE.set_json(chat_tools._tool_circuit_open_key("order_lookup"), {"opened_until": int(chat_tools.time.time()) + 30}, ttl=30)
+    monkeypatch.setattr(chat_tools, "append_action_audit", lambda **kwargs: audit_calls.append(kwargs) or True)
+
+    with pytest.raises(chat_tools.ToolCallError) as exc_info:
+        asyncio.run(
+            chat_tools._call_commerce(
+                "GET",
+                "/orders/12",
+                user_id="1",
+                trace_id="trace_test",
+                request_id="req_circuit_audit",
+                tool_name="order_lookup",
+                intent="ORDER_LOOKUP",
+            )
+        )
+
+    assert exc_info.value.code == "tool_circuit_open"
+    assert any(call.get("result") == "BLOCKED" and call.get("reason_code") == "TOOL_CIRCUIT_OPEN" for call in audit_calls)
+
+
 def test_call_commerce_blocks_when_auth_context_missing(monkeypatch):
     with pytest.raises(chat_tools.ToolCallError) as exc_info:
         asyncio.run(
@@ -2157,8 +2212,30 @@ def test_call_commerce_blocks_when_auth_context_missing(monkeypatch):
     assert exc_info.value.code == "auth_context_missing"
 
 
-def test_call_commerce_blocks_when_circuit_open(monkeypatch):
-    chat_tools._CACHE.set_json(chat_tools._tool_circuit_open_key("order_lookup"), {"opened_until": int(chat_tools.time.time()) + 30}, ttl=30)
+def test_call_commerce_records_failure_audit_on_http_500(monkeypatch):
+    audit_calls = []
+
+    class FakeResponse:
+        status_code = 500
+        headers = {"content-type": "application/json"}
+
+        @staticmethod
+        def json():
+            return {"error": {"code": "server_error", "message": "boom"}}
+
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def request(self, method, url, headers=None, json=None, timeout=None):
+            return FakeResponse()
+
+    monkeypatch.setattr(chat_tools.httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(chat_tools, "_tool_lookup_retry_count", lambda: 0)
+    monkeypatch.setattr(chat_tools, "append_action_audit", lambda **kwargs: audit_calls.append(kwargs) or True)
 
     with pytest.raises(chat_tools.ToolCallError) as exc_info:
         asyncio.run(
@@ -2173,7 +2250,8 @@ def test_call_commerce_blocks_when_circuit_open(monkeypatch):
             )
         )
 
-    assert exc_info.value.code == "tool_circuit_open"
+    assert exc_info.value.code == "server_error"
+    assert any(call.get("result") == "FAIL" and call.get("reason_code") == "TOOL_FAIL:SERVER_ERROR" for call in audit_calls)
 
 
 def test_call_commerce_opens_circuit_after_timeout(monkeypatch):
