@@ -75,6 +75,10 @@ RUN_CHAT_RECOMMEND_EVAL=1 ./scripts/test.sh
 Use `scripts/chat/aggregate_feedback.py` to summarize feedback and generate actionable backlog seeds:
 
 ```bash
+python3 scripts/chat/export_feedback_events.py \
+  --since 2026-02-01T00:00:00+00:00 \
+  --output evaluation/chat/feedback.jsonl
+
 python3 scripts/chat/aggregate_feedback.py \
   --input evaluation/chat/feedback.jsonl \
   --output evaluation/chat/feedback_summary.json \

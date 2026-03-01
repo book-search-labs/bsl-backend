@@ -115,6 +115,10 @@ python3 scripts/eval/chat_recommend_eval.py \
 
 피드백 집계와 개선 백로그 시드 생성:
 ```bash
+python3 scripts/chat/export_feedback_events.py \
+  --since 2026-02-01T00:00:00+00:00 \
+  --output evaluation/chat/feedback.jsonl
+
 python3 scripts/chat/aggregate_feedback.py \
   --input evaluation/chat/feedback.jsonl \
   --output evaluation/chat/feedback_summary.json \
