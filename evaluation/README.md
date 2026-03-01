@@ -159,6 +159,14 @@ RUN_CHAT_PIPELINE_TESTS=1 ./scripts/test.sh
 ```
 이 묶음에는 Query Service `test_chat_regression_harness.py`도 포함된다.
 
+chat 관련 게이트를 한 번에 켜려면:
+
+```bash
+RUN_CHAT_ALL_EVALS=1 ./scripts/test.sh
+```
+이 모드는 metrics/rollout endpoint와 최신 리포트가 준비되어 있어야 하며,
+준비되지 않으면 요약 게이트(`require-all`)에서 실패할 수 있다.
+
 피드백/품질 루프를 한 번에 실행하려면:
 
 ```bash

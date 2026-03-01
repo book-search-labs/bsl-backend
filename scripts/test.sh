@@ -36,6 +36,15 @@ else
   echo "  - python not found; skipping contract validation"
 fi
 
+if [ "${RUN_CHAT_ALL_EVALS:-0}" = "1" ]; then
+  : "${RUN_CHAT_RECOMMEND_EVAL:=1}"
+  : "${RUN_CHAT_ROLLOUT_EVAL:=1}"
+  : "${RUN_CHAT_SEMANTIC_CACHE_EVAL:=1}"
+  : "${RUN_CHAT_REGRESSION_SUITE_EVAL:=1}"
+  : "${RUN_CHAT_AGENT_SUMMARY_EVAL:=1}"
+  : "${RUN_CHAT_PIPELINE_TESTS:=1}"
+fi
+
 echo "[2/12] Contract compatibility gate (optional)"
 
 echo "[3/12] Event schema compatibility check (optional)"
