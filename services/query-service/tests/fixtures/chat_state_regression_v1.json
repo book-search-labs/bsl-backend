@@ -592,6 +592,113 @@
           "expected": {"status": "ok", "reason_code": "OK"}
         }
       ]
+    },
+    {
+      "id": "S25_shipping_policy_question",
+      "turns": [
+        {
+          "query": "배송비 기준 안내해줘",
+          "user_id": null,
+          "expected": {"status": "ok", "reason_code": "OK"}
+        }
+      ]
+    },
+    {
+      "id": "S26_refund_lookup_missing_slot",
+      "turns": [
+        {
+          "query": "환불 조회해줘",
+          "user_id": "1",
+          "expected": {"status": "needs_input", "reason_code": "NEED_SLOT:ORDER_REF"}
+        }
+      ]
+    },
+    {
+      "id": "S27_book_recommend_isbn_seed",
+      "candidate_sequences": {
+        "9780306406157": [
+          {"doc_id": "doc-seed", "title": "시드 도서", "author": "저자A", "isbn": "9780306406157", "score": 0.99},
+          {"doc_id": "doc-b", "title": "비슷한 도서 B", "author": "저자B", "isbn": "9780306406158", "score": 0.82}
+        ]
+      },
+      "turns": [
+        {
+          "query": "ISBN 978-0-306-40615-7 기준으로 비슷한 책 추천해줘",
+          "user_id": null,
+          "expected": {"status": "ok", "reason_code": "OK"}
+        }
+      ]
+    },
+    {
+      "id": "S28_reference_pronoun_selected",
+      "candidate_sequences": {
+        "책 추천해줘": [
+          {"doc_id": "doc-1", "title": "추천 도서 A", "author": "저자A", "score": 0.91},
+          {"doc_id": "doc-2", "title": "추천 도서 B", "author": "저자B", "score": 0.82}
+        ]
+      },
+      "turns": [
+        {
+          "query": "책 추천해줘",
+          "user_id": null,
+          "expected": {"status": "ok", "reason_code": "OK"}
+        },
+        {
+          "query": "2번째로 할게",
+          "user_id": null,
+          "expected": {"status": "ok", "reason_code": "OK"}
+        },
+        {
+          "query": "그거로 할게",
+          "user_id": null,
+          "expected": {"status": "ok", "reason_code": "OK"}
+        }
+      ]
+    },
+    {
+      "id": "S29_cart_recommend_empty",
+      "commerce_sequences": {
+        "GET /cart": [
+          {"response": {"cart": {"items": []}}}
+        ]
+      },
+      "turns": [
+        {
+          "query": "장바구니 기준 추천해줘",
+          "user_id": "1",
+          "expected": {"status": "ok", "reason_code": "OK"}
+        }
+      ]
+    },
+    {
+      "id": "S30_ticket_create_rate_limited_second_try",
+      "commerce_sequences": {
+        "POST /support/tickets": [
+          {
+            "response": {
+              "ticket": {
+                "ticket_id": 18,
+                "ticket_no": "STK202602239999",
+                "status": "RECEIVED",
+                "severity": "LOW"
+              },
+              "expected_response_minutes": 180
+            }
+          }
+        ]
+      },
+      "turns": [
+        {
+          "query": "문의 접수해줘 결제가 안돼",
+          "user_id": "1",
+          "expected": {"status": "ok", "reason_code": "OK"}
+        },
+        {
+          "query": "문의 접수해줘 결제가 안돼",
+          "user_id": "1",
+          "expected": {"status": "ok", "reason_code": "OK"}
+        }
+      ]
     }
   ]
 }
