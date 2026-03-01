@@ -110,8 +110,13 @@ public class ChatController {
         if (request == null || request.getSessionId() == null || request.getSessionId().isBlank()) {
             throw new BadRequestException("session_id is required");
         }
+        String rating = request.getRating() == null ? "" : request.getRating().trim().toLowerCase();
+        if (!"up".equals(rating) && !"down".equals(rating)) {
+            throw new BadRequestException("rating must be one of: up, down");
+        }
         RequestContext context = RequestContextHolder.get();
-        String conversationId = request.getSessionId();
+        String authUserId = resolveAuthenticatedUserId();
+        String conversationId = normalizeSessionIdForUser(request.getSessionId().trim(), authUserId);
         Map<String, Object> payload = new HashMap<>();
         payload.put("version", request.getVersion());
         payload.put("trace_id", context == null ? null : context.getTraceId());
@@ -120,13 +125,15 @@ public class ChatController {
         payload.put("turn_id", request.getMessageId());
         payload.put("canonical_key", null);
         payload.put("used_chunk_ids", List.of());
-        payload.put("session_id", request.getSessionId());
+        payload.put("session_id", conversationId);
         payload.put("message_id", request.getMessageId());
-        payload.put("rating", request.getRating());
+        payload.put("rating", rating);
         payload.put("reason_code", request.getReasonCode());
         payload.put("comment", request.getComment());
         payload.put("flag_hallucination", request.getFlagHallucination());
         payload.put("flag_insufficient", request.getFlagInsufficient());
+        payload.put("actor_user_id", authUserId);
+        payload.put("auth_mode", authUserId == null ? "anonymous" : "user");
         payload.put("event_time", OffsetDateTime.now(ZoneOffset.UTC).toString());
         String aggregateId = request.getMessageId();
         if (aggregateId == null || aggregateId.isBlank()) {

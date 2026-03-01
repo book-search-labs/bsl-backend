@@ -387,4 +387,89 @@ class ChatControllerTest {
             .andExpect(jsonPath("$.session.reset_applied").value(true))
             .andExpect(jsonPath("$.session.previous_fallback_count").value(1));
     }
+
+    @Test
+    void chatFeedbackWritesOutboxEvent() throws Exception {
+        String body = "{"
+            + "\"version\":\"v1\","
+            + "\"session_id\":\"conv-1\","
+            + "\"message_id\":\"msg-1\","
+            + "\"rating\":\"up\","
+            + "\"flag_hallucination\":false,"
+            + "\"flag_insufficient\":false"
+            + "}";
+
+        mockMvc.perform(post("/chat/feedback")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"));
+
+        ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(outboxService).record(eq("chat_feedback_v1"), eq("chat_message"), eq("msg-1"), payloadCaptor.capture());
+        Map<String, Object> payload = payloadCaptor.getValue();
+        assertEquals("conv-1", payload.get("session_id"));
+        assertEquals("up", payload.get("rating"));
+        assertEquals("anonymous", payload.get("auth_mode"));
+    }
+
+    @Test
+    void chatFeedbackNormalizesLegacySessionForAuthenticatedUser() throws Exception {
+        AuthContextHolder.set(new AuthContext("101", null));
+        String body = "{"
+            + "\"version\":\"v1\","
+            + "\"session_id\":\"thread-2\","
+            + "\"message_id\":\"msg-2\","
+            + "\"rating\":\"DOWN\""
+            + "}";
+
+        mockMvc.perform(post("/chat/feedback")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"));
+
+        ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(outboxService).record(eq("chat_feedback_v1"), eq("chat_message"), eq("msg-2"), payloadCaptor.capture());
+        Map<String, Object> payload = payloadCaptor.getValue();
+        assertEquals("u:101:thread-2", payload.get("session_id"));
+        assertEquals("down", payload.get("rating"));
+        assertEquals("101", payload.get("actor_user_id"));
+        assertEquals("user", payload.get("auth_mode"));
+    }
+
+    @Test
+    void chatFeedbackRejectsCrossUserSessionWhenAuthenticated() throws Exception {
+        AuthContextHolder.set(new AuthContext("101", null));
+        String body = "{"
+            + "\"version\":\"v1\","
+            + "\"session_id\":\"u:999:thread-3\","
+            + "\"rating\":\"down\""
+            + "}";
+
+        mockMvc.perform(post("/chat/feedback")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error.code").value("forbidden"));
+
+        verify(outboxService, never()).record(any(), any(), any(), any());
+    }
+
+    @Test
+    void chatFeedbackRejectsInvalidRating() throws Exception {
+        String body = "{"
+            + "\"version\":\"v1\","
+            + "\"session_id\":\"conv-2\","
+            + "\"rating\":\"meh\""
+            + "}";
+
+        mockMvc.perform(post("/chat/feedback")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("bad_request"));
+
+        verify(outboxService, never()).record(any(), any(), any(), any());
+    }
 }

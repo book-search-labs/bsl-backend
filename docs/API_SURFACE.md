@@ -248,6 +248,12 @@ All structured responses that follow `contracts/*` must include:
 ### Response
 - Contract: `contracts/ack-response.schema.json`
 
+### Notes
+- `rating`은 `up|down`만 허용되며, 그 외 값은 `400 bad_request`.
+- 인증된 사용자 요청은 `session_id`가 사용자 네임스페이스(`u:{user_id}:...`)로 정규화된다.
+- 인증 상태에서 다른 사용자 네임스페이스(`u:{other_user}:...`)는 `403 forbidden`.
+- 피드백 이벤트는 BFF outbox(`chat_feedback_v1`)로 기록되며 `actor_user_id`, `auth_mode`를 포함한다.
+
 ## GET `/autocomplete`
 **Purpose**: return query suggestions for a prefix.
 
