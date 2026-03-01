@@ -214,6 +214,7 @@ All structured responses that follow `contracts/*` must include:
 ### Response
 - Contract: `contracts/chat-session-state-response.schema.json`
 - Example: `contracts/examples/chat-session-state-response.sample.json`
+- Optional diagnostics: `session.state_version`, `session.last_turn_id`
 
 ## POST `/chat/session/reset`
 **Purpose**: BFF proxy for chat session diagnostics reset.
@@ -229,6 +230,7 @@ All structured responses that follow `contracts/*` must include:
 ### Response
 - Contract: `contracts/chat-session-reset-response.schema.json`
 - Example: `contracts/examples/chat-session-reset-response.sample.json`
+- Optional diagnostics: `session.state_version`
 
 ## POST `/chat/feedback`
 **Purpose**: user feedback for chat answers (👍/👎 + flags).  

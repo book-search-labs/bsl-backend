@@ -208,6 +208,68 @@ def test_get_chat_session_state_recommends_ticket_when_escalation_ready(monkeypa
     assert "상담 티켓" in state["recommended_message"]
 
 
+def test_get_chat_session_state_prefers_durable_store(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    session_id = "u:301:default"
+    chat._CACHE.set_json(chat._fallback_counter_key(session_id), {"count": 1}, ttl=60)
+    chat._CACHE.set_json(
+        chat._unresolved_context_key(session_id),
+        {
+            "query": "캐시 상태",
+            "reason_code": "PROVIDER_TIMEOUT",
+            "trace_id": "cache_trace",
+            "request_id": "cache_req",
+            "updated_at": 1,
+        },
+        ttl=60,
+    )
+
+    monkeypatch.setattr(
+        chat,
+        "get_durable_chat_session_state",
+        lambda _sid: {
+            "conversation_id": _sid,
+            "fallback_count": 5,
+            "state_version": 12,
+            "last_turn_id": "req_durable",
+            "unresolved_context": {
+                "query": "내구 상태",
+                "reason_code": "LLM_NO_CITATIONS",
+                "trace_id": "trace_durable",
+                "request_id": "req_durable",
+                "updated_at": 1760000000,
+            },
+        },
+    )
+
+    state = chat.get_chat_session_state(session_id, "trace_now", "req_now")
+
+    assert state["fallback_count"] == 5
+    assert state["state_version"] == 12
+    assert state["last_turn_id"] == "req_durable"
+    assert state["unresolved_context"]["reason_code"] == "LLM_NO_CITATIONS"
+
+
+def test_reset_chat_session_state_appends_action_audit(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    session_id = "u:302:default"
+    audit_calls = []
+    event_calls = []
+
+    monkeypatch.setattr(chat, "reset_ticket_session_context", lambda sid: None)
+    monkeypatch.setattr(chat, "get_durable_chat_session_state", lambda sid: {"state_version": 9})
+    monkeypatch.setattr(chat, "append_action_audit", lambda **kwargs: audit_calls.append(kwargs) or True)
+    monkeypatch.setattr(chat, "append_turn_event", lambda **kwargs: event_calls.append(kwargs) or True)
+
+    result = chat.reset_chat_session_state(session_id, "trace_now", "req_now")
+
+    assert result["state_version"] == 9
+    assert len(audit_calls) == 1
+    assert audit_calls[0]["action_type"] == "SESSION_RESET"
+    assert len(event_calls) == 1
+    assert event_calls[0]["event_type"] == "SESSION_RESET"
+
+
 def test_run_chat_stream_emits_done_with_validated_citations(monkeypatch):
     chat._CACHE = CacheClient(None)
 

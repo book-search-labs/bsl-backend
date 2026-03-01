@@ -10,6 +10,12 @@ import httpx
 from app.core.analyzer import analyze_query
 from app.core.cache import get_cache
 from app.core.metrics import metrics
+from app.core.chat_state_store import (
+    append_action_audit,
+    append_turn_event,
+    get_session_state as get_durable_chat_session_state,
+    upsert_session_state,
+)
 from app.core.chat_tools import reset_ticket_session_context, run_tool_chat
 from app.core.rag import retrieve_chunks_with_trace
 from app.core.rag_candidates import retrieve_candidates
@@ -783,7 +789,11 @@ def _fallback(
 ) -> Dict[str, Any]:
     defaults = _fallback_defaults(reason_code)
     resolved_message = (message or "").strip() or str(defaults["message"])
-    fallback_count = _increment_fallback_count(session_id) if session_id else None
+    fallback_count = (
+        _increment_fallback_count(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
+        if session_id
+        else None
+    )
     escalated = False
     next_action = str(defaults["next_action"])
     if user_id and fallback_count is not None and fallback_count >= _fallback_escalation_threshold():
@@ -800,6 +810,20 @@ def _fallback(
     )
     if escalated:
         metrics.inc("chat_fallback_escalated_total", {"reason": reason_code})
+    _append_turn_event_safe(
+        session_id,
+        request_id,
+        "TURN_FALLBACK",
+        trace_id=trace_id,
+        route="FALLBACK",
+        reason_code=reason_code,
+        payload={
+            "recoverable": bool(defaults["recoverable"]),
+            "next_action": next_action,
+            "fallback_count": fallback_count,
+            "escalated": escalated,
+        },
+    )
     return {
         "version": "v1",
         "trace_id": trace_id,
@@ -1064,7 +1088,115 @@ def _fallback_counter_key(session_id: str) -> str:
     return f"chat:fallback:count:{session_id}"
 
 
-def _increment_fallback_count(session_id: str) -> int:
+def _session_user_from_session_id(session_id: Optional[str]) -> Optional[str]:
+    if not isinstance(session_id, str):
+        return None
+    normalized = session_id.strip()
+    if not normalized.startswith("u:"):
+        return None
+    parts = normalized.split(":")
+    if len(parts) < 3:
+        return None
+    user_id = parts[1].strip()
+    return user_id or None
+
+
+def _query_fingerprint(query: str) -> str:
+    normalized = (query or "").strip()
+    if not normalized:
+        return ""
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
+
+
+def _write_durable_session_state(
+    session_id: Optional[str],
+    *,
+    user_id: Optional[str],
+    trace_id: Optional[str],
+    request_id: Optional[str],
+    fallback_count: Optional[int] = None,
+    unresolved_context: Any = None,
+    unresolved_context_set: bool = False,
+) -> Optional[Dict[str, Any]]:
+    if not session_id:
+        return None
+    durable_user_id = user_id or _session_user_from_session_id(session_id)
+    kwargs: Dict[str, Any] = {}
+    if unresolved_context_set:
+        kwargs["unresolved_context"] = unresolved_context
+    return upsert_session_state(
+        session_id,
+        user_id=durable_user_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        fallback_count=fallback_count,
+        last_turn_id=request_id,
+        idempotency_key=request_id,
+        **kwargs,
+    )
+
+
+def _append_turn_event_safe(
+    session_id: Optional[str],
+    request_id: str,
+    event_type: str,
+    *,
+    trace_id: str,
+    route: Optional[str],
+    reason_code: Optional[str],
+    payload: Optional[Dict[str, Any]] = None,
+) -> None:
+    if not session_id or not request_id:
+        return
+    append_turn_event(
+        conversation_id=session_id,
+        turn_id=request_id,
+        event_type=event_type,
+        trace_id=trace_id,
+        request_id=request_id,
+        route=route,
+        reason_code=reason_code,
+        payload=payload,
+    )
+
+
+def _append_action_audit_safe(
+    session_id: Optional[str],
+    *,
+    trace_id: str,
+    request_id: str,
+    action_type: str,
+    reason_code: Optional[str],
+    metadata: Optional[Dict[str, Any]] = None,
+) -> None:
+    if not session_id:
+        return
+    actor_user = _session_user_from_session_id(session_id)
+    append_action_audit(
+        conversation_id=session_id,
+        action_type=action_type,
+        action_state="EXECUTED",
+        decision="ALLOW",
+        result="SUCCESS",
+        actor_user_id=actor_user,
+        actor_admin_id=None,
+        target_ref=session_id,
+        auth_context={"session_id": session_id},
+        trace_id=trace_id,
+        request_id=request_id,
+        reason_code=reason_code,
+        idempotency_key=f"{action_type}:{session_id}:{request_id}",
+        metadata=metadata or {},
+    )
+
+
+def _increment_fallback_count(
+    session_id: str,
+    *,
+    trace_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+) -> int:
     key = _fallback_counter_key(session_id)
     cached = _CACHE.get_json(key)
     count = 0
@@ -1074,16 +1206,45 @@ def _increment_fallback_count(session_id: str) -> int:
             count = raw_count
     count += 1
     _CACHE.set_json(key, {"count": count}, ttl=max(60, _answer_cache_ttl_sec() * 2))
+    stored = _write_durable_session_state(
+        session_id,
+        user_id=user_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        fallback_count=count,
+    )
+    if isinstance(stored, dict):
+        persisted_count = stored.get("fallback_count")
+        if isinstance(persisted_count, int) and persisted_count >= 0:
+            count = persisted_count
     return count
 
 
-def _reset_fallback_count(session_id: Optional[str]) -> None:
+def _reset_fallback_count(
+    session_id: Optional[str],
+    *,
+    trace_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+) -> None:
     if not session_id:
         return
     _CACHE.set_json(_fallback_counter_key(session_id), {"count": 0}, ttl=5)
+    _write_durable_session_state(
+        session_id,
+        user_id=user_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        fallback_count=0,
+    )
 
 
 def _load_fallback_count(session_id: str) -> int:
+    durable = get_durable_chat_session_state(session_id)
+    if isinstance(durable, dict):
+        durable_count = durable.get("fallback_count")
+        if isinstance(durable_count, int) and durable_count >= 0:
+            return durable_count
     cached = _CACHE.get_json(_fallback_counter_key(session_id))
     if isinstance(cached, dict):
         raw_count = cached.get("count")
@@ -1103,30 +1264,62 @@ def _save_unresolved_context(
     *,
     trace_id: str,
     request_id: str,
+    user_id: Optional[str] = None,
 ) -> None:
     if not session_id:
         return
     trimmed_query = (query or "").strip()
+    context = {
+        "query": trimmed_query,
+        "reason_code": reason_code,
+        "trace_id": trace_id,
+        "request_id": request_id,
+        "updated_at": int(time.time()),
+        "query_hash": _query_fingerprint(trimmed_query),
+    }
     _CACHE.set_json(
         _unresolved_context_key(session_id),
-        {
-            "query": trimmed_query,
-            "reason_code": reason_code,
-            "trace_id": trace_id,
-            "request_id": request_id,
-            "updated_at": int(time.time()),
-        },
+        context,
         ttl=_unresolved_context_ttl_sec(),
+    )
+    _write_durable_session_state(
+        session_id,
+        user_id=user_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        unresolved_context=context,
+        unresolved_context_set=True,
     )
 
 
-def _clear_unresolved_context(session_id: Optional[str]) -> None:
+def _clear_unresolved_context(
+    session_id: Optional[str],
+    *,
+    trace_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+) -> None:
     if not session_id:
         return
     _CACHE.set_json(_unresolved_context_key(session_id), {"cleared": True}, ttl=1)
+    _write_durable_session_state(
+        session_id,
+        user_id=user_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        unresolved_context=None,
+        unresolved_context_set=True,
+    )
 
 
 def _load_unresolved_context(session_id: str) -> Optional[Dict[str, Any]]:
+    durable = get_durable_chat_session_state(session_id)
+    if isinstance(durable, dict):
+        unresolved = durable.get("unresolved_context")
+        if isinstance(unresolved, dict):
+            return unresolved
+        if unresolved is None:
+            return None
     cached = _CACHE.get_json(_unresolved_context_key(session_id))
     if not isinstance(cached, dict):
         return None
@@ -1514,17 +1707,46 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
     user_id = _extract_user_id(request)
     session_id = _resolve_session_id(request, user_id)
     query_text = _extract_query_text(request)
+    _append_turn_event_safe(
+        session_id,
+        request_id,
+        "TURN_RECEIVED",
+        trace_id=trace_id,
+        route="INPUT",
+        reason_code=None,
+        payload={
+            "query_len": len((query_text or "").strip()),
+            "query_hash": _query_fingerprint(query_text),
+            "stream": False,
+        },
+    )
     validation_reason = _validate_chat_request(request)
     if validation_reason:
         metrics.inc("chat_validation_fail_total", {"reason": validation_reason})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         response = _fallback(trace_id, request_id, None, validation_reason, session_id=session_id, user_id=user_id)
-        _save_unresolved_context(session_id, query_text, validation_reason, trace_id=trace_id, request_id=request_id)
+        _save_unresolved_context(
+            session_id,
+            query_text,
+            validation_reason,
+            trace_id=trace_id,
+            request_id=request_id,
+            user_id=user_id,
+        )
         return response
     tool_response = await run_tool_chat(request, trace_id, request_id)
     if tool_response is not None:
-        _reset_fallback_count(session_id)
-        _clear_unresolved_context(session_id)
+        _reset_fallback_count(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
+        _clear_unresolved_context(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
+        _append_turn_event_safe(
+            session_id,
+            request_id,
+            "TURN_COMPLETED",
+            trace_id=trace_id,
+            route="TOOL_PATH",
+            reason_code=str(tool_response.get("reason_code") or "OK"),
+            payload={"status": str(tool_response.get("status") or "ok")},
+        )
         metrics.inc("chat_requests_total", {"decision": "tool_path"})
         return tool_response
 
@@ -1539,6 +1761,7 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
                 str(response.get("reason_code") or str(prepared.get("reason") or "RAG_NO_CHUNKS")),
                 trace_id=trace_id,
                 request_id=request_id,
+                user_id=user_id,
             )
         return response
 
@@ -1551,8 +1774,17 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
     if _answer_cache_enabled():
         cached = _CACHE.get_json(answer_cache_key)
         if isinstance(cached, dict) and cached.get("response"):
-            _reset_fallback_count(session_id)
-            _clear_unresolved_context(session_id)
+            _reset_fallback_count(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
+            _clear_unresolved_context(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
+            _append_turn_event_safe(
+                session_id,
+                request_id,
+                "TURN_COMPLETED",
+                trace_id=trace_id,
+                route="ANSWER_CACHE_HIT",
+                reason_code="OK",
+                payload={"status": "ok", "cache": "answer"},
+            )
             metrics.inc("chat_requests_total", {"decision": "answer_cache_hit"})
             return cached.get("response")
 
@@ -1563,7 +1795,14 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         _record_chat_timeout("llm_generate")
         response = _fallback(trace_id, request_id, None, "PROVIDER_TIMEOUT", session_id=session_id, user_id=user_id)
-        _save_unresolved_context(session_id, query, "PROVIDER_TIMEOUT", trace_id=trace_id, request_id=request_id)
+        _save_unresolved_context(
+            session_id,
+            query,
+            "PROVIDER_TIMEOUT",
+            trace_id=trace_id,
+            request_id=request_id,
+            user_id=user_id,
+        )
         return response
 
     answer_text = str(data.get("content") or "")
@@ -1572,7 +1811,14 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
     if not citations:
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         response = _fallback(trace_id, request_id, None, "LLM_NO_CITATIONS", session_id=session_id, user_id=user_id)
-        _save_unresolved_context(session_id, query, "LLM_NO_CITATIONS", trace_id=trace_id, request_id=request_id)
+        _save_unresolved_context(
+            session_id,
+            query,
+            "LLM_NO_CITATIONS",
+            trace_id=trace_id,
+            request_id=request_id,
+            user_id=user_id,
+        )
         return response
     coverage_ok, coverage, coverage_threshold = _is_citation_coverage_sufficient(query, citations, selected)
     if not coverage_ok:
@@ -1585,7 +1831,14 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
         )
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         response = _fallback(trace_id, request_id, None, "LLM_LOW_CITATION_COVERAGE", session_id=session_id, user_id=user_id)
-        _save_unresolved_context(session_id, query, "LLM_LOW_CITATION_COVERAGE", trace_id=trace_id, request_id=request_id)
+        _save_unresolved_context(
+            session_id,
+            query,
+            "LLM_LOW_CITATION_COVERAGE",
+            trace_id=trace_id,
+            request_id=request_id,
+            user_id=user_id,
+        )
         return response
 
     guarded_response, guard_reason = _guard_answer(
@@ -1610,6 +1863,7 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
             str(guarded_response.get("reason_code") or guard_reason or "OUTPUT_GUARD_BLOCKED"),
             trace_id=trace_id,
             request_id=request_id,
+            user_id=user_id,
         )
         return guarded_response
 
@@ -1633,8 +1887,17 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
     if _answer_cache_enabled():
         _CACHE.set_json(answer_cache_key, {"response": response}, ttl=max(1, _answer_cache_ttl_sec()))
 
-    _reset_fallback_count(session_id)
-    _clear_unresolved_context(session_id)
+    _reset_fallback_count(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
+    _clear_unresolved_context(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
+    _append_turn_event_safe(
+        session_id,
+        request_id,
+        "TURN_COMPLETED",
+        trace_id=trace_id,
+        route="ANSWER",
+        reason_code="OK",
+        payload={"status": "ok", "citation_count": len(citations)},
+    )
     metrics.inc("chat_requests_total", {"decision": "ok"})
     return response
 
@@ -1643,11 +1906,31 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
     user_id = _extract_user_id(request)
     session_id = _resolve_session_id(request, user_id)
     query_text = _extract_query_text(request)
+    _append_turn_event_safe(
+        session_id,
+        request_id,
+        "TURN_RECEIVED",
+        trace_id=trace_id,
+        route="INPUT",
+        reason_code=None,
+        payload={
+            "query_len": len((query_text or "").strip()),
+            "query_hash": _query_fingerprint(query_text),
+            "stream": True,
+        },
+    )
     validation_reason = _validate_chat_request(request)
     if validation_reason:
         metrics.inc("chat_validation_fail_total", {"reason": validation_reason})
         response = _fallback(trace_id, request_id, None, validation_reason, session_id=session_id, user_id=user_id)
-        _save_unresolved_context(session_id, query_text, validation_reason, trace_id=trace_id, request_id=request_id)
+        _save_unresolved_context(
+            session_id,
+            query_text,
+            validation_reason,
+            trace_id=trace_id,
+            request_id=request_id,
+            user_id=user_id,
+        )
         risk_band = _compute_risk_band("", response.get("status", "insufficient_evidence"), [], validation_reason)
         yield _sse_event(
             "meta",
@@ -1684,8 +1967,8 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
         return
     tool_response = await run_tool_chat(request, trace_id, request_id)
     if tool_response is not None:
-        _reset_fallback_count(session_id)
-        _clear_unresolved_context(session_id)
+        _reset_fallback_count(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
+        _clear_unresolved_context(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
         answer = tool_response.get("answer", {}) if isinstance(tool_response.get("answer"), dict) else {}
         citations = [str(item) for item in (tool_response.get("citations") or []) if isinstance(item, str)]
         sources = tool_response.get("sources") if isinstance(tool_response.get("sources"), list) else []
@@ -1728,6 +2011,15 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
                 "fallback_count": fallback_count,
                 "escalated": escalated,
             },
+        )
+        _append_turn_event_safe(
+            session_id,
+            request_id,
+            "TURN_COMPLETED",
+            trace_id=trace_id,
+            route="TOOL_PATH",
+            reason_code=reason_code,
+            payload={"status": status, "citation_count": len(citations)},
         )
         metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "tool_path"})
@@ -2369,10 +2661,21 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
     if not _is_valid_session_id(session_id):
         raise ValueError("invalid_session_id")
 
-    fallback_count = _load_fallback_count(session_id)
+    durable_state = get_durable_chat_session_state(session_id)
+    fallback_count: int
+    if isinstance(durable_state, dict) and isinstance(durable_state.get("fallback_count"), int):
+        fallback_count = max(0, int(durable_state.get("fallback_count")))
+    else:
+        fallback_count = _load_fallback_count(session_id)
     threshold = _fallback_escalation_threshold()
     escalation_ready = fallback_count >= threshold
-    unresolved = _load_unresolved_context(session_id)
+    unresolved = None
+    if isinstance(durable_state, dict):
+        candidate = durable_state.get("unresolved_context")
+        if isinstance(candidate, dict):
+            unresolved = candidate
+    if unresolved is None:
+        unresolved = _load_unresolved_context(session_id)
     unresolved_context: Optional[Dict[str, Any]] = None
     recommended_action = "NONE"
     recommended_message = "현재 챗봇 세션 상태는 정상입니다."
@@ -2395,6 +2698,8 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
         recommended_message = "반복 실패가 임계치를 초과했습니다. 상담 티켓 접수를 권장합니다."
     return {
         "session_id": session_id,
+        "state_version": int(durable_state.get("state_version")) if isinstance(durable_state, dict) and isinstance(durable_state.get("state_version"), int) else None,
+        "last_turn_id": str(durable_state.get("last_turn_id")) if isinstance(durable_state, dict) and durable_state.get("last_turn_id") is not None else None,
         "fallback_count": fallback_count,
         "fallback_escalation_threshold": threshold,
         "escalation_ready": escalation_ready,
@@ -2411,14 +2716,39 @@ def reset_chat_session_state(session_id: str, trace_id: str, request_id: str) ->
         raise ValueError("invalid_session_id")
     previous_fallback_count = _load_fallback_count(session_id)
     previous_unresolved_context = isinstance(_load_unresolved_context(session_id), dict)
-    _reset_fallback_count(session_id)
-    _clear_unresolved_context(session_id)
+    _reset_fallback_count(session_id, trace_id=trace_id, request_id=request_id)
+    _clear_unresolved_context(session_id, trace_id=trace_id, request_id=request_id)
+    _append_action_audit_safe(
+        session_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        action_type="SESSION_RESET",
+        reason_code="MANUAL_RESET",
+        metadata={
+            "previous_fallback_count": previous_fallback_count,
+            "previous_unresolved_context": previous_unresolved_context,
+        },
+    )
+    _append_turn_event_safe(
+        session_id,
+        request_id,
+        "SESSION_RESET",
+        trace_id=trace_id,
+        route="RESET",
+        reason_code="MANUAL_RESET",
+        payload={
+            "previous_fallback_count": previous_fallback_count,
+            "previous_unresolved_context": previous_unresolved_context,
+        },
+    )
     reset_ticket_session_context(session_id)
+    durable_state = get_durable_chat_session_state(session_id)
     return {
         "session_id": session_id,
         "reset_applied": True,
         "previous_fallback_count": previous_fallback_count,
         "previous_unresolved_context": previous_unresolved_context,
+        "state_version": int(durable_state.get("state_version")) if isinstance(durable_state, dict) and isinstance(durable_state.get("state_version"), int) else None,
         "reset_at_ms": int(time.time() * 1000),
         "trace_id": trace_id,
         "request_id": request_id,

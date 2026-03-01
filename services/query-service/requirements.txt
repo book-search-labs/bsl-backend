@@ -1,5 +1,6 @@
 fastapi
 httpx
+pymysql
 pytest
 redis
 uvicorn[standard]

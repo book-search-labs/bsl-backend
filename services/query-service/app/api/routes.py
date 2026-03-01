@@ -372,6 +372,8 @@ async def chat_session_state(request: Request):
         "status": "ok",
         "session": {
             "session_id": snapshot["session_id"],
+            "state_version": snapshot.get("state_version"),
+            "last_turn_id": snapshot.get("last_turn_id"),
             "fallback_count": snapshot["fallback_count"],
             "fallback_escalation_threshold": snapshot["fallback_escalation_threshold"],
             "escalation_ready": snapshot["escalation_ready"],
@@ -446,6 +448,7 @@ async def chat_session_reset(request: Request):
             "reset_applied": snapshot["reset_applied"],
             "previous_fallback_count": snapshot["previous_fallback_count"],
             "previous_unresolved_context": snapshot["previous_unresolved_context"],
+            "state_version": snapshot.get("state_version"),
             "reset_at_ms": snapshot["reset_at_ms"],
         },
     }
