@@ -31,6 +31,10 @@ RECOMMEND_REPORT_OUT="${CHAT_RECOMMEND_REPORT_OUT:-$ROOT_DIR/data/eval/reports}"
 RECOMMEND_MIN_SAMPLES="${CHAT_RECOMMEND_MIN_SAMPLES:-20}"
 RECOMMEND_MAX_BLOCK_RATE="${CHAT_RECOMMEND_MAX_BLOCK_RATE:-0.4}"
 RECOMMEND_MAX_AUTO_DISABLE_TOTAL="${CHAT_RECOMMEND_MAX_AUTO_DISABLE_TOTAL:-0}"
+ROLLOUT_URL="${CHAT_ROLLOUT_URL:-http://localhost:8001/internal/chat/rollout}"
+ROLLOUT_MIN_AGENT_SAMPLES="${CHAT_ROLLOUT_MIN_AGENT_SAMPLES:-20}"
+ROLLOUT_MAX_FAILURE_RATIO="${CHAT_ROLLOUT_MAX_FAILURE_RATIO:-0.2}"
+ROLLOUT_MAX_ROLLBACK_TOTAL="${CHAT_ROLLOUT_MAX_ROLLBACK_TOTAL:-0}"
 RECOMMEND_CAPTURE_SNAPSHOT="${CHAT_RECOMMEND_CAPTURE_SNAPSHOT:-1}"
 RECOMMEND_OPS_BASE_URL="${CHAT_RECOMMEND_OPS_BASE_URL:-http://localhost:8088}"
 RECOMMEND_OPS_ADMIN_ID="${CHAT_RECOMMEND_OPS_ADMIN_ID:-1}"
@@ -95,7 +99,7 @@ if [ -f "$FEEDBACK_BACKLOG" ]; then
     --output-dir "$FEEDBACK_BACKLOG_TICKETS_DIR"
 fi
 
-echo "[3/3] generate recommendation quality report"
+echo "[3/3] generate recommendation/rollout quality reports"
 if command -v curl >/dev/null 2>&1; then
   if curl -fsS --max-time 2 "$RECOMMEND_METRICS_URL" >/dev/null; then
     "$PYTHON_BIN" "$ROOT_DIR/scripts/eval/chat_recommend_eval.py" \
@@ -106,11 +110,23 @@ if command -v curl >/dev/null 2>&1; then
       --max-block-rate "$RECOMMEND_MAX_BLOCK_RATE" \
       --max-auto-disable-total "$RECOMMEND_MAX_AUTO_DISABLE_TOTAL" \
       --out "$RECOMMEND_REPORT_OUT"
+    if curl -fsS --max-time 2 "$ROLLOUT_URL" >/dev/null; then
+      "$PYTHON_BIN" "$ROOT_DIR/scripts/eval/chat_rollout_eval.py" \
+        --metrics-url "$RECOMMEND_METRICS_URL" \
+        --rollout-url "$ROLLOUT_URL" \
+        --require-min-samples \
+        --min-agent-samples "$ROLLOUT_MIN_AGENT_SAMPLES" \
+        --max-failure-ratio "$ROLLOUT_MAX_FAILURE_RATIO" \
+        --max-rollback-total "$ROLLOUT_MAX_ROLLBACK_TOTAL" \
+        --out "$RECOMMEND_REPORT_OUT"
+    else
+      echo "  - rollout endpoint unavailable ($ROLLOUT_URL); skipping rollout eval report"
+    fi
   else
-    echo "  - metrics endpoint unavailable ($RECOMMEND_METRICS_URL); skipping recommend eval report"
+    echo "  - metrics endpoint unavailable ($RECOMMEND_METRICS_URL); skipping recommend/rollout eval reports"
   fi
 else
-  echo "  - curl not found; skipping recommend eval report"
+  echo "  - curl not found; skipping recommend/rollout eval reports"
 fi
 
 if [ "$RECOMMEND_CAPTURE_SNAPSHOT" = "1" ]; then

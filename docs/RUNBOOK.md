@@ -165,6 +165,9 @@ python3 scripts/chat/sync_feedback_backlog_tickets.py \
 - `evaluation/chat/rollout_snapshot_before.json`
 - `evaluation/chat/rollout_snapshot_after.json`
 
+`CHAT_RECOMMEND_METRICS_URL`와 `CHAT_ROLLOUT_URL`이 모두 접근 가능하면
+추천/롤아웃 eval 리포트를 `data/eval/reports`에 자동 생성한다.
+
 스냅샷 캡처를 끄려면:
 ```bash
 CHAT_RECOMMEND_CAPTURE_SNAPSHOT=0 ./scripts/chat/run_recommend_quality_loop.sh

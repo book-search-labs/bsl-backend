@@ -112,6 +112,9 @@ RUN_CHAT_ROLLOUT_EVAL=1 ./scripts/test.sh
 - `evaluation/chat/rollout_snapshot_before.json`
 - `evaluation/chat/rollout_snapshot_after.json`
 
+또한 `CHAT_RECOMMEND_METRICS_URL`와 `CHAT_ROLLOUT_URL`이 둘 다 접근 가능하면
+추천/롤아웃 eval 리포트를 `data/eval/reports`에 함께 생성한다.
+
 실험 설정/상태를 운영에서 빠르게 조정하려면:
 
 ```bash
