@@ -200,6 +200,13 @@ curl -s -X POST http://localhost:8001/internal/chat/recommend/experiment/config 
 초기화 관측은 `chat_recommend_experiment_reset_total{result}`와 `chat_recommend_experiment_reset_requests_total{result}`로 확인한다.
 override 갱신 요청은 `chat_recommend_experiment_config_requests_total{result}`/`chat_recommend_experiment_config_update_total{result}`로 확인한다.
 
+운영 터미널에서 빠르게 조회/갱신하려면 helper 스크립트를 사용한다:
+```bash
+python3 scripts/chat/recommend_experiment_ops.py snapshot
+python3 scripts/chat/recommend_experiment_ops.py reset --payload-json '{"clear_overrides":true}'
+python3 scripts/chat/recommend_experiment_ops.py config --payload-json '{"overrides":{"diversity_percent":70}}'
+```
+
 세션별 fallback/미해결 컨텍스트 상태는:
 ```bash
 curl -s "http://localhost:8001/internal/chat/session/state?session_id=u:101:default"
