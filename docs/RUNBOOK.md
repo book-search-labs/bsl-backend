@@ -198,11 +198,20 @@ python3 scripts/chat/build_regression_seed_fixture.py \
   --output-json evaluation/chat/feedback_regression_fixture_candidates.json \
   --output-md tasks/backlog/generated/chat_feedback_regression_fixture_candidates.md \
   --allow-empty
+
+python3 scripts/chat/apply_regression_fixture_candidates.py \
+  --fixture services/query-service/tests/fixtures/chat_state_regression_v1.json \
+  --candidates-json evaluation/chat/feedback_regression_fixture_candidates.json \
+  --report-json evaluation/chat/feedback_regression_fixture_apply_report.json \
+  --report-md tasks/backlog/generated/chat_feedback_regression_fixture_apply_report.md \
+  --dry-run \
+  --allow-empty
 ```
 `--allow-empty`를 사용하면 피드백 0건일 때도 summary/backlog/ticket 산출물이 갱신되어
 이전 실행의 stale 자동 티켓이 남지 않는다.
 회귀 시드 초안은 `tasks/backlog/generated/chat_feedback_regression_seeds.md`에 생성된다.
 fixture 편입 후보 초안은 `tasks/backlog/generated/chat_feedback_regression_fixture_candidates.md`에 생성된다.
+fixture 적용 보고서는 `tasks/backlog/generated/chat_feedback_regression_fixture_apply_report.md`에 생성된다.
 위 단계를 한 번에 수행하려면:
 ```bash
 ./scripts/chat/run_recommend_quality_loop.sh

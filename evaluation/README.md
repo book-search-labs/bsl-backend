@@ -234,3 +234,15 @@ python3 scripts/chat/build_regression_seed_fixture.py \
   --output-md tasks/backlog/generated/chat_feedback_regression_fixture_candidates.md \
   --allow-empty
 ```
+
+fixture 후보를 실제 회귀셋에 반영할 때는 먼저 dry-run 보고서를 확인한다:
+
+```bash
+python3 scripts/chat/apply_regression_fixture_candidates.py \
+  --fixture services/query-service/tests/fixtures/chat_state_regression_v1.json \
+  --candidates-json evaluation/chat/feedback_regression_fixture_candidates.json \
+  --report-json evaluation/chat/feedback_regression_fixture_apply_report.json \
+  --report-md tasks/backlog/generated/chat_feedback_regression_fixture_apply_report.md \
+  --dry-run \
+  --allow-empty
+```

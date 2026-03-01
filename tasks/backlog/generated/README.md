@@ -18,6 +18,10 @@
   - 회귀 시드 초안을 기존 fixture와 대조하여 신규 편입 후보만 추린 문서.
   - 생성 스크립트: `scripts/chat/build_regression_seed_fixture.py`
   - 본 fixture에 직접 반영 전, 리뷰/수정용 입력으로 사용한다.
+- `chat_feedback_regression_fixture_apply_report.md`
+  - fixture 후보를 실제 회귀셋에 반영하기 전/후 결과를 보여주는 적용 보고서.
+  - 생성 스크립트: `scripts/chat/apply_regression_fixture_candidates.py`
+  - 기본 품질 루프에서는 dry-run으로만 생성되며, fixture 자동 변경은 수행하지 않는다.
 
 ## Refresh command
 
