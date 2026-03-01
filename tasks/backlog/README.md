@@ -134,3 +134,10 @@
 - B-0610 chat engine rollout (shadow/canary/auto rollback)
 - B-0621 book search/recommend candidate UX + selection coupling
 - B-0622 book recommendation tool pipeline (seed/candidate/explain)
+
+### P2 (품질/성능/지속 개선)
+- B-0623 chat multi-turn regression suite expansion
+- B-0624 chat policy topic cache + ontology-lite
+- B-0625 chat semantic cache safety guardrails v1
+- B-0626 chat episode memory (consent-based retrieval) v1
+- B-0627 chat recommendation experiment loop + quality gate
