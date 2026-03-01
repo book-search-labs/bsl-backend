@@ -278,6 +278,37 @@ def test_run_tool_chat_resolves_second_reference_from_selection_state(monkeypatc
     assert persisted["selection"]["selected_index"] == 2
 
 
+def test_run_tool_chat_reference_out_of_range_returns_options(monkeypatch):
+    monkeypatch.setattr(
+        chat_tools,
+        "get_durable_chat_session_state",
+        lambda session_id: {
+            "selection": {
+                "type": "BOOK_RECOMMENDATION",
+                "last_candidates": [
+                    {"index": 1, "doc_id": "doc-1", "title": "추천 도서 A", "author": "저자A"},
+                    {"index": 2, "doc_id": "doc-2", "title": "추천 도서 B", "author": "저자B"},
+                ],
+                "selected_index": None,
+                "selected_book": None,
+            }
+        },
+    )
+
+    payload = {
+        "session_id": "sess-reco-range-1",
+        "message": {"role": "user", "content": "3번째로 할게"},
+        "client": {"locale": "ko-KR"},
+    }
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_reco_range_1"))
+
+    assert result is not None
+    assert result["status"] == "needs_input"
+    assert result["reason_code"] == "MISSING_INPUT"
+    assert "번호로 선택해 주세요" in result["answer"]["content"]
+    assert "1) 추천 도서 A" in result["answer"]["content"]
+
+
 def test_run_tool_chat_recommend_followup_uses_selected_seed(monkeypatch):
     captured_queries = []
 
@@ -320,6 +351,49 @@ def test_run_tool_chat_recommend_followup_uses_selected_seed(monkeypatch):
     assert "1) 추천 도서 B" not in result["answer"]["content"]
     assert "다른 출판사 도서" in result["answer"]["content"]
     assert "출판사 다양화 요청" in result["answer"]["content"]
+
+
+def test_run_tool_chat_recommend_followup_falls_back_to_first_candidate_seed(monkeypatch):
+    captured_queries = []
+
+    monkeypatch.setattr(
+        chat_tools,
+        "get_durable_chat_session_state",
+        lambda session_id: {
+            "selection": {
+                "type": "BOOK_RECOMMENDATION",
+                "last_candidates": [
+                    {"index": 1, "doc_id": "doc-1", "title": "추천 도서 A", "author": "저자A"},
+                    {"index": 2, "doc_id": "doc-2", "title": "추천 도서 B", "author": "저자B"},
+                ],
+                "selected_index": None,
+                "selected_book": None,
+            }
+        },
+    )
+
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        captured_queries.append(query)
+        return [
+            {"doc_id": "doc-1", "title": "추천 도서 A", "author": "저자A", "score": 0.95},
+            {"doc_id": "doc-easy", "title": "추천 도서 A 입문", "author": "저자C", "score": 0.84},
+        ]
+
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+
+    payload = {
+        "session_id": "sess-reco-followup-3",
+        "message": {"role": "user", "content": "더 쉬운 버전 책 추천해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_reco_followup_3"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert captured_queries
+    assert captured_queries[0] == "추천 도서 A 더 쉬운 버전 책 추천해줘"
+    assert "추천 도서 A 입문" in result["answer"]["content"]
+    assert "난이도 완화 요청" in result["answer"]["content"]
 
 
 def test_run_tool_chat_recommend_followup_easier_version_uses_selected_seed(monkeypatch):
