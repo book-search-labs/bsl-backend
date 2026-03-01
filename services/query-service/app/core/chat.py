@@ -2171,6 +2171,14 @@ async def _run_chat_impl(
             reason_code=admission_reason,
             payload={"stream": False},
         )
+        _append_action_audit_safe(
+            session_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            action_type="LLM_ADMISSION_BLOCK",
+            reason_code=admission_reason,
+            metadata={"mode": "json"},
+        )
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return response
     call_budget_reason = _reserve_llm_call_budget(session_id, user_id, mode="json")
@@ -2193,6 +2201,14 @@ async def _run_chat_impl(
             route="ADMISSION",
             reason_code=call_budget_reason,
             payload={"stream": False},
+        )
+        _append_action_audit_safe(
+            session_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            action_type="LLM_ADMISSION_BLOCK",
+            reason_code=call_budget_reason,
+            metadata={"mode": "json"},
         )
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return response
@@ -2615,6 +2631,14 @@ async def _run_chat_stream_impl(
             reason_code=admission_reason,
             payload={"stream": True},
         )
+        _append_action_audit_safe(
+            session_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            action_type="LLM_ADMISSION_BLOCK",
+            reason_code=admission_reason,
+            metadata={"mode": "stream"},
+        )
         metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return
@@ -2671,6 +2695,14 @@ async def _run_chat_stream_impl(
             route="ADMISSION",
             reason_code=call_budget_reason,
             payload={"stream": True},
+        )
+        _append_action_audit_safe(
+            session_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            action_type="LLM_ADMISSION_BLOCK",
+            reason_code=call_budget_reason,
+            metadata={"mode": "stream"},
         )
         metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})

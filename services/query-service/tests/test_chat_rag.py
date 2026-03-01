@@ -488,6 +488,57 @@ def test_run_chat_stream_blocks_when_llm_call_rate_limited(monkeypatch):
     assert any("event: done" in event and "LLM_CALL_RATE_LIMITED" in event for event in second_events)
 
 
+def test_run_chat_records_admission_audit_on_call_rate_limit(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_MAX_LLM_CALLS_PER_MINUTE", "1")
+    audit_calls = []
+
+    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
+        return {
+            "ok": True,
+            "query": "배송 정책 알려줘",
+            "canonical_key": "ck:rate-limit-audit",
+            "locale": "ko-KR",
+            "selected": [
+                {
+                    "chunk_id": "chunk-1",
+                    "citation_key": "chunk-1",
+                    "doc_id": "doc-1",
+                    "title": "배송 정책",
+                    "url": "https://example.com/shipping",
+                    "snippet": "배송은 지역에 따라 달라집니다.",
+                    "score": 0.9,
+                }
+            ],
+        }
+
+    async def fake_tool_chat(request, trace_id, request_id):
+        return None
+
+    async def fake_call_llm_json(payload, trace_id, request_id):
+        return {"content": "배송 정책 안내입니다.", "citations": ["chunk-1"]}
+
+    monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
+    monkeypatch.setattr(chat, "run_tool_chat", fake_tool_chat)
+    monkeypatch.setattr(chat, "_call_llm_json", fake_call_llm_json)
+    monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
+    monkeypatch.setattr(chat, "append_action_audit", lambda **kwargs: audit_calls.append(kwargs) or True)
+
+    payload = {
+        "session_id": "sess-rate-audit-1",
+        "message": {"role": "user", "content": "배송 정책 알려줘"},
+        "client": {"user_id": "1", "locale": "ko-KR"},
+    }
+    _ = asyncio.run(chat.run_chat(payload, "trace_test", "req_rate_audit_1"))
+    blocked = asyncio.run(chat.run_chat(payload, "trace_test", "req_rate_audit_2"))
+
+    assert blocked["reason_code"] == "LLM_CALL_RATE_LIMITED"
+    assert any(
+        call.get("action_type") == "LLM_ADMISSION_BLOCK" and call.get("reason_code") == "LLM_CALL_RATE_LIMITED"
+        for call in audit_calls
+    )
+
+
 def test_run_chat_stream_emits_error_when_citation_mapping_fails(monkeypatch):
     chat._CACHE = CacheClient(None)
 
