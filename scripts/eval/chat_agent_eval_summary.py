@@ -57,7 +57,7 @@ def summarize_components(report_dir: Path) -> dict[str, Any]:
 def evaluate_overall(summary: dict[str, Any], *, require_all: bool) -> tuple[bool, list[str]]:
     failures: list[str] = []
     overall_pass = True
-    for name in sorted(summary.keys()):
+    for name in sorted(_COMPONENTS.keys()):
         component = summary.get(name) if isinstance(summary.get(name), dict) else {}
         present = bool(component.get("present"))
         if not present:

@@ -44,6 +44,8 @@ def test_evaluate_overall_with_require_all_flags_missing():
     passed, failures = module.evaluate_overall(summary, require_all=True)
     assert passed is False
     assert any("missing component report: rollout" in item for item in failures)
+    assert any("missing component report: regression_suite" in item for item in failures)
+    assert any("missing component report: semantic_cache" in item for item in failures)
 
 
 def test_evaluate_overall_collects_component_failures():
