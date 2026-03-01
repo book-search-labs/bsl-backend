@@ -100,6 +100,94 @@ def test_run_tool_chat_book_recommendation_without_login(monkeypatch):
     assert result["sources"][0]["url"] == "OS /books_doc_read/_search"
 
 
+def test_run_tool_chat_book_recommendation_persists_selection_state(monkeypatch):
+    captured = {}
+
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        return [
+            {"doc_id": "doc-1", "title": "추천 도서 A", "author": "저자A", "score": 0.91},
+            {"doc_id": "doc-2", "title": "추천 도서 B", "author": "저자B", "score": 0.82},
+        ]
+
+    def fake_upsert_session_state(conversation_id, **kwargs):
+        captured["conversation_id"] = conversation_id
+        captured["selection"] = kwargs.get("selection")
+        return {"selection": kwargs.get("selection")}
+
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+    monkeypatch.setattr(chat_tools, "upsert_session_state", fake_upsert_session_state)
+
+    payload = {
+        "session_id": "sess-reco-1",
+        "message": {"role": "user", "content": "책 추천해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_reco_1"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert captured["conversation_id"] == "sess-reco-1"
+    assert isinstance(captured["selection"], dict)
+    assert captured["selection"]["type"] == "BOOK_RECOMMENDATION"
+    assert len(captured["selection"]["last_candidates"]) >= 2
+
+
+def test_run_tool_chat_resolves_second_reference_from_selection_state(monkeypatch):
+    persisted = {}
+
+    monkeypatch.setattr(
+        chat_tools,
+        "get_durable_chat_session_state",
+        lambda session_id: {
+            "selection": {
+                "type": "BOOK_RECOMMENDATION",
+                "last_candidates": [
+                    {"index": 1, "doc_id": "doc-1", "title": "추천 도서 A", "author": "저자A"},
+                    {"index": 2, "doc_id": "doc-2", "title": "추천 도서 B", "author": "저자B"},
+                ],
+                "selected_index": None,
+                "selected_book": None,
+            }
+        },
+    )
+
+    def fake_upsert_session_state(conversation_id, **kwargs):
+        persisted["conversation_id"] = conversation_id
+        persisted["selection"] = kwargs.get("selection")
+        return {"selection": kwargs.get("selection")}
+
+    monkeypatch.setattr(chat_tools, "upsert_session_state", fake_upsert_session_state)
+
+    payload = {
+        "session_id": "sess-reco-2",
+        "message": {"role": "user", "content": "2번째로 할게"},
+        "client": {"locale": "ko-KR"},
+    }
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_reco_2"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert "2번째로 선택하신 도서" in result["answer"]["content"]
+    assert "추천 도서 B" in result["answer"]["content"]
+    assert persisted["selection"]["selected_index"] == 2
+
+
+def test_run_tool_chat_reference_without_selection_state_returns_needs_input(monkeypatch):
+    monkeypatch.setattr(chat_tools, "get_durable_chat_session_state", lambda session_id: None)
+
+    payload = {
+        "session_id": "sess-reco-3",
+        "message": {"role": "user", "content": "그거 추천해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_reco_3"))
+
+    assert result is not None
+    assert result["status"] == "needs_input"
+    assert result["reason_code"] == "MISSING_INPUT"
+    assert "추천 목록이 없습니다" in result["answer"]["content"]
+
+
 def test_run_tool_chat_cart_recommendation_with_login(monkeypatch):
     async def fake_call_commerce(method, path, **kwargs):
         assert method == "GET"

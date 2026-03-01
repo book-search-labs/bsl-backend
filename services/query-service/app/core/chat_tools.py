@@ -13,6 +13,8 @@ import httpx
 
 from app.core.cache import get_cache
 from app.core.metrics import metrics
+from app.core.chat_state_store import get_session_state as get_durable_chat_session_state
+from app.core.chat_state_store import upsert_session_state
 from app.core.rag_candidates import retrieve_candidates
 
 _CACHE = get_cache()
@@ -248,6 +250,180 @@ def _extract_recommendation_seed_query(query: str) -> str:
 
 def _normalize_title_for_compare(value: str) -> str:
     return re.sub(r"\s+", "", (value or "").strip().lower())
+
+
+def _selection_state_from_db(session_id: str) -> dict[str, Any] | None:
+    row = get_durable_chat_session_state(session_id)
+    if not isinstance(row, dict):
+        return None
+    selection = row.get("selection")
+    if isinstance(selection, dict):
+        return selection
+    return None
+
+
+def _extract_reference_index(query: str) -> int | None:
+    q = (query or "").strip().lower()
+    if not q:
+        return None
+
+    arabic = re.search(r"(\d{1,2})\s*(?:번째|번쨰|번|th)", q)
+    if arabic:
+        try:
+            value = int(arabic.group(1))
+        except Exception:
+            value = 0
+        if value >= 1:
+            return value
+
+    ko_words = {
+        "첫번째": 1,
+        "첫째": 1,
+        "두번째": 2,
+        "둘째": 2,
+        "세번째": 3,
+        "셋째": 3,
+        "네번째": 4,
+        "넷째": 4,
+    }
+    for token, index in ko_words.items():
+        if token in q:
+            return index
+    return None
+
+
+def _looks_like_reference_query(query: str, *, has_selection_state: bool) -> bool:
+    q = (query or "").strip().lower()
+    if not q:
+        return False
+
+    pronoun_tokens = ["그거", "그 책", "아까 추천", "that one", "the second", "이거"]
+    has_pronoun = any(token in q for token in pronoun_tokens)
+    has_ordinal = _extract_reference_index(q) is not None
+    if not has_pronoun and not has_ordinal:
+        return False
+
+    recommendation_tokens = ["추천", "도서", "책", "book"]
+    if any(token in q for token in recommendation_tokens):
+        return True
+    return has_selection_state
+
+
+def _build_selection_candidates(candidates: list[dict[str, Any]], *, max_items: int = 5) -> list[dict[str, Any]]:
+    built: list[dict[str, Any]] = []
+    for idx, item in enumerate(candidates[:max_items], start=1):
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title") or "").strip()
+        if not title:
+            continue
+        built.append(
+            {
+                "index": idx,
+                "doc_id": str(item.get("doc_id") or "").strip(),
+                "title": title,
+                "author": str(item.get("author") or "").strip(),
+                "isbn": str(item.get("isbn") or "").strip(),
+            }
+        )
+    return built
+
+
+def _save_selection_state(
+    session_id: str,
+    *,
+    user_id: str | None,
+    trace_id: str,
+    request_id: str,
+    candidates: list[dict[str, Any]],
+    selected_index: int | None = None,
+) -> None:
+    selection_payload: dict[str, Any] = {
+        "type": "BOOK_RECOMMENDATION",
+        "updated_at": int(time.time()),
+        "last_candidates": candidates,
+        "selected_index": selected_index,
+        "selected_book": None,
+    }
+    if selected_index is not None:
+        for candidate in candidates:
+            if not isinstance(candidate, dict):
+                continue
+            if int(candidate.get("index") or 0) == selected_index:
+                selection_payload["selected_book"] = candidate
+                break
+    upsert_session_state(
+        session_id,
+        user_id=user_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        selection=selection_payload,
+        last_turn_id=request_id,
+        idempotency_key=request_id,
+    )
+
+
+def _resolve_selection_reference(query: str, selection_state: dict[str, Any]) -> tuple[dict[str, Any] | None, int | None]:
+    candidates = selection_state.get("last_candidates") if isinstance(selection_state.get("last_candidates"), list) else []
+    selected_book = selection_state.get("selected_book") if isinstance(selection_state.get("selected_book"), dict) else None
+    selected_index = selection_state.get("selected_index")
+    if isinstance(selected_index, int) and selected_index <= 0:
+        selected_index = None
+
+    if not candidates:
+        return None, None
+
+    explicit_index = _extract_reference_index(query)
+    if explicit_index is not None:
+        for candidate in candidates:
+            if not isinstance(candidate, dict):
+                continue
+            if int(candidate.get("index") or 0) == explicit_index:
+                return candidate, explicit_index
+        return None, explicit_index
+
+    if selected_book is not None and isinstance(selected_index, int):
+        return selected_book, selected_index
+    if len(candidates) == 1 and isinstance(candidates[0], dict):
+        only = candidates[0]
+        return only, int(only.get("index") or 1)
+    return None, None
+
+
+def _render_selection_options(selection_state: dict[str, Any], *, max_items: int = 3) -> str:
+    candidates = selection_state.get("last_candidates") if isinstance(selection_state.get("last_candidates"), list) else []
+    lines: list[str] = []
+    for item in candidates[:max_items]:
+        if not isinstance(item, dict):
+            continue
+        index = int(item.get("index") or 0)
+        title = str(item.get("title") or "").strip()
+        author = str(item.get("author") or "").strip()
+        if index <= 0 or not title:
+            continue
+        if author:
+            lines.append(f"{index}) {title} ({author})")
+        else:
+            lines.append(f"{index}) {title}")
+    if not lines:
+        return "선택 가능한 추천 목록이 없습니다. 다시 추천해달라고 요청해 주세요."
+    return "어떤 후보를 말하시는지 번호로 선택해 주세요.\n" + "\n".join(lines)
+
+
+def _render_selected_candidate(candidate: dict[str, Any], selected_index: int) -> str:
+    title = str(candidate.get("title") or "").strip()
+    author = str(candidate.get("author") or "").strip()
+    doc_id = str(candidate.get("doc_id") or "").strip()
+    parts: list[str] = []
+    if author:
+        parts.append(f"저자 {author}")
+    if doc_id:
+        parts.append(f"ID {doc_id}")
+    suffix = f" ({', '.join(parts)})" if parts else ""
+    return (
+        f"{selected_index}번째로 선택하신 도서는 '{title}'{suffix}입니다.\n"
+        "이 책 기준으로 비슷한 도서를 다시 추천해드릴까요?"
+    )
 
 
 def _pick_cart_seed_titles(cart_items: list[dict[str, Any]], limit: int = 2) -> list[str]:
@@ -1193,6 +1369,8 @@ def _format_recommendation_lines(items: list[dict[str, Any]], *, max_items: int 
 async def _handle_book_recommendation(
     query: str,
     *,
+    session_id: str,
+    user_id: str | None,
     trace_id: str,
     request_id: str,
 ) -> dict[str, Any]:
@@ -1241,9 +1419,23 @@ async def _handle_book_recommendation(
             source_snippet=f"seed_query={lookup_query}, candidate_count={len(candidates)}, filtered_count={len(filtered)}",
         )
 
-    seed_title = str(seed_hit.get("title") or seed_query).strip() if seed_hit or seed_query else ""
+    seed_title = ""
+    if isinstance(seed_hit, dict):
+        seed_title = str(seed_hit.get("title") or "").strip()
+    elif seed_query:
+        seed_title = str(seed_query).strip()
     prefix = f"'{seed_title}' 기준 추천 도서입니다.\n" if seed_title else "요청하신 기준으로 추천 도서를 정리했습니다.\n"
     content = prefix + "\n".join(lines)
+    selection_candidates = _build_selection_candidates(recommended, max_items=5)
+    if selection_candidates:
+        _save_selection_state(
+            session_id,
+            user_id=user_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            candidates=selection_candidates,
+            selected_index=None,
+        )
     return _build_response(
         trace_id,
         request_id,
@@ -1258,6 +1450,7 @@ async def _handle_book_recommendation(
 async def _handle_cart_recommendation(
     *,
     user_id: str,
+    session_id: str,
     trace_id: str,
     request_id: str,
 ) -> dict[str, Any]:
@@ -1335,6 +1528,16 @@ async def _handle_cart_recommendation(
 
     lines = _format_recommendation_lines(merged, max_items=5)
     content = "장바구니 도서를 기준으로 추천 도서를 정리했습니다.\n" + "\n".join(lines)
+    selection_candidates = _build_selection_candidates(merged, max_items=5)
+    if selection_candidates:
+        _save_selection_state(
+            session_id,
+            user_id=user_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            candidates=selection_candidates,
+            selected_index=None,
+        )
     return _build_response(
         trace_id,
         request_id,
@@ -2030,6 +2233,49 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
                 request_id=request_id,
             )
 
+    selection_state = _selection_state_from_db(session_id)
+    if _looks_like_reference_query(query, has_selection_state=isinstance(selection_state, dict)):
+        if not isinstance(selection_state, dict):
+            metrics.inc("chat_reference_resolve_total", {"type": "selection", "result": "missing_state"})
+            metrics.inc("chat_reference_unresolved_total")
+            return _build_response(
+                trace_id,
+                request_id,
+                "needs_input",
+                "참조할 추천 목록이 없습니다. 먼저 책 추천을 요청해 주세요.",
+                next_action="PROVIDE_REQUIRED_INFO",
+            )
+        selected, selected_index = _resolve_selection_reference(query, selection_state)
+        if selected is None or selected_index is None:
+            metrics.inc("chat_reference_resolve_total", {"type": "selection", "result": "unresolved"})
+            metrics.inc("chat_reference_unresolved_total")
+            return _build_response(
+                trace_id,
+                request_id,
+                "needs_input",
+                _render_selection_options(selection_state),
+                next_action="PROVIDE_REQUIRED_INFO",
+            )
+        candidates = selection_state.get("last_candidates") if isinstance(selection_state.get("last_candidates"), list) else []
+        _save_selection_state(
+            session_id,
+            user_id=user_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            candidates=[candidate for candidate in candidates if isinstance(candidate, dict)],
+            selected_index=selected_index,
+        )
+        metrics.inc("chat_reference_resolve_total", {"type": "selection", "result": "resolved"})
+        return _build_response(
+            trace_id,
+            request_id,
+            "ok",
+            _render_selected_candidate(selected, selected_index),
+            tool_name="book_selection",
+            endpoint="STATE / chat_session_state.selection",
+            source_snippet=f"session_id={session_id}, selected_index={selected_index}",
+        )
+
     intent = _detect_intent(query)
     if intent.name == "NONE":
         return None
@@ -2049,7 +2295,13 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
     if intent.name == "ORDER_POLICY":
         return _handle_order_policy_guide(trace_id, request_id)
     if intent.name == "BOOK_RECOMMEND":
-        return await _handle_book_recommendation(query, trace_id=trace_id, request_id=request_id)
+        return await _handle_book_recommendation(
+            query,
+            session_id=session_id,
+            user_id=user_id,
+            trace_id=trace_id,
+            request_id=request_id,
+        )
 
     if not user_id:
         metrics.inc("chat_tool_authz_denied_total", {"intent": intent.name})
@@ -2113,6 +2365,7 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
         if intent.name == "CART_RECOMMEND":
             return await _handle_cart_recommendation(
                 user_id=user_id,
+                session_id=session_id,
                 trace_id=trace_id,
                 request_id=request_id,
             )
