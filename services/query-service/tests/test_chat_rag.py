@@ -662,6 +662,47 @@ def test_run_chat_blocks_when_prompt_budget_exceeded(monkeypatch):
     assert response["reason_code"] == "LLM_PROMPT_BUDGET_EXCEEDED"
 
 
+def test_build_llm_payload_sets_completion_token_cap(monkeypatch):
+    monkeypatch.setenv("QS_CHAT_MAX_COMPLETION_TOKENS_PER_TURN", "77")
+    payload = chat._build_llm_payload(
+        {"message": {"role": "user", "content": "환불 정책 알려줘"}},
+        "trace_test",
+        "req_test",
+        "환불 정책 알려줘",
+        [],
+    )
+
+    assert int(payload["max_tokens"]) == 77
+
+
+def test_admission_blocks_when_completion_budget_exceeded(monkeypatch):
+    monkeypatch.setenv("QS_CHAT_MAX_PROMPT_TOKENS_PER_TURN", "1000")
+    monkeypatch.setenv("QS_CHAT_MAX_COMPLETION_TOKENS_PER_TURN", "100")
+    monkeypatch.setenv("QS_CHAT_MAX_TOTAL_TOKENS_PER_TURN", "2000")
+
+    payload = {
+        "messages": [{"role": "user", "content": "배송"}],
+        "context": {"chunks": []},
+        "max_tokens": 150,
+    }
+
+    assert chat._admission_block_reason(payload, mode="json") == "LLM_COMPLETION_BUDGET_EXCEEDED"
+
+
+def test_admission_blocks_when_total_budget_exceeded(monkeypatch):
+    monkeypatch.setenv("QS_CHAT_MAX_PROMPT_TOKENS_PER_TURN", "100")
+    monkeypatch.setenv("QS_CHAT_MAX_COMPLETION_TOKENS_PER_TURN", "100")
+    monkeypatch.setenv("QS_CHAT_MAX_TOTAL_TOKENS_PER_TURN", "120")
+
+    payload = {
+        "messages": [{"role": "user", "content": "가" * 320}],  # estimated prompt ~= 80 tokens
+        "context": {"chunks": []},
+        "max_tokens": 80,
+    }
+
+    assert chat._admission_block_reason(payload, mode="json") == "LLM_TOTAL_BUDGET_EXCEEDED"
+
+
 def test_run_chat_stream_blocks_when_prompt_budget_exceeded(monkeypatch):
     chat._CACHE = CacheClient(None)
     monkeypatch.setenv("QS_CHAT_MAX_PROMPT_TOKENS_PER_TURN", "1")

@@ -518,6 +518,11 @@ def _llm_max_completion_tokens_per_turn() -> int:
     return max(32, int(os.getenv("QS_CHAT_MAX_COMPLETION_TOKENS_PER_TURN", "1200")))
 
 
+def _llm_max_total_tokens_per_turn() -> int:
+    default_total = _llm_max_prompt_tokens_per_turn() + _llm_max_completion_tokens_per_turn()
+    return max(96, int(os.getenv("QS_CHAT_MAX_TOTAL_TOKENS_PER_TURN", str(default_total))))
+
+
 def _llm_max_calls_per_minute() -> int:
     return max(0, int(os.getenv("QS_CHAT_MAX_LLM_CALLS_PER_MINUTE", "0")))
 
@@ -548,12 +553,46 @@ def _estimate_prompt_tokens(payload: Dict[str, Any]) -> int:
     return total
 
 
-def _admission_block_reason(payload: Dict[str, Any]) -> Optional[str]:
+def _requested_completion_tokens(payload: Dict[str, Any]) -> int:
+    raw = payload.get("max_tokens")
+    if isinstance(raw, (int, float)):
+        return max(1, int(raw))
+    return _llm_max_completion_tokens_per_turn()
+
+
+def _admission_block_reason(payload: Dict[str, Any], *, mode: str = "unknown") -> Optional[str]:
     prompt_tokens = _estimate_prompt_tokens(payload)
-    if prompt_tokens > _llm_max_prompt_tokens_per_turn():
+    completion_tokens = _requested_completion_tokens(payload)
+    total_tokens = prompt_tokens + completion_tokens
+    max_prompt = _llm_max_prompt_tokens_per_turn()
+    max_completion = _llm_max_completion_tokens_per_turn()
+    max_total = _llm_max_total_tokens_per_turn()
+
+    metrics.set("chat_llm_prompt_tokens_estimate", {"mode": mode}, value=float(prompt_tokens))
+    metrics.set("chat_llm_completion_tokens_estimate", {"mode": mode}, value=float(completion_tokens))
+    metrics.set("chat_llm_total_tokens_estimate", {"mode": mode}, value=float(total_tokens))
+    metrics.set(
+        "chat_llm_token_budget_utilization",
+        {"mode": mode, "budget": "prompt"},
+        value=float(prompt_tokens) / float(max(1, max_prompt)),
+    )
+    metrics.set(
+        "chat_llm_token_budget_utilization",
+        {"mode": mode, "budget": "completion"},
+        value=float(completion_tokens) / float(max(1, max_completion)),
+    )
+    metrics.set(
+        "chat_llm_token_budget_utilization",
+        {"mode": mode, "budget": "total"},
+        value=float(total_tokens) / float(max(1, max_total)),
+    )
+
+    if prompt_tokens > max_prompt:
         return "LLM_PROMPT_BUDGET_EXCEEDED"
-    if _llm_max_completion_tokens_per_turn() <= 0:
+    if completion_tokens > max_completion:
         return "LLM_COMPLETION_BUDGET_EXCEEDED"
+    if total_tokens > max_total:
+        return "LLM_TOTAL_BUDGET_EXCEEDED"
     return None
 
 
@@ -966,7 +1005,7 @@ async def _shadow_agent_signature(request: Dict[str, Any], trace_id: str, reques
         str(prepared.get("query") or ""),
         list(prepared.get("selected") or []),
     )
-    admission_reason = _admission_block_reason(payload)
+    admission_reason = _admission_block_reason(payload, mode="shadow")
     if admission_reason:
         return {"status": "fallback", "reason_code": admission_reason}
     return {"status": "ok", "reason_code": "SHADOW_SIMULATED_OK"}
@@ -2483,6 +2522,7 @@ def _build_llm_payload(
         "trace_id": trace_id,
         "request_id": request_id,
         "model": _llm_model(),
+        "max_tokens": _llm_max_completion_tokens_per_turn(),
         "messages": messages,
         "context": _build_context(chunks),
         "citations_required": True,
@@ -2894,7 +2934,7 @@ async def _run_chat_impl(
         selected,
         memory_facts=memory_facts,
     )
-    admission_reason = _admission_block_reason(payload)
+    admission_reason = _admission_block_reason(payload, mode="json")
     if admission_reason:
         metrics.inc("chat_admission_block_total", {"reason": admission_reason, "mode": "json"})
         response = _fallback(trace_id, request_id, None, admission_reason, session_id=session_id, user_id=user_id)
@@ -3420,7 +3460,7 @@ async def _run_chat_stream_impl(
         selected,
         memory_facts=memory_facts,
     )
-    admission_reason = _admission_block_reason(payload)
+    admission_reason = _admission_block_reason(payload, mode="stream")
     if admission_reason:
         metrics.inc("chat_admission_block_total", {"reason": admission_reason, "mode": "stream"})
         fallback_response = _fallback(trace_id, request_id, None, admission_reason, session_id=session_id, user_id=user_id)

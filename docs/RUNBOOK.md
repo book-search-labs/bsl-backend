@@ -65,6 +65,12 @@ export QS_LLM_PROVIDER_BY_INTENT_JSON='{"SHIPPING":"fallback_1","REFUND":"primar
 export QS_LLM_COST_STEERING_ENABLED=1
 export QS_LLM_LOW_COST_PROVIDER=fallback_1
 export QS_LLM_PROVIDER_COSTS_JSON='{"primary":0.30,"fallback_1":0.14,"fallback_2":0.11}'
+
+# LLM 예산 가드 (turn 단위)
+export QS_CHAT_MAX_PROMPT_TOKENS_PER_TURN=6000
+export QS_CHAT_MAX_COMPLETION_TOKENS_PER_TURN=1200
+export QS_CHAT_MAX_TOTAL_TOKENS_PER_TURN=7200
+export QS_CHAT_MAX_LLM_CALLS_PER_MINUTE=0
 ```
 
 ### Smoke checks
@@ -91,6 +97,13 @@ curl -s -XPOST http://localhost:8088/chat \
 - `chat_provider_health_score{provider}`
 - `chat_provider_health_penalty{provider}`
 - `chat_provider_cost_per_1k{provider}`
+- `chat_admission_block_total{reason,mode}`
+- `chat_llm_call_budget_total{mode,result}`
+- `chat_llm_call_rate_utilization{mode}`
+- `chat_llm_prompt_tokens_estimate{mode}`
+- `chat_llm_completion_tokens_estimate{mode}`
+- `chat_llm_total_tokens_estimate{mode}`
+- `chat_llm_token_budget_utilization{mode,budget}`
 - `chat_tool_recovery_route_total{context,next_action,reason_code}`
 - `chat_recommend_experiment_total{variant,status}`
 - `chat_recommend_quality_gate_block_total{reason}`
