@@ -10,6 +10,10 @@
   - 피드백 신호 항목별 자동 티켓 초안.
   - 생성 스크립트: `scripts/chat/sync_feedback_backlog_tickets.py`
   - 다음 실행에서 덮어쓰기/정리(prune)될 수 있으므로 수동 편집을 권장하지 않는다.
+- `chat_feedback_regression_seeds.md`
+  - 피드백 하락 이유(reason_code) 상위 항목을 회귀 시나리오 stub으로 변환한 초안.
+  - 생성 스크립트: `scripts/chat/generate_feedback_regression_seeds.py`
+  - 운영 실패 신호를 B-0623 회귀셋 편입 후보로 빠르게 큐레이션하기 위한 아티팩트.
 
 ## Refresh command
 

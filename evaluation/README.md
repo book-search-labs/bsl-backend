@@ -186,3 +186,13 @@ python3 scripts/chat/sync_feedback_backlog_tickets.py \
 
 `--allow-empty`를 사용하면 피드백 이벤트가 0건이어도 summary/backlog가 빈 payload로 갱신되어
 이전 실행에서 남은 산출물이 stale 상태로 유지되지 않는다.
+
+피드백 기반 회귀 시드 초안을 생성하려면:
+
+```bash
+python3 scripts/chat/generate_feedback_regression_seeds.py \
+  --input evaluation/chat/feedback.jsonl \
+  --output-json evaluation/chat/feedback_regression_seeds.json \
+  --output-md tasks/backlog/generated/chat_feedback_regression_seeds.md \
+  --allow-empty
+```

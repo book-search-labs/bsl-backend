@@ -170,9 +170,16 @@ python3 scripts/chat/render_feedback_backlog_md.py \
 python3 scripts/chat/sync_feedback_backlog_tickets.py \
   --input evaluation/chat/feedback_backlog.json \
   --output-dir tasks/backlog/generated/feedback
+
+python3 scripts/chat/generate_feedback_regression_seeds.py \
+  --input evaluation/chat/feedback.jsonl \
+  --output-json evaluation/chat/feedback_regression_seeds.json \
+  --output-md tasks/backlog/generated/chat_feedback_regression_seeds.md \
+  --allow-empty
 ```
 `--allow-empty`를 사용하면 피드백 0건일 때도 summary/backlog/ticket 산출물이 갱신되어
 이전 실행의 stale 자동 티켓이 남지 않는다.
+회귀 시드 초안은 `tasks/backlog/generated/chat_feedback_regression_seeds.md`에 생성된다.
 위 단계를 한 번에 수행하려면:
 ```bash
 ./scripts/chat/run_recommend_quality_loop.sh
