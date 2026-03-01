@@ -8,6 +8,7 @@ import type { KdcCategoryNode } from '../api/categories'
 import BookCover from '../components/books/BookCover'
 import type { BookHit, SearchResponse } from '../types/search'
 import { collectKdcDescendantCodes, flattenKdcCategories, getTopLevelKdc } from '../utils/kdc'
+import { SEARCH_RESUBMIT_EVENT, type SearchResubmitDetail } from '../utils/searchResubmitEvent'
 
 const DEFAULT_SIZE = 10
 const SIZE_MIN = 1
@@ -364,6 +365,21 @@ export default function SearchPage() {
     executeSearch()
   }, [executeSearch])
 
+  useEffect(() => {
+    const handleResubmit = (event: Event) => {
+      const customEvent = event as CustomEvent<SearchResubmitDetail>
+      const forcedQuery = customEvent.detail?.query?.trim()
+      if (!forcedQuery) return
+      if (forcedQuery !== trimmedQuery) return
+      void executeSearch()
+    }
+
+    window.addEventListener(SEARCH_RESUBMIT_EVENT, handleResubmit)
+    return () => {
+      window.removeEventListener(SEARCH_RESUBMIT_EVENT, handleResubmit)
+    }
+  }, [executeSearch, trimmedQuery])
+
   const updateParams = useCallback(
     (updates: {
       q?: string
@@ -429,6 +445,17 @@ export default function SearchPage() {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const nextQuery = composeQueryWithAdvancedFilters(searchInput, advancedFilters)
+    const sameQuery = nextQuery === query
+    const sameBaseRequest =
+      sameQuery &&
+      pageValue === 1 &&
+      !hasRelatedSeed &&
+      (nextQuery.trim().length > 0 ? kdcCode.length === 0 : true)
+
+    if (sameBaseRequest) {
+      void executeSearch()
+      return
+    }
 
     updateParams({
       q: nextQuery,

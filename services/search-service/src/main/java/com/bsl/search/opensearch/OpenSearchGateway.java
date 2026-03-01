@@ -111,6 +111,7 @@ public class OpenSearchGateway {
             shouldQueries.add(Map.of("multi_match", buildShortQueryCompactMultiMatch(query)));
             shouldQueries.add(Map.of("multi_match", buildShortQueryAutoPrefixMultiMatch(query)));
             shouldQueries.add(Map.of("multi_match", buildShortQueryAuxiliaryMultiMatch(query)));
+            shouldQueries.add(Map.of("multi_match", buildShortQueryAuthorPrefixMultiMatch(query)));
         } else {
             shouldQueries.add(Map.of("multi_match", buildCompactMultiMatch(query)));
             shouldQueries.add(Map.of("multi_match", buildAutoPrefixMultiMatch(query)));
@@ -258,6 +259,15 @@ public class OpenSearchGateway {
         return multiMatch;
     }
 
+    private Map<String, Object> buildShortQueryAuthorPrefixMultiMatch(String query) {
+        Map<String, Object> multiMatch = new LinkedHashMap<>();
+        multiMatch.put("query", query);
+        multiMatch.put("type", "bool_prefix");
+        multiMatch.put("fields", List.of("author_names_ko.auto^4.0", "author_names_en.auto^2.0"));
+        multiMatch.put("lenient", true);
+        return multiMatch;
+    }
+
     private Map<String, Object> buildReadingFallbackMultiMatch(String query) {
         Map<String, Object> multiMatch = new LinkedHashMap<>();
         multiMatch.put("query", query);
@@ -301,7 +311,7 @@ public class OpenSearchGateway {
             return false;
         }
         String normalized = queryText.trim();
-        return normalized.length() <= 2;
+        return normalized.length() <= 1;
     }
 
     private Map<String, Object> buildShortQueryTitleSeriesConstraint(String query) {
@@ -315,7 +325,21 @@ public class OpenSearchGateway {
         should.add(Map.of("term", Map.of("author_names_ko.exact", Map.of("value", query, "boost", 22.0d))));
         should.add(Map.of("term", Map.of("author_names_en.exact", Map.of("value", query, "boost", 14.0d))));
         should.add(Map.of("match", Map.of("author_names_ko", Map.of("query", query, "boost", 4.0d))));
-        should.add(Map.of("match", Map.of("author_names_ko.reading", Map.of("query", query, "boost", 1.4d))));
+        should.add(
+            Map.of(
+                "multi_match",
+                Map.of(
+                    "query",
+                    query,
+                    "type",
+                    "bool_prefix",
+                    "fields",
+                    List.of("author_names_ko.auto^6", "author_names_en.auto^3"),
+                    "lenient",
+                    true
+                )
+            )
+        );
         should.add(
             Map.of(
                 "multi_match",
@@ -397,6 +421,70 @@ public class OpenSearchGateway {
 
         JsonNode response = postJson("/" + properties.getDocIndex() + "/_search", body, timeBudgetMs);
         return new OpenSearchQueryResult(extractDocIds(response), body, extractScoresByDocId(response));
+    }
+
+    public OpenSearchQueryResult searchAuthorContainsFallbackDetailed(
+        String query,
+        int topK,
+        Integer timeBudgetMs,
+        List<Map<String, Object>> filters,
+        boolean explain
+    ) {
+        String trimmed = trimToNull(query);
+        if (trimmed == null) {
+            return new OpenSearchQueryResult(List.of(), null, Map.of());
+        }
+
+        String wildcardValue = "*" + escapeWildcardValue(trimmed) + "*";
+        Map<String, Object> boolQuery = new LinkedHashMap<>();
+        boolQuery.put(
+            "must",
+            List.of(
+                Map.of(
+                    "bool",
+                    Map.of(
+                        "should",
+                        List.of(
+                            Map.of(
+                                "wildcard",
+                                Map.of(
+                                    "author_names_ko.exact",
+                                    Map.of("value", wildcardValue, "boost", 12.0d, "case_insensitive", true)
+                                )
+                            ),
+                            Map.of(
+                                "wildcard",
+                                Map.of(
+                                    "author_names_en.exact",
+                                    Map.of("value", wildcardValue, "boost", 8.0d, "case_insensitive", true)
+                                )
+                            )
+                        ),
+                        "minimum_should_match",
+                        1
+                    )
+                )
+            )
+        );
+        boolQuery.put("filter", buildBooleanFilterClauses(filters, true));
+        applyLanguagePreferenceShould(boolQuery);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("size", topK);
+        body.put("track_total_hits", false);
+        body.put("query", Map.of("bool", boolQuery));
+        if (explain) {
+            body.put("explain", true);
+        }
+
+        JsonNode response = postJson("/" + properties.getDocIndex() + "/_search", body, timeBudgetMs);
+        return new OpenSearchQueryResult(extractDocIds(response), body, extractScoresByDocId(response));
+    }
+
+    private String escapeWildcardValue(String value) {
+        String escaped = value.replace("\\", "\\\\");
+        escaped = escaped.replace("*", "\\*");
+        return escaped.replace("?", "\\?");
     }
 
     private Map<String, Object> applyGlobalConstraints(

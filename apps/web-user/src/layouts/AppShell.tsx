@@ -22,6 +22,7 @@ import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { useOutsideClick } from '../hooks/useOutsideClick'
 import { clearSession, getSessionId } from '../services/mySession'
 import { getTopLevelKdc } from '../utils/kdc'
+import { dispatchSearchResubmit } from '../utils/searchResubmitEvent'
 
 const AUTOCOMPLETE_SIZE = 8
 const AUTOCOMPLETE_DEBOUNCE_MS = 250
@@ -321,6 +322,10 @@ export default function AppShell() {
 
     if (trimmed.length > 0) {
       addRecentQuery(trimmed)
+      if (location.pathname.startsWith('/search') && (searchParams.get('q') ?? '').trim() === trimmed) {
+        dispatchSearchResubmit(trimmed)
+        return
+      }
       navigate(`/search?q=${encodeURIComponent(trimmed)}`)
       return
     }
@@ -350,9 +355,13 @@ export default function AppShell() {
       setQuery(text)
       addRecentQuery(text)
       suppressSuggestions()
+      if (location.pathname.startsWith('/search') && (searchParams.get('q') ?? '').trim() === text) {
+        dispatchSearchResubmit(text)
+        return
+      }
       navigate(`/search?q=${encodeURIComponent(text)}`)
     },
-    [addRecentQuery, navigate, query, suppressSuggestions],
+    [addRecentQuery, location.pathname, navigate, query, searchParams, suppressSuggestions],
   )
 
   useEffect(() => {
@@ -406,9 +415,13 @@ export default function AppShell() {
       setQuery(trimmed)
       addRecentQuery(trimmed)
       suppressSuggestions()
+      if (location.pathname.startsWith('/search') && (searchParams.get('q') ?? '').trim() === trimmed) {
+        dispatchSearchResubmit(trimmed)
+        return
+      }
       navigate(`/search?q=${encodeURIComponent(trimmed)}`)
     },
-    [addRecentQuery, navigate, suppressSuggestions],
+    [addRecentQuery, location.pathname, navigate, searchParams, suppressSuggestions],
   )
 
   const hasQuery = debouncedQuery.trim().length >= MIN_QUERY_LENGTH

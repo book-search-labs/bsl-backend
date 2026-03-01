@@ -40,7 +40,7 @@ class OpenSearchGatewayTest {
                 JsonNode filter = boolNode.path("filter");
                 assertThat(filter.isArray()).isTrue();
                 assertThat(filter.toString()).contains("\"is_hidden\":false");
-                assertThat(filter.toString()).contains("\"language_code\":\"http://id.loc.gov/vocabulary/languages/kor\"");
+                assertThat(filter.toString()).doesNotContain("\"language_code\":\"http://id.loc.gov/vocabulary/languages/kor\"");
 
                 JsonNode should = boolNode.path("should");
                 assertThat(should.isArray()).isTrue();
@@ -50,6 +50,7 @@ class OpenSearchGatewayTest {
                 assertThat(primaryShort.path("fields").toString()).contains("series_name^5");
                 assertThat(primaryShort.path("fields").toString()).doesNotContain("author_names_ko");
                 assertThat(should.toString()).contains("author_names_ko^0.6");
+                assertThat(should.toString()).contains("author_names_ko.auto^4.0");
                 assertThat(should.toString()).contains("title_ko.reading");
 
                 boolean hasCompact = false;
@@ -74,10 +75,32 @@ class OpenSearchGatewayTest {
                 assertThat(boolNode.path("must").toString()).contains("title_ko");
                 assertThat(boolNode.path("must").toString()).contains("series_name");
                 assertThat(boolNode.path("must").toString()).contains("author_names_ko.exact");
+                assertThat(boolNode.path("must").toString()).contains("author_names_ko.auto^6");
             })
             .andRespond(withSuccess("{\"hits\":{\"hits\":[]}}", MediaType.APPLICATION_JSON));
 
         gateway.searchLexicalDetailed("문화", 10, null, null, null, null, null, null, false);
+        server.verify();
+    }
+
+    @Test
+    void singleCharacterHangulKeepsKoreanLanguageHardFilter() throws Exception {
+        RestTemplate restTemplate = new RestTemplate();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        OpenSearchGateway gateway = new OpenSearchGateway(restTemplate, objectMapper, properties());
+
+        server.expect(requestTo("http://localhost:9200/books_doc_read/_search"))
+            .andExpect(method(POST))
+            .andExpect(request -> {
+                String body = ((MockClientHttpRequest) request).getBodyAsString(StandardCharsets.UTF_8);
+                JsonNode root = objectMapper.readTree(body);
+                JsonNode boolNode = root.path("query").path("bool");
+                JsonNode filter = boolNode.path("filter");
+                assertThat(filter.toString()).contains("\"language_code\":\"http://id.loc.gov/vocabulary/languages/kor\"");
+            })
+            .andRespond(withSuccess("{\"hits\":{\"hits\":[]}}", MediaType.APPLICATION_JSON));
+
+        gateway.searchLexicalDetailed("문", 10, null, null, null, null, null, null, false);
         server.verify();
     }
 
