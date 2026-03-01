@@ -357,12 +357,13 @@ curl http://localhost:9200
 curl -s http://localhost:9200/_cat/aliases?v
 ```
 
-### v2 mapping prerequisites
+### v2.1 mapping prerequisites
 - OpenSearch plugins: `analysis-nori`, `analysis-icu`
 - Required files (mounted by `compose.yaml`):  
   `infra/opensearch/analysis/userdict_ko.txt`  
   `infra/opensearch/analysis/synonyms_ko.txt`  
   `infra/opensearch/analysis/synonyms_en.txt`
+- books_doc mapping: `infra/opensearch/books_doc_v2_1.mapping.json`
 
 Verify plugins:
 ```bash
@@ -418,6 +419,31 @@ curl -s http://localhost:9200/_cat/aliases?v
 ```bash
 curl -s -XPOST http://localhost:9200/books_doc_read/_search -H 'Content-Type: application/json' -d '{"query":{"match":{"title_ko":"해리"}},"size":3}'
 curl -s -XPOST http://localhost:9200/books_vec_read/_search -H 'Content-Type: application/json' -d "{\"size\":3,\"query\":{\"knn\":{\"embedding\":{\"vector\":$(python3 -c 'import hashlib,random,json; seed=int(hashlib.sha256(b"b1").hexdigest()[:8],16); r=random.Random(seed); print(json.dumps([round(r.random(),6) for _ in range(384)]))'),\"k\":3}}}}"
+```
+
+### Safe books_doc v2 -> v2.1 migration (reading fallback split)
+When moving existing `books_doc_v2_*` documents into v2.1 index, run:
+```bash
+OS_URL=http://localhost:9200 \
+SRC_INDEX=books_doc_v2_20260228_001 \
+DST_INDEX=books_doc_v2_1_20260301_001 \
+CUTOVER_ALIASES=1 \
+./scripts/os_reindex_books_doc_v2_to_v2_1.sh
+```
+
+This script guarantees:
+- `is_hidden` missing values are backfilled to `false`
+- `author_names_ko/author_names_en` are flattened from `authors`
+- alias cutover happens only after validation (`missing is_hidden docs: 0`)
+
+Legacy migration from `books_doc_v1_*` to `books_doc_v2_*` is still available via:
+`./scripts/os_reindex_books_doc_v1_to_v2.sh`
+
+### P1 reading split smoke check
+Run this after v2.1 cutover:
+```bash
+OS_URL=http://localhost:9200 INDEX_ALIAS=books_doc_read \
+  ./scripts/os_queries/check_books_doc_v2_1_reading_split.sh
 ```
 
 ---

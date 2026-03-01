@@ -2,7 +2,7 @@
 set -euo pipefail
 
 OS_URL="${OS_URL:-http://localhost:9200}"
-DOC_INDEX="${DOC_INDEX:-books_doc_v2_20260228_001}"
+DOC_INDEX="${DOC_INDEX:-books_doc_v2_1_20260301_001}"
 VEC_INDEX="${VEC_INDEX:-books_vec_v5_20260228_001}"
 AC_INDEX="${AC_INDEX:-ac_candidates_v2_20260228_001}"
 KEEP_INDEX="${KEEP_INDEX:-0}"
@@ -10,7 +10,7 @@ ADD_LEGACY_AC_ALIASES="${ADD_LEGACY_AC_ALIASES:-0}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-DOC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/books_doc_v2.mapping.json"
+DOC_MAPPING_FILE="${DOC_MAPPING_FILE:-$ROOT_DIR/infra/opensearch/books_doc_v2_1.mapping.json}"
 VEC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/books_vec_v5.mapping.json"
 AC_MAPPING_FILE="$ROOT_DIR/infra/opensearch/ac_candidates_v2.mapping.json"
 

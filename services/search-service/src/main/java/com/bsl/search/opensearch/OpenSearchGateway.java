@@ -21,6 +21,13 @@ import org.springframework.web.client.RestTemplate;
 
 @Component
 public class OpenSearchGateway {
+    private static final String LANGUAGE_KOR_URI = "http://id.loc.gov/vocabulary/languages/kor";
+    private static final String LANGUAGE_KOR = "kor";
+    private static final String LANGUAGE_KO = "ko";
+    private static final double LANGUAGE_KOR_URI_BOOST = 20.0d;
+    private static final double LANGUAGE_KOR_BOOST = 12.0d;
+    private static final double LANGUAGE_KO_BOOST = 10.0d;
+
     private static final Map<String, Double> DEFAULT_PRIMARY_FIELD_BOOST = Map.ofEntries(
         Map.entry("title_ko", 8.0d),
         Map.entry("title_en", 7.0d),
@@ -89,18 +96,41 @@ public class OpenSearchGateway {
     ) {
         String trimmed = trimToNull(query);
         List<String> fields = buildPrimaryFields(boost, fieldsOverride);
+        boolean shortSingleTokenDefaultFields = isSingleTokenQuery(trimmed)
+            && (fieldsOverride == null || fieldsOverride.isEmpty());
         List<Map<String, Object>> shouldQueries = new ArrayList<>();
-        shouldQueries.add(Map.of("multi_match", buildPrimaryMultiMatch(query, fields, operator, minimumShouldMatch)));
+        if (shortSingleTokenDefaultFields) {
+            shouldQueries.add(Map.of("multi_match", buildShortQueryPrimaryMultiMatch(query)));
+        } else {
+            shouldQueries.add(Map.of("multi_match", buildPrimaryMultiMatch(query, fields, operator, minimumShouldMatch)));
+        }
         if (trimmed != null) {
             shouldQueries.add(buildPhraseBoostClause(trimmed));
         }
-        shouldQueries.add(Map.of("multi_match", buildCompactMultiMatch(query)));
-        shouldQueries.add(Map.of("multi_match", buildAutoPrefixMultiMatch(query)));
+        if (shortSingleTokenDefaultFields) {
+            shouldQueries.add(Map.of("multi_match", buildShortQueryCompactMultiMatch(query)));
+            shouldQueries.add(Map.of("multi_match", buildShortQueryAutoPrefixMultiMatch(query)));
+            shouldQueries.add(Map.of("multi_match", buildShortQueryAuxiliaryMultiMatch(query)));
+        } else {
+            shouldQueries.add(Map.of("multi_match", buildCompactMultiMatch(query)));
+            shouldQueries.add(Map.of("multi_match", buildAutoPrefixMultiMatch(query)));
+        }
+        if (trimmed != null) {
+            shouldQueries.add(Map.of("multi_match", buildReadingFallbackMultiMatch(query)));
+        }
+        shouldQueries.addAll(buildLanguagePreferenceShouldClauses());
 
         Map<String, Object> boolQuery = new LinkedHashMap<>();
         boolQuery.put("should", shouldQueries);
         boolQuery.put("minimum_should_match", 1);
-        boolQuery.put("filter", buildBooleanFilterClauses(filters, true));
+        List<Object> filterClauses = buildBooleanFilterClauses(filters, true);
+        if (isSingleTokenQuery(trimmed)) {
+            boolQuery.put("must", List.of(buildShortQueryTitleSeriesConstraint(trimmed)));
+            if (containsHangul(trimmed)) {
+                filterClauses.add(buildKoreanLanguageFilterClause());
+            }
+        }
+        boolQuery.put("filter", filterClauses);
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("size", topK);
@@ -189,12 +219,131 @@ public class OpenSearchGateway {
         return multiMatch;
     }
 
+    private Map<String, Object> buildShortQueryPrimaryMultiMatch(String query) {
+        Map<String, Object> multiMatch = new LinkedHashMap<>();
+        multiMatch.put("query", query);
+        multiMatch.put("fields", List.of("title_ko^9", "title_en^8", "series_name^5"));
+        multiMatch.put("type", "best_fields");
+        multiMatch.put("operator", "or");
+        multiMatch.put("lenient", true);
+        return multiMatch;
+    }
+
+    private Map<String, Object> buildShortQueryCompactMultiMatch(String query) {
+        Map<String, Object> multiMatch = new LinkedHashMap<>();
+        multiMatch.put("query", query);
+        multiMatch.put("fields", List.of("title_ko.compact^6", "title_en.compact^5", "series_name.compact^3"));
+        multiMatch.put("type", "best_fields");
+        multiMatch.put("operator", "or");
+        multiMatch.put("lenient", true);
+        return multiMatch;
+    }
+
+    private Map<String, Object> buildShortQueryAutoPrefixMultiMatch(String query) {
+        Map<String, Object> multiMatch = new LinkedHashMap<>();
+        multiMatch.put("query", query);
+        multiMatch.put("type", "bool_prefix");
+        multiMatch.put("fields", List.of("title_ko.auto^5", "title_en.auto^4.5", "series_name.auto^3"));
+        multiMatch.put("lenient", true);
+        return multiMatch;
+    }
+
+    private Map<String, Object> buildShortQueryAuxiliaryMultiMatch(String query) {
+        Map<String, Object> multiMatch = new LinkedHashMap<>();
+        multiMatch.put("query", query);
+        multiMatch.put("fields", List.of("author_names_ko^0.6", "author_names_en^0.5", "publisher_name^0.4"));
+        multiMatch.put("type", "best_fields");
+        multiMatch.put("operator", "or");
+        multiMatch.put("lenient", true);
+        return multiMatch;
+    }
+
+    private Map<String, Object> buildReadingFallbackMultiMatch(String query) {
+        Map<String, Object> multiMatch = new LinkedHashMap<>();
+        multiMatch.put("query", query);
+        multiMatch.put("fields", List.of("title_ko.reading^1.2", "author_names_ko.reading^0.6"));
+        multiMatch.put("type", "best_fields");
+        multiMatch.put("operator", "or");
+        multiMatch.put("lenient", true);
+        return multiMatch;
+    }
+
     private String trimToNull(String value) {
         if (value == null) {
             return null;
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private boolean isSingleTokenQuery(String trimmedQuery) {
+        if (trimmedQuery == null) {
+            return false;
+        }
+        return trimmedQuery.split("\\s+").length == 1;
+    }
+
+    private boolean containsHangul(String text) {
+        if (text == null || text.isBlank()) {
+            return false;
+        }
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if ((ch >= '\u1100' && ch <= '\u11FF') || (ch >= '\u3130' && ch <= '\u318F') || (ch >= '\uAC00' && ch <= '\uD7AF')) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Map<String, Object> buildShortQueryTitleSeriesConstraint(String query) {
+        List<Map<String, Object>> should = new ArrayList<>();
+        should.add(Map.of("match", Map.of("title_ko", Map.of("query", query, "boost", 10.0d))));
+        should.add(Map.of("match", Map.of("title_en", Map.of("query", query, "boost", 8.0d))));
+        should.add(Map.of("match", Map.of("title_ko.compact", Map.of("query", query, "boost", 6.0d))));
+        should.add(Map.of("match", Map.of("title_en.compact", Map.of("query", query, "boost", 5.0d))));
+        should.add(Map.of("match", Map.of("series_name", Map.of("query", query, "boost", 4.0d))));
+        should.add(Map.of("match", Map.of("series_name.compact", Map.of("query", query, "boost", 3.0d))));
+        should.add(
+            Map.of(
+                "multi_match",
+                Map.of(
+                    "query",
+                    query,
+                    "type",
+                    "bool_prefix",
+                    "fields",
+                    List.of("title_ko.auto^5", "title_en.auto^4.5", "series_name.auto^3"),
+                    "lenient",
+                    true
+                )
+            )
+        );
+        return Map.of("bool", Map.of("should", should, "minimum_should_match", 1));
+    }
+
+    private List<Map<String, Object>> buildLanguagePreferenceShouldClauses() {
+        return List.of(
+            Map.of("term", Map.of("language_code", Map.of("value", LANGUAGE_KOR_URI, "boost", LANGUAGE_KOR_URI_BOOST))),
+            Map.of("term", Map.of("language_code", Map.of("value", LANGUAGE_KOR, "boost", LANGUAGE_KOR_BOOST))),
+            Map.of("term", Map.of("language_code", Map.of("value", LANGUAGE_KO, "boost", LANGUAGE_KO_BOOST)))
+        );
+    }
+
+    private Map<String, Object> buildKoreanLanguageFilterClause() {
+        return Map.of(
+            "bool",
+            Map.of(
+                "should",
+                List.of(
+                    Map.of("term", Map.of("language_code", LANGUAGE_KOR_URI)),
+                    Map.of("term", Map.of("language_code", LANGUAGE_KOR)),
+                    Map.of("term", Map.of("language_code", LANGUAGE_KO))
+                ),
+                "minimum_should_match",
+                1
+            )
+        );
     }
 
     public OpenSearchQueryResult searchLexicalByDslDetailed(
@@ -263,12 +412,14 @@ public class OpenSearchGateway {
             List<Object> filterClauses = toClauseList(boolQuery.get("filter"));
             filterClauses.addAll(buildBooleanFilterClauses(filters, true));
             boolQuery.put("filter", filterClauses);
+            applyLanguagePreferenceShould(boolQuery);
             return Map.of("bool", boolQuery);
         }
 
         Map<String, Object> boolQuery = new LinkedHashMap<>();
         boolQuery.put("must", List.of(queryDsl));
         boolQuery.put("filter", buildBooleanFilterClauses(filters, true));
+        applyLanguagePreferenceShould(boolQuery);
         return Map.of("bool", boolQuery);
     }
 
@@ -293,6 +444,15 @@ public class OpenSearchGateway {
         List<Object> wrapped = new ArrayList<>();
         wrapped.add(value);
         return wrapped;
+    }
+
+    private void applyLanguagePreferenceShould(Map<String, Object> boolQuery) {
+        List<Object> shouldClauses = toClauseList(boolQuery.get("should"));
+        shouldClauses.addAll(buildLanguagePreferenceShouldClauses());
+        boolQuery.put("should", shouldClauses);
+        if (!boolQuery.containsKey("minimum_should_match")) {
+            boolQuery.put("minimum_should_match", 0);
+        }
     }
 
     public List<String> searchVector(List<Double> vector, int topK) {

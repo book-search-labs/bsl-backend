@@ -40,9 +40,17 @@ class OpenSearchGatewayTest {
                 JsonNode filter = boolNode.path("filter");
                 assertThat(filter.isArray()).isTrue();
                 assertThat(filter.toString()).contains("\"is_hidden\":false");
+                assertThat(filter.toString()).contains("\"language_code\":\"http://id.loc.gov/vocabulary/languages/kor\"");
 
                 JsonNode should = boolNode.path("should");
                 assertThat(should.isArray()).isTrue();
+                assertThat(should.toString()).contains("http://id.loc.gov/vocabulary/languages/kor");
+                JsonNode primaryShort = should.get(0).path("multi_match");
+                assertThat(primaryShort.path("fields").toString()).contains("title_ko^9");
+                assertThat(primaryShort.path("fields").toString()).contains("series_name^5");
+                assertThat(primaryShort.path("fields").toString()).doesNotContain("author_names_ko");
+                assertThat(should.toString()).contains("author_names_ko^0.6");
+                assertThat(should.toString()).contains("title_ko.reading");
 
                 boolean hasCompact = false;
                 boolean hasBoolPrefix = false;
@@ -63,6 +71,8 @@ class OpenSearchGatewayTest {
                 assertThat(hasCompact).isTrue();
                 assertThat(hasBoolPrefix).isTrue();
                 assertThat(hasWildcard).isFalse();
+                assertThat(boolNode.path("must").toString()).contains("title_ko");
+                assertThat(boolNode.path("must").toString()).contains("series_name");
             })
             .andRespond(withSuccess("{\"hits\":{\"hits\":[]}}", MediaType.APPLICATION_JSON));
 
@@ -82,9 +92,13 @@ class OpenSearchGatewayTest {
                 String body = ((MockClientHttpRequest) request).getBodyAsString(StandardCharsets.UTF_8);
                 JsonNode root = objectMapper.readTree(body);
                 JsonNode filter = root.path("query").path("bool").path("filter");
+                JsonNode should = root.path("query").path("bool").path("should");
                 assertThat(filter.isArray()).isTrue();
                 assertThat(filter.toString()).contains("\"is_hidden\":false");
                 assertThat(filter.toString()).contains("\"language_code\":\"ko\"");
+                assertThat(should.isArray()).isTrue();
+                assertThat(should.toString()).contains("http://id.loc.gov/vocabulary/languages/kor");
+                assertThat(root.path("query").path("bool").path("minimum_should_match").asInt()).isEqualTo(0);
             })
             .andRespond(withSuccess("{\"hits\":{\"hits\":[]}}", MediaType.APPLICATION_JSON));
 

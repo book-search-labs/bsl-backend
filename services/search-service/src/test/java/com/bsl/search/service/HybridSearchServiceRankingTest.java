@@ -167,7 +167,30 @@ class HybridSearchServiceRankingTest {
         assertEquals("b2", response.getHits().get(1).getDocId());
     }
 
+    @Test
+    void searchPrioritizesHangulTitleForSingleTokenHangulQuery() {
+        SearchRequest request = buildRequest("문화", true);
+        when(lexicalRetriever.retrieve(any()))
+            .thenReturn(RetrievalStageResult.success(List.of("cjk-1", "ko-1"), Map.of(), null, 5L));
+        when(vectorRetriever.retrieve(any()))
+            .thenReturn(RetrievalStageResult.success(List.of("cjk-1", "ko-1"), Map.of(), null, 5L));
+        when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildMixedLanguageSources());
+        when(rankingGateway.rerank(eq("문화"), anyList(), anyInt(), anyInt(), anyBoolean(), anyString(), anyString(), any()))
+            .thenThrow(new RankingUnavailableException("down", new RuntimeException("timeout")));
+
+        SearchResponse response = service.search(request, "trace-1", "req-1", null);
+
+        assertFalse(response.isRankingApplied());
+        assertEquals(2, response.getHits().size());
+        assertEquals("ko-1", response.getHits().get(0).getDocId());
+        assertEquals("cjk-1", response.getHits().get(1).getDocId());
+    }
+
     private SearchRequest buildRequest(String raw) {
+        return buildRequest(raw, false);
+    }
+
+    private SearchRequest buildRequest(String raw, boolean enableVector) {
         SearchRequest request = new SearchRequest();
         SearchRequest.Query query = new SearchRequest.Query();
         query.setRaw(raw);
@@ -176,7 +199,7 @@ class HybridSearchServiceRankingTest {
         Options options = new Options();
         options.setSize(2);
         options.setFrom(0);
-        options.setEnableVector(false);
+        options.setEnableVector(enableVector);
         request.setOptions(options);
         return request;
     }
@@ -203,6 +226,23 @@ class HybridSearchServiceRankingTest {
         b2.putArray("authors").add("Author 2");
         sources.put("b2", b2);
 
+        return sources;
+    }
+
+    private Map<String, JsonNode> buildMixedLanguageSources() {
+        Map<String, JsonNode> sources = new LinkedHashMap<>();
+
+        ObjectNode cjk = objectMapper.createObjectNode();
+        cjk.put("doc_id", "cjk-1");
+        cjk.put("title_ko", "茶的文化");
+        cjk.putArray("authors").add("Author CJK");
+        sources.put("cjk-1", cjk);
+
+        ObjectNode ko = objectMapper.createObjectNode();
+        ko.put("doc_id", "ko-1");
+        ko.put("title_ko", "한국 문화사");
+        ko.putArray("authors").add("Author KO");
+        sources.put("ko-1", ko);
         return sources;
     }
 }

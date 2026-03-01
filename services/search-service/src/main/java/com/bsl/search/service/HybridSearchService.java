@@ -634,9 +634,24 @@ public class HybridSearchService {
     }
 
     private boolean shouldPrioritizeKoreanTitles(ExecutionPlan plan) {
-        return plan != null
-            && isBlank(plan.queryText)
-            && containsKdcFilter(plan.filters);
+        if (plan == null) {
+            return false;
+        }
+        if (isSingleTokenHangulQuery(plan.queryText)) {
+            return true;
+        }
+        return isBlank(plan.queryText) && containsKdcFilter(plan.filters);
+    }
+
+    private boolean isSingleTokenHangulQuery(String queryText) {
+        String normalized = trimToNull(queryText);
+        if (normalized == null) {
+            return false;
+        }
+        if (normalized.split("\\s+").length != 1) {
+            return false;
+        }
+        return containsHangul(normalized);
     }
 
     private boolean containsKdcFilter(List<Map<String, Object>> filters) {
@@ -1899,6 +1914,7 @@ public class HybridSearchService {
             String normalized = field.trim().toLowerCase(Locale.ROOT);
             if ("title_ko".equals(normalized)) {
                 addIfAbsent(mapped, "title_ko");
+                addIfAbsent(mapped, "title_ko.reading");
                 addIfAbsent(mapped, "title_ko.compact");
                 addIfAbsent(mapped, "title_ko.auto");
             } else if ("title_en".equals(normalized)) {
@@ -1907,6 +1923,7 @@ public class HybridSearchService {
                 addIfAbsent(mapped, "title_en.auto");
             } else if ("author_ko".equals(normalized)) {
                 addIfAbsent(mapped, "author_names_ko");
+                addIfAbsent(mapped, "author_names_ko.reading");
                 addIfAbsent(mapped, "author_names_ko.compact");
                 addIfAbsent(mapped, "author_names_ko.auto");
                 addIfAbsent(mapped, "author_names_en");
@@ -2002,6 +2019,7 @@ public class HybridSearchService {
                 "should",
                 List.of(
                     Map.of("match", Map.of("author_names_ko", Map.of("query", author, "boost", 3.0d))),
+                    Map.of("match", Map.of("author_names_ko.reading", Map.of("query", author, "boost", 0.9d))),
                     Map.of("match", Map.of("author_names_ko.compact", Map.of("query", author, "boost", 2.2d))),
                     Map.of("match", Map.of("author_names_en", Map.of("query", author, "boost", 1.8d))),
                     buildMultiMatchClause(
@@ -2024,6 +2042,7 @@ public class HybridSearchService {
                 "should",
                 List.of(
                     Map.of("match", Map.of("title_ko", Map.of("query", title, "boost", 3.0d))),
+                    Map.of("match", Map.of("title_ko.reading", Map.of("query", title, "boost", 1.2d))),
                     Map.of("match", Map.of("title_ko.compact", Map.of("query", title, "boost", 2.2d))),
                     Map.of("match_phrase", Map.of("title_ko", Map.of("query", title, "slop", 1, "boost", 6.0d))),
                     buildMultiMatchClause(
@@ -2106,6 +2125,12 @@ public class HybridSearchService {
                     buildMultiMatchClause(
                         residual,
                         "best_fields",
+                        List.of("title_ko.reading^0.9", "author_names_ko.reading^0.5"),
+                        "or"
+                    ),
+                    buildMultiMatchClause(
+                        residual,
+                        "best_fields",
                         List.of(
                             "title_ko.compact^2.2",
                             "title_en.compact^2.0",
@@ -2138,10 +2163,12 @@ public class HybridSearchService {
             "best_fields",
             List.of(
                 "title_ko^2",
+                "title_ko.reading^0.8",
                 "title_en^1.6",
                 "series_name^1.4",
                 "publisher_name^1.2",
                 "author_names_ko^1.2",
+                "author_names_ko.reading^0.5",
                 "author_names_en^1.1"
             ),
             "or"
