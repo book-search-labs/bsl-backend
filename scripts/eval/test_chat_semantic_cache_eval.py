@@ -27,6 +27,10 @@ def test_collect_semantic_cache_metrics_aggregates_values():
         "chat_semantic_cache_store_total{lane=policy,topic=refund}": 4,
         "chat_semantic_cache_block_total{reason=SIMILARITY_THRESHOLD}": 3,
         "chat_semantic_cache_auto_disable_total{reason=drift}": 1,
+        "chat_policy_topic_cache_hit_total{topic=RefundPolicy}": 5,
+        "chat_policy_topic_cache_hit_total{topic=ShippingPolicy}": 2,
+        "chat_policy_topic_miss_total{reason=NO_CANDIDATE}": 4,
+        "chat_policy_topic_miss_total{reason=SIMILARITY_THRESHOLD}": 1,
     }
     derived = module.collect_semantic_cache_metrics(snapshot)
     assert derived["quality_total"] == 10
@@ -35,6 +39,11 @@ def test_collect_semantic_cache_metrics_aggregates_values():
     assert derived["hit_total"] == 7
     assert derived["block_total"] == 3
     assert derived["auto_disable_total"] == 1
+    assert derived["policy_topic_hit_total"] == 7
+    assert derived["policy_topic_miss_total"] == 5
+    assert derived["policy_topic_hits_by_topic"]["RefundPolicy"] == 5
+    assert derived["policy_topic_hits_by_topic"]["ShippingPolicy"] == 2
+    assert derived["policy_topic_miss_by_reason"]["NO_CANDIDATE"] == 4
 
 
 def test_evaluate_gate_flags_failures():

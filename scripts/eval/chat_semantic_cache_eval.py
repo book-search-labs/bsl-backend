@@ -58,6 +58,10 @@ def collect_semantic_cache_metrics(snapshot: dict[str, Any]) -> dict[str, Any]:
     auto_disable_total = 0.0
     blocks_by_reason: dict[str, float] = {}
     quality_by_reason: dict[str, float] = {}
+    policy_topic_hits_by_topic: dict[str, float] = {}
+    policy_topic_miss_by_reason: dict[str, float] = {}
+    policy_topic_hit_total = 0.0
+    policy_topic_miss_total = 0.0
 
     for key, value in (snapshot or {}).items():
         name, labels = parse_metric_key(str(key))
@@ -84,6 +88,16 @@ def collect_semantic_cache_metrics(snapshot: dict[str, Any]) -> dict[str, Any]:
         if name == "chat_semantic_cache_auto_disable_total":
             auto_disable_total += metric_value
             continue
+        if name == "chat_policy_topic_cache_hit_total":
+            topic = labels.get("topic", "unknown")
+            policy_topic_hit_total += metric_value
+            policy_topic_hits_by_topic[topic] = policy_topic_hits_by_topic.get(topic, 0.0) + metric_value
+            continue
+        if name == "chat_policy_topic_miss_total":
+            reason = labels.get("reason", "unknown")
+            policy_topic_miss_total += metric_value
+            policy_topic_miss_by_reason[reason] = policy_topic_miss_by_reason.get(reason, 0.0) + metric_value
+            continue
 
     error_rate = (quality_error / quality_total) if quality_total > 0 else 0.0
     return {
@@ -96,6 +110,10 @@ def collect_semantic_cache_metrics(snapshot: dict[str, Any]) -> dict[str, Any]:
         "auto_disable_total": auto_disable_total,
         "blocks_by_reason": blocks_by_reason,
         "quality_by_reason": quality_by_reason,
+        "policy_topic_hit_total": policy_topic_hit_total,
+        "policy_topic_miss_total": policy_topic_miss_total,
+        "policy_topic_hits_by_topic": policy_topic_hits_by_topic,
+        "policy_topic_miss_by_reason": policy_topic_miss_by_reason,
     }
 
 
@@ -166,6 +184,8 @@ def render_markdown(report: dict[str, Any]) -> str:
     baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     blocks_by_reason = derived.get("blocks_by_reason") if isinstance(derived.get("blocks_by_reason"), dict) else {}
     quality_by_reason = derived.get("quality_by_reason") if isinstance(derived.get("quality_by_reason"), dict) else {}
+    topic_hits = derived.get("policy_topic_hits_by_topic") if isinstance(derived.get("policy_topic_hits_by_topic"), dict) else {}
+    topic_miss = derived.get("policy_topic_miss_by_reason") if isinstance(derived.get("policy_topic_miss_by_reason"), dict) else {}
 
     lines: list[str] = []
     lines.append("# Chat Semantic Cache Eval Report")
@@ -186,6 +206,8 @@ def render_markdown(report: dict[str, Any]) -> str:
     lines.append(f"| store_total | {derived.get('store_total', 0):.0f} |")
     lines.append(f"| block_total | {derived.get('block_total', 0):.0f} |")
     lines.append(f"| auto_disable_total | {derived.get('auto_disable_total', 0):.0f} |")
+    lines.append(f"| policy_topic_hit_total | {derived.get('policy_topic_hit_total', 0):.0f} |")
+    lines.append(f"| policy_topic_miss_total | {derived.get('policy_topic_miss_total', 0):.0f} |")
     lines.append("")
     lines.append("## Blocks By Reason")
     lines.append("")
@@ -199,6 +221,22 @@ def render_markdown(report: dict[str, Any]) -> str:
     lines.append("")
     if quality_by_reason:
         for reason, value in sorted(quality_by_reason.items(), key=lambda item: item[1], reverse=True):
+            lines.append(f"- {reason}: {value:.0f}")
+    else:
+        lines.append("- (none)")
+    lines.append("")
+    lines.append("## Policy Topic Hits")
+    lines.append("")
+    if topic_hits:
+        for topic, value in sorted(topic_hits.items(), key=lambda item: item[1], reverse=True):
+            lines.append(f"- {topic}: {value:.0f}")
+    else:
+        lines.append("- (none)")
+    lines.append("")
+    lines.append("## Policy Topic Misses")
+    lines.append("")
+    if topic_miss:
+        for reason, value in sorted(topic_miss.items(), key=lambda item: item[1], reverse=True):
             lines.append(f"- {reason}: {value:.0f}")
     else:
         lines.append("- (none)")

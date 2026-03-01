@@ -201,6 +201,7 @@ python3 scripts/eval/chat_semantic_cache_eval.py \
 `RUN_CHAT_SEMANTIC_CACHE_EVAL=1 ./scripts/test.sh`로 옵션 게이트를 활성화할 수 있다.
 정책 토픽 캐시 버전은 `QS_CHAT_POLICY_TOPIC_VERSION`으로 관리하며,
 `RefundPolicy/ShippingPolicy/OrderCancelPolicy/EbookRefundPolicy` 온톨로지 키로 정규화된다.
+semantic cache eval 리포트에는 `policy_topic_hit_total`, `policy_topic_miss_total` 집계가 포함된다.
 
 피드백 집계와 개선 백로그 시드 생성:
 ```bash
