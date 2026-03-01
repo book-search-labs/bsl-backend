@@ -64,6 +64,12 @@ python3 scripts/eval/chat_recommend_eval.py \
   --gate
 ```
 
+`./scripts/test.sh`에서 옵션 게이트로 실행하려면:
+
+```bash
+RUN_CHAT_RECOMMEND_EVAL=1 ./scripts/test.sh
+```
+
 ## Chat feedback aggregation -> backlog seeds
 
 Use `scripts/chat/aggregate_feedback.py` to summarize feedback and generate actionable backlog seeds:
