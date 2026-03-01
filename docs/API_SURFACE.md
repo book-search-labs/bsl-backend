@@ -703,13 +703,23 @@ If supported, the server should treat it as:
 **Purpose**: Internal recommendation experiment state reset (quality counters + auto-disable latch clear).
 
 ### Request
-```json
-{}
-```
+- Contract: `contracts/chat-recommend-experiment-reset-request.schema.json`
+- Example: `contracts/examples/chat-recommend-experiment-reset-request.sample.json`
 
 ### Response
 - Contract: `contracts/chat-recommend-experiment-reset-response.schema.json`
 - Example: `contracts/examples/chat-recommend-experiment-reset-response.sample.json`
+
+## POST `/internal/chat/recommend/experiment/config`
+**Purpose**: Internal recommendation experiment runtime override patch (without reset).
+
+### Request
+- Contract: `contracts/chat-recommend-experiment-config-update-request.schema.json`
+- Example: `contracts/examples/chat-recommend-experiment-config-update-request.sample.json`
+
+### Response
+- Contract: `contracts/chat-recommend-experiment-config-update-response.schema.json`
+- Example: `contracts/examples/chat-recommend-experiment-config-update-response.sample.json`
 
 ## GET `/internal/chat/session/state`
 **Purpose**: Internal chat session diagnostics snapshot (fallback count + unresolved context).
