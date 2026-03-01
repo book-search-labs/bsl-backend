@@ -1135,7 +1135,10 @@ def _build_response(
     resolved_reason_code = reason_code if isinstance(reason_code, str) and reason_code.strip() else defaults["reason_code"]
     resolved_recoverable = bool(defaults["recoverable"] if recoverable is None else recoverable)
     resolved_next_action = next_action if isinstance(next_action, str) and next_action.strip() else defaults["next_action"]
-    resolved_retry_after_ms = defaults["retry_after_ms"] if retry_after_ms is None else retry_after_ms
+    if retry_after_ms is None:
+        resolved_retry_after_ms = defaults["retry_after_ms"] if resolved_next_action == "RETRY" else None
+    else:
+        resolved_retry_after_ms = retry_after_ms
     metrics.inc(
         "chat_error_recovery_hint_total",
         {
@@ -1158,6 +1161,62 @@ def _build_response(
         "citations": citations,
     }
     return _apply_claim_verifier(response)
+
+
+def _is_retryable_tool_error(exc: ToolCallError | None) -> bool:
+    if not isinstance(exc, ToolCallError):
+        return False
+    if str(exc.code or "").strip().lower() in {"tool_timeout", "tool_circuit_open"}:
+        return True
+    if exc.status_code is None:
+        return True
+    return int(exc.status_code) >= 500 or int(exc.status_code) == 429
+
+
+def _tool_retry_after_ms(exc: ToolCallError | None) -> int | None:
+    if not _is_retryable_tool_error(exc):
+        return None
+    if isinstance(exc, ToolCallError):
+        code = str(exc.code or "").strip().lower()
+        if code == "tool_circuit_open":
+            return _tool_circuit_open_sec() * 1000
+        if exc.status_code == 429:
+            return 5000
+    return 3000
+
+
+def _build_tool_failure_response(
+    trace_id: str,
+    request_id: str,
+    *,
+    exc: ToolCallError | None,
+    context: str,
+    message: str,
+    prefer_status_check: bool = False,
+) -> dict[str, Any]:
+    retryable = _is_retryable_tool_error(exc)
+    reason_code = "TOOL_RETRYABLE_FAILURE" if retryable else "TOOL_FINAL_FAILURE"
+    if retryable:
+        next_action = "STATUS_CHECK" if prefer_status_check else "RETRY"
+    else:
+        next_action = "OPEN_SUPPORT_TICKET"
+    metrics.inc(
+        "chat_tool_recovery_route_total",
+        {
+            "context": str(context or "unknown"),
+            "next_action": next_action,
+            "reason_code": reason_code,
+        },
+    )
+    return _build_response(
+        trace_id,
+        request_id,
+        "tool_fallback",
+        message,
+        reason_code=reason_code,
+        next_action=next_action,
+        retry_after_ms=_tool_retry_after_ms(exc),
+    )
 
 
 def _resolve_session_id(request: dict[str, Any], user_id: str | None) -> str:
@@ -2011,7 +2070,13 @@ async def _handle_order_lookup(
             return _build_response(trace_id, request_id, "not_found", "해당 주문을 찾을 수 없습니다. 주문번호를 다시 확인해 주세요.")
         if exc.status_code == 403:
             return _build_response(trace_id, request_id, "forbidden", "본인 주문만 조회할 수 있습니다.")
-        return _build_response(trace_id, request_id, "tool_fallback", "주문 정보를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.")
+        return _build_tool_failure_response(
+            trace_id,
+            request_id,
+            exc=exc,
+            context="order_lookup",
+            message="주문 정보를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        )
 
     order_no = str(order.get("order_no") or "-")
     status = _order_status_ko(str(order.get("status") or ""))
@@ -2057,7 +2122,13 @@ async def _handle_shipment_lookup(
             return _build_response(trace_id, request_id, "not_found", "해당 주문을 찾을 수 없습니다. 주문번호를 다시 확인해 주세요.")
         if exc.status_code == 403:
             return _build_response(trace_id, request_id, "forbidden", "본인 주문만 조회할 수 있습니다.")
-        return _build_response(trace_id, request_id, "tool_fallback", "배송 정보를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.")
+        return _build_tool_failure_response(
+            trace_id,
+            request_id,
+            exc=exc,
+            context="shipment_lookup",
+            message="배송 정보를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        )
 
     order_id = int(order.get("order_id"))
     order_no = str(order.get("order_no") or "-")
@@ -2072,8 +2143,14 @@ async def _handle_shipment_lookup(
             tool_name="shipment_lookup",
             intent="SHIPMENT_LOOKUP",
         )
-    except ToolCallError:
-        return _build_response(trace_id, request_id, "tool_fallback", "배송 정보를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.")
+    except ToolCallError as exc:
+        return _build_tool_failure_response(
+            trace_id,
+            request_id,
+            exc=exc,
+            context="shipment_lookup",
+            message="배송 정보를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        )
 
     items = shipment_data.get("items") if isinstance(shipment_data, dict) else []
     if not isinstance(items, list) or len(items) == 0:
@@ -2127,7 +2204,13 @@ async def _handle_refund_lookup(
             return _build_response(trace_id, request_id, "not_found", "해당 주문을 찾을 수 없습니다. 주문번호를 다시 확인해 주세요.")
         if exc.status_code == 403:
             return _build_response(trace_id, request_id, "forbidden", "본인 주문만 조회할 수 있습니다.")
-        return _build_response(trace_id, request_id, "tool_fallback", "환불 정보를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.")
+        return _build_tool_failure_response(
+            trace_id,
+            request_id,
+            exc=exc,
+            context="refund_lookup",
+            message="환불 정보를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        )
 
     order_id = int(order.get("order_id"))
     order_no = str(order.get("order_no") or "-")
@@ -2141,8 +2224,14 @@ async def _handle_refund_lookup(
             tool_name="refund_lookup",
             intent="REFUND_LOOKUP",
         )
-    except ToolCallError:
-        return _build_response(trace_id, request_id, "tool_fallback", "환불 정보를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.")
+    except ToolCallError as exc:
+        return _build_tool_failure_response(
+            trace_id,
+            request_id,
+            exc=exc,
+            context="refund_lookup",
+            message="환불 정보를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        )
 
     items = refund_data.get("items") if isinstance(refund_data, dict) else []
     if not isinstance(items, list) or len(items) == 0:
@@ -2761,8 +2850,14 @@ async def _handle_cart_recommendation(
             tool_name="cart_recommend",
             intent="CART_RECOMMEND",
         )
-    except ToolCallError:
-        return _build_response(trace_id, request_id, "tool_fallback", "장바구니 정보를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.")
+    except ToolCallError as exc:
+        return _build_tool_failure_response(
+            trace_id,
+            request_id,
+            exc=exc,
+            context="cart_recommend",
+            message="장바구니 정보를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        )
 
     cart = cart_data.get("cart") if isinstance(cart_data, dict) else {}
     items = cart.get("items") if isinstance(cart, dict) else []
@@ -2885,7 +2980,14 @@ async def _start_sensitive_workflow(
         if exc.status_code == 403:
             metrics.inc("chat_sensitive_action_blocked_total", {"reason": "authz_denied"})
             return _build_response(trace_id, request_id, "forbidden", "본인 주문만 처리할 수 있습니다.")
-        return _build_response(trace_id, request_id, "tool_fallback", "주문 정보를 확인하지 못해 작업을 시작할 수 없습니다.")
+        return _build_tool_failure_response(
+            trace_id,
+            request_id,
+            exc=exc,
+            context="workflow_prepare",
+            message="주문 정보를 확인하지 못해 작업을 시작할 수 없습니다.",
+            prefer_status_check=True,
+        )
 
     order_id = int(order.get("order_id"))
     order_no = str(order.get("order_no") or f"#{order_id}")
@@ -3128,7 +3230,14 @@ async def _handle_ticket_create(
         if exc.status_code == 403:
             metrics.inc("chat_ticket_authz_denied_total")
             return _build_response(trace_id, request_id, "forbidden", "본인 티켓만 접수할 수 있습니다.")
-        return _build_response(trace_id, request_id, "tool_fallback", "문의 접수 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
+        return _build_tool_failure_response(
+            trace_id,
+            request_id,
+            exc=exc,
+            context="ticket_create",
+            message="문의 접수 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+            prefer_status_check=True,
+        )
 
     ticket = created.get("ticket") if isinstance(created, dict) else {}
     ticket_no = str(ticket.get("ticket_no") or "")
@@ -3281,7 +3390,14 @@ async def _handle_ticket_status(
             return _build_response(trace_id, request_id, "not_found", "해당 접수번호의 문의를 찾을 수 없습니다.")
         elif exc is not None:
             metrics.inc("chat_ticket_status_lookup_total", {"result": "error"})
-            return _build_response(trace_id, request_id, "tool_fallback", "티켓 상태를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.")
+            return _build_tool_failure_response(
+                trace_id,
+                request_id,
+                exc=exc,
+                context="ticket_status_lookup",
+                message="티켓 상태를 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+                prefer_status_check=True,
+            )
 
     ticket = looked_up.get("ticket") if isinstance(looked_up, dict) else {}
     status = str(ticket.get("status") or "RECEIVED")
@@ -3373,7 +3489,14 @@ async def _handle_ticket_list(
             metrics.inc("chat_ticket_list_total", {"result": "forbidden"})
             return _build_response(trace_id, request_id, "forbidden", "본인 티켓만 조회할 수 있습니다.")
         metrics.inc("chat_ticket_list_total", {"result": "error"})
-        return _build_response(trace_id, request_id, "tool_fallback", "문의 내역을 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.")
+        return _build_tool_failure_response(
+            trace_id,
+            request_id,
+            exc=exc,
+            context="ticket_list",
+            message="문의 내역을 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+            prefer_status_check=True,
+        )
 
     items = listed.get("items") if isinstance(listed, dict) else []
     if not isinstance(items, list) or not items:
@@ -3701,7 +3824,14 @@ async def _execute_sensitive_workflow(
         )
         _clear_workflow(session_id)
         metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "failed_final"})
-        return _build_response(trace_id, request_id, "tool_fallback", "작업 실행 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
+        return _build_tool_failure_response(
+            trace_id,
+            request_id,
+            exc=exc,
+            context="workflow_execute",
+            message="작업 실행 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+            prefer_status_check=True,
+        )
 
     metrics.inc("chat_workflow_step_error_total", {"type": workflow_type, "step": "execute", "error_code": "unsupported"})
     _apply_workflow_transition(

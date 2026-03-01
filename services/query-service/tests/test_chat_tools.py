@@ -2455,6 +2455,56 @@ def test_build_response_repairs_not_confirmed_success_claim():
     assert "확인 절차" in response["answer"]["content"]
 
 
+def test_build_tool_failure_response_retryable_prefers_retry():
+    exc = chat_tools.ToolCallError("tool_timeout", "timeout", status_code=504)
+    response = chat_tools._build_tool_failure_response(
+        "trace_test",
+        "req_retryable",
+        exc=exc,
+        context="order_lookup",
+        message="주문 정보를 조회하지 못했습니다.",
+    )
+
+    assert response["status"] == "tool_fallback"
+    assert response["reason_code"] == "TOOL_RETRYABLE_FAILURE"
+    assert response["next_action"] == "RETRY"
+    assert int(response["retry_after_ms"] or 0) >= 3000
+
+
+def test_build_tool_failure_response_retryable_prefers_status_check():
+    exc = chat_tools.ToolCallError("tool_timeout", "timeout", status_code=504)
+    response = chat_tools._build_tool_failure_response(
+        "trace_test",
+        "req_status_check",
+        exc=exc,
+        context="workflow_execute",
+        message="작업 실행 중 오류가 발생했습니다.",
+        prefer_status_check=True,
+    )
+
+    assert response["status"] == "tool_fallback"
+    assert response["reason_code"] == "TOOL_RETRYABLE_FAILURE"
+    assert response["next_action"] == "STATUS_CHECK"
+    assert int(response["retry_after_ms"] or 0) >= 3000
+
+
+def test_build_tool_failure_response_non_retryable_routes_support():
+    exc = chat_tools.ToolCallError("schema_mismatch", "bad", status_code=400)
+    response = chat_tools._build_tool_failure_response(
+        "trace_test",
+        "req_support",
+        exc=exc,
+        context="ticket_create",
+        message="문의 접수 중 오류가 발생했습니다.",
+        prefer_status_check=True,
+    )
+
+    assert response["status"] == "tool_fallback"
+    assert response["reason_code"] == "TOOL_FINAL_FAILURE"
+    assert response["next_action"] == "OPEN_SUPPORT_TICKET"
+    assert response["retry_after_ms"] is None
+
+
 def test_call_commerce_timeout_emits_chat_timeout_metric(monkeypatch):
     class FakeAsyncClient:
         async def __aenter__(self):
