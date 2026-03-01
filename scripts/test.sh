@@ -368,6 +368,7 @@ if [ "${RUN_CHAT_PIPELINE_TESTS:-0}" = "1" ]; then
       "$ROOT_DIR/scripts/chat/test_sync_feedback_backlog_tickets.py" \
       "$ROOT_DIR/scripts/chat/test_generate_feedback_regression_seeds.py" \
       "$ROOT_DIR/scripts/chat/test_build_regression_seed_fixture.py" \
+      "$ROOT_DIR/scripts/chat/test_apply_regression_fixture_candidates.py" \
       "$ROOT_DIR/scripts/eval/test_chat_recommend_eval.py" \
       "$ROOT_DIR/scripts/eval/test_chat_rollout_eval.py" \
       "$ROOT_DIR/scripts/eval/test_chat_semantic_cache_eval.py" \
