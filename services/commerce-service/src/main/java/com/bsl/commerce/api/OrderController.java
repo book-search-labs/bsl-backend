@@ -34,7 +34,7 @@ public class OrderController {
         @RequestBody OrderCreateRequest request
     ) {
         if (request == null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "bad_request", "request body is required");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "bad_request", "요청 본문이 필요합니다.");
         }
         long userId = RequestUtils.resolveUserId(userIdHeader, 1L);
         List<OrderService.OrderItemRequest> items = request.items == null ? null : request.items.stream()
@@ -47,6 +47,7 @@ public class OrderController {
             items,
             request.shippingAddressId,
             request.shippingSnapshot,
+            request.shippingMode,
             request.paymentMethod,
             request.idempotencyKey
         );
@@ -65,7 +66,7 @@ public class OrderController {
         long userId = RequestUtils.resolveUserId(userIdHeader, 1L);
         Map<String, Object> order = orderService.getOrder(orderId);
         if (JdbcUtils.asLong(order.get("user_id")) != userId) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden", "order does not belong to user");
+            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden", "해당 주문에 접근할 수 없습니다.");
         }
         Map<String, Object> response = base();
         response.put("order", order);
@@ -116,6 +117,7 @@ public class OrderController {
         public List<OrderItemRequest> items;
         public Long shippingAddressId;
         public Map<String, Object> shippingSnapshot;
+        public String shippingMode;
         public String paymentMethod;
         public String idempotencyKey;
     }

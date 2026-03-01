@@ -1,0 +1,13 @@
+{
+  "version": "v1",
+  "trace_id": "trace_01",
+  "request_id": "req_01",
+  "status": "ok",
+  "session": {
+    "session_id": "u:101:default",
+    "reset_applied": true,
+    "previous_fallback_count": 3,
+    "previous_unresolved_context": true,
+    "reset_at_ms": 1760000100000
+  }
+}

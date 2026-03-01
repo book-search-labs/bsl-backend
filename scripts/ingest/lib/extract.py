@@ -76,6 +76,13 @@ def extract_publisher(node: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+def extract_series_name(node: Dict[str, Any]) -> Optional[str]:
+    value = pick_first(node, ("series_name", "seriesName", "series", "collection", "setName"))
+    if value:
+        return value.strip()
+    return None
+
+
 def extract_issued_year(node: Dict[str, Any]) -> Optional[int]:
     value = pick_first(node, ("issued", "dateIssued", "publicationYear", "year"))
     if not value:
@@ -112,6 +119,9 @@ def extract_identifiers(node: Dict[str, Any]) -> Dict[str, str]:
     isbn = pick_first(node, ("isbn", "isbn13", "isbn_13"))
     if isbn:
         identifiers["isbn13"] = isbn
+    isbn10 = pick_first(node, ("isbn10", "isbn_10"))
+    if isbn10:
+        identifiers["isbn10"] = isbn10
     return identifiers
 
 

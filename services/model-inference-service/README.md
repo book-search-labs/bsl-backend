@@ -54,7 +54,7 @@ Stateless inference endpoints for rerank/embedding with concurrency limits, queu
 - `MIS_EMBED_MODEL_PATH` (onnx path)
 - `MIS_EMBED_TOKENIZER_PATH` (tokenizer.json path)
 - `MIS_EMBED_OUTPUT_NAME` (optional output name override)
-- `MIS_EMBED_DIM` (toy default: 768)
+- `MIS_EMBED_DIM` (toy default: 384)
 - `MIS_EMBED_MAX_LEN` (default: 256)
 - `MIS_EMBED_BATCH_SIZE` (default: 64)
 - `MIS_EMBED_NORMALIZE` (default: true)
@@ -117,6 +117,30 @@ and set:
 ```
 MIS_SPELL_MODEL_PATH=/models/spell/t5-typo-ko-v1/spell.onnx
 MIS_SPELL_TOKENIZER_PATH=/models/spell/t5-typo-ko-v1/tokenizer.json
+```
+
+## Embed Model Enablement (ONNX, multilingual-e5-small)
+
+### Artifact layout
+
+```
+models/
+  embed/
+    multilingual-e5-small/
+      model.onnx
+      tokenizer.json
+```
+
+### Local run
+
+```bash
+./scripts/mis/run_mis_embed.sh
+```
+
+### Smoke test
+
+```bash
+./scripts/mis/embed_smoke_test.sh
 ```
 
 ## Model Registry & Artifacts

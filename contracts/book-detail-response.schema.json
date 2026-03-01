@@ -21,7 +21,9 @@
         "publisher_name": { "type": "string" },
         "issued_year": { "type": "integer" },
         "volume": { "type": "integer" },
-        "edition_labels": { "type": "array", "items": { "type": "string" } }
+        "edition_labels": { "type": "array", "items": { "type": "string" } },
+        "isbn13": { "type": "string" },
+        "cover_url": { "type": "string" }
       }
     }
   }

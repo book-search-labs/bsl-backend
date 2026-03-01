@@ -46,11 +46,13 @@ python3 scripts/outbox/replay_outbox.py --status FAILED --event-type search_clic
 
 ## 5) v1 event schemas
 - `contracts/events/search_impression.v1.proto`
+- `contracts/events/search_result_summary.v1.proto`
 - `contracts/events/search_click.v1.proto`
 - `contracts/events/search_dwell.v1.proto`
 
 ## 6) Relay topic defaults (local)
 - `search_impression` → `search_impression_v1`
+- `search_result_summary` → `search_result_summary_v1`
 - `search_click` → `search_click_v1`
 - `search_dwell` → `search_dwell_v1`
 - `ac_impression` → `ac_impression_v1`

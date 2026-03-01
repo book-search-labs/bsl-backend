@@ -2,6 +2,7 @@ import copy
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -67,7 +68,7 @@ class GenerateEndpointTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertEqual(body["citations"], [])
-        self.assertIn("Insufficient evidence", body["content"])
+        self.assertIn("근거 문서가 충분하지 않아", body["content"])
 
     def test_api_key_enforced_when_configured(self):
         settings_module.SETTINGS.allowed_keys = ["k1"]
@@ -105,3 +106,26 @@ class GenerateEndpointTests(unittest.TestCase):
         self.assertTrue(response.headers["content-type"].startswith("text/event-stream"))
         self.assertIn("event: meta", response.text)
         self.assertIn("event: done", response.text)
+
+    def test_audit_event_writes_file_and_db_sinks(self):
+        captured = {}
+
+        def _fake_file(path, payload):
+            captured["file_path"] = path
+            captured["file_payload"] = payload
+
+        def _fake_db(payload):
+            captured["db_payload"] = payload
+
+        with patch.object(routes, "append_audit", side_effect=_fake_file), patch.object(
+            routes, "append_audit_db", side_effect=_fake_db
+        ):
+            routes._audit_event("trace-1", "req-1", "toy-rag-v1", 32, 0.123, "ok", None)
+
+        self.assertEqual(captured["file_path"], settings_module.SETTINGS.audit_log_path)
+        self.assertEqual(captured["file_payload"]["trace_id"], "trace-1")
+        self.assertEqual(captured["file_payload"]["request_id"], "req-1")
+        self.assertEqual(captured["file_payload"]["provider"], settings_module.SETTINGS.provider)
+        self.assertEqual(captured["db_payload"]["trace_id"], "trace-1")
+        self.assertEqual(captured["db_payload"]["request_id"], "req-1")
+        self.assertEqual(captured["db_payload"]["provider"], settings_module.SETTINGS.provider)

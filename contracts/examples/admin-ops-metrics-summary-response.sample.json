@@ -1,0 +1,13 @@
+{
+  "version": "v1",
+  "trace_id": "trace-ops-metrics-001",
+  "request_id": "req-ops-metrics-001",
+  "summary": {
+    "query_count": 1420,
+    "p95_ms": 228.0,
+    "p99_ms": 401.0,
+    "zero_result_rate": 0.0725,
+    "rerank_rate": 0.634,
+    "error_rate": 0.011
+  }
+}

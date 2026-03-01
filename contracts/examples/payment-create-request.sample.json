@@ -1,0 +1,9 @@
+{
+  "orderId": 1001,
+  "amount": 12900,
+  "method": "CARD",
+  "idempotencyKey": "pay_1001",
+  "provider": "LOCAL_SIM",
+  "returnUrl": "http://localhost:5174/payment/result/1001",
+  "webhookUrl": "http://localhost:8091/api/v1/payments/webhook/local_sim"
+}

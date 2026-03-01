@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ToyEmbedder {
-    public static final int DIMENSION = 1024;
+    public static final int DIMENSION = 384;
 
     public List<Double> embed(String text) {
         long seed = stableSeed(text);

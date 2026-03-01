@@ -20,6 +20,7 @@ public class RefundRepository {
     public Map<String, Object> findRefund(long refundId) {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
             "SELECT refund_id, order_id, payment_id, status, reason_code, reason_text, provider_refund_id, amount, "
+                + "item_amount, shipping_refund_amount, return_fee_amount, policy_code, "
                 + "idempotency_key, approved_by_admin_id, requested_at, updated_at FROM refund WHERE refund_id = ?",
             refundId
         );
@@ -32,6 +33,7 @@ public class RefundRepository {
         }
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
             "SELECT refund_id, order_id, payment_id, status, reason_code, reason_text, provider_refund_id, amount, "
+                + "item_amount, shipping_refund_amount, return_fee_amount, policy_code, "
                 + "idempotency_key, approved_by_admin_id, requested_at, updated_at FROM refund WHERE idempotency_key = ?",
             idempotencyKey
         );
@@ -41,6 +43,7 @@ public class RefundRepository {
     public List<Map<String, Object>> listRefundsByOrder(long orderId) {
         return jdbcTemplate.queryForList(
             "SELECT refund_id, order_id, payment_id, status, reason_code, reason_text, provider_refund_id, amount, "
+                + "item_amount, shipping_refund_amount, return_fee_amount, policy_code, "
                 + "idempotency_key, approved_by_admin_id, requested_at, updated_at FROM refund WHERE order_id = ? "
                 + "ORDER BY refund_id DESC",
             orderId
@@ -50,6 +53,7 @@ public class RefundRepository {
     public List<Map<String, Object>> listRefunds(int limit) {
         return jdbcTemplate.queryForList(
             "SELECT refund_id, order_id, payment_id, status, reason_code, reason_text, provider_refund_id, amount, "
+                + "item_amount, shipping_refund_amount, return_fee_amount, policy_code, "
                 + "idempotency_key, approved_by_admin_id, requested_at, updated_at FROM refund ORDER BY refund_id DESC LIMIT ?",
             limit
         );
@@ -61,14 +65,19 @@ public class RefundRepository {
         String status,
         String reasonCode,
         String reasonText,
+        int itemAmount,
+        int shippingRefundAmount,
+        int returnFeeAmount,
         int amount,
+        String policyCode,
         String idempotencyKey
     ) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(
-                "INSERT INTO refund (order_id, payment_id, status, reason_code, reason_text, amount, idempotency_key) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO refund (order_id, payment_id, status, reason_code, reason_text, item_amount, "
+                    + "shipping_refund_amount, return_fee_amount, amount, policy_code, idempotency_key) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 Statement.RETURN_GENERATED_KEYS
             );
             ps.setLong(1, orderId);
@@ -80,8 +89,12 @@ public class RefundRepository {
             ps.setString(3, status);
             ps.setString(4, reasonCode);
             ps.setString(5, reasonText);
-            ps.setInt(6, amount);
-            ps.setString(7, idempotencyKey);
+            ps.setInt(6, itemAmount);
+            ps.setInt(7, shippingRefundAmount);
+            ps.setInt(8, returnFeeAmount);
+            ps.setInt(9, amount);
+            ps.setString(10, policyCode);
+            ps.setString(11, idempotencyKey);
             return ps;
         }, keyHolder);
         Number key = keyHolder.getKey();
@@ -150,6 +163,19 @@ public class RefundRepository {
                 + "GROUP BY ri.order_item_id",
             orderId
         );
+    }
+
+    public Map<String, Object> sumRefundAmountsByOrder(long orderId) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+            "SELECT COALESCE(SUM(item_amount), 0) AS item_amount, "
+                + "COALESCE(SUM(shipping_refund_amount), 0) AS shipping_refund_amount, "
+                + "COALESCE(SUM(return_fee_amount), 0) AS return_fee_amount, "
+                + "COALESCE(SUM(amount), 0) AS amount "
+                + "FROM refund WHERE order_id = ? "
+                + "AND status IN ('REQUESTED','APPROVED','PROCESSING','REFUNDED')",
+            orderId
+        );
+        return rows.isEmpty() ? Map.of() : rows.get(0);
     }
 
     public record RefundItemInsert(long refundId, long orderItemId, Long skuId, int qty, int amount) {

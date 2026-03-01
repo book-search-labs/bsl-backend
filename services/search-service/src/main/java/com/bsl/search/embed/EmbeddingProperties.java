@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "embedding")
 public class EmbeddingProperties {
-    private EmbeddingMode mode = EmbeddingMode.TOY;
+    private EmbeddingMode mode = EmbeddingMode.HTTP;
     private String baseUrl;
     private String model;
     private int timeoutMs = 200;

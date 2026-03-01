@@ -31,7 +31,9 @@
             "items": { "type": "string" }
           },
           "publisher": { "type": "string" },
-          "publication_year": { "type": "integer" }
+          "publication_year": { "type": "integer" },
+          "isbn13": { "type": "string" },
+          "cover_url": { "type": "string" }
         }
       }
     },

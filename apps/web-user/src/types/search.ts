@@ -13,6 +13,10 @@ export type BookSource = {
   issued_year?: number
   volume?: number
   edition_labels?: string[]
+  kdc_code?: string
+  kdc_path_codes?: string[]
+  isbn13?: string
+  cover_url?: string
   [key: string]: unknown
 }
 
@@ -60,4 +64,8 @@ export type Book = {
   issuedYear: number | null
   volume: number | null
   editionLabels: string[]
+  kdcCode?: string | null
+  kdcPathCodes?: string[]
+  isbn13?: string | null
+  coverUrl?: string | null
 }

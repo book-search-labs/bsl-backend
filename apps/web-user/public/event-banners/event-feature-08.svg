@@ -1,0 +1,19 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg8" x1="0" y1="0" x2="1200" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E0E7FF"/>
+      <stop offset="1" stop-color="#A5B4FC"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg8)"/>
+  <rect x="760" y="0" width="440" height="420" fill="#312E81" fill-opacity="0.14"/>
+  <path d="M778 345C842 260 968 220 1170 215V420H758C760 389 767 365 778 345Z" fill="#FFFFFF" fill-opacity="0.25"/>
+  <rect x="70" y="58" rx="14" ry="14" width="92" height="34" fill="#3730A3"/>
+  <text x="116" y="80" fill="#FFFFFF" text-anchor="middle" font-size="18" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">테마전</text>
+  <text x="70" y="160" fill="#1E1B4B" font-size="52" font-weight="800" font-family="Pretendard, Noto Sans KR, sans-serif">읽고 싶은 주제별 큐레이션</text>
+  <text x="70" y="220" fill="#1E1B4B" font-size="34" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">역사 · 과학 · 문학 · 라이프스타일</text>
+  <text x="70" y="275" fill="#312E81" font-size="25" font-weight="600" font-family="Pretendard, Noto Sans KR, sans-serif">지금 화제가 되는 주제 도서를 모아봤습니다.</text>
+  <rect x="70" y="310" rx="12" ry="12" width="224" height="56" fill="#3730A3"/>
+  <text x="182" y="346" fill="#FFFFFF" text-anchor="middle" font-size="24" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">테마 보기</text>
+</svg>
+

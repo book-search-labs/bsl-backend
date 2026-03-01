@@ -13,7 +13,7 @@ python3 scripts/eval/embedding_eval.py \
   --mis-url http://localhost:8005 \
   --os-url http://localhost:9200 \
   --baseline toy \
-  --candidate bge-m3 \
+  --candidate multilingual-e5-small \
   --hybrid \
   --out data/eval/reports
 ```
@@ -21,4 +21,3 @@ python3 scripts/eval/embedding_eval.py \
 ## Output
 - JSON + Markdown reports in `data/eval/reports/`
 - Sample: `data/eval/reports/embedding_eval_sample.json`
-

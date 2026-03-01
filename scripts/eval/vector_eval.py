@@ -78,7 +78,7 @@ def search_lexical(os_url: str, index: str, query: str, topk: int, timeout: floa
         "query": {
             "multi_match": {
                 "query": query,
-                "fields": ["title_ko", "title_en", "authors.name_ko", "series_name", "publisher_name"],
+                "fields": ["title_ko", "title_en", "author_names_ko", "series_name", "publisher_name"],
             }
         },
     }
@@ -242,7 +242,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Vector/Hybrid offline evaluation")
     parser.add_argument("--queries", default="data/eval/queries.jsonl")
     parser.add_argument("--baseline", default="toy")
-    parser.add_argument("--candidate", default="embed_ko_v1")
+    parser.add_argument("--candidate", default="multilingual-e5-small")
     parser.add_argument("--topk", type=int, default=50)
     parser.add_argument("--rrf-k", type=int, default=60)
     parser.add_argument("--hybrid", action="store_true")
@@ -252,7 +252,7 @@ def main() -> int:
     parser.add_argument("--mis-url", default="http://localhost:8005")
     parser.add_argument("--timeout", type=float, default=10.0)
     parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--toy-dim", type=int, default=768)
+    parser.add_argument("--toy-dim", type=int, default=384)
     parser.add_argument("--out", default="data/eval/reports")
     args = parser.parse_args()
 

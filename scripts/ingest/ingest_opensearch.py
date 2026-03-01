@@ -23,6 +23,7 @@ from lib.extract import (
     extract_language,
     extract_publisher,
     extract_record_id,
+    extract_series_name,
     extract_strings,
     extract_title,
     extract_updated_at,
@@ -39,7 +40,7 @@ OS_URL = os.environ.get("OS_URL", "http://localhost:9200")
 BOOKS_ALIAS = os.environ.get("BOOKS_ALIAS", "books_doc_write")
 VEC_ALIAS = os.environ.get("VEC_ALIAS", "books_vec_write")
 CHUNK_ALIAS = os.environ.get("CHUNK_ALIAS", "book_chunks_v1")
-AC_ALIAS = os.environ.get("AC_ALIAS", "ac_write")
+AC_ALIAS = os.environ.get("AC_ALIAS", "ac_candidates_write")
 AUTHORS_ALIAS = os.environ.get("AUTHORS_ALIAS", "authors_doc_write")
 ENABLE_ENTITY_INDICES = os.environ.get("ENABLE_ENTITY_INDICES", "1") == "1"
 ENABLE_VECTOR_INDEX = os.environ.get("ENABLE_VECTOR_INDEX", "1") == "1"
@@ -52,7 +53,7 @@ EMBED_BATCH_SIZE = int(os.environ.get("EMBED_BATCH_SIZE", "32"))
 EMBED_TIMEOUT_SEC = float(os.environ.get("EMBED_TIMEOUT_SEC", "5"))
 EMBED_MAX_RETRY = int(os.environ.get("EMBED_MAX_RETRY", "3"))
 EMBED_FALLBACK_TO_TOY = os.environ.get("EMBED_FALLBACK_TO_TOY", "0") == "1"
-EMBED_DIM = int(os.environ.get("EMBED_DIM", "768"))
+EMBED_DIM = int(os.environ.get("EMBED_DIM", "384"))
 EMBED_NORMALIZE = os.environ.get("EMBED_NORMALIZE", "1") == "1"
 EMBED_CACHE = os.environ.get("EMBED_CACHE", "off").lower()
 EMBED_CACHE_PATH = os.environ.get("EMBED_CACHE_PATH", "data/cache/emb.sqlite")
@@ -214,8 +215,23 @@ def build_book_doc(record_id: str, node: Dict[str, Any], kdc_node_map: Dict[str,
             author["name_en"] = entry["name_en"]
         authors.append(author)
 
+    author_names_ko: List[str] = []
+    author_names_en: List[str] = []
+    for author in authors:
+        name_ko = author.get("name_ko")
+        name_en = author.get("name_en")
+        if isinstance(name_ko, str) and name_ko.strip() and name_ko not in author_names_ko:
+            author_names_ko.append(name_ko)
+        if isinstance(name_en, str) and name_en.strip() and name_en not in author_names_en:
+            author_names_en.append(name_en)
+
+    is_hidden = bool(node.get("is_hidden") or node.get("hidden"))
+    series_name = extract_series_name(node)
+    kdc_edition = node.get("kdc_edition") or node.get("kdcEdition")
+
     doc: Dict[str, Any] = {
         "doc_id": record_id,
+        "is_hidden": is_hidden,
         "publisher_name": extract_publisher(node),
         "identifiers": extract_identifiers(node) or None,
         "language_code": extract_language(node),
@@ -230,8 +246,14 @@ def build_book_doc(record_id: str, node: Dict[str, Any], kdc_node_map: Dict[str,
         doc["title_ko"] = title_ko
     if title_en:
         doc["title_en"] = title_en
+    if series_name:
+        doc["series_name"] = series_name
     if authors:
         doc["authors"] = authors
+    if author_names_ko:
+        doc["author_names_ko"] = author_names_ko
+    if author_names_en:
+        doc["author_names_en"] = author_names_en
 
     kdc_codes = extract_kdc_codes(node)
     if kdc_codes:
@@ -240,6 +262,8 @@ def build_book_doc(record_id: str, node: Dict[str, Any], kdc_node_map: Dict[str,
         node_id = kdc_node_map.get(kdc_codes[0])
         if node_id is not None:
             doc["kdc_node_id"] = node_id
+    if isinstance(kdc_edition, str) and kdc_edition.strip():
+        doc["kdc_edition"] = kdc_edition.strip()
 
     return {k: v for k, v in doc.items() if v is not None}
 
@@ -261,14 +285,14 @@ def build_suggest_docs(record_id: str, book_doc: Dict[str, Any]) -> List[Dict[st
         suggestions.append(
             {
                 "suggest_id": suggest_id,
-                "type": kind,
+                "type": kind.upper(),
                 "lang": lang,
                 "text": cleaned,
-                "text_kw": cleaned,
                 "target_id": record_id,
                 "target_doc_id": record_id,
                 "weight": 1,
                 "is_blocked": False,
+                "last_seen_at": book_doc.get("updated_at"),
                 "updated_at": book_doc.get("updated_at"),
             }
         )
@@ -329,13 +353,26 @@ def build_vector_doc(record_id: str, book_doc: Dict[str, Any], node: Dict[str, A
         return None
     doc: Dict[str, Any] = {
         "doc_id": record_id,
+        "is_hidden": bool(book_doc.get("is_hidden", False)),
         "vector_text_v2": text_v2,
         "vector_text_hash": hash_vector_text(text_v2),
     }
-    if book_doc.get("language_code"):
-        doc["language_code"] = book_doc["language_code"]
-    if book_doc.get("updated_at"):
-        doc["updated_at"] = book_doc["updated_at"]
+    for field in (
+        "language_code",
+        "issued_year",
+        "volume",
+        "edition_labels",
+        "kdc_node_id",
+        "kdc_code",
+        "kdc_edition",
+        "kdc_path_codes",
+        "category_paths",
+        "concept_ids",
+        "identifiers",
+        "updated_at",
+    ):
+        if book_doc.get(field) is not None:
+            doc[field] = book_doc[field]
     return doc
 
 

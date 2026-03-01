@@ -17,4 +17,4 @@ cd services/olap-loader-service
 
 ## Topics
 Configured under `olap.topics.*` in `application.yml`:
-`search_impression_v1`, `search_click_v1`, `search_dwell_v1`, `ac_impression_v1`, `ac_select_v1`.
+`search_impression_v1`, `search_result_summary_v1`, `search_click_v1`, `search_dwell_v1`, `ac_impression_v1`, `ac_select_v1`.

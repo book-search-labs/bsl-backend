@@ -1,0 +1,11 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="420" fill="#ECFEFF"/>
+  <rect x="48" y="48" width="1104" height="324" rx="24" fill="#FFFFFF" stroke="#A5F3FC" stroke-width="2"/>
+  <rect x="86" y="86" width="94" height="36" rx="10" fill="#0E7490"/>
+  <text x="133" y="110" fill="#FFFFFF" text-anchor="middle" font-size="18" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">안내</text>
+  <text x="86" y="176" fill="#083344" font-size="50" font-weight="800" font-family="Pretendard, Noto Sans KR, sans-serif">서비스 점검 일정</text>
+  <text x="86" y="232" fill="#155E75" font-size="30" font-weight="600" font-family="Pretendard, Noto Sans KR, sans-serif">안정적인 서비스를 위해 새벽 시간 일부 기능이 일시 지연될 수 있습니다.</text>
+  <rect x="86" y="274" width="1028" height="2" fill="#CFFAFE"/>
+  <text x="86" y="328" fill="#0F172A" font-size="24" font-weight="700" font-family="Pretendard, Noto Sans KR, sans-serif">중요 공지는 상세 페이지에 가장 먼저 업데이트됩니다.</text>
+</svg>
+

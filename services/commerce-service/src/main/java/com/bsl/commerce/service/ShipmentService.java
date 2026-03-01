@@ -79,6 +79,15 @@ public class ShipmentService {
     }
 
     @Transactional
+    public Map<String, Object> ensureShipmentForOrder(long orderId) {
+        List<Map<String, Object>> existing = shipmentRepository.listShipmentsByOrder(orderId);
+        if (!existing.isEmpty()) {
+            return existing.get(0);
+        }
+        return createShipment(orderId, null);
+    }
+
+    @Transactional
     public Map<String, Object> assignTracking(long shipmentId, String carrier, String trackingNumber) {
         Map<String, Object> shipment = shipmentRepository.findShipment(shipmentId);
         if (shipment == null) {
@@ -98,12 +107,8 @@ public class ShipmentService {
             null
         );
         long orderId = JdbcUtils.asLong(shipment.get("order_id"));
-        try {
-            orderService.markReadyToShip(orderId);
-        } catch (ApiException ignored) {
-            // ignore if already ready or moved ahead
-        }
-        orderService.markShipped(orderId);
+        transitionOrderIfPossible(orderId, OrderService.OrderStatus.READY_TO_SHIP);
+        transitionOrderIfPossible(orderId, OrderService.OrderStatus.SHIPPED);
         return shipmentRepository.findShipment(shipmentId);
     }
 
@@ -126,17 +131,29 @@ public class ShipmentService {
         );
         long orderId = JdbcUtils.asLong(shipment.get("order_id"));
         if ("DELIVERED".equalsIgnoreCase(status)) {
-            try {
-                orderService.markReadyToShip(orderId);
-            } catch (ApiException ignored) {
-            }
-            try {
-                orderService.markShipped(orderId);
-            } catch (ApiException ignored) {
-            }
-            orderService.markDelivered(orderId);
+            transitionOrderIfPossible(orderId, OrderService.OrderStatus.READY_TO_SHIP);
+            transitionOrderIfPossible(orderId, OrderService.OrderStatus.SHIPPED);
+            transitionOrderIfPossible(orderId, OrderService.OrderStatus.DELIVERED);
         }
         return shipmentRepository.findShipment(shipmentId);
+    }
+
+    private void transitionOrderIfPossible(long orderId, OrderService.OrderStatus target) {
+        Map<String, Object> order = orderRepository.findOrderById(orderId);
+        if (order == null) {
+            return;
+        }
+        OrderService.OrderStatus current = OrderService.OrderStatus.from(JdbcUtils.asString(order.get("status")));
+        if (current == target || !current.canTransitionTo(target)) {
+            return;
+        }
+        switch (target) {
+            case READY_TO_SHIP -> orderService.markReadyToShip(orderId);
+            case SHIPPED -> orderService.markShipped(orderId);
+            case DELIVERED -> orderService.markDelivered(orderId);
+            default -> {
+            }
+        }
     }
 
     public Map<String, Object> getShipment(long shipmentId) {

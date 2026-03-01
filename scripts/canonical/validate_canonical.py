@@ -48,7 +48,7 @@ def check_required(cursor, table: str, columns: List[str]) -> int:
     return fetch_count(cursor, f"SELECT COUNT(*) FROM {table} WHERE {condition}")
 
 
-def run_checks(conn) -> int:
+def run_checks(conn, strict_links: bool) -> int:
     errors = 0
     warnings = 0
     with conn.cursor() as cursor:
@@ -70,27 +70,35 @@ def run_checks(conn) -> int:
         log("[quality] Orphan link checks")
         orphans = [
             (
-                "material_agent",
+                "material_agent(material)",
                 "SELECT COUNT(*) FROM material_agent ma LEFT JOIN material m ON m.material_id=ma.material_id WHERE m.material_id IS NULL",
+                "error",
             ),
             (
-                "material_agent",
+                "material_agent(agent)",
                 "SELECT COUNT(*) FROM material_agent ma LEFT JOIN agent a ON a.agent_id=ma.agent_id WHERE a.agent_id IS NULL",
+                "error" if strict_links else "warn",
             ),
             (
-                "material_concept",
+                "material_concept(material)",
                 "SELECT COUNT(*) FROM material_concept mc LEFT JOIN material m ON m.material_id=mc.material_id WHERE m.material_id IS NULL",
+                "error",
             ),
             (
-                "material_concept",
+                "material_concept(concept)",
                 "SELECT COUNT(*) FROM material_concept mc LEFT JOIN concept c ON c.concept_id=mc.concept_id WHERE c.concept_id IS NULL",
+                "error" if strict_links else "warn",
             ),
         ]
-        for name, sql in orphans:
+        for name, sql, level in orphans:
             count = fetch_count(cursor, sql)
             if count > 0:
-                errors += 1
-                log(f"[quality][ERROR] {name}: {count} orphan rows")
+                if level == "error":
+                    errors += 1
+                    log(f"[quality][ERROR] {name}: {count} orphan rows")
+                else:
+                    warnings += 1
+                    log(f"[quality][WARN] {name}: {count} orphan rows")
             else:
                 log(f"[quality][OK] {name}: no orphans")
 
@@ -156,10 +164,15 @@ def run_checks(conn) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Canonical ETL quality checks")
-    _ = parser.parse_args()
+    parser.add_argument(
+        "--strict-links",
+        action="store_true",
+        help="treat all link-table orphan checks as errors (default: unresolved dimension links are warnings)",
+    )
+    args = parser.parse_args()
     conn = connect_mysql()
     try:
-        return run_checks(conn)
+        return run_checks(conn, strict_links=args.strict_links)
     finally:
         conn.close()
 

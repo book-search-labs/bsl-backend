@@ -26,6 +26,7 @@ public class PermissionResolver {
         rules.put(Pattern.compile("^/admin/inventory.*"), "INVENTORY_MANAGE");
         rules.put(Pattern.compile("^/admin/payments.*"), "PAYMENT_REFUND");
         rules.put(Pattern.compile("^/admin/refunds.*"), "PAYMENT_REFUND");
+        rules.put(Pattern.compile("^/admin/settlements.*"), "PAYMENT_REFUND");
         rules.put(Pattern.compile("^/admin/shipments.*"), "SHIPPING_MANAGE");
     }
 

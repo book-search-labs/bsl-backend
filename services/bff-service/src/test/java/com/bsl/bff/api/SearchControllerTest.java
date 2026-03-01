@@ -1,0 +1,176 @@
+package com.bsl.bff.api;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.bsl.bff.api.dto.BffSearchRequest;
+import com.bsl.bff.api.dto.BffSearchResponse;
+import com.bsl.bff.authority.AgentAliasService;
+import com.bsl.bff.budget.BudgetProperties;
+import com.bsl.bff.client.QueryServiceClient;
+import com.bsl.bff.client.SearchServiceClient;
+import com.bsl.bff.client.dto.SearchServiceResponse;
+import com.bsl.bff.common.DownstreamException;
+import com.bsl.bff.outbox.OutboxService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+
+@ExtendWith(MockitoExtension.class)
+class SearchControllerTest {
+    @Mock
+    private QueryServiceClient queryServiceClient;
+
+    @Mock
+    private SearchServiceClient searchServiceClient;
+
+    @Mock
+    private OutboxService outboxService;
+
+    @Mock
+    private AgentAliasService aliasService;
+
+    private SearchController controller;
+    private ObjectMapper objectMapper;
+
+    @BeforeEach
+    void setUp() {
+        objectMapper = new ObjectMapper();
+        controller = new SearchController(
+            queryServiceClient,
+            searchServiceClient,
+            outboxService,
+            new BudgetProperties(),
+            aliasService
+        );
+    }
+
+    @Test
+    void retriesRawQueryWhenAutoQueryContextReturnsNoHits() throws Exception {
+        BffSearchRequest request = requestWithRawQuery("영어교육");
+        JsonNode autoQc = objectMapper.readTree(
+            "{"
+                + "\"meta\":{\"schemaVersion\":\"qc.v1.1\"},"
+                + "\"query\":{\"raw\":\"영어교육\",\"norm\":\"영어교육\",\"final\":\"영어교육\"},"
+                + "\"retrievalHints\":{}"
+                + "}"
+        );
+        when(queryServiceClient.fetchQueryContext(eq("영어교육"), any())).thenReturn(autoQc);
+
+        SearchServiceResponse empty = new SearchServiceResponse();
+        empty.setTotal(0);
+        empty.setHits(List.of());
+
+        SearchServiceResponse recovered = new SearchServiceResponse();
+        recovered.setTotal(1);
+        recovered.setHits(List.of(hit("nlk:CDM200900003", "초등영어교육의 영미문화지도에 관한 연구")));
+
+        when(searchServiceClient.search(any(), any())).thenReturn(empty, recovered);
+
+        BffSearchResponse response = controller.search(request, null, null);
+
+        assertNotNull(response);
+        assertEquals(1, response.getTotal());
+        assertNotNull(response.getHits());
+        assertEquals(1, response.getHits().size());
+        assertEquals("초등영어교육의 영미문화지도에 관한 연구", response.getHits().get(0).getTitle());
+        assertEquals("9788983920775", response.getHits().get(0).getIsbn13());
+        assertEquals("https://cdn.example.com/covers/9788983920775.jpg", response.getHits().get(0).getCoverUrl());
+
+        ArgumentCaptor<com.bsl.bff.client.dto.DownstreamSearchRequest> requestCaptor =
+            ArgumentCaptor.forClass(com.bsl.bff.client.dto.DownstreamSearchRequest.class);
+        verify(searchServiceClient, times(2)).search(requestCaptor.capture(), any());
+
+        List<com.bsl.bff.client.dto.DownstreamSearchRequest> captured = requestCaptor.getAllValues();
+        assertNotNull(captured.get(0).getQueryContextV11());
+        assertNull(captured.get(1).getQueryContextV11());
+        assertEquals("영어교육", captured.get(1).getQuery().getRaw());
+    }
+
+    @Test
+    void keepsSearchResponseWhenAliasLookupFails() throws Exception {
+        BffSearchRequest request = requestWithRawQuery("해리포터");
+        SearchServiceResponse recovered = new SearchServiceResponse();
+        recovered.setTotal(1);
+        recovered.setHits(List.of(hit("doc-1", "해리 포터와 마법사의 돌")));
+        when(searchServiceClient.search(any(), any())).thenReturn(recovered);
+        when(aliasService.applyAliases(anyList())).thenThrow(new RuntimeException("alias table missing"));
+
+        BffSearchResponse response = controller.search(request, null, null);
+
+        assertNotNull(response);
+        assertNotNull(response.getHits());
+        assertEquals(1, response.getHits().size());
+        assertEquals("한은경", response.getHits().get(0).getAuthors().get(0));
+    }
+
+    @Test
+    void fallsBackToRawQueryWhenQueryContextFetchFails() {
+        BffSearchRequest request = requestWithRawQuery("해리포터");
+        when(queryServiceClient.fetchQueryContext(eq("해리포터"), any()))
+            .thenThrow(new DownstreamException(HttpStatus.INTERNAL_SERVER_ERROR, "query_service_error", "Query service error"));
+
+        SearchServiceResponse recovered = new SearchServiceResponse();
+        recovered.setTotal(1);
+        recovered.setHits(List.of(hit("doc-2", "해리 포터와 비밀의 방")));
+        when(searchServiceClient.search(any(), any())).thenReturn(recovered);
+
+        BffSearchResponse response = controller.search(request, null, null);
+
+        assertNotNull(response);
+        assertEquals(1, response.getTotal());
+        assertNotNull(response.getHits());
+        assertEquals(1, response.getHits().size());
+        assertEquals("해리 포터와 비밀의 방", response.getHits().get(0).getTitle());
+
+        ArgumentCaptor<com.bsl.bff.client.dto.DownstreamSearchRequest> requestCaptor =
+            ArgumentCaptor.forClass(com.bsl.bff.client.dto.DownstreamSearchRequest.class);
+        verify(searchServiceClient, times(1)).search(requestCaptor.capture(), any());
+        assertNull(requestCaptor.getValue().getQueryContextV11());
+        assertEquals("해리포터", requestCaptor.getValue().getQuery().getRaw());
+    }
+
+    private BffSearchRequest requestWithRawQuery(String rawQuery) {
+        BffSearchRequest request = new BffSearchRequest();
+        BffSearchRequest.Query query = new BffSearchRequest.Query();
+        query.setRaw(rawQuery);
+        request.setQuery(query);
+
+        BffSearchRequest.Options options = new BffSearchRequest.Options();
+        options.setSize(20);
+        options.setFrom(0);
+        options.setEnableVector(true);
+        request.setOptions(options);
+        return request;
+    }
+
+    private SearchServiceResponse.BookHit hit(String docId, String title) {
+        SearchServiceResponse.Source source = new SearchServiceResponse.Source();
+        source.setTitleKo(title);
+        source.setAuthors(List.of("한은경"));
+        source.setPublisherName("釜山外國語大學校");
+        source.setIssuedYear(2008);
+        source.setIsbn13("9788983920775");
+        source.setCoverUrl("https://cdn.example.com/covers/9788983920775.jpg");
+
+        SearchServiceResponse.BookHit hit = new SearchServiceResponse.BookHit();
+        hit.setDocId(docId);
+        hit.setScore(1.0d);
+        hit.setSource(source);
+        return hit;
+    }
+}

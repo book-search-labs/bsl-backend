@@ -46,7 +46,7 @@ if [ "$NLK_INPUT_MODE" = "sample" ] && [ -z "${EMBED_PROVIDER:-}" ] && [ -z "${M
   export EMBED_PROVIDER="toy"
 fi
 if [ "${EMBED_PROVIDER:-}" = "toy" ] && [ -z "${EMBED_DIM:-}" ]; then
-  export EMBED_DIM="768"
+  export EMBED_DIM="384"
 fi
 
 if ! command -v python3 >/dev/null 2>&1; then
@@ -104,7 +104,7 @@ bootstrap_opensearch_if_needed() {
   if [ "$BOOTSTRAP_OS" = "0" ]; then
     return 0
   fi
-  if alias_exists "books_doc_write" && alias_exists "ac_write"; then
+  if alias_exists "books_doc_write" && (alias_exists "ac_candidates_write" || alias_exists "ac_write"); then
     return 0
   fi
   echo "Bootstrapping OpenSearch indices/aliases (KEEP_INDEX=1)..."

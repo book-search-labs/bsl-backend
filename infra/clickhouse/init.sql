@@ -24,6 +24,33 @@ PARTITION BY event_date
 ORDER BY (event_date, dedup_key, doc_id)
 TTL event_date + INTERVAL 180 DAY;
 
+CREATE TABLE IF NOT EXISTS bsl_olap.search_result_summary (
+    event_date Date,
+    event_time DateTime,
+    event_id String,
+    dedup_key String,
+    request_id String,
+    trace_id String,
+    session_id Nullable(String),
+    user_id_hash Nullable(String),
+    query_hash Nullable(String),
+    query_raw Nullable(String),
+    imp_id String,
+    total_hits UInt32,
+    zero_result UInt8,
+    rerank_applied UInt8,
+    took_ms UInt32,
+    strategy Nullable(String),
+    status String,
+    policy_id Nullable(String),
+    experiment_id Nullable(String),
+    experiment_bucket Nullable(String),
+    ingested_at DateTime DEFAULT now()
+) ENGINE = ReplacingMergeTree(event_time)
+PARTITION BY event_date
+ORDER BY (event_date, dedup_key, imp_id)
+TTL event_date + INTERVAL 180 DAY;
+
 CREATE TABLE IF NOT EXISTS bsl_olap.search_click (
     event_date Date,
     event_time DateTime,

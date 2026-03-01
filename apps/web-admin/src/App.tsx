@@ -18,6 +18,7 @@ import PaymentRefundOpsPage from "./pages/PaymentRefundOpsPage";
 import ShippingOpsPage from "./pages/ShippingOpsPage";
 import AuthorityOpsPage from "./pages/AuthorityOpsPage";
 import KdcViewerPage from "./pages/KdcViewerPage";
+import SettlementOpsPage from "./pages/SettlementOpsPage";
 
 export default function App() {
   return (
@@ -49,6 +50,7 @@ export default function App() {
           <Route path="commerce">
             <Route path="products" element={<ProductOpsPage />} />
             <Route path="payments" element={<PaymentRefundOpsPage />} />
+            <Route path="settlements" element={<SettlementOpsPage />} />
             <Route path="shipping" element={<ShippingOpsPage />} />
           </Route>
         </Route>

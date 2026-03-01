@@ -17,6 +17,7 @@ public class SearchResponse {
     private boolean rankingApplied;
 
     private String strategy;
+    private Integer total;
     private List<BookHit> hits;
     private Debug debug;
 
@@ -61,6 +62,14 @@ public class SearchResponse {
 
     public void setStrategy(String strategy) {
         this.strategy = strategy;
+    }
+
+    public Integer getTotal() {
+        return total;
+    }
+
+    public void setTotal(Integer total) {
+        this.total = total;
     }
 
     public List<BookHit> getHits() {

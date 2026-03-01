@@ -27,23 +27,33 @@ class AutocompleteControllerTest {
     private AutocompleteService autocompleteService;
 
     @Test
-    void autocompleteAllowsEmptyQuery() throws Exception {
+    void autocompleteReturnsTrendingSuggestionsForEmptyQuery() throws Exception {
+        AutocompleteResponse response = new AutocompleteResponse();
+        response.setTraceId("trace-empty");
+        response.setRequestId("req-empty");
+        response.setSuggestions(List.of());
+        when(autocompleteService.autocomplete(eq(""), eq(10), anyString(), anyString())).thenReturn(response);
+
         mockMvc.perform(get("/v1/autocomplete").param("q", ""))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.trace_id").exists())
             .andExpect(jsonPath("$.request_id").exists())
-            .andExpect(jsonPath("$.suggestions").isArray())
-            .andExpect(jsonPath("$.suggestions").isEmpty());
+            .andExpect(jsonPath("$.suggestions").isArray());
     }
 
     @Test
     void internalAutocompleteAliasAllowsEmptyQuery() throws Exception {
+        AutocompleteResponse response = new AutocompleteResponse();
+        response.setTraceId("trace-empty");
+        response.setRequestId("req-empty");
+        response.setSuggestions(List.of());
+        when(autocompleteService.autocomplete(eq(""), eq(10), anyString(), anyString())).thenReturn(response);
+
         mockMvc.perform(get("/internal/autocomplete").param("q", ""))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.trace_id").exists())
             .andExpect(jsonPath("$.request_id").exists())
-            .andExpect(jsonPath("$.suggestions").isArray())
-            .andExpect(jsonPath("$.suggestions").isEmpty());
+            .andExpect(jsonPath("$.suggestions").isArray());
     }
 
     @Test

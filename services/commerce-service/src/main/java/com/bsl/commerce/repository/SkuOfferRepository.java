@@ -1,5 +1,6 @@
 package com.bsl.commerce.repository;
 
+import com.bsl.commerce.common.PriceUtils;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.List;
@@ -25,10 +26,59 @@ public class SkuOfferRepository {
         );
     }
 
+    public boolean materialExists(String materialId) {
+        Integer value = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM material WHERE material_id = ?",
+            Integer.class,
+            materialId
+        );
+        return value != null && value > 0;
+    }
+
+    public boolean lockMaterialRow(String materialId) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+            "SELECT material_id FROM material WHERE material_id = ? FOR UPDATE",
+            materialId
+        );
+        return !rows.isEmpty();
+    }
+
+    public Map<String, Object> findSkuByMaterialIdAndSeller(String materialId, long sellerId) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+            "SELECT sku_id, material_id, seller_id, sku_code, format, edition, pack_size, status, attrs_json, created_at, updated_at "
+                + "FROM sku WHERE material_id = ? AND seller_id = ? ORDER BY sku_id DESC LIMIT 1",
+            materialId,
+            sellerId
+        );
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
     public Map<String, Object> findSkuById(long skuId) {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
             "SELECT sku_id, material_id, seller_id, sku_code, format, edition, pack_size, status, attrs_json, created_at, updated_at "
                 + "FROM sku WHERE sku_id = ?",
+            skuId
+        );
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    public Map<String, Object> findSkuDisplayInfo(long skuId, long sellerId) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+            "SELECT s.sku_id, s.material_id, s.format, s.edition, s.pack_size, "
+                + "m.title AS material_title, m.subtitle AS material_subtitle, m.label AS material_label, "
+                + "m.publisher AS material_publisher, m.issued_year AS material_issued_year, "
+                + "sl.name AS seller_name, "
+                + "(SELECT COALESCE(a.pref_label, a.label, a.name) "
+                + "  FROM material_agent ma "
+                + "  JOIN agent a ON a.agent_id = ma.agent_id "
+                + "  WHERE ma.material_id = s.material_id "
+                + "  ORDER BY CASE WHEN ma.role = 'CREATOR' THEN 0 ELSE 1 END, a.pref_label, a.label, a.name "
+                + "  LIMIT 1) AS creator_name "
+                + "FROM sku s "
+                + "LEFT JOIN material m ON m.material_id = s.material_id "
+                + "LEFT JOIN seller sl ON sl.seller_id = ? "
+                + "WHERE s.sku_id = ?",
+            sellerId,
             skuId
         );
         return rows.isEmpty() ? null : rows.get(0);
@@ -167,6 +217,8 @@ public class SkuOfferRepository {
         String shippingPolicyJson,
         String purchaseLimitJson
     ) {
+        int normalizedListPrice = PriceUtils.normalizeBookPrice(listPrice);
+        int normalizedSalePrice = PriceUtils.normalizeBookPrice(salePrice);
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(
@@ -177,8 +229,8 @@ public class SkuOfferRepository {
             ps.setLong(1, skuId);
             ps.setLong(2, sellerId);
             ps.setString(3, currency);
-            ps.setInt(4, listPrice);
-            ps.setInt(5, salePrice);
+            ps.setInt(4, normalizedListPrice);
+            ps.setInt(5, normalizedSalePrice);
             ps.setString(6, startAt);
             ps.setString(7, endAt);
             ps.setString(8, status);
@@ -205,6 +257,8 @@ public class SkuOfferRepository {
         String shippingPolicyJson,
         String purchaseLimitJson
     ) {
+        int normalizedListPrice = PriceUtils.normalizeBookPrice(listPrice);
+        int normalizedSalePrice = PriceUtils.normalizeBookPrice(salePrice);
         jdbcTemplate.update(
             "UPDATE offer SET sku_id = ?, seller_id = ?, currency = ?, list_price = ?, sale_price = ?, start_at = ?, "
                 + "end_at = ?, status = ?, priority = ?, shipping_policy_json = ?, purchase_limit_json = ? "
@@ -212,8 +266,8 @@ public class SkuOfferRepository {
             skuId,
             sellerId,
             currency,
-            listPrice,
-            salePrice,
+            normalizedListPrice,
+            normalizedSalePrice,
             startAt,
             endAt,
             status,

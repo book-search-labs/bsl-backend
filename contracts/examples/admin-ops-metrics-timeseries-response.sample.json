@@ -1,0 +1,11 @@
+{
+  "version": "v1",
+  "trace_id": "trace-ops-metrics-002",
+  "request_id": "req-ops-metrics-002",
+  "metric": "zero_result_rate",
+  "items": [
+    { "ts": "2026-02-28T09:45:00Z", "value": 0.08 },
+    { "ts": "2026-02-28T09:50:00Z", "value": 0.07 },
+    { "ts": "2026-02-28T09:55:00Z", "value": 0.06 }
+  ]
+}

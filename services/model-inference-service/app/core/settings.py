@@ -24,7 +24,7 @@ class Settings:
     embed_model_path: str = os.getenv("MIS_EMBED_MODEL_PATH", "")
     embed_tokenizer_path: str = os.getenv("MIS_EMBED_TOKENIZER_PATH", "")
     embed_output_name: str = os.getenv("MIS_EMBED_OUTPUT_NAME", "")
-    embed_dim: int = int(os.getenv("MIS_EMBED_DIM", "768"))
+    embed_dim: int = int(os.getenv("MIS_EMBED_DIM", "384"))
     embed_normalize: bool = os.getenv("MIS_EMBED_NORMALIZE", "true").lower() in {"1", "true", "yes"}
     embed_max_len: int = int(os.getenv("MIS_EMBED_MAX_LEN", "256"))
     embed_batch_size: int = int(os.getenv("MIS_EMBED_BATCH_SIZE", "64"))

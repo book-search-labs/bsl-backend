@@ -146,6 +146,8 @@ class HybridSearchServiceRankingTest {
         assertEquals("b2", response.getHits().get(0).getDocId());
         assertEquals("b1", response.getHits().get(1).getDocId());
         assertEquals(0.9, response.getHits().get(0).getDebug().getRankingScore());
+        assertTrue(response.getHits().get(0).getSource().getCoverUrl().startsWith("data:image/svg+xml;utf8,"));
+        assertEquals("https://cdn.example.com/covers/b1.jpg", response.getHits().get(1).getSource().getCoverUrl());
     }
 
     @Test
@@ -185,6 +187,7 @@ class HybridSearchServiceRankingTest {
         ObjectNode b1 = objectMapper.createObjectNode();
         b1.put("doc_id", "b1");
         b1.put("title_ko", "One");
+        b1.put("cover_url", "https://cdn.example.com/covers/b1.jpg");
         b1.put("issued_year", 1999);
         b1.put("volume", 1);
         b1.putArray("edition_labels").add("recover");

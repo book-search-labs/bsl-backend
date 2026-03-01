@@ -4,6 +4,8 @@ import com.bsl.bff.common.DownstreamException;
 import com.bsl.bff.common.DownstreamHeaders;
 import com.bsl.bff.common.RequestContext;
 import com.bsl.bff.config.DownstreamProperties;
+import com.bsl.bff.security.AuthContext;
+import com.bsl.bff.security.AuthContextHolder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.BufferedReader;
@@ -15,6 +17,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -29,8 +33,16 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Component
 public class QueryServiceClient {
+    private static final Logger log = LoggerFactory.getLogger(QueryServiceClient.class);
+
     public static class ChatStreamResult {
         private String status = "ok";
+        private String reasonCode = "OK";
+        private Boolean recoverable = Boolean.FALSE;
+        private String nextAction = "NONE";
+        private Integer retryAfterMs;
+        private Integer fallbackCount;
+        private Boolean escalated = Boolean.FALSE;
         private final List<String> citations = new ArrayList<>();
 
         public String getStatus() {
@@ -42,6 +54,60 @@ public class QueryServiceClient {
                 return;
             }
             this.status = status;
+        }
+
+        public String getReasonCode() {
+            return reasonCode;
+        }
+
+        public void setReasonCode(String reasonCode) {
+            if (reasonCode == null || reasonCode.isBlank()) {
+                return;
+            }
+            this.reasonCode = reasonCode;
+        }
+
+        public Boolean getRecoverable() {
+            return recoverable;
+        }
+
+        public void setRecoverable(Boolean recoverable) {
+            this.recoverable = recoverable;
+        }
+
+        public String getNextAction() {
+            return nextAction;
+        }
+
+        public void setNextAction(String nextAction) {
+            if (nextAction == null || nextAction.isBlank()) {
+                return;
+            }
+            this.nextAction = nextAction;
+        }
+
+        public Integer getRetryAfterMs() {
+            return retryAfterMs;
+        }
+
+        public void setRetryAfterMs(Integer retryAfterMs) {
+            this.retryAfterMs = retryAfterMs;
+        }
+
+        public Integer getFallbackCount() {
+            return fallbackCount;
+        }
+
+        public void setFallbackCount(Integer fallbackCount) {
+            this.fallbackCount = fallbackCount;
+        }
+
+        public Boolean getEscalated() {
+            return escalated;
+        }
+
+        public void setEscalated(Boolean escalated) {
+            this.escalated = escalated;
         }
 
         public List<String> getCitations() {
@@ -80,12 +146,36 @@ public class QueryServiceClient {
         body.put("query", query);
 
         HttpHeaders headers = DownstreamHeaders.from(context);
-        headers.add(HttpHeaders.CONTENT_TYPE, "application/json");
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+        enrichAuthHeaders(headers);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        final byte[] requestBody;
+        try {
+            requestBody = objectMapper.writeValueAsBytes(body);
+        } catch (IOException ex) {
+            throw new DownstreamException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "query_request_encode_error",
+                "Query request encode failed"
+            );
+        }
 
         try {
-            ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.POST, entity, JsonNode.class);
-            return response.getBody();
+            return restTemplate.execute(
+                url,
+                HttpMethod.POST,
+                request -> {
+                    request.getHeaders().putAll(headers);
+                    request.getHeaders().setContentLength(requestBody.length);
+                    request.getBody().write(requestBody);
+                },
+                response -> {
+                    InputStream responseBody = response.getBody();
+                    if (responseBody == null) {
+                        return null;
+                    }
+                    return objectMapper.readTree(responseBody);
+                }
+            );
         } catch (ResourceAccessException ex) {
             throw new DownstreamException(HttpStatus.SERVICE_UNAVAILABLE, "query_service_timeout", "Query service timeout");
         } catch (HttpStatusCodeException ex) {
@@ -93,13 +183,28 @@ public class QueryServiceClient {
             if (status == null) {
                 status = HttpStatus.SERVICE_UNAVAILABLE;
             }
-            throw new DownstreamException(status, "query_service_error", "Query service error");
+            String responseBody = ex.getResponseBodyAsString();
+            if (responseBody != null && responseBody.length() > 300) {
+                responseBody = responseBody.substring(0, 300);
+            }
+            log.warn(
+                "query_prepare_failed status={} url={} body={}",
+                ex.getStatusCode().value(),
+                url,
+                responseBody
+            );
+            throw new DownstreamException(
+                status,
+                "query_service_error",
+                "Query service error (status=" + ex.getStatusCode().value() + ")"
+            );
         }
     }
 
     public JsonNode chat(Map<String, Object> body, RequestContext context) {
         String url = properties.getBaseUrl() + "/chat";
         HttpHeaders headers = DownstreamHeaders.from(context);
+        enrichAuthHeaders(headers);
         headers.add(HttpHeaders.CONTENT_TYPE, "application/json");
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
@@ -120,6 +225,7 @@ public class QueryServiceClient {
     public ChatStreamResult chatStream(Map<String, Object> body, RequestContext context, SseEmitter emitter) {
         String url = properties.getBaseUrl() + "/chat?stream=true";
         HttpHeaders downstreamHeaders = DownstreamHeaders.from(context);
+        enrichAuthHeaders(downstreamHeaders);
         downstreamHeaders.setContentType(MediaType.APPLICATION_JSON);
         downstreamHeaders.setAccept(java.util.List.of(MediaType.TEXT_EVENT_STREAM));
         ChatStreamResult result = new ChatStreamResult();
@@ -138,6 +244,49 @@ public class QueryServiceClient {
                 }
             );
             return result;
+        } catch (ResourceAccessException ex) {
+            throw new DownstreamException(HttpStatus.SERVICE_UNAVAILABLE, "query_service_timeout", "Query service timeout");
+        } catch (HttpStatusCodeException ex) {
+            HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+            if (status == null) {
+                status = HttpStatus.SERVICE_UNAVAILABLE;
+            }
+            throw new DownstreamException(status, "query_service_error", "Query service error");
+        }
+    }
+
+    public JsonNode chatSessionState(String sessionId, RequestContext context) {
+        String url = properties.getBaseUrl() + "/internal/chat/session/state?session_id=" + sessionId;
+        HttpHeaders headers = DownstreamHeaders.from(context);
+        enrichAuthHeaders(headers);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.GET, entity, JsonNode.class);
+            return response.getBody();
+        } catch (ResourceAccessException ex) {
+            throw new DownstreamException(HttpStatus.SERVICE_UNAVAILABLE, "query_service_timeout", "Query service timeout");
+        } catch (HttpStatusCodeException ex) {
+            HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+            if (status == null) {
+                status = HttpStatus.SERVICE_UNAVAILABLE;
+            }
+            throw new DownstreamException(status, "query_service_error", "Query service error");
+        }
+    }
+
+    public JsonNode resetChatSession(String sessionId, RequestContext context) {
+        String url = properties.getBaseUrl() + "/internal/chat/session/reset";
+        HttpHeaders headers = DownstreamHeaders.from(context);
+        enrichAuthHeaders(headers);
+        headers.add(HttpHeaders.CONTENT_TYPE, "application/json");
+        Map<String, Object> body = new HashMap<>();
+        body.put("session_id", sessionId);
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+        try {
+            ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.POST, entity, JsonNode.class);
+            return response.getBody();
         } catch (ResourceAccessException ex) {
             throw new DownstreamException(HttpStatus.SERVICE_UNAVAILABLE, "query_service_timeout", "Query service timeout");
         } catch (HttpStatusCodeException ex) {
@@ -202,6 +351,18 @@ public class QueryServiceClient {
         }
         if ("error".equals(eventName)) {
             result.setStatus("error");
+            try {
+                JsonNode node = objectMapper.readTree(payload);
+                JsonNode reasonCodeNode = node.get("code");
+                JsonNode messageNode = node.get("message");
+                if (reasonCodeNode != null && reasonCodeNode.isTextual()) {
+                    result.setReasonCode(reasonCodeNode.asText());
+                } else if (messageNode != null && messageNode.isTextual()) {
+                    result.setReasonCode(messageNode.asText());
+                }
+            } catch (Exception ignored) {
+                // ignore parse error for best-effort pass-through
+            }
             return;
         }
         if (!"done".equals(eventName)) {
@@ -213,6 +374,30 @@ public class QueryServiceClient {
             if (statusNode != null && statusNode.isTextual()) {
                 result.setStatus(statusNode.asText());
             }
+            JsonNode reasonCodeNode = node.get("reason_code");
+            if (reasonCodeNode != null && reasonCodeNode.isTextual()) {
+                result.setReasonCode(reasonCodeNode.asText());
+            }
+            JsonNode recoverableNode = node.get("recoverable");
+            if (recoverableNode != null && recoverableNode.isBoolean()) {
+                result.setRecoverable(recoverableNode.asBoolean());
+            }
+            JsonNode nextActionNode = node.get("next_action");
+            if (nextActionNode != null && nextActionNode.isTextual()) {
+                result.setNextAction(nextActionNode.asText());
+            }
+            JsonNode retryAfterMsNode = node.get("retry_after_ms");
+            if (retryAfterMsNode != null && retryAfterMsNode.isInt()) {
+                result.setRetryAfterMs(retryAfterMsNode.asInt());
+            }
+            JsonNode fallbackCountNode = node.get("fallback_count");
+            if (fallbackCountNode != null && fallbackCountNode.isInt()) {
+                result.setFallbackCount(fallbackCountNode.asInt());
+            }
+            JsonNode escalatedNode = node.get("escalated");
+            if (escalatedNode != null && escalatedNode.isBoolean()) {
+                result.setEscalated(escalatedNode.asBoolean());
+            }
             JsonNode citationsNode = node.get("citations");
             if (citationsNode != null && citationsNode.isArray()) {
                 for (JsonNode citation : citationsNode) {
@@ -223,6 +408,19 @@ public class QueryServiceClient {
             }
         } catch (Exception ignored) {
             // Keep stream passthrough best-effort even when done payload is non-JSON.
+        }
+    }
+
+    private void enrichAuthHeaders(HttpHeaders headers) {
+        AuthContext auth = AuthContextHolder.get();
+        if (auth == null || headers == null) {
+            return;
+        }
+        if (auth.getUserId() != null && !auth.getUserId().isBlank()) {
+            headers.add("x-user-id", auth.getUserId());
+        }
+        if (auth.getAdminId() != null && !auth.getAdminId().isBlank()) {
+            headers.add("x-admin-id", auth.getAdminId());
         }
     }
 }

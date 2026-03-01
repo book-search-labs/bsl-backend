@@ -46,12 +46,6 @@ public class AutocompleteController {
         response.setTraceId(context == null ? null : context.getTraceId());
         response.setRequestId(context == null ? null : context.getRequestId());
 
-        if (trimmed.isEmpty()) {
-            response.setTookMs((System.nanoTime() - started) / 1_000_000L);
-            response.setSuggestions(List.of());
-            return response;
-        }
-
         AutocompleteServiceResponse downstream = autocompleteServiceClient.autocomplete(trimmed, resolvedSize, context);
         response.setTookMs(downstream != null && downstream.getTookMs() > 0
             ? downstream.getTookMs()

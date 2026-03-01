@@ -52,13 +52,25 @@ async def retrieve_candidates(query: str, trace_id: str, request_id: str, top_k:
     payload = {
         "size": top_k or _rag_top_k(),
         "query": {
-            "multi_match": {
-                "query": query,
-                "fields": ["title_ko^3", "title_en^2", "authors.name_ko", "authors.name_en", "publisher_name"],
-                "operator": "and",
+            "bool": {
+                "filter": [{"term": {"is_hidden": False}}],
+                "must": {
+                    "multi_match": {
+                        "query": query,
+                        "fields": [
+                            "title_ko^3",
+                            "title_en^2.5",
+                            "series_name^1.8",
+                            "author_names_ko^1.6",
+                            "author_names_en^1.4",
+                            "publisher_name^1.2",
+                        ],
+                        "operator": "and",
+                    }
+                },
             }
         },
-        "_source": ["doc_id", "title_ko", "title_en", "authors", "identifiers"],
+        "_source": ["doc_id", "title_ko", "title_en", "authors", "author_names_ko", "author_names_en", "identifiers"],
     }
     headers = {"x-trace-id": trace_id, "x-request-id": request_id}
     try:

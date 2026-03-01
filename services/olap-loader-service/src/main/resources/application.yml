@@ -22,6 +22,7 @@ olap:
     request-timeout-ms: ${CLICKHOUSE_TIMEOUT_MS:2000}
   topics:
     search-impression: ${OLAP_TOPIC_SEARCH_IMPRESSION:search_impression_v1}
+    search-result-summary: ${OLAP_TOPIC_SEARCH_RESULT_SUMMARY:search_result_summary_v1}
     search-click: ${OLAP_TOPIC_SEARCH_CLICK:search_click_v1}
     search-dwell: ${OLAP_TOPIC_SEARCH_DWELL:search_dwell_v1}
     ac-impression: ${OLAP_TOPIC_AC_IMPRESSION:ac_impression_v1}
