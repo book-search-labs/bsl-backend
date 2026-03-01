@@ -1754,6 +1754,70 @@ def test_call_commerce_timeout_emits_chat_timeout_metric(monkeypatch):
     assert after.get(key, 0) >= before.get(key, 0) + 1
 
 
+def test_call_commerce_includes_tenant_header_and_appends_audit(monkeypatch):
+    captured_headers = {}
+    audit_calls = []
+
+    class FakeResponse:
+        status_code = 200
+        headers = {"content-type": "application/json"}
+
+        @staticmethod
+        def json():
+            return {"ok": True}
+
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def request(self, method, url, headers=None, json=None, timeout=None):
+            captured_headers.update(headers or {})
+            return FakeResponse()
+
+    monkeypatch.setenv("BSL_TENANT_ID", "books-test")
+    monkeypatch.setattr(chat_tools.httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(chat_tools, "append_action_audit", lambda **kwargs: audit_calls.append(kwargs) or True)
+
+    result = asyncio.run(
+        chat_tools._call_commerce(
+            "GET",
+            "/orders/12",
+            user_id="1",
+            trace_id="trace_test",
+            request_id="req_test",
+            tool_name="order_lookup",
+            intent="ORDER_LOOKUP",
+        )
+    )
+
+    assert result["ok"] is True
+    assert captured_headers["x-user-id"] == "1"
+    assert captured_headers["x-tenant-id"] == "books-test"
+    assert len(audit_calls) == 1
+    assert audit_calls[0]["decision"] == "ALLOW"
+    assert audit_calls[0]["result"] == "SUCCESS"
+
+
+def test_call_commerce_blocks_when_auth_context_missing(monkeypatch):
+    with pytest.raises(chat_tools.ToolCallError) as exc_info:
+        asyncio.run(
+            chat_tools._call_commerce(
+                "GET",
+                "/orders/12",
+                user_id="",
+                trace_id="trace_test",
+                request_id="req_test",
+                tool_name="order_lookup",
+                intent="ORDER_LOOKUP",
+            )
+        )
+
+    assert exc_info.value.code == "auth_context_missing"
+
+
 def test_run_tool_chat_executes_refund_after_confirmation(monkeypatch):
     async def fake_call_commerce(method, path, **kwargs):
         if method == "GET" and path == "/orders/12":

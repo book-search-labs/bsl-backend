@@ -13,6 +13,7 @@ import httpx
 
 from app.core.cache import get_cache
 from app.core.metrics import metrics
+from app.core.chat_state_store import append_action_audit
 from app.core.chat_state_store import get_session_state as get_durable_chat_session_state
 from app.core.chat_state_store import upsert_session_state
 from app.core.rag_candidates import retrieve_candidates
@@ -104,6 +105,46 @@ def _extract_user_id(request: dict[str, Any]) -> str | None:
     if isinstance(user_id, str) and user_id.strip():
         return user_id.strip()
     return None
+
+
+def _tenant_id() -> str:
+    value = os.getenv("BSL_TENANT_ID", "books").strip()
+    return value or "books"
+
+
+def _default_conversation_id(user_id: str) -> str:
+    return f"u:{user_id}:default"
+
+
+def _audit_tool_authz_decision(
+    *,
+    conversation_id: str,
+    action_type: str,
+    user_id: str,
+    trace_id: str,
+    request_id: str,
+    path: str,
+    decision: str,
+    result: str,
+    reason_code: str,
+    status_code: int | None = None,
+) -> None:
+    append_action_audit(
+        conversation_id=conversation_id,
+        action_type=action_type,
+        action_state="EXECUTED" if result == "SUCCESS" else "BLOCKED",
+        decision=decision,
+        result=result,
+        actor_user_id=user_id,
+        actor_admin_id=None,
+        target_ref=path,
+        auth_context={"tenant_id": _tenant_id(), "user_id": user_id},
+        trace_id=trace_id,
+        request_id=request_id,
+        reason_code=reason_code,
+        idempotency_key=None,
+        metadata={"path": path, "status_code": status_code},
+    )
 
 
 def _extract_recent_issue_from_history(request: dict[str, Any]) -> str:
@@ -984,15 +1025,36 @@ async def _call_commerce(
     path: str,
     *,
     user_id: str,
+    session_id: str | None = None,
     trace_id: str,
     request_id: str,
     payload: dict[str, Any] | None = None,
     tool_name: str,
     intent: str,
 ) -> dict[str, Any]:
+    tenant_id = _tenant_id()
+    conversation_id = session_id or _default_conversation_id(user_id)
+    if not user_id or not tenant_id:
+        metrics.inc("chat_authz_check_total", {"result": "deny", "action": intent, "reason": "missing_context"})
+        _audit_tool_authz_decision(
+            conversation_id=conversation_id,
+            action_type=tool_name,
+            user_id=user_id or "unknown",
+            trace_id=trace_id,
+            request_id=request_id,
+            path=path,
+            decision="DENY",
+            result="BLOCKED",
+            reason_code="AUTH_CONTEXT_MISSING",
+            status_code=400,
+        )
+        raise ToolCallError("auth_context_missing", "인증 컨텍스트가 누락되어 요청을 처리할 수 없습니다.", status_code=400)
+    metrics.inc("chat_authz_check_total", {"result": "allow", "action": intent, "reason": "context_ok"})
+
     url = f"{_commerce_base_url()}{path}"
     headers = {
         "x-user-id": str(user_id),
+        "x-tenant-id": tenant_id,
         "x-trace-id": trace_id,
         "x-request-id": request_id,
         "content-type": "application/json",
@@ -1026,9 +1088,33 @@ async def _call_commerce(
                 message = str(message or "툴 호출 중 오류가 발생했습니다.")
                 if response.status_code == 403:
                     metrics.inc("chat_tool_authz_denied_total", {"intent": intent})
+                    _audit_tool_authz_decision(
+                        conversation_id=conversation_id,
+                        action_type=tool_name,
+                        user_id=user_id,
+                        trace_id=trace_id,
+                        request_id=request_id,
+                        path=path,
+                        decision="DENY",
+                        result="BLOCKED",
+                        reason_code="AUTH_FORBIDDEN",
+                        status_code=403,
+                    )
                 raise ToolCallError(code=code, message=message, status_code=response.status_code)
 
             _record_tool_metrics(intent, tool_name, "ok")
+            _audit_tool_authz_decision(
+                conversation_id=conversation_id,
+                action_type=tool_name,
+                user_id=user_id,
+                trace_id=trace_id,
+                request_id=request_id,
+                path=path,
+                decision="ALLOW",
+                result="SUCCESS",
+                reason_code="OK",
+                status_code=response.status_code,
+            )
             try:
                 return response.json()
             except Exception:
