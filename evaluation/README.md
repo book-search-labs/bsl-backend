@@ -132,6 +132,7 @@ RUN_CHAT_REGRESSION_SUITE_EVAL=1 ./scripts/test.sh
 
 리포트의 `metrics` 필드에는 운영 지표 키(`chat_regression_suite_size{domain=*}`,
 `chat_regression_new_case_ingest_total`)가 함께 기록된다.
+기본 ingest 집계 경로는 `tasks/backlog/generated`이며 `README.md`/`_index.md`는 제외된다.
 
 피드백/품질 루프를 한 번에 실행하려면:
 

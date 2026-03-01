@@ -71,7 +71,19 @@ def collect_suite_metrics(suite: dict[str, Any]) -> dict[str, Any]:
 def collect_ingest_count(ingest_dir: Path) -> int:
     if not ingest_dir.exists() or not ingest_dir.is_dir():
         return 0
-    return sum(1 for path in ingest_dir.rglob("*.md") if path.is_file())
+    count = 0
+    for path in ingest_dir.rglob("*"):
+        if not path.is_file():
+            continue
+        suffix = path.suffix.lower()
+        if suffix not in {".md", ".json"}:
+            continue
+        name = path.name.lower()
+        if name in {"readme.md", "_index.md"}:
+            continue
+        if "feedback" in name or "feedback" in "/".join(part.lower() for part in path.parts):
+            count += 1
+    return count
 
 
 def evaluate_gate(
@@ -198,7 +210,7 @@ def _parse_args() -> argparse.Namespace:
         "--fixture",
         default="services/query-service/tests/fixtures/chat_state_regression_v1.json",
     )
-    parser.add_argument("--ingest-dir", default="tasks/backlog/generated/feedback")
+    parser.add_argument("--ingest-dir", default="tasks/backlog/generated")
     parser.add_argument("--out", default="data/eval/reports")
     parser.add_argument("--prefix", default="chat_regression_suite_eval")
     parser.add_argument("--gate", action="store_true")

@@ -281,7 +281,7 @@ echo "[8/11] Chat regression suite gate (optional)"
 if [ "${RUN_CHAT_REGRESSION_SUITE_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_REGRESSION_FIXTURE="${CHAT_REGRESSION_FIXTURE:-$ROOT_DIR/services/query-service/tests/fixtures/chat_state_regression_v1.json}"
-    CHAT_REGRESSION_INGEST_DIR="${CHAT_REGRESSION_INGEST_DIR:-$ROOT_DIR/tasks/backlog/generated/feedback}"
+    CHAT_REGRESSION_INGEST_DIR="${CHAT_REGRESSION_INGEST_DIR:-$ROOT_DIR/tasks/backlog/generated}"
     CHAT_REGRESSION_MIN_SCENARIOS="${CHAT_REGRESSION_MIN_SCENARIOS:-30}"
     CHAT_REGRESSION_MIN_TURNS="${CHAT_REGRESSION_MIN_TURNS:-45}"
     CHAT_REGRESSION_MIN_MULTI_TURN="${CHAT_REGRESSION_MIN_MULTI_TURN:-12}"

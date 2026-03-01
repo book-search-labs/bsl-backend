@@ -140,6 +140,7 @@ python3 scripts/eval/chat_regression_suite_eval.py \
   --gate
 ```
 `RUN_CHAT_REGRESSION_SUITE_EVAL=1 ./scripts/test.sh`로 CI/로컬 옵션 게이트를 활성화할 수 있다.
+기본 ingest 집계 경로는 `tasks/backlog/generated`이며 `README.md`/`_index.md`는 자동 제외된다.
 
 semantic cache 안전 게이트를 점검하려면:
 ```bash

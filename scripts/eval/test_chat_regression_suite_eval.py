@@ -93,3 +93,16 @@ def test_compare_with_baseline_detects_regression():
     assert "scenario count regression" in failures[0]
     assert "turn count regression" in failures[1]
     assert "book scenario regression" in failures[2]
+
+
+def test_collect_ingest_count_ignores_index_and_readme(tmp_path):
+    module = _load_module()
+    root = tmp_path / "generated"
+    (root / "feedback").mkdir(parents=True, exist_ok=True)
+    (root / "README.md").write_text("root readme", encoding="utf-8")
+    (root / "feedback" / "_index.md").write_text("index", encoding="utf-8")
+    (root / "feedback" / "chat-feedback-1.md").write_text("ticket", encoding="utf-8")
+    (root / "chat_feedback_regression_seeds.md").write_text("seeds", encoding="utf-8")
+    (root / "feedback" / "seed.json").write_text("{}", encoding="utf-8")
+    (root / "notes.md").write_text("not feedback", encoding="utf-8")
+    assert module.collect_ingest_count(root) == 3
