@@ -7,6 +7,7 @@ import re
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Callable
 from typing import Any
 
 import httpx
@@ -99,6 +100,10 @@ def _policy_fast_shipping_fee() -> int:
 
 def _policy_free_shipping_threshold() -> int:
     return max(0, int(os.getenv("QS_CHAT_POLICY_FREE_SHIPPING_THRESHOLD", "20000")))
+
+
+def _policy_topic_cache_ttl_sec() -> int:
+    return max(30, int(os.getenv("QS_CHAT_POLICY_TOPIC_CACHE_TTL_SEC", "300")))
 
 
 def _workflow_ttl_sec() -> int:
@@ -669,6 +674,55 @@ def _build_tool_source(tool_name: str, endpoint: str, snippet: str) -> tuple[lis
         "snippet": f"{snippet} (조회시각: {timestamp})",
     }
     return [source], [citation_key]
+
+
+def _policy_topic_cache_key(topic: str) -> str:
+    normalized_topic = str(topic or "").strip().lower() or "generic"
+    return f"chat:policy-topic:{_tenant_id()}:{normalized_topic}"
+
+
+def _build_cached_policy_response(
+    *,
+    topic: str,
+    trace_id: str,
+    request_id: str,
+    tool_name: str,
+    endpoint: str,
+    content_builder: Callable[[], tuple[str, str]],
+) -> dict[str, Any]:
+    cache_key = _policy_topic_cache_key(topic)
+    cached = _CACHE.get_json(cache_key)
+    if isinstance(cached, dict):
+        cached_content = str(cached.get("content") or "").strip()
+        cached_snippet = str(cached.get("source_snippet") or "").strip()
+        if cached_content and cached_snippet:
+            metrics.inc("chat_policy_topic_cache_total", {"topic": topic, "result": "hit"})
+            return _build_response(
+                trace_id,
+                request_id,
+                "ok",
+                cached_content,
+                tool_name=tool_name,
+                endpoint=endpoint,
+                source_snippet=cached_snippet,
+            )
+
+    content, source_snippet = content_builder()
+    metrics.inc("chat_policy_topic_cache_total", {"topic": topic, "result": "miss"})
+    _CACHE.set_json(
+        cache_key,
+        {"content": content, "source_snippet": source_snippet},
+        ttl=_policy_topic_cache_ttl_sec(),
+    )
+    return _build_response(
+        trace_id,
+        request_id,
+        "ok",
+        content,
+        tool_name=tool_name,
+        endpoint=endpoint,
+        source_snippet=source_snippet,
+    )
 
 
 def _contains_success_claim(content: str) -> bool:
@@ -1770,69 +1824,75 @@ async def _handle_refund_lookup(
 
 
 def _handle_refund_policy_guide(trace_id: str, request_id: str) -> dict[str, Any]:
-    base_fee = _format_krw(_policy_base_shipping_fee())
-    fast_fee = _format_krw(_policy_fast_shipping_fee())
-    free_threshold = _format_krw(_policy_free_shipping_threshold())
-    content = (
-        "환불/반품 조건을 요약해드릴게요.\n"
-        "- 결제 완료/배송 준비 단계에서 전체 취소 시 상품금액과 배송비를 환불합니다.\n"
-        "- 배송 중/배송 완료 이후에는 환불 사유에 따라 환불 금액이 달라집니다.\n"
-        "- 판매자 귀책(파손/오배송/하자/지연)은 배송비 포함 환불이 가능합니다.\n"
-        f"- 단순 변심은 반품비가 차감되며, 기본 배송 {base_fee}, 빠른 배송 {fast_fee} 기준으로 계산됩니다.\n"
-        "- 최종 환불액은 '상품금액 + 환불배송비 - 반품비'로 계산됩니다.\n"
-        f"- 무료배송 기준은 {free_threshold}입니다.\n"
-        "주문번호를 알려주시면 해당 주문 기준 예상 환불 금액을 바로 조회해드릴 수 있어요."
-    )
-    return _build_response(
-        trace_id,
-        request_id,
-        "ok",
-        content,
+    def _compose_refund_policy() -> tuple[str, str]:
+        base_fee = _format_krw(_policy_base_shipping_fee())
+        fast_fee = _format_krw(_policy_fast_shipping_fee())
+        free_threshold = _format_krw(_policy_free_shipping_threshold())
+        content = (
+            "환불/반품 조건을 요약해드릴게요.\n"
+            "- 결제 완료/배송 준비 단계에서 전체 취소 시 상품금액과 배송비를 환불합니다.\n"
+            "- 배송 중/배송 완료 이후에는 환불 사유에 따라 환불 금액이 달라집니다.\n"
+            "- 판매자 귀책(파손/오배송/하자/지연)은 배송비 포함 환불이 가능합니다.\n"
+            f"- 단순 변심은 반품비가 차감되며, 기본 배송 {base_fee}, 빠른 배송 {fast_fee} 기준으로 계산됩니다.\n"
+            "- 최종 환불액은 '상품금액 + 환불배송비 - 반품비'로 계산됩니다.\n"
+            f"- 무료배송 기준은 {free_threshold}입니다.\n"
+            "주문번호를 알려주시면 해당 주문 기준 예상 환불 금액을 바로 조회해드릴 수 있어요."
+        )
+        return content, "refund policy summary: order status, reason code, return fee, shipping refund"
+
+    return _build_cached_policy_response(
+        topic="refund",
+        trace_id=trace_id,
+        request_id=request_id,
         tool_name="refund_policy",
         endpoint="POLICY / commerce-refund-guide",
-        source_snippet="refund policy summary: order status, reason code, return fee, shipping refund",
+        content_builder=_compose_refund_policy,
     )
 
 
 def _handle_shipping_policy_guide(trace_id: str, request_id: str) -> dict[str, Any]:
-    base_fee = _format_krw(_policy_base_shipping_fee())
-    fast_fee = _format_krw(_policy_fast_shipping_fee())
-    free_threshold = _format_krw(_policy_free_shipping_threshold())
-    content = (
-        "배송 정책을 요약해드릴게요.\n"
-        f"- 기본 배송비는 {base_fee}, 빠른 배송비는 {fast_fee}입니다.\n"
-        f"- 주문 금액이 {free_threshold} 이상이면 기본 배송비가 0원 처리됩니다.\n"
-        "- 빠른 배송은 기본 배송보다 우선 출고되며, 결제 시 선택한 배송 방식으로 고정됩니다.\n"
-        "- 배송 준비 이후에는 주소/옵션 변경이 제한될 수 있습니다.\n"
-        "주문번호를 알려주시면 현재 배송 상태와 변경 가능 여부를 바로 확인해드릴게요."
-    )
-    return _build_response(
-        trace_id,
-        request_id,
-        "ok",
-        content,
+    def _compose_shipping_policy() -> tuple[str, str]:
+        base_fee = _format_krw(_policy_base_shipping_fee())
+        fast_fee = _format_krw(_policy_fast_shipping_fee())
+        free_threshold = _format_krw(_policy_free_shipping_threshold())
+        content = (
+            "배송 정책을 요약해드릴게요.\n"
+            f"- 기본 배송비는 {base_fee}, 빠른 배송비는 {fast_fee}입니다.\n"
+            f"- 주문 금액이 {free_threshold} 이상이면 기본 배송비가 0원 처리됩니다.\n"
+            "- 빠른 배송은 기본 배송보다 우선 출고되며, 결제 시 선택한 배송 방식으로 고정됩니다.\n"
+            "- 배송 준비 이후에는 주소/옵션 변경이 제한될 수 있습니다.\n"
+            "주문번호를 알려주시면 현재 배송 상태와 변경 가능 여부를 바로 확인해드릴게요."
+        )
+        return content, "shipping policy summary: base/fast fee, free-shipping threshold, change restrictions"
+
+    return _build_cached_policy_response(
+        topic="shipping",
+        trace_id=trace_id,
+        request_id=request_id,
         tool_name="shipping_policy",
         endpoint="POLICY / commerce-shipping-guide",
-        source_snippet="shipping policy summary: base/fast fee, free-shipping threshold, change restrictions",
+        content_builder=_compose_shipping_policy,
     )
 
 
 def _handle_order_policy_guide(trace_id: str, request_id: str) -> dict[str, Any]:
-    content = (
-        "주문/결제 진행 기준을 요약해드릴게요.\n"
-        "- 주문 생성 → 결제 대기 → 결제 완료 → 배송 준비 → 배송 중 → 배송 완료 순서로 진행됩니다.\n"
-        "- 결제 대기 상태에서는 결제 수단 변경 또는 취소가 가능합니다.\n"
-        "- 결제 완료 이후 취소/환불은 배송 상태와 사유에 따라 가능 여부가 달라집니다.\n"
-        "주문번호를 알려주시면 현재 단계와 지금 가능한 다음 액션을 정확히 안내해드릴게요."
-    )
-    return _build_response(
-        trace_id,
-        request_id,
-        "ok",
-        content,
+    def _compose_order_policy() -> tuple[str, str]:
+        content = (
+            "주문/결제 진행 기준을 요약해드릴게요.\n"
+            "- 주문 생성 → 결제 대기 → 결제 완료 → 배송 준비 → 배송 중 → 배송 완료 순서로 진행됩니다.\n"
+            "- 결제 대기 상태에서는 결제 수단 변경 또는 취소가 가능합니다.\n"
+            "- 결제 완료 이후 취소/환불은 배송 상태와 사유에 따라 가능 여부가 달라집니다.\n"
+            "주문번호를 알려주시면 현재 단계와 지금 가능한 다음 액션을 정확히 안내해드릴게요."
+        )
+        return content, "order flow summary: created, paid, ready_to_ship, shipped, delivered"
+
+    return _build_cached_policy_response(
+        topic="order",
+        trace_id=trace_id,
+        request_id=request_id,
         tool_name="order_policy",
         endpoint="POLICY / commerce-order-guide",
-        source_snippet="order flow summary: created, paid, ready_to_ship, shipped, delivered",
+        content_builder=_compose_order_policy,
     )
 
 

@@ -72,6 +72,26 @@ def test_run_tool_chat_shipping_policy_guide_without_login():
     assert result["sources"][0]["url"] == "POLICY / commerce-shipping-guide"
 
 
+def test_refund_policy_topic_cache_reuses_composed_content(monkeypatch):
+    compose_calls = {"count": 0}
+
+    def fake_base_fee():
+        compose_calls["count"] += 1
+        return 3000
+
+    monkeypatch.setattr(chat_tools, "_policy_base_shipping_fee", fake_base_fee)
+    monkeypatch.setattr(chat_tools, "_policy_fast_shipping_fee", lambda: 5000)
+    monkeypatch.setattr(chat_tools, "_policy_free_shipping_threshold", lambda: 20000)
+
+    first = chat_tools._handle_refund_policy_guide("trace_test", "req_refund_policy_cache_1")
+    second = chat_tools._handle_refund_policy_guide("trace_test", "req_refund_policy_cache_2")
+
+    assert first["status"] == "ok"
+    assert second["status"] == "ok"
+    assert compose_calls["count"] == 1
+    assert first["answer"]["content"] == second["answer"]["content"]
+
+
 def test_run_tool_chat_book_recommendation_without_login(monkeypatch):
     async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
         assert query in {"周易辭典", "도서 '周易辭典' 기준으로 비슷한 책을 추천해줘"}
