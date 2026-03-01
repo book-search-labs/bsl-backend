@@ -153,6 +153,7 @@ python3 scripts/eval/chat_agent_eval_summary.py \
 `RUN_CHAT_AGENT_SUMMARY_EVAL=1 ./scripts/test.sh`로 옵션 게이트를 활성화할 수 있다.
 기본값은 `CHAT_AGENT_SUMMARY_REQUIRE_ALL=1`, `CHAT_AGENT_SUMMARY_MAX_AGE_MINUTES=240`이다.
 필요하면 env로 override해 허용 범위를 조정한다.
+리포트 `metrics` 필드에는 summary/component pass 상태가 수치로 함께 기록된다.
 `RUN_CHAT_PIPELINE_TESTS=1 ./scripts/test.sh`로 chat pipeline 스크립트 단위테스트 묶음을 함께 실행할 수 있다.
 해당 묶음에는 Query Service `test_chat_regression_harness.py`도 포함된다.
 chat 관련 게이트를 일괄 실행하려면 `RUN_CHAT_ALL_EVALS=1 ./scripts/test.sh`를 사용한다.

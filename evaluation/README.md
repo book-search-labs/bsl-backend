@@ -151,6 +151,8 @@ RUN_CHAT_AGENT_SUMMARY_EVAL=1 ./scripts/test.sh
 ```
 기본값은 `CHAT_AGENT_SUMMARY_REQUIRE_ALL=1`, `CHAT_AGENT_SUMMARY_MAX_AGE_MINUTES=240`이다.
 필요하면 env로 override할 수 있다.
+리포트의 `metrics` 필드에는 `chat_agent_eval_summary_gate_pass`와
+`chat_agent_eval_component_*{component=*}` 지표 스냅샷이 포함된다.
 
 chat 품질 파이프라인 스크립트 단위테스트 묶음을 실행하려면:
 

@@ -146,6 +146,21 @@ def render_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def build_metric_snapshot(components: dict[str, Any], *, gate_pass: bool) -> dict[str, float]:
+    metrics: dict[str, float] = {}
+    metrics["chat_agent_eval_summary_gate_pass"] = 1.0 if gate_pass else 0.0
+    for name in sorted(_COMPONENTS.keys()):
+        comp = components.get(name) if isinstance(components.get(name), dict) else {}
+        present = bool(comp.get("present"))
+        gate = comp.get("gate_pass")
+        metrics[f"chat_agent_eval_component_present{{component={name}}}"] = 1.0 if present else 0.0
+        if gate is True:
+            metrics[f"chat_agent_eval_component_gate_pass{{component={name}}}"] = 1.0
+        elif gate is False:
+            metrics[f"chat_agent_eval_component_gate_pass{{component={name}}}"] = 0.0
+    return metrics
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Summarize chat eval reports into one gate snapshot.")
     parser.add_argument("--reports-dir", default="data/eval/reports")
@@ -173,6 +188,7 @@ def main() -> int:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "source": {"reports_dir": str(reports_dir)},
         "components": components,
+        "metrics": build_metric_snapshot(components, gate_pass=overall_pass),
         "gate": {
             "pass": overall_pass,
             "failures": failures,

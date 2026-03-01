@@ -100,3 +100,19 @@ def test_evaluate_freshness_flags_stale_report():
     failures = module.evaluate_freshness(summary, max_age_minutes=5)
     assert len(failures) == 1
     assert "stale report" in failures[0]
+
+
+def test_build_metric_snapshot_exposes_component_metrics():
+    module = _load_module()
+    components = {
+        "recommend": {"present": True, "gate_pass": True},
+        "rollout": {"present": True, "gate_pass": False},
+        "semantic_cache": {"present": False, "gate_pass": None},
+        "regression_suite": {"present": True, "gate_pass": True},
+    }
+    metrics = module.build_metric_snapshot(components, gate_pass=False)
+    assert metrics["chat_agent_eval_summary_gate_pass"] == 0.0
+    assert metrics["chat_agent_eval_component_present{component=recommend}"] == 1.0
+    assert metrics["chat_agent_eval_component_present{component=semantic_cache}"] == 0.0
+    assert metrics["chat_agent_eval_component_gate_pass{component=rollout}"] == 0.0
+    assert metrics["chat_agent_eval_component_gate_pass{component=regression_suite}"] == 1.0
