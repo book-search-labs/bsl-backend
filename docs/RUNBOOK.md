@@ -151,7 +151,8 @@ python3 scripts/eval/chat_agent_eval_summary.py \
   --gate
 ```
 `RUN_CHAT_AGENT_SUMMARY_EVAL=1 ./scripts/test.sh`로 옵션 게이트를 활성화할 수 있다.
-필요하면 `CHAT_AGENT_SUMMARY_MAX_AGE_MINUTES`로 허용 리포트 age 상한을 지정한다.
+기본값은 `CHAT_AGENT_SUMMARY_REQUIRE_ALL=1`, `CHAT_AGENT_SUMMARY_MAX_AGE_MINUTES=240`이다.
+필요하면 env로 override해 허용 범위를 조정한다.
 `RUN_CHAT_PIPELINE_TESTS=1 ./scripts/test.sh`로 chat pipeline 스크립트 단위테스트 묶음을 함께 실행할 수 있다.
 
 semantic cache 안전 게이트를 점검하려면:

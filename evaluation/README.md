@@ -149,7 +149,8 @@ python3 scripts/eval/chat_agent_eval_summary.py \
 ```bash
 RUN_CHAT_AGENT_SUMMARY_EVAL=1 ./scripts/test.sh
 ```
-필요하면 `CHAT_AGENT_SUMMARY_MAX_AGE_MINUTES`로 허용 리포트 age 상한을 줄 수 있다.
+기본값은 `CHAT_AGENT_SUMMARY_REQUIRE_ALL=1`, `CHAT_AGENT_SUMMARY_MAX_AGE_MINUTES=240`이다.
+필요하면 env로 override할 수 있다.
 
 chat 품질 파이프라인 스크립트 단위테스트 묶음을 실행하려면:
 
