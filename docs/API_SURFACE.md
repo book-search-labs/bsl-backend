@@ -182,6 +182,7 @@ All structured responses that follow `contracts/*` must include:
 - `history` 최대 턴 수: `QS_CHAT_MAX_HISTORY_TURNS` (기본 12)
 - `message + history` 총 길이: `QS_CHAT_MAX_TOTAL_CHARS` (기본 6000)
 - `session_id` 형식: `QS_CHAT_SESSION_ID_PATTERN` / 길이 `QS_CHAT_SESSION_ID_MAX_LEN` 검증
+- 인증된 사용자 요청은 `session_id`가 사용자 네임스페이스(`u:{user_id}:...`)로 정규화된다. 교차 사용자 세션(`u:{other_user}:...`)은 `403 forbidden`.
 - 제한 위반 시 HTTP 200 + `status=insufficient_evidence`와 `reason_code`(`CHAT_MESSAGE_TOO_LONG`, `CHAT_HISTORY_TOO_LONG`, `CHAT_PAYLOAD_TOO_LARGE` 등)로 복구 힌트를 반환
 
 ### Response
@@ -210,6 +211,7 @@ All structured responses that follow `contracts/*` must include:
 
 ### Query
 - `session_id` (required)
+- 인증된 사용자 요청에서 `session_id`가 `u:{user_id}:...` 형식이 아니면 사용자 네임스페이스로 정규화된다. 다른 사용자 네임스페이스는 `403 forbidden`.
 
 ### Response
 - Contract: `contracts/chat-session-state-response.schema.json`
@@ -226,6 +228,7 @@ All structured responses that follow `contracts/*` must include:
   "session_id": "u:101:default"
 }
 ```
+- 인증된 사용자 요청에서 `session_id`가 `u:{user_id}:...` 형식이 아니면 사용자 네임스페이스로 정규화된다. 다른 사용자 네임스페이스는 `403 forbidden`.
 
 ### Response
 - Contract: `contracts/chat-session-reset-response.schema.json`

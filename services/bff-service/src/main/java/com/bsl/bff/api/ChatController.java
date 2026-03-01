@@ -14,6 +14,8 @@ import com.bsl.bff.common.DownstreamException;
 import com.bsl.bff.common.RequestContext;
 import com.bsl.bff.common.RequestContextHolder;
 import com.bsl.bff.outbox.OutboxService;
+import com.bsl.bff.security.AuthContext;
+import com.bsl.bff.security.AuthContextHolder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
@@ -27,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +45,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RestController
 @RequestMapping({"/chat", "/v1/chat"})
 public class ChatController {
+    private static final Pattern USER_SESSION_PATTERN = Pattern.compile("^u:([^:]+)(?::|$)");
     private static final List<String> HIGH_RISK_KEYWORDS = List.of(
         "주문", "결제", "환불", "취소", "배송", "주소",
         "payment", "refund", "cancel", "shipping", "address"
@@ -71,10 +76,13 @@ public class ChatController {
 
         RequestContext context = RequestContextHolder.get();
         Map<String, Object> body = objectMapper.convertValue(request, Map.class);
+        String authUserId = resolveAuthenticatedUserId();
         boolean shouldStream = Boolean.TRUE.equals(stream)
             || (request.getOptions() != null && Boolean.TRUE.equals(request.getOptions().getStream()));
 
-        String conversationId = resolveConversationId(request, context);
+        String conversationId = resolveConversationId(request, context, authUserId);
+        body.put("session_id", conversationId);
+        enforceAuthenticatedUser(body, authUserId);
         String canonicalKey = canonicalKey(request.getMessage().getContent());
         String queryText = resolveQueryText(request);
         String turnId = resolveTurnId(context);
@@ -136,7 +144,9 @@ public class ChatController {
             throw new BadRequestException("session_id is required");
         }
         RequestContext context = RequestContextHolder.get();
-        JsonNode response = queryServiceClient.chatSessionState(sessionId.trim(), context);
+        String authUserId = resolveAuthenticatedUserId();
+        String normalizedSessionId = normalizeSessionIdForUser(sessionId.trim(), authUserId);
+        JsonNode response = queryServiceClient.chatSessionState(normalizedSessionId, context);
         if (response == null) {
             throw new DownstreamException(HttpStatus.BAD_GATEWAY, "query_service_error", "Query service response is empty");
         }
@@ -156,7 +166,9 @@ public class ChatController {
             throw new BadRequestException("session_id is required");
         }
         RequestContext context = RequestContextHolder.get();
-        JsonNode response = queryServiceClient.resetChatSession(sessionId, context);
+        String authUserId = resolveAuthenticatedUserId();
+        String normalizedSessionId = normalizeSessionIdForUser(sessionId, authUserId);
+        JsonNode response = queryServiceClient.resetChatSession(normalizedSessionId, context);
         if (response == null) {
             throw new DownstreamException(HttpStatus.BAD_GATEWAY, "query_service_error", "Query service response is empty");
         }
@@ -300,15 +312,88 @@ public class ChatController {
         return chunkIds;
     }
 
-    private String resolveConversationId(BffChatRequest request, RequestContext context) {
+    private String resolveConversationId(BffChatRequest request, RequestContext context, String authUserId) {
+        String requestedSessionId = null;
         if (request != null && request.getSessionId() != null && !request.getSessionId().isBlank()) {
-            return request.getSessionId().trim();
+            requestedSessionId = request.getSessionId().trim();
+        }
+        if (authUserId != null) {
+            if (requestedSessionId == null || requestedSessionId.isBlank()) {
+                return "u:" + authUserId + ":default";
+            }
+            return normalizeSessionIdForUser(requestedSessionId, authUserId);
+        }
+        if (requestedSessionId != null && !requestedSessionId.isBlank()) {
+            return requestedSessionId;
         }
         String requestId = context == null ? null : context.getRequestId();
         if (requestId != null && !requestId.isBlank()) {
             return "conv:" + requestId;
         }
         return "conv:unknown";
+    }
+
+    @SuppressWarnings("unchecked")
+    private void enforceAuthenticatedUser(Map<String, Object> body, String authUserId) {
+        if (authUserId == null || authUserId.isBlank()) {
+            return;
+        }
+        Object rawClient = body.get("client");
+        Map<String, Object> clientPayload = new HashMap<>();
+        if (rawClient instanceof Map<?, ?> rawMap) {
+            for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
+                if (entry.getKey() != null) {
+                    clientPayload.put(String.valueOf(entry.getKey()), entry.getValue());
+                }
+            }
+        }
+        clientPayload.put("user_id", authUserId);
+        body.put("client", clientPayload);
+    }
+
+    private String resolveAuthenticatedUserId() {
+        AuthContext authContext = AuthContextHolder.get();
+        if (authContext == null || authContext.getUserId() == null) {
+            return null;
+        }
+        String normalized = authContext.getUserId().trim();
+        if (normalized.isBlank()) {
+            return null;
+        }
+        return normalized;
+    }
+
+    private String normalizeSessionIdForUser(String sessionId, String authUserId) {
+        if (sessionId == null) {
+            return "";
+        }
+        String normalizedSessionId = sessionId.trim();
+        if (normalizedSessionId.isBlank()) {
+            return "";
+        }
+        if (authUserId == null || authUserId.isBlank()) {
+            return normalizedSessionId;
+        }
+        String ownerUserId = extractSessionOwnerUserId(normalizedSessionId);
+        if (ownerUserId == null) {
+            return "u:" + authUserId + ":" + normalizedSessionId;
+        }
+        if (!authUserId.equals(ownerUserId)) {
+            throw new DownstreamException(HttpStatus.FORBIDDEN, "forbidden", "session_id is not allowed for current user");
+        }
+        return normalizedSessionId;
+    }
+
+    private String extractSessionOwnerUserId(String sessionId) {
+        Matcher matcher = USER_SESSION_PATTERN.matcher(sessionId);
+        if (!matcher.find()) {
+            return null;
+        }
+        String candidate = matcher.group(1);
+        if (candidate == null || candidate.isBlank()) {
+            return null;
+        }
+        return candidate;
     }
 
     private String resolveTurnId(RequestContext context) {

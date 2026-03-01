@@ -17,8 +17,12 @@ import com.bsl.bff.client.QueryServiceClient;
 import com.bsl.bff.common.ApiExceptionHandler;
 import com.bsl.bff.common.BffRequestContextFilter;
 import com.bsl.bff.outbox.OutboxService;
+import com.bsl.bff.security.AuthContext;
+import com.bsl.bff.security.AuthContextHolder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,6 +44,11 @@ class ChatControllerTest {
 
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
+
+    @AfterEach
+    void tearDownAuthContext() {
+        AuthContextHolder.clear();
+    }
 
     @BeforeEach
     void setUp() {
@@ -85,6 +94,42 @@ class ChatControllerTest {
         ArgumentCaptor<java.util.Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(java.util.Map.class);
         verify(outboxService).record(eq("chat_response_v1"), eq("chat_session"), any(), payloadCaptor.capture());
         assertEquals("R2", payloadCaptor.getValue().get("risk_band"));
+    }
+
+    @Test
+    void chatNormalizesSessionIdAndInjectsAuthenticatedUser() throws Exception {
+        AuthContextHolder.set(new AuthContext("101", null));
+        JsonNode responseNode = objectMapper.readTree(
+            "{" +
+                "\"version\":\"v1\"," +
+                "\"trace_id\":\"trace_a\"," +
+                "\"request_id\":\"req_a\"," +
+                "\"status\":\"ok\"," +
+                "\"answer\":{\"role\":\"assistant\",\"content\":\"hi\"}," +
+                "\"sources\":[]," +
+                "\"citations\":[\"chunk-1\"]" +
+                "}"
+        );
+        when(queryServiceClient.chat(anyMap(), any())).thenReturn(responseNode);
+
+        String body = "{"
+            + "\"version\":\"v1\","
+            + "\"session_id\":\"thread-1\","
+            + "\"message\":{\"role\":\"user\",\"content\":\"hello\"}"
+            + "}";
+
+        mockMvc.perform(post("/chat")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"));
+
+        ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(queryServiceClient).chat(payloadCaptor.capture(), any());
+        Map<String, Object> payload = payloadCaptor.getValue();
+        assertEquals("u:101:thread-1", payload.get("session_id"));
+        Map<String, Object> client = (Map<String, Object>) payload.get("client");
+        assertEquals("101", client.get("user_id"));
     }
 
     @Test
@@ -168,6 +213,46 @@ class ChatControllerTest {
             .andExpect(jsonPath("$.status").value("ok"))
             .andExpect(jsonPath("$.session.session_id").value("u:101:default"))
             .andExpect(jsonPath("$.session.recommended_action").value("RETRY"));
+    }
+
+    @Test
+    void chatSessionStateRejectsCrossUserSessionWhenAuthenticated() throws Exception {
+        AuthContextHolder.set(new AuthContext("101", null));
+
+        mockMvc.perform(get("/chat/session/state")
+                .param("session_id", "u:999:default"))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error.code").value("forbidden"));
+
+        verify(queryServiceClient, never()).chatSessionState(any(), any());
+    }
+
+    @Test
+    void chatSessionStateNormalizesLegacySessionIdForAuthenticatedUser() throws Exception {
+        AuthContextHolder.set(new AuthContext("101", null));
+        JsonNode responseNode = objectMapper.readTree(
+            "{"
+                + "\"version\":\"v1\","
+                + "\"trace_id\":\"trace_a\","
+                + "\"request_id\":\"req_a\","
+                + "\"status\":\"ok\","
+                + "\"session\":{"
+                + "\"session_id\":\"u:101:thread-1\","
+                + "\"fallback_count\":0,"
+                + "\"fallback_escalation_threshold\":3,"
+                + "\"escalation_ready\":false,"
+                + "\"recommended_action\":\"NONE\","
+                + "\"recommended_message\":\"현재 챗봇 세션 상태는 정상입니다.\","
+                + "\"unresolved_context\":null"
+                + "}"
+                + "}"
+        );
+        when(queryServiceClient.chatSessionState(eq("u:101:thread-1"), any())).thenReturn(responseNode);
+
+        mockMvc.perform(get("/chat/session/state")
+                .param("session_id", "thread-1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.session.session_id").value("u:101:thread-1"));
     }
 
     @Test
