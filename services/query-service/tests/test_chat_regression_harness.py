@@ -71,6 +71,38 @@ def test_chat_regression_fixture_shape():
         assert isinstance(turns, list) and turns
 
 
+def test_chat_regression_fixture_quality_guards():
+    suite = _load_suite()
+    scenarios = suite.get("scenarios")
+    assert isinstance(scenarios, list)
+
+    ids = [str(item.get("id") or "") for item in scenarios if isinstance(item, dict)]
+    assert all(ids), "scenario id must be non-empty"
+    assert len(ids) == len(set(ids)), "duplicate scenario id detected"
+
+    multi_turn_count = 0
+    for scenario in scenarios:
+        assert isinstance(scenario, dict)
+        turns = scenario.get("turns")
+        assert isinstance(turns, list) and turns
+        if len(turns) >= 2:
+            multi_turn_count += 1
+        for turn in turns:
+            assert isinstance(turn, dict)
+            query = str(turn.get("query") or "").strip()
+            assert query, "turn query must be non-empty"
+            expected = turn.get("expected")
+            if expected is None:
+                continue
+            assert isinstance(expected, dict)
+            has_status = isinstance(expected.get("status"), str) and bool(str(expected.get("status")).strip())
+            has_reason = isinstance(expected.get("reason_code"), str) and bool(str(expected.get("reason_code")).strip())
+            assert has_status or has_reason, "expected must include status or reason_code"
+
+    # Guardrail: maintain enough multi-turn flows for transition coverage.
+    assert multi_turn_count >= 12
+
+
 @pytest.mark.parametrize("scenario", _load_suite()["scenarios"], ids=[s["id"] for s in _load_suite()["scenarios"]])
 def test_chat_state_regression_suite(monkeypatch, scenario: dict[str, Any]):
     chat_tools._CACHE = CacheClient(None)
