@@ -6,6 +6,7 @@ import pytest
 from app.core import chat
 from app.core import chat_tools
 from app.core.cache import CacheClient
+from app.core.metrics import metrics
 
 
 @pytest.fixture(autouse=True)
@@ -448,6 +449,77 @@ def test_run_tool_chat_book_recommendation_excludes_same_seed_only(monkeypatch):
     assert result["reason_code"] == "OK"
     assert "동일 도서 외 유사 후보를 찾지 못했습니다." in result["answer"]["content"]
     assert "周易辭典 (장선문 / nlk:CM0000000201)" not in result["answer"]["content"]
+
+
+def test_run_tool_chat_book_recommendation_experiment_diversity_variant(monkeypatch):
+    monkeypatch.setenv("QS_CHAT_RECOMMEND_EXPERIMENT_ENABLED", "1")
+    monkeypatch.setenv("QS_CHAT_RECOMMEND_EXPERIMENT_DIVERSITY_PERCENT", "100")
+    monkeypatch.setenv("QS_CHAT_RECOMMEND_QUALITY_MIN_CANDIDATES", "1")
+    monkeypatch.setenv("QS_CHAT_RECOMMEND_QUALITY_MIN_DIVERSITY", "2")
+
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        return [
+            {"doc_id": "seed-1", "title": "시드 도서", "author": "저자S", "score": 0.99},
+            {"doc_id": "doc-a1", "title": "추천 도서 A1", "author": "저자A", "score": 0.95},
+            {"doc_id": "doc-a2", "title": "추천 도서 A2", "author": "저자A", "score": 0.94},
+            {"doc_id": "doc-b1", "title": "추천 도서 B1", "author": "저자B", "score": 0.80},
+        ]
+
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+    served_metric = "chat_recommend_experiment_total{status=served,variant=diversity}"
+    before_served = int(metrics.snapshot().get(served_metric, 0))
+
+    payload = {
+        "session_id": "sess-reco-exp-diversity",
+        "message": {"role": "user", "content": "도서 '시드 도서' 기준으로 비슷한 책 추천해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_book_recommend_exp_div"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    content = result["answer"]["content"]
+    assert "선정 근거:" in content
+    assert content.index("추천 도서 A1") < content.index("추천 도서 B1")
+    assert content.index("추천 도서 B1") < content.index("추천 도서 A2")
+    assert int(metrics.snapshot().get(served_metric, 0)) >= before_served + 1
+
+
+def test_run_tool_chat_book_recommendation_experiment_quality_gate_blocks_variant(monkeypatch):
+    monkeypatch.setenv("QS_CHAT_RECOMMEND_EXPERIMENT_ENABLED", "1")
+    monkeypatch.setenv("QS_CHAT_RECOMMEND_EXPERIMENT_DIVERSITY_PERCENT", "100")
+    monkeypatch.setenv("QS_CHAT_RECOMMEND_QUALITY_MIN_CANDIDATES", "2")
+    monkeypatch.setenv("QS_CHAT_RECOMMEND_QUALITY_MIN_DIVERSITY", "3")
+
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        return [
+            {"doc_id": "seed-1", "title": "시드 도서", "author": "저자S", "score": 0.99},
+            {"doc_id": "doc-a1", "title": "추천 도서 A1", "author": "저자A", "score": 0.95},
+            {"doc_id": "doc-a2", "title": "추천 도서 A2", "author": "저자A", "score": 0.94},
+        ]
+
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+    block_metric = "chat_recommend_quality_gate_block_total{reason=low_diversity}"
+    blocked_variant_metric = "chat_recommend_experiment_total{status=blocked,variant=diversity}"
+    before_block = int(metrics.snapshot().get(block_metric, 0))
+    before_blocked_variant = int(metrics.snapshot().get(blocked_variant_metric, 0))
+
+    payload = {
+        "session_id": "sess-reco-exp-gate",
+        "message": {"role": "user", "content": "도서 '시드 도서' 기준으로 비슷한 책 추천해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_book_recommend_exp_gate"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    content = result["answer"]["content"]
+    assert "추천 이유:" in content
+    assert "선정 근거:" not in content
+    assert int(metrics.snapshot().get(block_metric, 0)) >= before_block + 1
+    assert int(metrics.snapshot().get(blocked_variant_metric, 0)) >= before_blocked_variant + 1
 
 
 def test_run_tool_chat_order_lookup_success(monkeypatch):

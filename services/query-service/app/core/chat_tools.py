@@ -106,6 +106,22 @@ def _policy_topic_cache_ttl_sec() -> int:
     return max(30, int(os.getenv("QS_CHAT_POLICY_TOPIC_CACHE_TTL_SEC", "300")))
 
 
+def _recommend_experiment_enabled() -> bool:
+    return str(os.getenv("QS_CHAT_RECOMMEND_EXPERIMENT_ENABLED", "0")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _recommend_experiment_diversity_percent() -> int:
+    return min(100, max(0, int(os.getenv("QS_CHAT_RECOMMEND_EXPERIMENT_DIVERSITY_PERCENT", "50"))))
+
+
+def _recommend_quality_min_candidates() -> int:
+    return max(1, int(os.getenv("QS_CHAT_RECOMMEND_QUALITY_MIN_CANDIDATES", "2")))
+
+
+def _recommend_quality_min_diversity() -> int:
+    return max(1, int(os.getenv("QS_CHAT_RECOMMEND_QUALITY_MIN_DIVERSITY", "2")))
+
+
 def _workflow_ttl_sec() -> int:
     return max(60, int(os.getenv("QS_CHAT_WORKFLOW_TTL_SEC", "900")))
 
@@ -2052,6 +2068,154 @@ def _build_recommendation_reason(
     return "시드 기준으로 장르/주제를 확장한 후보입니다."
 
 
+def _candidate_score_value(item: dict[str, Any]) -> float:
+    score = item.get("score")
+    if isinstance(score, (int, float)):
+        return float(score)
+    try:
+        return float(str(score).strip())
+    except Exception:
+        return 0.0
+
+
+def _candidate_diversity_key(item: dict[str, Any]) -> str:
+    author = str(item.get("author") or "").strip().lower()
+    if author:
+        return f"author:{author}"
+    publisher = str(item.get("publisher") or "").strip().lower()
+    if publisher:
+        return f"publisher:{publisher}"
+    title = _normalize_title_for_compare(str(item.get("title") or ""))
+    if title:
+        return f"title:{title}"
+    return "unknown"
+
+
+def _candidate_available(item: dict[str, Any]) -> bool:
+    stock = item.get("stock")
+    if isinstance(stock, (int, float)) and float(stock) <= 0:
+        return False
+    if isinstance(stock, str):
+        normalized = stock.strip()
+        if normalized.isdigit() and int(normalized) <= 0:
+            return False
+    sale_status = str(item.get("sale_status") or item.get("status") or "").strip().lower()
+    if sale_status in {"sold_out", "out_of_stock", "stop_sale", "stopped", "discontinued"}:
+        return False
+    return True
+
+
+def _normalize_recommendation_candidates(candidates: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
+    normalized: list[dict[str, Any]] = []
+    dropped = 0
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            dropped += 1
+            continue
+        title = str(candidate.get("title") or "").strip()
+        if not title:
+            dropped += 1
+            continue
+        if not _candidate_available(candidate):
+            dropped += 1
+            continue
+        normalized.append(candidate)
+    return normalized, dropped
+
+
+def _rank_recommendation_candidates(candidates: list[dict[str, Any]], variant: str) -> list[dict[str, Any]]:
+    baseline = sorted(candidates, key=_candidate_score_value, reverse=True)
+    if variant != "diversity":
+        return baseline
+    selected: list[dict[str, Any]] = []
+    deferred: list[dict[str, Any]] = []
+    seen_keys: set[str] = set()
+    for item in baseline:
+        key = _candidate_diversity_key(item)
+        if key not in seen_keys:
+            seen_keys.add(key)
+            selected.append(item)
+        else:
+            deferred.append(item)
+    selected.extend(deferred)
+    return selected
+
+
+def _recommendation_quality_gate(candidates: list[dict[str, Any]]) -> tuple[bool, str]:
+    if len(candidates) < _recommend_quality_min_candidates():
+        return False, "min_candidates"
+    diversity_keys = {_candidate_diversity_key(item) for item in candidates if isinstance(item, dict)}
+    if len(diversity_keys) < _recommend_quality_min_diversity():
+        return False, "low_diversity"
+    return True, "ok"
+
+
+def _recommendation_variant(
+    *,
+    session_id: str,
+    user_id: str | None,
+    request_id: str,
+) -> str:
+    if not _recommend_experiment_enabled():
+        return "baseline"
+    seed = str(user_id or session_id or request_id or "anonymous")
+    bucket = int(hashlib.sha256(seed.encode("utf-8")).hexdigest()[:8], 16) % 100
+    variant = "diversity" if bucket < _recommend_experiment_diversity_percent() else "baseline"
+    metrics.inc("chat_recommend_experiment_total", {"variant": variant, "status": "assigned"})
+    return variant
+
+
+def _select_recommendation_candidates(
+    candidates: list[dict[str, Any]],
+    *,
+    session_id: str,
+    user_id: str | None,
+    request_id: str,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    normalized, dropped = _normalize_recommendation_candidates(candidates)
+    baseline_ranked = _rank_recommendation_candidates(normalized, "baseline")
+    if not _recommend_experiment_enabled():
+        return baseline_ranked, {
+            "variant": "baseline",
+            "status": "disabled",
+            "requested_variant": "baseline",
+            "quality_reason": "disabled",
+            "dropped": dropped,
+        }
+
+    variant = _recommendation_variant(session_id=session_id, user_id=user_id, request_id=request_id)
+    if variant == "baseline":
+        metrics.inc("chat_recommend_experiment_total", {"variant": variant, "status": "served"})
+        return baseline_ranked, {
+            "variant": "baseline",
+            "status": "served",
+            "requested_variant": "baseline",
+            "quality_reason": "ok",
+            "dropped": dropped,
+        }
+
+    ranked = _rank_recommendation_candidates(normalized, variant)
+    gate_ok, gate_reason = _recommendation_quality_gate(ranked)
+    if not gate_ok:
+        metrics.inc("chat_recommend_quality_gate_block_total", {"reason": gate_reason})
+        metrics.inc("chat_recommend_experiment_total", {"variant": variant, "status": "blocked"})
+        return baseline_ranked, {
+            "variant": "baseline",
+            "status": "fallback_baseline",
+            "requested_variant": variant,
+            "quality_reason": gate_reason,
+            "dropped": dropped,
+        }
+    metrics.inc("chat_recommend_experiment_total", {"variant": variant, "status": "served"})
+    return ranked, {
+        "variant": variant,
+        "status": "served",
+        "requested_variant": variant,
+        "quality_reason": "ok",
+        "dropped": dropped,
+    }
+
+
 def _recommendation_next_actions(candidate_count: int) -> str:
     if candidate_count <= 0:
         return ""
@@ -2070,6 +2234,7 @@ def _format_recommendation_lines(
     max_items: int = 5,
     seed_book: dict[str, Any] | None = None,
     query_context: str = "",
+    reason_label: str = "추천 이유",
 ) -> list[str]:
     lines: list[str] = []
     for idx, item in enumerate(items[:max_items], start=1):
@@ -2087,7 +2252,7 @@ def _format_recommendation_lines(
         meta_parts = [part for part in [author, doc_id] if part]
         meta = f" ({' / '.join(meta_parts)})" if meta_parts else ""
         reason = _build_recommendation_reason(item, seed_book=seed_book, query_context=query_context)
-        lines.append(f"{idx}) {title}{meta}{score_text}\n   - 추천 이유: {reason}")
+        lines.append(f"{idx}) {title}{meta}{score_text}\n   - {reason_label}: {reason}")
     return lines
 
 
@@ -2154,11 +2319,19 @@ async def _handle_book_recommendation(
     recommended = filtered
     if not recommended and not normalized_seed:
         recommended = candidates
-    lines = _format_recommendation_lines(
+    ranked_recommended, recommend_meta = _select_recommendation_candidates(
         recommended,
+        session_id=session_id,
+        user_id=user_id,
+        request_id=request_id,
+    )
+    reason_label = "선정 근거" if str(recommend_meta.get("variant") or "") == "diversity" else "추천 이유"
+    lines = _format_recommendation_lines(
+        ranked_recommended,
         max_items=5,
         seed_book=context_seed_book if context_seed_book else seed_hit,
         query_context=followup_text or query,
+        reason_label=reason_label,
     )
     if not lines:
         return _build_response(
@@ -2185,7 +2358,7 @@ async def _handle_book_recommendation(
         seed_title = str(seed_query).strip()
     prefix = f"'{seed_title}' 기준 추천 도서입니다.\n" if seed_title else "요청하신 기준으로 추천 도서를 정리했습니다.\n"
     content = prefix + "\n".join(lines) + _recommendation_next_actions(len(lines))
-    selection_candidates = _build_selection_candidates(recommended, max_items=5)
+    selection_candidates = _build_selection_candidates(ranked_recommended, max_items=5)
     if selection_candidates:
         _save_selection_state(
             session_id,
@@ -2202,7 +2375,12 @@ async def _handle_book_recommendation(
         content,
         tool_name="book_recommend",
         endpoint="OS /books_doc_read/_search",
-        source_snippet=f"seed_query={lookup_query}, slots={slots_to_dict(effective_slots)}, candidate_count={len(candidates)}",
+        source_snippet=(
+            f"seed_query={lookup_query}, slots={slots_to_dict(effective_slots)}, candidate_count={len(candidates)}, "
+            f"recommend_variant={recommend_meta.get('variant')}, "
+            f"recommend_status={recommend_meta.get('status')}, quality={recommend_meta.get('quality_reason')}, "
+            f"dropped={recommend_meta.get('dropped')}"
+        ),
     )
 
 
@@ -2285,9 +2463,16 @@ async def _handle_cart_recommendation(
             source_snippet=f"cart_item_count={len(items)}, seed_count={len(seed_titles)}, recommendation_count=0",
         )
 
-    lines = _format_recommendation_lines(merged, max_items=5, query_context="cart")
+    ranked_merged, recommend_meta = _select_recommendation_candidates(
+        merged,
+        session_id=session_id,
+        user_id=user_id,
+        request_id=request_id,
+    )
+    reason_label = "선정 근거" if str(recommend_meta.get("variant") or "") == "diversity" else "추천 이유"
+    lines = _format_recommendation_lines(ranked_merged, max_items=5, query_context="cart", reason_label=reason_label)
     content = "장바구니 도서를 기준으로 추천 도서를 정리했습니다.\n" + "\n".join(lines) + _recommendation_next_actions(len(lines))
-    selection_candidates = _build_selection_candidates(merged, max_items=5)
+    selection_candidates = _build_selection_candidates(ranked_merged, max_items=5)
     if selection_candidates:
         _save_selection_state(
             session_id,
@@ -2304,7 +2489,12 @@ async def _handle_cart_recommendation(
         content,
         tool_name="cart_recommend",
         endpoint="GET /api/v1/cart",
-        source_snippet=f"cart_item_count={len(items)}, seed_count={len(seed_titles)}, recommendation_count={len(merged)}",
+        source_snippet=(
+            f"cart_item_count={len(items)}, seed_count={len(seed_titles)}, recommendation_count={len(ranked_merged)}, "
+            f"recommend_variant={recommend_meta.get('variant')}, "
+            f"recommend_status={recommend_meta.get('status')}, quality={recommend_meta.get('quality_reason')}, "
+            f"dropped={recommend_meta.get('dropped')}"
+        ),
     )
 
 
