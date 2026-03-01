@@ -139,18 +139,16 @@ def main() -> int:
     finally:
         conn.close()
 
-    if not rows:
-        print("[WARN] no feedback events found")
-        return 0
-
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    exported = 0
+    exported = len(rows)
     with output_path.open("w", encoding="utf-8") as handle:
         for row in rows:
             record = normalize_feedback_record(row, include_comment=bool(args.include_comment))
             handle.write(json.dumps(record, ensure_ascii=True) + "\n")
-            exported += 1
+    if exported <= 0:
+        print(f"[WARN] no feedback events found; wrote empty file -> {output_path}")
+        return 0
     print(f"[OK] wrote {exported} feedback records -> {output_path}")
     return 0
 

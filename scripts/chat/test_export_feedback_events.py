@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 
 
@@ -64,3 +65,67 @@ def test_normalize_feedback_record_can_include_comment():
     normalized = module.normalize_feedback_record(row, include_comment=True)
     assert normalized["comment"] == "좋아요"
     assert "comment_hash" not in normalized
+
+
+def test_main_writes_empty_file_when_no_rows(tmp_path, monkeypatch):
+    module = _load_module()
+    output_path = tmp_path / "feedback.jsonl"
+
+    class _DummyConn:
+        def close(self):
+            return None
+
+    monkeypatch.setattr(module, "connect_mysql", lambda: _DummyConn())
+    monkeypatch.setattr(module, "fetch_feedback_rows", lambda *args, **kwargs: [])
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "export_feedback_events.py",
+            "--output",
+            str(output_path),
+            "--days",
+            "1",
+        ],
+    )
+
+    assert module.main() == 0
+    assert output_path.exists()
+    assert output_path.read_text(encoding="utf-8") == ""
+
+
+def test_main_writes_jsonl_rows(tmp_path, monkeypatch):
+    module = _load_module()
+    output_path = tmp_path / "feedback.jsonl"
+    rows = [
+        {
+            "event_id": 1,
+            "status": "SENT",
+            "created_at": "2026-03-01 10:00:00",
+            "payload_json": {"session_id": "u:101:default", "rating": "down", "comment": "너무 비슷함"},
+        }
+    ]
+
+    class _DummyConn:
+        def close(self):
+            return None
+
+    monkeypatch.setattr(module, "connect_mysql", lambda: _DummyConn())
+    monkeypatch.setattr(module, "fetch_feedback_rows", lambda *args, **kwargs: rows)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "export_feedback_events.py",
+            "--output",
+            str(output_path),
+            "--days",
+            "1",
+        ],
+    )
+
+    assert module.main() == 0
+    lines = [line for line in output_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert record["session_id"] == "u:101:default"
+    assert record["rating"] == "down"
+    assert "comment_hash" in record
