@@ -771,6 +771,23 @@ Retention cleanup (delete snapshots older than N days):
 SNAPSHOT_RETENTION_DAYS=7 ./scripts/opensearch_snapshot_retention.sh
 ```
 
+## Chat retention cleanup (state/turn/audit)
+Dry-run (count only):
+```bash
+QS_CHAT_STATE_DB_ENABLED=true \
+python3 ./scripts/privacy/purge_chat_retention.py --dry-run
+```
+
+Apply delete batch:
+```bash
+QS_CHAT_STATE_DB_ENABLED=true \
+QS_CHAT_SESSION_STATE_RETENTION_DAYS=30 \
+QS_CHAT_TURN_EVENT_RETENTION_DAYS=30 \
+QS_CHAT_ACTION_AUDIT_RETENTION_DAYS=90 \
+QS_CHAT_RETENTION_DELETE_BATCH_SIZE=1000 \
+python3 ./scripts/privacy/purge_chat_retention.py
+```
+
 ## DR rehearsal (minimum)
 1) Take a **MySQL** backup + **OpenSearch** snapshot.
 2) Spin up a clean environment.

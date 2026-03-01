@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import re
+import time
 from dataclasses import dataclass
 from threading import Lock
 from typing import Any, Dict, Optional
@@ -32,6 +33,10 @@ class ChatStateStoreSettings:
     connect_timeout_ms: int
     tenant_id: str
     log_message_mode: str
+    turn_event_retention_days: int
+    action_audit_retention_days: int
+    session_state_retention_days: int
+    retention_delete_batch_size: int
 
 
 def _env_bool(name: str, default: str = "false") -> bool:
@@ -52,6 +57,10 @@ def _load_settings() -> ChatStateStoreSettings:
         connect_timeout_ms=max(50, int(os.getenv("QS_CHAT_STATE_DB_CONNECT_TIMEOUT_MS", "200"))),
         tenant_id=os.getenv("BSL_TENANT_ID", "books").strip() or "books",
         log_message_mode=raw_mode,
+        turn_event_retention_days=max(1, int(os.getenv("QS_CHAT_TURN_EVENT_RETENTION_DAYS", "30"))),
+        action_audit_retention_days=max(1, int(os.getenv("QS_CHAT_ACTION_AUDIT_RETENTION_DAYS", "90"))),
+        session_state_retention_days=max(1, int(os.getenv("QS_CHAT_SESSION_STATE_RETENTION_DAYS", "30"))),
+        retention_delete_batch_size=max(1, int(os.getenv("QS_CHAT_RETENTION_DELETE_BATCH_SIZE", "1000"))),
     )
 
 
@@ -544,3 +553,122 @@ def append_action_audit(
 
     metrics.inc("chat_action_audit_append_total", {"result": "ok", "action_type": safe_action_type})
     return True
+
+
+def run_retention_cleanup(
+    *,
+    dry_run: bool = False,
+    trace_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    if not _enabled():
+        return {
+            "enabled": False,
+            "dry_run": bool(dry_run),
+            "deleted": {},
+            "retention_days": {},
+            "batch_size": _SETTINGS.retention_delete_batch_size,
+        }
+
+    safe_trace_id = _safe_str(trace_id, 64) or f"trace_retention_{int(time.time())}"
+    safe_request_id = _safe_str(request_id, 64) or f"req_retention_{int(time.time_ns() % 10_000_000_000)}"
+    mode_label = "dry_run" if dry_run else "delete"
+    retention_days = {
+        "chat_session_state": max(1, int(_SETTINGS.session_state_retention_days)),
+        "chat_turn_event": max(1, int(_SETTINGS.turn_event_retention_days)),
+        "chat_action_audit": max(1, int(_SETTINGS.action_audit_retention_days)),
+    }
+    batch_size = max(1, int(_SETTINGS.retention_delete_batch_size))
+    deleted: Dict[str, int] = {
+        "chat_session_state": 0,
+        "chat_turn_event": 0,
+        "chat_action_audit": 0,
+    }
+
+    plans = (
+        (
+            "chat_session_state",
+            "chat_session_state_id",
+            "(expires_at IS NOT NULL AND expires_at < NOW()) OR (updated_at < NOW() - INTERVAL %s DAY)",
+        ),
+        (
+            "chat_turn_event",
+            "chat_turn_event_id",
+            "event_time < NOW() - INTERVAL %s DAY",
+        ),
+        (
+            "chat_action_audit",
+            "chat_action_audit_id",
+            "event_time < NOW() - INTERVAL %s DAY",
+        ),
+    )
+
+    try:
+        with _lock:
+            connection = _connect()
+            try:
+                with connection.cursor() as cursor:
+                    for table_name, pk_name, where_clause in plans:
+                        days = retention_days[table_name]
+                        if dry_run:
+                            cursor.execute(
+                                f"SELECT COUNT(*) AS cnt FROM {table_name} WHERE {where_clause}",
+                                (days,),
+                            )
+                            row = cursor.fetchone()
+                            count = _safe_int((row or {}).get("cnt") if isinstance(row, dict) else 0, minimum=0)
+                        else:
+                            cursor.execute(
+                                f"DELETE FROM {table_name} WHERE {where_clause} ORDER BY {pk_name} LIMIT %s",
+                                (days, batch_size),
+                            )
+                            count = _safe_int(getattr(cursor, "rowcount", 0), minimum=0)
+                        deleted[table_name] = count
+                        metrics.inc(
+                            "chat_retention_delete_total",
+                            {"table": table_name, "mode": mode_label, "result": "ok"},
+                            value=max(0, count),
+                        )
+            finally:
+                connection.close()
+    except Exception as exc:
+        metrics.inc("chat_retention_job_total", {"result": "error", "mode": mode_label})
+        logger.warning("chat retention cleanup failed: %s", exc)
+        return {
+            "enabled": True,
+            "status": "error",
+            "dry_run": bool(dry_run),
+            "deleted": deleted,
+            "retention_days": retention_days,
+            "batch_size": batch_size,
+            "trace_id": safe_trace_id,
+            "request_id": safe_request_id,
+        }
+
+    append_action_audit(
+        conversation_id="retention:chat",
+        action_type="RETENTION_PURGE",
+        action_state="EXECUTED",
+        decision="ALLOW",
+        result="SUCCESS",
+        actor_user_id=None,
+        actor_admin_id="system",
+        target_ref="chat_logs",
+        auth_context={"mode": mode_label, "retention_days": retention_days},
+        trace_id=safe_trace_id,
+        request_id=safe_request_id,
+        reason_code="RETENTION:DRY_RUN" if dry_run else "RETENTION:APPLIED",
+        idempotency_key=f"RETENTION_PURGE:{safe_request_id}",
+        metadata={"deleted": deleted, "batch_size": batch_size},
+    )
+    metrics.inc("chat_retention_job_total", {"result": "ok", "mode": mode_label})
+    return {
+        "enabled": True,
+        "status": "ok",
+        "dry_run": bool(dry_run),
+        "deleted": deleted,
+        "retention_days": retention_days,
+        "batch_size": batch_size,
+        "trace_id": safe_trace_id,
+        "request_id": safe_request_id,
+    }
