@@ -1506,6 +1506,12 @@ def _fallback_defaults(reason_code: str) -> Dict[str, Any]:
             "next_action": "RETRY",
             "retry_after_ms": 2000,
         },
+        "LLM_TOTAL_BUDGET_EXCEEDED": {
+            "message": "요청 총 토큰 예산을 초과했습니다. 질문이나 문맥 길이를 줄여 다시 시도해 주세요.",
+            "recoverable": True,
+            "next_action": "REFINE_QUERY",
+            "retry_after_ms": None,
+        },
         "LLM_CALL_RATE_LIMITED": {
             "message": "현재 요청량이 많아 잠시 후 다시 시도해 주세요.",
             "recoverable": True,
