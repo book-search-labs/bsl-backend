@@ -539,6 +539,59 @@ def test_run_chat_stream_emits_done_with_validated_citations(monkeypatch):
     assert not any("LLM_NO_CITATIONS" in event for event in events)
 
 
+def test_run_chat_stream_persists_episode_memory_when_opted_in(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_EPISODE_MEMORY_ENABLED", "1")
+
+    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
+        return {
+            "ok": True,
+            "query": "입문 철학 추천해줘",
+            "canonical_key": "ck:test",
+            "locale": "ko-KR",
+            "selected": [
+                {
+                    "chunk_id": "chunk-1",
+                    "citation_key": "chunk-1",
+                    "doc_id": "doc-1",
+                    "title": "철학 입문",
+                    "url": "https://example.com/philosophy",
+                    "snippet": "snippet",
+                    "score": 0.8,
+                }
+            ],
+        }
+
+    async def fake_stream_llm(payload, trace_id, request_id):
+        async def generator():
+            yield chat._sse_event("meta", {"trace_id": trace_id, "request_id": request_id})
+            yield chat._sse_event("delta", {"delta": "입문 철학 추천"})
+
+        return generator(), {"answer": "입문 철학 추천", "citations": ["chunk-1"], "llm_error": None, "done_status": "ok"}
+
+    async def fake_run_tool_chat(request, trace_id, request_id):
+        return None
+
+    monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
+    monkeypatch.setattr(chat, "_stream_llm", fake_stream_llm)
+    monkeypatch.setattr(chat, "_llm_stream_enabled", lambda: True)
+    monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
+    monkeypatch.setattr(chat, "run_tool_chat", fake_run_tool_chat)
+
+    events = _collect_stream_events(
+        {
+            "message": {"role": "user", "content": "입문 철학 추천해줘"},
+            "client": {"locale": "ko-KR", "user_id": "904", "memory_opt_in": True},
+            "options": {"stream": True},
+        }
+    )
+
+    assert any("event: done" in event for event in events)
+    entries = chat._load_episode_memory_entries("904")
+    assert len(entries) >= 1
+    assert "입문 철학 추천해줘" in entries[0]["fact"]
+
+
 def test_run_chat_blocks_when_prompt_budget_exceeded(monkeypatch):
     chat._CACHE = CacheClient(None)
     monkeypatch.setenv("QS_CHAT_MAX_PROMPT_TOKENS_PER_TURN", "1")

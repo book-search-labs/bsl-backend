@@ -2984,6 +2984,14 @@ async def _run_chat_stream_impl(
     user_id = _extract_user_id(request)
     session_id = _resolve_session_id(request, user_id)
     query_text = _extract_query_text(request)
+    memory_opt_in = _resolve_episode_memory_opt_in(
+        request,
+        user_id=user_id,
+        session_id=session_id,
+        trace_id=trace_id,
+        request_id=request_id,
+    )
+    memory_facts = _episode_memory_facts(user_id, opted_in=memory_opt_in)
     _append_turn_event_safe(
         session_id,
         request_id,
@@ -3047,6 +3055,15 @@ async def _run_chat_stream_impl(
     if tool_response is not None:
         _reset_fallback_count(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
         _clear_unresolved_context(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
+        if str(tool_response.get("status") or "").strip().lower() == "ok":
+            _remember_episode_memory_fact(
+                user_id=user_id,
+                session_id=session_id,
+                query_text=query_text,
+                trace_id=trace_id,
+                request_id=request_id,
+                opted_in=memory_opt_in,
+            )
         answer = tool_response.get("answer", {}) if isinstance(tool_response.get("answer"), dict) else {}
         citations = [str(item) for item in (tool_response.get("citations") or []) if isinstance(item, str)]
         sources = tool_response.get("sources") if isinstance(tool_response.get("sources"), list) else []
@@ -3221,6 +3238,14 @@ async def _run_chat_stream_impl(
             )
             _reset_fallback_count(session_id)
             _clear_unresolved_context(session_id)
+            _remember_episode_memory_fact(
+                user_id=user_id,
+                session_id=session_id,
+                query_text=query_text,
+                trace_id=trace_id,
+                request_id=request_id,
+                opted_in=memory_opt_in,
+            )
             metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
             metrics.inc("chat_requests_total", {"decision": "answer_cache_hit"})
             return
@@ -3271,11 +3296,26 @@ async def _run_chat_stream_impl(
         )
         _reset_fallback_count(session_id)
         _clear_unresolved_context(session_id)
+        _remember_episode_memory_fact(
+            user_id=user_id,
+            session_id=session_id,
+            query_text=query_text,
+            trace_id=trace_id,
+            request_id=request_id,
+            opted_in=memory_opt_in,
+        )
         metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "semantic_cache_hit"})
         return
 
-    payload = _build_llm_payload(request, trace_id, request_id, query, selected)
+    payload = _build_llm_payload(
+        request,
+        trace_id,
+        request_id,
+        query,
+        selected,
+        memory_facts=memory_facts,
+    )
     admission_reason = _admission_block_reason(payload)
     if admission_reason:
         metrics.inc("chat_admission_block_total", {"reason": admission_reason, "mode": "stream"})
@@ -3585,6 +3625,14 @@ async def _run_chat_stream_impl(
             _semantic_cache_store(query, str(locale), response)
             _reset_fallback_count(session_id)
             _clear_unresolved_context(session_id)
+            _remember_episode_memory_fact(
+                user_id=user_id,
+                session_id=session_id,
+                query_text=query_text,
+                trace_id=trace_id,
+                request_id=request_id,
+                opted_in=memory_opt_in,
+            )
             metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
             metrics.inc("chat_requests_total", {"decision": "ok"})
             return
@@ -3807,6 +3855,14 @@ async def _run_chat_stream_impl(
     metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
     _reset_fallback_count(session_id)
     _clear_unresolved_context(session_id)
+    _remember_episode_memory_fact(
+        user_id=user_id,
+        session_id=session_id,
+        query_text=query_text,
+        trace_id=trace_id,
+        request_id=request_id,
+        opted_in=memory_opt_in,
+    )
     yield _sse_event(
         "done",
         {
