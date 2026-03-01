@@ -4,17 +4,33 @@ set -euo pipefail
 echo "[1/12] Contract validation (optional)"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN=""
-if command -v python >/dev/null 2>&1; then
+if [ -x "$ROOT_DIR/.venv/bin/python" ]; then
+  PYTHON_BIN="$ROOT_DIR/.venv/bin/python"
+elif command -v python >/dev/null 2>&1; then
   PYTHON_BIN="python"
 elif command -v python3 >/dev/null 2>&1; then
   PYTHON_BIN="python3"
 fi
 
-if [ -n "$PYTHON_BIN" ]; then
-  if $PYTHON_BIN -c "import jsonschema" >/dev/null 2>&1; then
-    $PYTHON_BIN "$ROOT_DIR/scripts/validate_contracts.py"
+CONTRACT_PYTHON_BIN="$PYTHON_BIN"
+if [ -n "$CONTRACT_PYTHON_BIN" ]; then
+  if ! "$CONTRACT_PYTHON_BIN" -c "import jsonschema" >/dev/null 2>&1; then
+    for candidate in python python3; do
+      if command -v "$candidate" >/dev/null 2>&1; then
+        if "$candidate" -c "import jsonschema" >/dev/null 2>&1; then
+          CONTRACT_PYTHON_BIN="$candidate"
+          break
+        fi
+      fi
+    done
+  fi
+fi
+
+if [ -n "$CONTRACT_PYTHON_BIN" ]; then
+  if "$CONTRACT_PYTHON_BIN" -c "import jsonschema" >/dev/null 2>&1; then
+    "$CONTRACT_PYTHON_BIN" "$ROOT_DIR/scripts/validate_contracts.py"
   else
-    echo "  - jsonschema not found; skipping (install: $PYTHON_BIN -m pip install jsonschema)"
+    echo "  - jsonschema not found; skipping (install: $CONTRACT_PYTHON_BIN -m pip install jsonschema)"
   fi
 else
   echo "  - python not found; skipping contract validation"
@@ -356,7 +372,8 @@ if [ "${RUN_CHAT_PIPELINE_TESTS:-0}" = "1" ]; then
       "$ROOT_DIR/scripts/eval/test_chat_rollout_eval.py" \
       "$ROOT_DIR/scripts/eval/test_chat_semantic_cache_eval.py" \
       "$ROOT_DIR/scripts/eval/test_chat_regression_suite_eval.py" \
-      "$ROOT_DIR/scripts/eval/test_chat_agent_eval_summary.py" || exit 1
+      "$ROOT_DIR/scripts/eval/test_chat_agent_eval_summary.py" \
+      "$ROOT_DIR/services/query-service/tests/test_chat_regression_harness.py" || exit 1
   else
     echo "  - python not found; skipping chat pipeline tests"
   fi
