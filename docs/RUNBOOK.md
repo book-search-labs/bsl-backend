@@ -124,6 +124,10 @@ python3 scripts/chat/aggregate_feedback.py \
   --output evaluation/chat/feedback_summary.json \
   --backlog-output evaluation/chat/feedback_backlog.json
 ```
+위 단계를 한 번에 수행하려면:
+```bash
+./scripts/chat/run_recommend_quality_loop.sh
+```
 
 ### Debug endpoint
 운영 중 라우팅 의사결정을 빠르게 확인하려면:

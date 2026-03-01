@@ -70,6 +70,12 @@ python3 scripts/eval/chat_recommend_eval.py \
 RUN_CHAT_RECOMMEND_EVAL=1 ./scripts/test.sh
 ```
 
+피드백/품질 루프를 한 번에 실행하려면:
+
+```bash
+./scripts/chat/run_recommend_quality_loop.sh
+```
+
 ## Chat feedback aggregation -> backlog seeds
 
 Use `scripts/chat/aggregate_feedback.py` to summarize feedback and generate actionable backlog seeds:
