@@ -863,6 +863,26 @@ def test_run_tool_chat_order_lookup_success(monkeypatch):
     assert result["sources"][0]["url"] == "GET /api/v1/orders/{orderId}"
 
 
+def test_run_tool_chat_order_lookup_timeout_uses_retry_recovery(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        raise chat_tools.ToolCallError("tool_timeout", "timeout", status_code=504)
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+
+    payload = {
+        "message": {"role": "user", "content": "주문 12 상태 알려줘"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_order_timeout"))
+
+    assert result is not None
+    assert result["status"] == "tool_fallback"
+    assert result["reason_code"] == "TOOL_RETRYABLE_FAILURE"
+    assert result["next_action"] == "RETRY"
+    assert int(result["retry_after_ms"] or 0) >= 3000
+
+
 def test_run_tool_chat_shipment_lookup_without_registered_shipment(monkeypatch):
     async def fake_call_commerce(method, path, **kwargs):
         if path == "/orders/12":
@@ -1231,6 +1251,28 @@ def test_run_tool_chat_ticket_create_and_status_lookup(monkeypatch):
     assert status_result is not None
     assert status_result["status"] == "ok"
     assert "처리 중" in status_result["answer"]["content"]
+
+
+def test_run_tool_chat_ticket_create_timeout_prefers_status_check(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        if method == "POST" and path == "/support/tickets":
+            raise chat_tools.ToolCallError("tool_timeout", "timeout", status_code=504)
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+
+    payload = {
+        "session_id": "sess-ticket-timeout",
+        "message": {"role": "user", "content": "문의 접수해줘 결제 실패가 반복돼요"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_ticket_timeout"))
+
+    assert result is not None
+    assert result["status"] == "tool_fallback"
+    assert result["reason_code"] == "TOOL_RETRYABLE_FAILURE"
+    assert result["next_action"] == "STATUS_CHECK"
+    assert int(result["retry_after_ms"] or 0) >= 3000
 
 
 def test_run_tool_chat_ticket_status_lookup_with_ticket_number_only(monkeypatch):
