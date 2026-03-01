@@ -114,6 +114,18 @@ def _recommend_experiment_diversity_percent() -> int:
     return min(100, max(0, int(os.getenv("QS_CHAT_RECOMMEND_EXPERIMENT_DIVERSITY_PERCENT", "50"))))
 
 
+def _recommend_experiment_min_samples() -> int:
+    return max(1, int(os.getenv("QS_CHAT_RECOMMEND_EXPERIMENT_MIN_SAMPLES", "20")))
+
+
+def _recommend_experiment_max_block_rate() -> float:
+    return min(1.0, max(0.0, float(os.getenv("QS_CHAT_RECOMMEND_EXPERIMENT_MAX_BLOCK_RATE", "0.4"))))
+
+
+def _recommend_experiment_auto_disable_sec() -> int:
+    return max(60, int(os.getenv("QS_CHAT_RECOMMEND_EXPERIMENT_AUTO_DISABLE_SEC", "600")))
+
+
 def _recommend_quality_min_candidates() -> int:
     return max(1, int(os.getenv("QS_CHAT_RECOMMEND_QUALITY_MIN_CANDIDATES", "2")))
 
@@ -2150,6 +2162,63 @@ def _recommendation_quality_gate(candidates: list[dict[str, Any]]) -> tuple[bool
     return True, "ok"
 
 
+def _recommend_experiment_disable_key() -> str:
+    return "chat:recommend:exp:disable"
+
+
+def _recommend_experiment_state_key() -> str:
+    return "chat:recommend:exp:quality"
+
+
+def _recommend_experiment_disabled_reason() -> str | None:
+    cached = _CACHE.get_json(_recommend_experiment_disable_key())
+    if not isinstance(cached, dict):
+        return None
+    until_ts = int(cached.get("until_ts") or 0)
+    if until_ts <= int(time.time()):
+        return None
+    reason = str(cached.get("reason") or "").strip()
+    return reason or "AUTO_DISABLED"
+
+
+def _record_recommend_experiment_quality(*, blocked: bool) -> None:
+    if not _recommend_experiment_enabled():
+        return
+    state = _CACHE.get_json(_recommend_experiment_state_key())
+    now_ts = int(time.time())
+    total = int(state.get("total") or 0) if isinstance(state, dict) else 0
+    blocked_count = int(state.get("blocked") or 0) if isinstance(state, dict) else 0
+    total += 1
+    if blocked:
+        blocked_count += 1
+    block_rate = float(blocked_count) / float(total) if total > 0 else 0.0
+    _CACHE.set_json(
+        _recommend_experiment_state_key(),
+        {
+            "total": total,
+            "blocked": blocked_count,
+            "block_rate": block_rate,
+            "updated_at": now_ts,
+        },
+        ttl=max(_recommend_experiment_auto_disable_sec() * 4, 1800),
+    )
+    metrics.set("chat_recommend_experiment_block_rate", {"variant": "diversity"}, value=block_rate)
+    if total >= _recommend_experiment_min_samples() and block_rate > _recommend_experiment_max_block_rate():
+        until_ts = now_ts + _recommend_experiment_auto_disable_sec()
+        _CACHE.set_json(
+            _recommend_experiment_disable_key(),
+            {
+                "until_ts": until_ts,
+                "reason": "QUALITY_BLOCK_RATE",
+                "block_rate": block_rate,
+                "total": total,
+                "blocked": blocked_count,
+            },
+            ttl=_recommend_experiment_auto_disable_sec(),
+        )
+        metrics.inc("chat_recommend_experiment_auto_disable_total", {"reason": "quality_block_rate"})
+
+
 def _recommendation_variant(
     *,
     session_id: str,
@@ -2157,6 +2226,10 @@ def _recommendation_variant(
     request_id: str,
 ) -> str:
     if not _recommend_experiment_enabled():
+        return "baseline"
+    disable_reason = _recommend_experiment_disabled_reason()
+    if disable_reason:
+        metrics.inc("chat_recommend_experiment_total", {"variant": "diversity", "status": "auto_disabled"})
         return "baseline"
     seed = str(user_id or session_id or request_id or "anonymous")
     bucket = int(hashlib.sha256(seed.encode("utf-8")).hexdigest()[:8], 16) % 100
@@ -2182,6 +2255,15 @@ def _select_recommendation_candidates(
             "quality_reason": "disabled",
             "dropped": dropped,
         }
+    disable_reason = _recommend_experiment_disabled_reason()
+    if disable_reason:
+        return baseline_ranked, {
+            "variant": "baseline",
+            "status": "disabled_auto",
+            "requested_variant": "diversity",
+            "quality_reason": disable_reason,
+            "dropped": dropped,
+        }
 
     variant = _recommendation_variant(session_id=session_id, user_id=user_id, request_id=request_id)
     if variant == "baseline":
@@ -2197,6 +2279,7 @@ def _select_recommendation_candidates(
     ranked = _rank_recommendation_candidates(normalized, variant)
     gate_ok, gate_reason = _recommendation_quality_gate(ranked)
     if not gate_ok:
+        _record_recommend_experiment_quality(blocked=True)
         metrics.inc("chat_recommend_quality_gate_block_total", {"reason": gate_reason})
         metrics.inc("chat_recommend_experiment_total", {"variant": variant, "status": "blocked"})
         return baseline_ranked, {
@@ -2206,6 +2289,7 @@ def _select_recommendation_candidates(
             "quality_reason": gate_reason,
             "dropped": dropped,
         }
+    _record_recommend_experiment_quality(blocked=False)
     metrics.inc("chat_recommend_experiment_total", {"variant": variant, "status": "served"})
     return ranked, {
         "variant": variant,

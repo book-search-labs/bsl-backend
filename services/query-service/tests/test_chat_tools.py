@@ -522,6 +522,56 @@ def test_run_tool_chat_book_recommendation_experiment_quality_gate_blocks_varian
     assert int(metrics.snapshot().get(blocked_variant_metric, 0)) >= before_blocked_variant + 1
 
 
+def test_run_tool_chat_book_recommendation_experiment_auto_disables_on_block_rate(monkeypatch):
+    monkeypatch.setenv("QS_CHAT_RECOMMEND_EXPERIMENT_ENABLED", "1")
+    monkeypatch.setenv("QS_CHAT_RECOMMEND_EXPERIMENT_DIVERSITY_PERCENT", "100")
+    monkeypatch.setenv("QS_CHAT_RECOMMEND_EXPERIMENT_MIN_SAMPLES", "2")
+    monkeypatch.setenv("QS_CHAT_RECOMMEND_EXPERIMENT_MAX_BLOCK_RATE", "0.4")
+    monkeypatch.setenv("QS_CHAT_RECOMMEND_EXPERIMENT_AUTO_DISABLE_SEC", "120")
+    monkeypatch.setenv("QS_CHAT_RECOMMEND_QUALITY_MIN_CANDIDATES", "2")
+    monkeypatch.setenv("QS_CHAT_RECOMMEND_QUALITY_MIN_DIVERSITY", "3")
+
+    call_state = {"count": 0}
+
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        call_state["count"] += 1
+        if call_state["count"] <= 2:
+            return [
+                {"doc_id": "seed", "title": "시드 도서", "author": "저자S", "score": 0.99},
+                {"doc_id": "doc-a1", "title": "추천 도서 A1", "author": "저자A", "score": 0.95},
+                {"doc_id": "doc-a2", "title": "추천 도서 A2", "author": "저자A", "score": 0.93},
+            ]
+        return [
+            {"doc_id": "seed", "title": "시드 도서", "author": "저자S", "score": 0.99},
+            {"doc_id": "doc-a1", "title": "추천 도서 A1", "author": "저자A", "score": 0.95},
+            {"doc_id": "doc-b1", "title": "추천 도서 B1", "author": "저자B", "score": 0.92},
+            {"doc_id": "doc-c1", "title": "추천 도서 C1", "author": "저자C", "score": 0.91},
+        ]
+
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+    auto_disable_metric = "chat_recommend_experiment_auto_disable_total{reason=quality_block_rate}"
+    before_auto_disable = int(metrics.snapshot().get(auto_disable_metric, 0))
+
+    payload = {
+        "session_id": "sess-reco-exp-auto-disable",
+        "message": {"role": "user", "content": "도서 '시드 도서' 기준으로 비슷한 책 추천해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+
+    first = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_book_recommend_exp_auto_1"))
+    second = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_book_recommend_exp_auto_2"))
+    third = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_book_recommend_exp_auto_3"))
+
+    assert first is not None and first["status"] == "ok"
+    assert second is not None and second["status"] == "ok"
+    assert third is not None and third["status"] == "ok"
+    assert int(metrics.snapshot().get(auto_disable_metric, 0)) >= before_auto_disable + 1
+    assert "추천 이유:" in third["answer"]["content"]
+    assert "선정 근거:" not in third["answer"]["content"]
+    assert third["sources"]
+    assert "recommend_status=disabled_auto" in third["sources"][0]["snippet"]
+
+
 def test_run_tool_chat_order_lookup_success(monkeypatch):
     async def fake_call_commerce(method, path, **kwargs):
         assert method == "GET"

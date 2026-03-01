@@ -93,6 +93,8 @@ curl -s -XPOST http://localhost:8088/chat \
 - `chat_provider_cost_per_1k{provider}`
 - `chat_recommend_experiment_total{variant,status}`
 - `chat_recommend_quality_gate_block_total{reason}`
+- `chat_recommend_experiment_auto_disable_total{reason}`
+- `chat_recommend_experiment_block_rate{variant}`
 - `chat_memory_opt_in_total{result,source}`
 - `chat_memory_retrieval_total{result}`
 - `chat_memory_delete_total{result}`
