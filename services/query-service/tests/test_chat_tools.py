@@ -183,6 +183,33 @@ def test_run_tool_chat_book_recommendation_uses_normalized_isbn_seed(monkeypatch
     assert "비슷한 도서 B" in result["answer"]["content"]
 
 
+def test_run_tool_chat_book_recommendation_normalizes_isbn10_seed(monkeypatch):
+    captured = {"queries": []}
+
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        captured["queries"].append(query)
+        return [
+            {"doc_id": "doc-seed", "title": "시드 도서", "author": "저자A", "isbn": "9780306406157", "score": 0.99},
+            {"doc_id": "doc-b", "title": "비슷한 도서 B", "author": "저자B", "isbn": "9780306406158", "score": 0.82},
+        ]
+
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+
+    payload = {
+        "message": {"role": "user", "content": "ISBN 0-306-40615-2 기준으로 비슷한 책 추천해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_book_recommend_isbn10"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert captured["queries"]
+    assert captured["queries"][0] == "9780306406157"
+    assert "1) 시드 도서" not in result["answer"]["content"]
+    assert "비슷한 도서 B" in result["answer"]["content"]
+
+
 def test_run_tool_chat_book_recommendation_persists_selection_state(monkeypatch):
     captured = {}
 
