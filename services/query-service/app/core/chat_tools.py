@@ -57,6 +57,14 @@ def _tool_lookup_retry_count() -> int:
     return max(0, int(os.getenv("QS_CHAT_TOOL_LOOKUP_RETRY", "1")))
 
 
+def _tool_circuit_fail_threshold() -> int:
+    return max(1, int(os.getenv("QS_CHAT_TOOL_CIRCUIT_FAIL_THRESHOLD", "3")))
+
+
+def _tool_circuit_open_sec() -> int:
+    return max(1, int(os.getenv("QS_CHAT_TOOL_CIRCUIT_OPEN_SEC", "30")))
+
+
 def _policy_base_shipping_fee() -> int:
     return max(0, int(os.getenv("QS_CHAT_POLICY_BASE_SHIPPING_FEE", "3000")))
 
@@ -1020,6 +1028,43 @@ def _record_tool_metrics(intent: str, tool: str, result: str) -> None:
     metrics.inc("chat_tool_route_total", {"intent": intent, "tool": tool, "status": result})
 
 
+def _tool_circuit_open_key(tool_name: str) -> str:
+    return f"chat:tool:circuit:open:{tool_name}"
+
+
+def _tool_circuit_fail_key(tool_name: str) -> str:
+    return f"chat:tool:circuit:fail:{tool_name}"
+
+
+def _is_tool_circuit_open(tool_name: str) -> bool:
+    cached = _CACHE.get_json(_tool_circuit_open_key(tool_name))
+    if not isinstance(cached, dict):
+        return False
+    opened_until = int(cached.get("opened_until") or 0)
+    now = int(time.time())
+    return opened_until > now
+
+
+def _record_tool_failure(tool_name: str) -> None:
+    fail_key = _tool_circuit_fail_key(tool_name)
+    cached = _CACHE.get_json(fail_key)
+    fail_count = 0
+    if isinstance(cached, dict):
+        fail_count = int(cached.get("count") or 0)
+    fail_count += 1
+    _CACHE.set_json(fail_key, {"count": fail_count}, ttl=max(5, _tool_circuit_open_sec() * 2))
+    if fail_count >= _tool_circuit_fail_threshold():
+        opened_until = int(time.time()) + _tool_circuit_open_sec()
+        _CACHE.set_json(_tool_circuit_open_key(tool_name), {"opened_until": opened_until}, ttl=_tool_circuit_open_sec())
+        metrics.inc("chat_circuit_breaker_state", {"tool": tool_name, "state": "open"})
+
+
+def _record_tool_success(tool_name: str) -> None:
+    _CACHE.set_json(_tool_circuit_fail_key(tool_name), {"count": 0}, ttl=1)
+    _CACHE.set_json(_tool_circuit_open_key(tool_name), {"opened_until": 0}, ttl=1)
+    metrics.inc("chat_circuit_breaker_state", {"tool": tool_name, "state": "closed"})
+
+
 async def _call_commerce(
     method: str,
     path: str,
@@ -1050,6 +1095,9 @@ async def _call_commerce(
         )
         raise ToolCallError("auth_context_missing", "인증 컨텍스트가 누락되어 요청을 처리할 수 없습니다.", status_code=400)
     metrics.inc("chat_authz_check_total", {"result": "allow", "action": intent, "reason": "context_ok"})
+    if _is_tool_circuit_open(tool_name):
+        metrics.inc("chat_circuit_breaker_state", {"tool": tool_name, "state": "open_reject"})
+        raise ToolCallError("tool_circuit_open", "일시적으로 툴 호출이 제한되었습니다. 잠시 후 다시 시도해 주세요.", status_code=503)
 
     url = f"{_commerce_base_url()}{path}"
     headers = {
@@ -1100,9 +1148,12 @@ async def _call_commerce(
                         reason_code="AUTH_FORBIDDEN",
                         status_code=403,
                     )
+                if response.status_code >= 500 or response.status_code == 429:
+                    _record_tool_failure(tool_name)
                 raise ToolCallError(code=code, message=message, status_code=response.status_code)
 
             _record_tool_metrics(intent, tool_name, "ok")
+            _record_tool_success(tool_name)
             _audit_tool_authz_decision(
                 conversation_id=conversation_id,
                 action_type=tool_name,
@@ -1121,6 +1172,7 @@ async def _call_commerce(
                 raise ToolCallError("schema_mismatch", "툴 응답 파싱에 실패했습니다.", status_code=response.status_code)
         except (httpx.TimeoutException, httpx.NetworkError):
             last_error = ToolCallError("tool_timeout", "툴 응답 시간이 초과되었습니다.", status_code=504)
+            _record_tool_failure(tool_name)
             if attempt < retries:
                 await asyncio.sleep(0.12 * (attempt + 1))
                 continue
@@ -1130,6 +1182,8 @@ async def _call_commerce(
             raise last_error
         except ToolCallError as exc:
             last_error = exc
+            if exc.status_code is not None and (exc.status_code >= 500 or exc.status_code == 429):
+                _record_tool_failure(tool_name)
             if attempt < retries and (exc.status_code is None or exc.status_code >= 500):
                 await asyncio.sleep(0.12 * (attempt + 1))
                 continue

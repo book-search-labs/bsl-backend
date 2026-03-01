@@ -1818,6 +1818,59 @@ def test_call_commerce_blocks_when_auth_context_missing(monkeypatch):
     assert exc_info.value.code == "auth_context_missing"
 
 
+def test_call_commerce_blocks_when_circuit_open(monkeypatch):
+    chat_tools._CACHE.set_json(chat_tools._tool_circuit_open_key("order_lookup"), {"opened_until": int(chat_tools.time.time()) + 30}, ttl=30)
+
+    with pytest.raises(chat_tools.ToolCallError) as exc_info:
+        asyncio.run(
+            chat_tools._call_commerce(
+                "GET",
+                "/orders/12",
+                user_id="1",
+                trace_id="trace_test",
+                request_id="req_test",
+                tool_name="order_lookup",
+                intent="ORDER_LOOKUP",
+            )
+        )
+
+    assert exc_info.value.code == "tool_circuit_open"
+
+
+def test_call_commerce_opens_circuit_after_timeout(monkeypatch):
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def request(self, method, url, headers=None, json=None, timeout=None):
+            raise httpx.TimeoutException("timeout")
+
+    monkeypatch.setattr(chat_tools.httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(chat_tools, "_tool_lookup_retry_count", lambda: 0)
+    monkeypatch.setattr(chat_tools, "_tool_circuit_fail_threshold", lambda: 1)
+    monkeypatch.setattr(chat_tools, "_tool_circuit_open_sec", lambda: 60)
+
+    with pytest.raises(chat_tools.ToolCallError):
+        asyncio.run(
+            chat_tools._call_commerce(
+                "GET",
+                "/orders/12",
+                user_id="1",
+                trace_id="trace_test",
+                request_id="req_test",
+                tool_name="order_lookup",
+                intent="ORDER_LOOKUP",
+            )
+        )
+
+    opened = chat_tools._CACHE.get_json(chat_tools._tool_circuit_open_key("order_lookup"))
+    assert isinstance(opened, dict)
+    assert int(opened.get("opened_until") or 0) > int(chat_tools.time.time())
+
+
 def test_run_tool_chat_executes_refund_after_confirmation(monkeypatch):
     async def fake_call_commerce(method, path, **kwargs):
         if method == "GET" and path == "/orders/12":
