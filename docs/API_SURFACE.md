@@ -254,6 +254,27 @@ All structured responses that follow `contracts/*` must include:
 - 인증 상태에서 다른 사용자 네임스페이스(`u:{other_user}:...`)는 `403 forbidden`.
 - 피드백 이벤트는 BFF outbox(`chat_feedback_v1`)로 기록되며 `actor_user_id`, `auth_mode`를 포함한다.
 
+## GET `/chat/recommend/experiment`
+**Purpose**: proxy recommendation experiment diagnostics from Query Service (ops/admin only).  
+**Alias**: `GET /v1/chat/recommend/experiment`
+
+### Notes
+- 관리자 인증 컨텍스트가 없으면 `403 forbidden`.
+- 응답 본문은 Query Service `/internal/chat/recommend/experiment` payload를 그대로 전달한다.
+
+## POST `/chat/recommend/experiment/reset`
+**Purpose**: reset recommendation experiment runtime state (ops/admin only).  
+**Alias**: `POST /v1/chat/recommend/experiment/reset`
+
+### Request
+```json
+{}
+```
+
+### Notes
+- 관리자 인증 컨텍스트가 없으면 `403 forbidden`.
+- 응답 본문은 Query Service `/internal/chat/recommend/experiment/reset` payload를 그대로 전달한다.
+
 ## GET `/autocomplete`
 **Purpose**: return query suggestions for a prefix.
 

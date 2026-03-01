@@ -215,6 +215,12 @@ curl -s "http://localhost:8088/chat/session/state?session_id=u:101:default"
 curl -s -X POST "http://localhost:8088/chat/session/reset" \
   -H "content-type: application/json" \
   -d '{"session_id":"u:101:default"}'
+curl -s "http://localhost:8088/chat/recommend/experiment" \
+  -H "x-admin-id: 1"
+curl -s -X POST "http://localhost:8088/chat/recommend/experiment/reset" \
+  -H "x-admin-id: 1" \
+  -H "content-type: application/json" \
+  -d '{}'
 ```
 
 ## Sample Dev Bootstrap (Recommended)

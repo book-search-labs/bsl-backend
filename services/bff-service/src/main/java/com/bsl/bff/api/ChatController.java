@@ -143,6 +143,30 @@ public class ChatController {
         return ack(context);
     }
 
+    @GetMapping("/recommend/experiment")
+    public ResponseEntity<JsonNode> recommendExperimentSnapshot() {
+        RequestContext context = RequestContextHolder.get();
+        requireAdminContext();
+        JsonNode response = queryServiceClient.chatRecommendExperimentSnapshot(context);
+        if (response == null) {
+            throw new DownstreamException(HttpStatus.BAD_GATEWAY, "query_service_error", "Query service response is empty");
+        }
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/recommend/experiment/reset")
+    public ResponseEntity<JsonNode> recommendExperimentReset(
+        @RequestBody(required = false) Map<String, Object> ignored
+    ) {
+        RequestContext context = RequestContextHolder.get();
+        requireAdminContext();
+        JsonNode response = queryServiceClient.resetChatRecommendExperiment(context);
+        if (response == null) {
+            throw new DownstreamException(HttpStatus.BAD_GATEWAY, "query_service_error", "Query service response is empty");
+        }
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/session/state")
     public ResponseEntity<JsonNode> sessionState(
         @RequestParam(value = "session_id", required = false) String sessionId
@@ -368,6 +392,13 @@ public class ChatController {
             return null;
         }
         return normalized;
+    }
+
+    private void requireAdminContext() {
+        AuthContext authContext = AuthContextHolder.get();
+        if (authContext == null || !authContext.isAdmin()) {
+            throw new DownstreamException(HttpStatus.FORBIDDEN, "forbidden", "admin authentication required");
+        }
     }
 
     private String normalizeSessionIdForUser(String sessionId, String authUserId) {
