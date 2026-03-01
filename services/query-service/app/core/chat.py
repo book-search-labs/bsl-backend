@@ -496,6 +496,53 @@ def _llm_timeout_sec() -> float:
     return float(os.getenv("QS_LLM_TIMEOUT_SEC", "10.0"))
 
 
+def _llm_max_provider_attempts_per_turn() -> int:
+    return max(1, int(os.getenv("QS_CHAT_MAX_PROVIDER_ATTEMPTS_PER_TURN", "2")))
+
+
+def _llm_max_prompt_tokens_per_turn() -> int:
+    return max(64, int(os.getenv("QS_CHAT_MAX_PROMPT_TOKENS_PER_TURN", "6000")))
+
+
+def _llm_max_completion_tokens_per_turn() -> int:
+    return max(32, int(os.getenv("QS_CHAT_MAX_COMPLETION_TOKENS_PER_TURN", "1200")))
+
+
+def _estimate_token_count(text: str) -> int:
+    normalized = (text or "").strip()
+    if not normalized:
+        return 0
+    return max(1, len(normalized) // 4)
+
+
+def _estimate_prompt_tokens(payload: Dict[str, Any]) -> int:
+    total = 0
+    messages = payload.get("messages")
+    if isinstance(messages, list):
+        for item in messages:
+            if not isinstance(item, dict):
+                continue
+            total += _estimate_token_count(str(item.get("content") or ""))
+    context = payload.get("context")
+    chunks = context.get("chunks") if isinstance(context, dict) else []
+    if isinstance(chunks, list):
+        for chunk in chunks:
+            if not isinstance(chunk, dict):
+                continue
+            total += _estimate_token_count(str(chunk.get("content") or ""))
+            total += _estimate_token_count(str(chunk.get("title") or ""))
+    return total
+
+
+def _admission_block_reason(payload: Dict[str, Any]) -> Optional[str]:
+    prompt_tokens = _estimate_prompt_tokens(payload)
+    if prompt_tokens > _llm_max_prompt_tokens_per_turn():
+        return "LLM_PROMPT_BUDGET_EXCEEDED"
+    if _llm_max_completion_tokens_per_turn() <= 0:
+        return "LLM_COMPLETION_BUDGET_EXCEEDED"
+    return None
+
+
 def _llm_stream_enabled() -> bool:
     return str(os.getenv("QS_LLM_STREAM_ENABLED", "1")).strip().lower() in {"1", "true", "yes", "on"}
 
@@ -713,6 +760,18 @@ def _fallback_defaults(reason_code: str) -> Dict[str, Any]:
             "recoverable": True,
             "next_action": "PROVIDE_REQUIRED_INFO",
             "retry_after_ms": None,
+        },
+        "LLM_PROMPT_BUDGET_EXCEEDED": {
+            "message": "요청 컨텍스트가 너무 커서 처리 예산을 초과했습니다. 질문/대화 기록을 줄여 다시 시도해 주세요.",
+            "recoverable": True,
+            "next_action": "REFINE_QUERY",
+            "retry_after_ms": None,
+        },
+        "LLM_COMPLETION_BUDGET_EXCEEDED": {
+            "message": "현재 응답 예산 제한으로 요청을 처리할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+            "recoverable": True,
+            "next_action": "RETRY",
+            "retry_after_ms": 2000,
         },
         "RAG_NO_CHUNKS": {
             "message": "현재 근거 문서를 찾지 못해 확정 답변을 드리기 어렵습니다. 키워드나 조건을 조금 더 구체적으로 입력해 주세요.",
@@ -1476,6 +1535,13 @@ async def _call_llm_json(payload: Dict[str, Any], trace_id: str, request_id: str
     providers = _apply_provider_health(providers, mode="json")
     if not forced_blocked:
         providers = _apply_provider_override(providers, mode="json")
+    max_attempts = _llm_max_provider_attempts_per_turn()
+    if len(providers) > max_attempts:
+        metrics.inc(
+            "chat_llm_provider_attempt_limited_total",
+            {"mode": "json", "max_attempts": str(max_attempts)},
+        )
+        providers = providers[:max_attempts]
     last_error: Exception | None = None
     async with httpx.AsyncClient() as client:
         for idx, (provider, base_url) in enumerate(providers):
@@ -1555,6 +1621,13 @@ async def _stream_llm(
         providers = _apply_provider_health(providers, mode="stream")
         if not forced_blocked:
             providers = _apply_provider_override(providers, mode="stream")
+        max_attempts = _llm_max_provider_attempts_per_turn()
+        if len(providers) > max_attempts:
+            metrics.inc(
+                "chat_llm_provider_attempt_limited_total",
+                {"mode": "stream", "max_attempts": str(max_attempts)},
+            )
+            providers = providers[:max_attempts]
         last_error: Optional[Exception] = None
         async with httpx.AsyncClient() as client:
             for idx, (provider, base_url) in enumerate(providers):
@@ -1789,6 +1862,29 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
             return cached.get("response")
 
     payload = _build_llm_payload(request, trace_id, request_id, query, selected)
+    admission_reason = _admission_block_reason(payload)
+    if admission_reason:
+        metrics.inc("chat_admission_block_total", {"reason": admission_reason, "mode": "json"})
+        response = _fallback(trace_id, request_id, None, admission_reason, session_id=session_id, user_id=user_id)
+        _save_unresolved_context(
+            session_id,
+            query,
+            admission_reason,
+            trace_id=trace_id,
+            request_id=request_id,
+            user_id=user_id,
+        )
+        _append_turn_event_safe(
+            session_id,
+            request_id,
+            "TURN_BLOCKED",
+            trace_id=trace_id,
+            route="ADMISSION",
+            reason_code=admission_reason,
+            payload={"stream": False},
+        )
+        metrics.inc("chat_requests_total", {"decision": "fallback"})
+        return response
     try:
         data = await _call_llm_json(payload, trace_id, request_id)
     except Exception:
@@ -2148,6 +2244,63 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
             return
 
     payload = _build_llm_payload(request, trace_id, request_id, query, selected)
+    admission_reason = _admission_block_reason(payload)
+    if admission_reason:
+        metrics.inc("chat_admission_block_total", {"reason": admission_reason, "mode": "stream"})
+        fallback_response = _fallback(trace_id, request_id, None, admission_reason, session_id=session_id, user_id=user_id)
+        _save_unresolved_context(
+            session_id,
+            query,
+            admission_reason,
+            trace_id=trace_id,
+            request_id=request_id,
+            user_id=user_id,
+        )
+        risk_band = _compute_risk_band(query, "insufficient_evidence", [], admission_reason)
+        yield _sse_event(
+            "meta",
+            {
+                "trace_id": trace_id,
+                "request_id": request_id,
+                "status": "fallback",
+                "sources": [],
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": fallback_response.get("reason_code"),
+                "recoverable": fallback_response.get("recoverable"),
+                "next_action": fallback_response.get("next_action"),
+                "retry_after_ms": fallback_response.get("retry_after_ms"),
+                "fallback_count": fallback_response.get("fallback_count"),
+                "escalated": fallback_response.get("escalated"),
+            },
+        )
+        yield _sse_event("delta", {"delta": str(fallback_response.get("answer", {}).get("content") if isinstance(fallback_response.get("answer"), dict) else "")})
+        yield _sse_event(
+            "done",
+            {
+                "status": fallback_response.get("status"),
+                "citations": [],
+                "risk_band": risk_band,
+                "reason_code": fallback_response.get("reason_code"),
+                "recoverable": fallback_response.get("recoverable"),
+                "next_action": fallback_response.get("next_action"),
+                "retry_after_ms": fallback_response.get("retry_after_ms"),
+                "fallback_count": fallback_response.get("fallback_count"),
+                "escalated": fallback_response.get("escalated"),
+            },
+        )
+        _append_turn_event_safe(
+            session_id,
+            request_id,
+            "TURN_BLOCKED",
+            trace_id=trace_id,
+            route="ADMISSION",
+            reason_code=admission_reason,
+            payload={"stream": True},
+        )
+        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
+        metrics.inc("chat_requests_total", {"decision": "fallback"})
+        return
     if not _llm_stream_enabled():
         try:
             data = await _call_llm_json(payload, trace_id, request_id)

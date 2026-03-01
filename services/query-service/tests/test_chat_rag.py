@@ -310,6 +310,85 @@ def test_run_chat_stream_emits_done_with_validated_citations(monkeypatch):
     assert not any("LLM_NO_CITATIONS" in event for event in events)
 
 
+def test_run_chat_blocks_when_prompt_budget_exceeded(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_MAX_PROMPT_TOKENS_PER_TURN", "1")
+    monkeypatch.setenv("QS_CHAT_MAX_COMPLETION_TOKENS_PER_TURN", "100")
+    long_snippet = "환불정책" * 800
+
+    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
+        return {
+            "ok": True,
+            "query": "환불 정책 알려줘",
+            "canonical_key": "ck:test",
+            "locale": "ko-KR",
+            "selected": [
+                {
+                    "chunk_id": "chunk-1",
+                    "citation_key": "chunk-1",
+                    "doc_id": "doc-1",
+                    "title": "환불 정책",
+                    "url": "https://example.com/refund",
+                    "snippet": long_snippet,
+                    "score": 0.9,
+                }
+            ],
+        }
+
+    async def fake_tool_chat(request, trace_id, request_id):
+        return None
+
+    async def fake_call_llm_json(payload, trace_id, request_id):  # pragma: no cover - should not be called
+        raise AssertionError("llm call should be blocked by admission")
+
+    monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
+    monkeypatch.setattr(chat, "run_tool_chat", fake_tool_chat)
+    monkeypatch.setattr(chat, "_call_llm_json", fake_call_llm_json)
+    monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
+
+    response = asyncio.run(chat.run_chat({"message": {"role": "user", "content": "환불 정책 알려줘"}}, "trace_test", "req_test"))
+
+    assert response["status"] == "insufficient_evidence"
+    assert response["reason_code"] == "LLM_PROMPT_BUDGET_EXCEEDED"
+
+
+def test_run_chat_stream_blocks_when_prompt_budget_exceeded(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_MAX_PROMPT_TOKENS_PER_TURN", "1")
+    monkeypatch.setenv("QS_CHAT_MAX_COMPLETION_TOKENS_PER_TURN", "100")
+    long_snippet = "환불정책" * 800
+
+    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
+        return {
+            "ok": True,
+            "query": "환불 정책 알려줘",
+            "canonical_key": "ck:test",
+            "locale": "ko-KR",
+            "selected": [
+                {
+                    "chunk_id": "chunk-1",
+                    "citation_key": "chunk-1",
+                    "doc_id": "doc-1",
+                    "title": "환불 정책",
+                    "url": "https://example.com/refund",
+                    "snippet": long_snippet,
+                    "score": 0.9,
+                }
+            ],
+        }
+
+    async def fake_tool_chat(request, trace_id, request_id):
+        return None
+
+    monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
+    monkeypatch.setattr(chat, "run_tool_chat", fake_tool_chat)
+    monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
+
+    events = _collect_stream_events({"message": {"role": "user", "content": "환불 정책 알려줘"}, "options": {"stream": True}})
+
+    assert any("event: done" in event and "LLM_PROMPT_BUDGET_EXCEEDED" in event for event in events)
+
+
 def test_run_chat_stream_emits_error_when_citation_mapping_fails(monkeypatch):
     chat._CACHE = CacheClient(None)
 
