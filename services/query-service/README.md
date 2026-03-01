@@ -68,6 +68,8 @@ CORS_ALLOW_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:
 # QS_CHAT_TOOL_CIRCUIT_OPEN_SEC=30
 # QS_CHAT_WORKFLOW_TTL_SEC=900
 # QS_CHAT_CONFIRM_TOKEN_TTL_SEC=300
+# QS_CHAT_WORKFLOW_MAX_RETRY=1
+# QS_CHAT_ACTION_RECEIPT_TTL_SEC=86400
 
 # Chat durable session state store (MySQL, optional)
 # QS_CHAT_STATE_DB_ENABLED=false
@@ -77,6 +79,7 @@ CORS_ALLOW_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:
 # QS_CHAT_STATE_DB_USER=bsl
 # QS_CHAT_STATE_DB_PASSWORD=bsl
 # QS_CHAT_STATE_DB_CONNECT_TIMEOUT_MS=200
+# QS_CHAT_LOG_MESSAGE_MODE=masked_raw   # masked_raw | hash_summary
 
 # Chat LLM budget/admission guardrails
 # QS_CHAT_MAX_PROVIDER_ATTEMPTS_PER_TURN=2

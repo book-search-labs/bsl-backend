@@ -11,14 +11,33 @@ from typing import Any
 
 import httpx
 
+from app.core.chat_action_protocol import build_action_draft
+from app.core.chat_action_protocol import validate_action_draft
+from app.core.chat_policy_engine import build_understanding
+from app.core.chat_policy_engine import decide_route
+from app.core.chat_policy_engine import infer_risk_level
+from app.core.chat_policy_engine import PolicyDecision
+from app.core.chat_policy_engine import ROUTE_ANSWER
+from app.core.chat_policy_engine import ROUTE_ASK
+from app.core.chat_policy_engine import ROUTE_CONFIRM
+from app.core.chat_policy_engine import ROUTE_OPTIONS
 from app.core.cache import get_cache
-from app.core.metrics import metrics
 from app.core.chat_state_store import append_action_audit
 from app.core.chat_state_store import get_session_state as get_durable_chat_session_state
 from app.core.chat_state_store import upsert_session_state
+from app.core.metrics import metrics
 from app.core.rag_candidates import retrieve_candidates
 
 _CACHE = get_cache()
+_WORKFLOW_PENDING_STATES = {"AWAITING_CONFIRMATION", "CONFIRMED", "FAILED_RETRYABLE", "EXECUTING"}
+_WORKFLOW_TERMINAL_STATES = {"EXECUTED", "ABORTED", "EXPIRED", "FAILED_FINAL"}
+_WORKFLOW_ALLOWED_TRANSITIONS: dict[str, set[str]] = {
+    "INIT": {"AWAITING_CONFIRMATION"},
+    "AWAITING_CONFIRMATION": {"CONFIRMED", "ABORTED", "EXPIRED"},
+    "CONFIRMED": {"EXECUTING", "ABORTED", "EXPIRED"},
+    "EXECUTING": {"EXECUTED", "FAILED_RETRYABLE", "FAILED_FINAL"},
+    "FAILED_RETRYABLE": {"CONFIRMED", "ABORTED", "EXPIRED", "FAILED_FINAL"},
+}
 
 
 @dataclass
@@ -83,6 +102,14 @@ def _workflow_ttl_sec() -> int:
 
 def _confirmation_token_ttl_sec() -> int:
     return max(60, int(os.getenv("QS_CHAT_CONFIRM_TOKEN_TTL_SEC", "300")))
+
+
+def _workflow_retry_budget() -> int:
+    return max(0, int(os.getenv("QS_CHAT_WORKFLOW_MAX_RETRY", "1")))
+
+
+def _workflow_action_receipt_ttl_sec() -> int:
+    return max(300, int(os.getenv("QS_CHAT_ACTION_RECEIPT_TTL_SEC", "86400")))
 
 
 def _ticket_create_dedup_ttl_sec() -> int:
@@ -619,8 +646,174 @@ def _resolve_session_id(request: dict[str, Any], user_id: str | None) -> str:
     return "anon:default"
 
 
+def _policy_route_result(route: str) -> str:
+    if route in {ROUTE_ASK, ROUTE_OPTIONS}:
+        return "BLOCKED"
+    return "SUCCESS"
+
+
+def _record_policy_decision(
+    *,
+    session_id: str,
+    user_id: str | None,
+    trace_id: str,
+    request_id: str,
+    intent: str,
+    decision: PolicyDecision,
+) -> None:
+    normalized_intent = str(intent or "NONE").upper()
+    metrics.inc("chat_route_total", {"route": decision.route, "intent": normalized_intent})
+    if decision.route in {ROUTE_ASK, ROUTE_OPTIONS}:
+        metrics.inc("chat_policy_block_total", {"reason_code": decision.reason_code})
+    append_action_audit(
+        conversation_id=session_id,
+        action_type="POLICY_DECISION",
+        action_state=decision.route,
+        decision="ALLOW" if decision.route not in {ROUTE_ASK, ROUTE_OPTIONS} else "DENY",
+        result=_policy_route_result(decision.route),
+        actor_user_id=user_id,
+        actor_admin_id=None,
+        target_ref=normalized_intent,
+        auth_context={"tenant_id": _tenant_id(), "user_id": user_id},
+        trace_id=trace_id,
+        request_id=request_id,
+        reason_code=decision.reason_code,
+        idempotency_key=f"policy:{session_id}:{request_id}",
+        metadata={
+            "policy_rule_id": decision.policy_rule_id,
+            "missing_slots": decision.missing_slots,
+            "decision_snapshot": decision.decision_snapshot,
+        },
+    )
+    upsert_session_state(
+        session_id,
+        user_id=user_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        summary_short=f"route={decision.route}|reason={decision.reason_code}|rule={decision.policy_rule_id}",
+        last_turn_id=request_id,
+        idempotency_key=request_id,
+    )
+
+
 def _workflow_cache_key(session_id: str) -> str:
     return f"chat:workflow:{session_id}"
+
+
+def _workflow_action_receipt_cache_key(idempotency_key: str) -> str:
+    return f"chat:workflow:receipt:{idempotency_key}"
+
+
+def _workflow_fsm_state(workflow: dict[str, Any] | None) -> str:
+    if not isinstance(workflow, dict):
+        return "INIT"
+    raw = str(workflow.get("fsm_state") or "").strip().upper()
+    if raw:
+        return raw
+    legacy_step = str(workflow.get("step") or "").strip().lower()
+    if legacy_step == "awaiting_confirmation":
+        return "AWAITING_CONFIRMATION"
+    if legacy_step == "executed":
+        return "EXECUTED"
+    return "INIT"
+
+
+def _workflow_step_from_fsm(state: str) -> str:
+    mapping = {
+        "INIT": "init",
+        "AWAITING_CONFIRMATION": "awaiting_confirmation",
+        "CONFIRMED": "confirmed",
+        "EXECUTING": "executing",
+        "EXECUTED": "executed",
+        "ABORTED": "aborted",
+        "EXPIRED": "expired",
+        "FAILED_RETRYABLE": "failed_retryable",
+        "FAILED_FINAL": "failed_final",
+    }
+    return mapping.get(str(state or "").upper(), "init")
+
+
+def _apply_workflow_transition(
+    workflow: dict[str, Any],
+    *,
+    to_state: str,
+    session_id: str,
+    user_id: str,
+    trace_id: str,
+    request_id: str,
+    reason_code: str,
+    persist: bool = True,
+    metadata: dict[str, Any] | None = None,
+) -> bool:
+    current_state = _workflow_fsm_state(workflow)
+    normalized_to = str(to_state or "").strip().upper()
+    allowed = _WORKFLOW_ALLOWED_TRANSITIONS.get(current_state, set())
+    if normalized_to != current_state and normalized_to not in allowed:
+        metrics.inc("chat_execute_block_total", {"reason": "invalid_transition"})
+        append_action_audit(
+            conversation_id=session_id,
+            action_type=str(workflow.get("workflow_type") or "WORKFLOW"),
+            action_state=current_state,
+            decision="DENY",
+            result="BLOCKED",
+            actor_user_id=user_id,
+            actor_admin_id=None,
+            target_ref=str(workflow.get("order_no") or workflow.get("workflow_id") or session_id),
+            auth_context={"tenant_id": _tenant_id(), "user_id": user_id},
+            trace_id=trace_id,
+            request_id=request_id,
+            reason_code="INVALID_WORKFLOW_TRANSITION",
+            idempotency_key=str((workflow.get("action_draft") or {}).get("idempotency_key") or None),
+            metadata={
+                "from_state": current_state,
+                "to_state": normalized_to,
+                "workflow_type": workflow.get("workflow_type"),
+            },
+        )
+        return False
+
+    workflow["fsm_state"] = normalized_to
+    workflow["step"] = _workflow_step_from_fsm(normalized_to)
+    workflow["updated_at"] = int(time.time())
+    transition_history = workflow.get("transition_history")
+    if not isinstance(transition_history, list):
+        transition_history = []
+    transition_history.append(
+        {
+            "from": current_state,
+            "to": normalized_to,
+            "reason_code": reason_code,
+            "request_id": request_id,
+            "updated_at": int(time.time()),
+        }
+    )
+    workflow["transition_history"] = transition_history[-20:]
+    metrics.inc("chat_confirm_fsm_transition_total", {"from": current_state, "to": normalized_to})
+    if persist:
+        _save_workflow(session_id, workflow, ttl_sec=_workflow_ttl_sec())
+
+    append_action_audit(
+        conversation_id=session_id,
+        action_type=str(workflow.get("workflow_type") or "WORKFLOW"),
+        action_state=normalized_to,
+        decision="ALLOW" if normalized_to not in {"ABORTED", "EXPIRED", "FAILED_FINAL"} else "DENY",
+        result="SUCCESS" if normalized_to == "EXECUTED" else "IN_PROGRESS",
+        actor_user_id=user_id,
+        actor_admin_id=None,
+        target_ref=str(workflow.get("order_no") or workflow.get("workflow_id") or session_id),
+        auth_context={"tenant_id": _tenant_id(), "user_id": user_id},
+        trace_id=trace_id,
+        request_id=request_id,
+        reason_code=reason_code,
+        idempotency_key=str((workflow.get("action_draft") or {}).get("idempotency_key") or None),
+        metadata={
+            "from_state": current_state,
+            "to_state": normalized_to,
+            "workflow_type": workflow.get("workflow_type"),
+            **(metadata or {}),
+        },
+    )
+    return True
 
 
 def _build_confirmation_token(trace_id: str, request_id: str, session_id: str) -> str:
@@ -641,7 +834,7 @@ def _load_workflow(session_id: str) -> dict[str, Any] | None:
 
 
 def _clear_workflow(session_id: str) -> None:
-    _CACHE.set_json(_workflow_cache_key(session_id), {"state": "cleared"}, ttl=1)
+    _CACHE.set_json(_workflow_cache_key(session_id), {"state": "cleared", "fsm_state": "CLEARED"}, ttl=1)
 
 
 def _last_ticket_cache_key(session_id: str) -> str:
@@ -1722,20 +1915,64 @@ async def _start_sensitive_workflow(
     order_no = str(order.get("order_no") or f"#{order_id}")
     token = _build_confirmation_token(trace_id, request_id, session_id)
     workflow_type = intent
-    risk = "HIGH"
+    risk = infer_risk_level(workflow_type)
+    action_draft = build_action_draft(
+        action_type=workflow_type,
+        args={"order_id": order_id, "order_no": order_no},
+        conversation_id=session_id,
+        user_id=user_id,
+        tenant_id=_tenant_id(),
+        trace_id=trace_id,
+        request_id=request_id,
+        confirm_ttl_sec=_confirmation_token_ttl_sec(),
+        dry_run=False,
+        compensation_hint="open_support_ticket",
+    )
+    validation = validate_action_draft(action_draft)
+    metrics.inc(
+        "chat_action_validate_total",
+        {
+            "result": "ok" if validation.ok else "error",
+            "action_type": workflow_type,
+        },
+    )
+    if not validation.ok:
+        metrics.inc("chat_bad_action_schema_total", {"action_type": workflow_type, "reason": validation.reason_code})
+        return _build_response(
+            trace_id,
+            request_id,
+            "invalid_state",
+            "요청 형식을 검증하지 못해 작업을 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+            reason_code=validation.reason_code,
+            next_action="OPEN_SUPPORT_TICKET",
+        )
     workflow = {
         "workflow_id": f"wf:{session_id}:{request_id}",
         "workflow_type": workflow_type,
-        "step": "awaiting_confirmation",
+        "fsm_state": "INIT",
+        "step": "init",
         "user_id": user_id,
         "order_id": order_id,
         "order_no": order_no,
         "risk": risk,
+        "retry_count": 0,
+        "max_retry": _workflow_retry_budget(),
+        "action_draft": action_draft,
         "confirmation_token": token,
         "created_at": int(time.time()),
         "expires_at": int(time.time()) + _confirmation_token_ttl_sec(),
     }
     _save_workflow(session_id, workflow, ttl_sec=_workflow_ttl_sec())
+    _apply_workflow_transition(
+        workflow,
+        to_state="AWAITING_CONFIRMATION",
+        session_id=session_id,
+        user_id=user_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        reason_code="ROUTE:CONFIRM:AWAITING_CONFIRMATION",
+        persist=True,
+    )
     metrics.inc("chat_workflow_started_total", {"type": workflow_type})
     metrics.inc(
         "chat_sensitive_action_requested_total",
@@ -2213,11 +2450,124 @@ async def _execute_sensitive_workflow(
     request_id: str,
 ) -> dict[str, Any]:
     workflow_type = str(workflow.get("workflow_type") or "")
-    order_id = int(workflow.get("order_id"))
+    try:
+        order_id = int(workflow.get("order_id"))
+    except Exception:
+        order_id = 0
     order_no = str(workflow.get("order_no") or f"#{order_id}")
+    current_state = _workflow_fsm_state(workflow)
+    action_draft = workflow.get("action_draft")
+    validation = validate_action_draft(action_draft)
+    metrics.inc(
+        "chat_action_validate_total",
+        {
+            "result": "ok" if validation.ok else "error",
+            "action_type": workflow_type or "unknown",
+        },
+    )
+    if not validation.ok:
+        metrics.inc("chat_bad_action_schema_total", {"action_type": workflow_type or "unknown", "reason": validation.reason_code})
+        _apply_workflow_transition(
+            workflow,
+            to_state="FAILED_FINAL",
+            session_id=session_id,
+            user_id=user_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            reason_code=validation.reason_code,
+            persist=False,
+        )
+        _clear_workflow(session_id)
+        return _build_response(
+            trace_id,
+            request_id,
+            "invalid_state",
+            "요청 실행 규격을 검증하지 못했습니다. 다시 시도해 주세요.",
+            reason_code=validation.reason_code,
+            next_action="OPEN_SUPPORT_TICKET",
+        )
+
+    action_draft_obj = action_draft if isinstance(action_draft, dict) else {}
+    idempotency_key = str(action_draft_obj.get("idempotency_key") or "").strip()
+    if not idempotency_key:
+        metrics.inc("chat_action_idempotency_reject_total", {"action_type": workflow_type or "unknown"})
+        _apply_workflow_transition(
+            workflow,
+            to_state="FAILED_FINAL",
+            session_id=session_id,
+            user_id=user_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            reason_code="IDEMPOTENCY_REQUIRED",
+            persist=False,
+        )
+        _clear_workflow(session_id)
+        return _build_response(
+            trace_id,
+            request_id,
+            "invalid_state",
+            "중복 실행 방지 키가 없어 요청을 실행할 수 없습니다.",
+            reason_code="IDEMPOTENCY_REQUIRED",
+            next_action="OPEN_SUPPORT_TICKET",
+        )
+
+    if current_state != "CONFIRMED":
+        metrics.inc("chat_execute_block_total", {"reason": "not_confirmed"})
+        return _build_response(
+            trace_id,
+            request_id,
+            "pending_confirmation",
+            "확인 절차가 완료되지 않아 실행할 수 없습니다. 확인 코드를 입력해 주세요.",
+            reason_code="DENY_EXECUTE:NOT_CONFIRMED",
+            next_action="CONFIRM_ACTION",
+        )
+
+    receipt_key = _workflow_action_receipt_cache_key(idempotency_key)
+    cached_receipt = _CACHE.get_json(receipt_key)
+    if isinstance(cached_receipt, dict) and isinstance(cached_receipt.get("response"), dict):
+        metrics.inc("chat_action_idempotency_reject_total", {"action_type": workflow_type})
+        append_action_audit(
+            conversation_id=session_id,
+            action_type=workflow_type,
+            action_state="EXECUTED",
+            decision="ALLOW",
+            result="SUCCESS",
+            actor_user_id=user_id,
+            actor_admin_id=None,
+            target_ref=order_no,
+            auth_context={"tenant_id": _tenant_id(), "user_id": user_id},
+            trace_id=trace_id,
+            request_id=request_id,
+            reason_code="IDEMPOTENT_REPLAY",
+            idempotency_key=idempotency_key,
+            metadata={"workflow_state": current_state},
+        )
+        _clear_workflow(session_id)
+        response = cached_receipt.get("response")
+        if isinstance(response, dict):
+            return response
+
+    if not _apply_workflow_transition(
+        workflow,
+        to_state="EXECUTING",
+        session_id=session_id,
+        user_id=user_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        reason_code="FSM:EXECUTING",
+        persist=True,
+    ):
+        return _build_response(
+            trace_id,
+            request_id,
+            "invalid_state",
+            "작업 상태 전이가 유효하지 않아 요청을 중단했습니다.",
+            reason_code="INVALID_WORKFLOW_TRANSITION",
+        )
 
     try:
         if workflow_type == "ORDER_CANCEL":
+            args = action_draft_obj.get("args") if isinstance(action_draft_obj.get("args"), dict) else {}
             cancel_result = await _call_commerce(
                 "POST",
                 f"/orders/{order_id}/cancel",
@@ -2230,10 +2580,7 @@ async def _execute_sensitive_workflow(
             )
             order = cancel_result.get("order") if isinstance(cancel_result, dict) else {}
             status = _order_status_ko(str(order.get("status") or ""))
-            _clear_workflow(session_id)
-            metrics.inc("chat_sensitive_action_confirmed_total", {"action": "order_cancel"})
-            metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "success"})
-            return _build_response(
+            response = _build_response(
                 trace_id,
                 request_id,
                 "ok",
@@ -2242,8 +2589,25 @@ async def _execute_sensitive_workflow(
                 endpoint="POST /api/v1/orders/{orderId}/cancel",
                 source_snippet=f"order_no={order_no}, status={status}",
             )
+            _CACHE.set_json(receipt_key, {"response": response}, ttl=_workflow_action_receipt_ttl_sec())
+            _apply_workflow_transition(
+                workflow,
+                to_state="EXECUTED",
+                session_id=session_id,
+                user_id=user_id,
+                trace_id=trace_id,
+                request_id=request_id,
+                reason_code="FSM:EXECUTED",
+                persist=False,
+                metadata={"action_args": args},
+            )
+            _clear_workflow(session_id)
+            metrics.inc("chat_sensitive_action_confirmed_total", {"action": "order_cancel"})
+            metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "success"})
+            return response
 
         if workflow_type == "REFUND_CREATE":
+            args = action_draft_obj.get("args") if isinstance(action_draft_obj.get("args"), dict) else {}
             refund_result = await _call_commerce(
                 "POST",
                 "/refunds",
@@ -2251,7 +2615,7 @@ async def _execute_sensitive_workflow(
                     "orderId": order_id,
                     "reasonCode": "OTHER",
                     "reasonText": "CHAT_REQUEST",
-                    "idempotencyKey": f"chat-refund-{request_id}",
+                    "idempotencyKey": idempotency_key,
                 },
                 user_id=user_id,
                 trace_id=trace_id,
@@ -2263,10 +2627,7 @@ async def _execute_sensitive_workflow(
             refund_id = str(refund.get("refund_id") or "-")
             refund_status = _refund_status_ko(str(refund.get("status") or ""))
             refund_amount = _format_krw(refund.get("amount"))
-            _clear_workflow(session_id)
-            metrics.inc("chat_sensitive_action_confirmed_total", {"action": "refund_create"})
-            metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "success"})
-            return _build_response(
+            response = _build_response(
                 trace_id,
                 request_id,
                 "ok",
@@ -2275,20 +2636,108 @@ async def _execute_sensitive_workflow(
                 endpoint="POST /api/v1/refunds",
                 source_snippet=f"order_no={order_no}, refund_id={refund_id}, status={refund_status}",
             )
+            _CACHE.set_json(receipt_key, {"response": response}, ttl=_workflow_action_receipt_ttl_sec())
+            _apply_workflow_transition(
+                workflow,
+                to_state="EXECUTED",
+                session_id=session_id,
+                user_id=user_id,
+                trace_id=trace_id,
+                request_id=request_id,
+                reason_code="FSM:EXECUTED",
+                persist=False,
+                metadata={"action_args": args},
+            )
+            _clear_workflow(session_id)
+            metrics.inc("chat_sensitive_action_confirmed_total", {"action": "refund_create"})
+            metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "success"})
+            return response
     except ToolCallError as exc:
         metrics.inc("chat_workflow_step_error_total", {"type": workflow_type, "step": "execute", "error_code": exc.code})
+        retry_count = int(workflow.get("retry_count") or 0)
+        max_retry = int(workflow.get("max_retry") or _workflow_retry_budget())
+        is_retryable = bool(
+            exc.status_code is None
+            or exc.status_code >= 500
+            or exc.status_code == 429
+            or exc.code in {"tool_timeout", "tool_circuit_open"}
+        )
         if exc.status_code == 403:
             metrics.inc("chat_sensitive_action_blocked_total", {"reason": "authz_denied"})
+            _apply_workflow_transition(
+                workflow,
+                to_state="FAILED_FINAL",
+                session_id=session_id,
+                user_id=user_id,
+                trace_id=trace_id,
+                request_id=request_id,
+                reason_code="AUTH_FORBIDDEN",
+                persist=False,
+            )
             _clear_workflow(session_id)
             metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "blocked"})
             return _build_response(trace_id, request_id, "forbidden", "본인 주문만 처리할 수 있습니다.")
         if exc.code == "invalid_state":
+            _apply_workflow_transition(
+                workflow,
+                to_state="FAILED_FINAL",
+                session_id=session_id,
+                user_id=user_id,
+                trace_id=trace_id,
+                request_id=request_id,
+                reason_code="INVALID_WORKFLOW_STATE",
+                persist=False,
+            )
             _clear_workflow(session_id)
             metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "invalid_state"})
             return _build_response(trace_id, request_id, "invalid_state", "현재 주문 상태에서는 요청한 작업을 진행할 수 없습니다.")
+        if is_retryable and retry_count < max_retry:
+            workflow["retry_count"] = retry_count + 1
+            _apply_workflow_transition(
+                workflow,
+                to_state="FAILED_RETRYABLE",
+                session_id=session_id,
+                user_id=user_id,
+                trace_id=trace_id,
+                request_id=request_id,
+                reason_code="TOOL_RETRYABLE_FAILURE",
+                persist=True,
+                metadata={"retry_count": workflow["retry_count"], "max_retry": max_retry},
+            )
+            return _build_response(
+                trace_id,
+                request_id,
+                "tool_fallback",
+                "작업 실행 중 일시 오류가 발생했습니다. 동일한 확인 코드를 다시 입력하면 재시도합니다.",
+                reason_code="TOOL_RETRYABLE_FAILURE",
+                next_action="RETRY",
+            )
+        _apply_workflow_transition(
+            workflow,
+            to_state="FAILED_FINAL",
+            session_id=session_id,
+            user_id=user_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            reason_code="TOOL_FINAL_FAILURE",
+            persist=False,
+            metadata={"retry_count": retry_count, "max_retry": max_retry},
+        )
+        _clear_workflow(session_id)
+        metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "failed_final"})
         return _build_response(trace_id, request_id, "tool_fallback", "작업 실행 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
 
     metrics.inc("chat_workflow_step_error_total", {"type": workflow_type, "step": "execute", "error_code": "unsupported"})
+    _apply_workflow_transition(
+        workflow,
+        to_state="FAILED_FINAL",
+        session_id=session_id,
+        user_id=user_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        reason_code="UNSUPPORTED_WORKFLOW",
+        persist=False,
+    )
     _clear_workflow(session_id)
     metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "unsupported"})
     return _build_response(trace_id, request_id, "unsupported", "지원하지 않는 워크플로우입니다.")
@@ -2306,26 +2755,93 @@ async def _handle_pending_workflow(
     token = str(workflow.get("confirmation_token") or "")
     expected_user_id = str(workflow.get("user_id") or "")
     workflow_type = str(workflow.get("workflow_type") or "")
+    state = _workflow_fsm_state(workflow)
 
     if expected_user_id and expected_user_id != str(user_id):
         metrics.inc("chat_sensitive_action_blocked_total", {"reason": "user_mismatch"})
+        _apply_workflow_transition(
+            workflow,
+            to_state="ABORTED",
+            session_id=session_id,
+            user_id=user_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            reason_code="AUTH_FORBIDDEN",
+            persist=False,
+        )
         _clear_workflow(session_id)
         return _build_response(trace_id, request_id, "forbidden", "다른 사용자 세션의 작업은 확인할 수 없습니다.")
 
+    if state == "EXECUTING":
+        return _build_response(
+            trace_id,
+            request_id,
+            "pending_confirmation",
+            "현재 요청을 처리 중입니다. 잠시 후 상태를 다시 확인해 주세요.",
+            reason_code="FSM_EXECUTING",
+            next_action="STATUS_CHECK",
+        )
+
+    if state in _WORKFLOW_TERMINAL_STATES:
+        _clear_workflow(session_id)
+        if state == "EXECUTED":
+            action_draft = workflow.get("action_draft") if isinstance(workflow.get("action_draft"), dict) else {}
+            idempotency_key = str(action_draft.get("idempotency_key") or "").strip()
+            if idempotency_key:
+                cached = _CACHE.get_json(_workflow_action_receipt_cache_key(idempotency_key))
+                if isinstance(cached, dict) and isinstance(cached.get("response"), dict):
+                    return cached.get("response")
+            return _build_response(trace_id, request_id, "ok", "요청이 이미 처리되었습니다.", reason_code="IDEMPOTENT_REPLAY")
+        if state == "ABORTED":
+            return _build_response(trace_id, request_id, "aborted", "요청이 이미 취소되었습니다.")
+        if state == "EXPIRED":
+            return _build_response(trace_id, request_id, "expired", "확인 기한이 만료되었습니다. 요청을 다시 시작해 주세요.")
+        if state == "FAILED_FINAL":
+            return _build_response(trace_id, request_id, "tool_fallback", "이전 요청이 실패했습니다. 새로 요청해 주세요.")
+
     expires_at = int(workflow.get("expires_at") or 0)
-    if expires_at > 0 and int(time.time()) > expires_at:
+    if state in _WORKFLOW_PENDING_STATES and expires_at > 0 and int(time.time()) > expires_at:
         metrics.inc("chat_sensitive_action_blocked_total", {"reason": "confirmation_expired"})
+        _apply_workflow_transition(
+            workflow,
+            to_state="EXPIRED",
+            session_id=session_id,
+            user_id=user_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            reason_code="CONFIRMATION_EXPIRED",
+            persist=False,
+        )
         _clear_workflow(session_id)
         metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "expired"})
         return _build_response(trace_id, request_id, "expired", "확인 코드가 만료되어 요청이 취소되었습니다. 다시 요청해 주세요.")
 
     if _is_abort_message(query) and "확인" not in _normalize_text(query):
+        _apply_workflow_transition(
+            workflow,
+            to_state="ABORTED",
+            session_id=session_id,
+            user_id=user_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            reason_code="USER_ABORTED",
+            persist=False,
+        )
         _clear_workflow(session_id)
         metrics.inc("chat_sensitive_action_blocked_total", {"reason": "user_aborted"})
         metrics.inc("chat_workflow_completed_total", {"type": workflow_type, "result": "aborted"})
         return _build_response(trace_id, request_id, "aborted", "요청하신 작업을 취소했습니다.")
 
     if not _is_confirmation_message(query):
+        if state == "FAILED_RETRYABLE":
+            return _build_response(
+                trace_id,
+                request_id,
+                "pending_confirmation",
+                f"이전 실행이 실패했습니다. 동일 코드 [{token}]를 포함해 '확인 {token}'라고 입력하면 재시도합니다.",
+                reason_code="RETRY_CONFIRMATION_REQUIRED",
+                next_action="RETRY",
+            )
         return _build_response(
             trace_id,
             request_id,
@@ -2341,6 +2857,24 @@ async def _handle_pending_workflow(
             request_id,
             "pending_confirmation",
             f"확인 코드가 일치하지 않습니다. 코드 [{token}]를 정확히 입력해 주세요.",
+        )
+
+    if not _apply_workflow_transition(
+        workflow,
+        to_state="CONFIRMED",
+        session_id=session_id,
+        user_id=user_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        reason_code="CONFIRMATION_ACCEPTED",
+        persist=True,
+    ):
+        return _build_response(
+            trace_id,
+            request_id,
+            "invalid_state",
+            "확인 상태를 갱신하지 못해 요청을 중단했습니다.",
+            reason_code="INVALID_WORKFLOW_TRANSITION",
         )
 
     return await _execute_sensitive_workflow(
@@ -2360,21 +2894,62 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
     user_id = _extract_user_id(request)
     session_id = _resolve_session_id(request, user_id)
     history_issue_context = _extract_recent_issue_from_history(request)
-
-    if user_id:
-        pending_workflow = _load_workflow(session_id)
-        if pending_workflow is not None and str(pending_workflow.get("step") or "") == "awaiting_confirmation":
-            return await _handle_pending_workflow(
-                query,
-                pending_workflow,
-                user_id=user_id,
-                session_id=session_id,
-                trace_id=trace_id,
-                request_id=request_id,
-            )
-
+    pending_workflow = _load_workflow(session_id) if user_id else None
+    pending_state = _workflow_fsm_state(pending_workflow)
     selection_state = _selection_state_from_db(session_id)
-    if _looks_like_reference_query(query, has_selection_state=isinstance(selection_state, dict)):
+    has_selection_state = isinstance(selection_state, dict)
+    is_reference_query = _looks_like_reference_query(query, has_selection_state=has_selection_state)
+    intent = _detect_intent(query)
+    order_ref = _extract_order_ref(query)
+    has_order_ref = order_ref.order_id is not None or order_ref.order_no is not None
+    slots: dict[str, Any] = {"order_ref": {"order_id": order_ref.order_id, "order_no": order_ref.order_no} if has_order_ref else None}
+    ticket_no = _extract_ticket_no(query)
+    if ticket_no:
+        slots["ticket_no"] = ticket_no
+    understanding = build_understanding(
+        query=query,
+        intent=intent.name,
+        slots=slots,
+        standalone_query=query,
+        risk_level=infer_risk_level(intent.name),
+    )
+    decision = decide_route(
+        understanding,
+        has_user=bool(user_id),
+        has_pending_action=bool(isinstance(pending_workflow, dict) and pending_state in _WORKFLOW_PENDING_STATES),
+        pending_state=pending_state,
+        is_reference_query=is_reference_query,
+        has_selection_state=has_selection_state,
+    )
+    _record_policy_decision(
+        session_id=session_id,
+        user_id=user_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        intent=intent.name,
+        decision=decision,
+    )
+
+    if isinstance(pending_workflow, dict) and pending_state in _WORKFLOW_PENDING_STATES:
+        if not user_id:
+            return _build_response(
+                trace_id,
+                request_id,
+                "needs_auth",
+                "민감 작업 확인을 위해 로그인 상태가 필요합니다. 다시 로그인 후 시도해 주세요.",
+                reason_code="AUTH_REQUIRED",
+                next_action="LOGIN_REQUIRED",
+            )
+        return await _handle_pending_workflow(
+            query,
+            pending_workflow,
+            user_id=user_id,
+            session_id=session_id,
+            trace_id=trace_id,
+            request_id=request_id,
+        )
+
+    if is_reference_query:
         if not isinstance(selection_state, dict):
             metrics.inc("chat_reference_resolve_total", {"type": "selection", "result": "missing_state"})
             metrics.inc("chat_reference_unresolved_total")
@@ -2416,9 +2991,49 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
             source_snippet=f"session_id={session_id}, selected_index={selected_index}",
         )
 
-    intent = _detect_intent(query)
     if intent.name == "NONE":
         return None
+
+    if decision.route == ROUTE_OPTIONS:
+        return _build_response(
+            trace_id,
+            request_id,
+            "needs_input",
+            "요청을 정확히 구분하지 못했습니다. 주문/배송/환불/추천 중 어떤 작업인지 알려주세요.",
+            reason_code=decision.reason_code,
+            next_action="PROVIDE_REQUIRED_INFO",
+        )
+
+    if decision.route == ROUTE_ASK and decision.reason_code.startswith("NEED_AUTH:"):
+        metrics.inc("chat_tool_authz_denied_total", {"intent": intent.name})
+        return _build_response(
+            trace_id,
+            request_id,
+            "needs_auth",
+            "주문/배송/환불 조회는 로그인 사용자만 가능합니다. 다시 로그인한 뒤 시도해 주세요.",
+            reason_code="AUTH_REQUIRED",
+            next_action="LOGIN_REQUIRED",
+        )
+
+    if decision.route == ROUTE_ASK and decision.reason_code.startswith("NEED_SLOT:ORDER_REF"):
+        action_label = "주문번호(예: ORD20260222XXXX) 또는 주문 ID"
+        if intent.name in {"ORDER_CANCEL", "REFUND_CREATE"}:
+            return _build_response(
+                trace_id,
+                request_id,
+                "needs_input",
+                f"요청을 진행하려면 {action_label}를 먼저 입력해 주세요.",
+                reason_code="NEED_SLOT:ORDER_REF",
+                next_action="PROVIDE_REQUIRED_INFO",
+            )
+        return _build_response(
+            trace_id,
+            request_id,
+            "needs_input",
+            f"조회하려면 {action_label}를 입력해 주세요.",
+            reason_code="NEED_SLOT:ORDER_REF",
+            next_action="PROVIDE_REQUIRED_INFO",
+        )
 
     if intent.confidence < 0.8 and _is_commerce_related(query):
         return _build_response(
@@ -2428,13 +3043,13 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
             "요청을 정확히 구분하지 못했습니다. 주문조회/배송조회/환불조회 중 어떤 도움인지 알려주세요.",
         )
 
-    if intent.name == "REFUND_POLICY":
+    if decision.route == ROUTE_ANSWER and intent.name == "REFUND_POLICY":
         return _handle_refund_policy_guide(trace_id, request_id)
-    if intent.name == "SHIPPING_POLICY":
+    if decision.route == ROUTE_ANSWER and intent.name == "SHIPPING_POLICY":
         return _handle_shipping_policy_guide(trace_id, request_id)
-    if intent.name == "ORDER_POLICY":
+    if decision.route == ROUTE_ANSWER and intent.name == "ORDER_POLICY":
         return _handle_order_policy_guide(trace_id, request_id)
-    if intent.name == "BOOK_RECOMMEND":
+    if decision.route == ROUTE_ANSWER and intent.name == "BOOK_RECOMMEND":
         return await _handle_book_recommendation(
             query,
             session_id=session_id,
@@ -2453,7 +3068,7 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
         )
 
     try:
-        if intent.name == "ORDER_CANCEL":
+        if decision.route == ROUTE_CONFIRM and intent.name == "ORDER_CANCEL":
             return await _start_sensitive_workflow(
                 "ORDER_CANCEL",
                 query,
@@ -2462,7 +3077,7 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
                 trace_id=trace_id,
                 request_id=request_id,
             )
-        if intent.name == "REFUND_CREATE":
+        if decision.route == ROUTE_CONFIRM and intent.name == "REFUND_CREATE":
             return await _start_sensitive_workflow(
                 "REFUND_CREATE",
                 query,

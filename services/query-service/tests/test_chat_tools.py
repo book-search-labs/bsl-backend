@@ -389,6 +389,119 @@ def test_run_tool_chat_starts_sensitive_cancel_workflow(monkeypatch):
     assert result["citations"]
 
 
+def test_run_tool_chat_starts_sensitive_workflow_with_action_draft_and_fsm(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        assert method == "GET"
+        assert path == "/orders/12"
+        return {
+            "order": {
+                "order_id": 12,
+                "order_no": "ORD202602220001",
+                "status": "PAID",
+                "total_amount": 33000,
+                "shipping_fee": 3000,
+                "payment_method": "CARD",
+            }
+        }
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    session_id = "sess-cancel-fsm-1"
+    result = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": session_id,
+                "message": {"role": "user", "content": "주문 12 취소해줘"},
+                "client": {"locale": "ko-KR", "user_id": "1"},
+            },
+            "trace_test",
+            "req_fsm_start",
+        )
+    )
+
+    assert result is not None
+    assert result["status"] == "pending_confirmation"
+    workflow = chat_tools._load_workflow(session_id)
+    assert isinstance(workflow, dict)
+    assert workflow.get("fsm_state") == "AWAITING_CONFIRMATION"
+    action_draft = workflow.get("action_draft")
+    assert isinstance(action_draft, dict)
+    assert action_draft.get("action_type") == "ORDER_CANCEL"
+    assert str(action_draft.get("idempotency_key") or "").startswith("chat:order_cancel:")
+
+
+def test_execute_sensitive_workflow_blocks_without_confirm_state():
+    workflow = {
+        "workflow_id": "wf:test",
+        "workflow_type": "ORDER_CANCEL",
+        "order_id": 12,
+        "order_no": "ORD202602220001",
+        "fsm_state": "AWAITING_CONFIRMATION",
+        "action_draft": chat_tools.build_action_draft(
+            action_type="ORDER_CANCEL",
+            args={"order_id": 12, "order_no": "ORD202602220001"},
+            conversation_id="sess-confirm-block",
+            user_id="1",
+            tenant_id="books",
+            trace_id="trace_test",
+            request_id="req_block",
+            confirm_ttl_sec=300,
+        ),
+    }
+
+    result = asyncio.run(
+        chat_tools._execute_sensitive_workflow(
+            workflow,
+            user_id="1",
+            session_id="sess-confirm-block",
+            trace_id="trace_test",
+            request_id="req_block",
+        )
+    )
+
+    assert result["status"] == "pending_confirmation"
+    assert result["reason_code"] == "DENY_EXECUTE:NOT_CONFIRMED"
+
+
+def test_execute_sensitive_workflow_sets_retryable_state_on_timeout(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        raise chat_tools.ToolCallError("tool_timeout", "timeout", status_code=504)
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    workflow = {
+        "workflow_id": "wf:retry",
+        "workflow_type": "ORDER_CANCEL",
+        "order_id": 12,
+        "order_no": "ORD202602220001",
+        "fsm_state": "CONFIRMED",
+        "retry_count": 0,
+        "max_retry": 1,
+        "action_draft": chat_tools.build_action_draft(
+            action_type="ORDER_CANCEL",
+            args={"order_id": 12, "order_no": "ORD202602220001"},
+            conversation_id="sess-retry",
+            user_id="1",
+            tenant_id="books",
+            trace_id="trace_test",
+            request_id="req_retry",
+            confirm_ttl_sec=300,
+        ),
+    }
+
+    result = asyncio.run(
+        chat_tools._execute_sensitive_workflow(
+            workflow,
+            user_id="1",
+            session_id="sess-retry",
+            trace_id="trace_test",
+            request_id="req_retry",
+        )
+    )
+
+    assert result["status"] == "tool_fallback"
+    assert result["reason_code"] == "TOOL_RETRYABLE_FAILURE"
+    assert workflow.get("fsm_state") == "FAILED_RETRYABLE"
+
+
 def test_run_tool_chat_executes_cancel_after_confirmation(monkeypatch):
     async def fake_call_commerce(method, path, **kwargs):
         if method == "GET" and path == "/orders/12":
@@ -436,6 +549,27 @@ def test_run_tool_chat_executes_cancel_after_confirmation(monkeypatch):
     assert confirmed["status"] == "ok"
     assert confirmed["reason_code"] == "OK"
     assert "취소가 완료" in confirmed["answer"]["content"]
+
+
+def test_run_tool_chat_records_policy_decision_audit(monkeypatch):
+    audit_calls = []
+
+    monkeypatch.setattr(chat_tools, "append_action_audit", lambda **kwargs: audit_calls.append(kwargs) or True)
+    result = asyncio.run(
+        chat_tools.run_tool_chat(
+            {
+                "session_id": "sess-policy-audit-1",
+                "message": {"role": "user", "content": "환불 조건을 정리해줘"},
+                "client": {"locale": "ko-KR"},
+            },
+            "trace_test",
+            "req_policy_audit",
+        )
+    )
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert any(call.get("action_type") == "POLICY_DECISION" for call in audit_calls)
 
 
 def test_run_tool_chat_blocks_when_confirmation_token_is_wrong(monkeypatch):

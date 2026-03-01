@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
+import re
 from dataclasses import dataclass
 from threading import Lock
 from typing import Any, Dict, Optional
@@ -29,6 +31,7 @@ class ChatStateStoreSettings:
     password: str
     connect_timeout_ms: int
     tenant_id: str
+    log_message_mode: str
 
 
 def _env_bool(name: str, default: str = "false") -> bool:
@@ -36,6 +39,9 @@ def _env_bool(name: str, default: str = "false") -> bool:
 
 
 def _load_settings() -> ChatStateStoreSettings:
+    raw_mode = os.getenv("QS_CHAT_LOG_MESSAGE_MODE", "masked_raw").strip().lower()
+    if raw_mode not in {"masked_raw", "hash_summary"}:
+        raw_mode = "masked_raw"
     return ChatStateStoreSettings(
         enabled=_env_bool("QS_CHAT_STATE_DB_ENABLED", "false"),
         host=os.getenv("QS_CHAT_STATE_DB_HOST", "127.0.0.1").strip(),
@@ -45,11 +51,60 @@ def _load_settings() -> ChatStateStoreSettings:
         password=os.getenv("QS_CHAT_STATE_DB_PASSWORD", "bsl"),
         connect_timeout_ms=max(50, int(os.getenv("QS_CHAT_STATE_DB_CONNECT_TIMEOUT_MS", "200"))),
         tenant_id=os.getenv("BSL_TENANT_ID", "books").strip() or "books",
+        log_message_mode=raw_mode,
     )
 
 
 _SETTINGS = _load_settings()
 _UNSET = object()
+_EMAIL_RE = re.compile(r"\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b", flags=re.IGNORECASE)
+_PHONE_RE = re.compile(r"\b(?:\+?82[-\s]?)?0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4}\b")
+_PAYMENT_TOKEN_RE = re.compile(r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{3,4}\b")
+_ADDRESS_RE = re.compile(
+    r"(?:[가-힣A-Za-z0-9]+(?:시|도|군|구)\s+[가-힣A-Za-z0-9]+\s*(?:로|길)\s*\d+)",
+    flags=re.IGNORECASE,
+)
+_MESSAGE_KEYS = {"message_text", "content", "query", "details", "answer"}
+
+
+def _redact_text(raw: str) -> str:
+    text = str(raw or "")
+
+    def _replace(pattern: re.Pattern[str], label: str, source: str) -> str:
+        replaced, count = pattern.subn(label, source)
+        if count > 0:
+            metrics.inc("chat_pii_redaction_total", {"field_type": label.strip("[]").replace("REDACTED:", "")})
+        return replaced
+
+    text = _replace(_EMAIL_RE, "[REDACTED:EMAIL]", text)
+    text = _replace(_PHONE_RE, "[REDACTED:PHONE]", text)
+    text = _replace(_PAYMENT_TOKEN_RE, "[REDACTED:PAYMENT_ID]", text)
+    text = _replace(_ADDRESS_RE, "[REDACTED:ADDRESS]", text)
+    return text
+
+
+def _hash_with_summary(raw: str, max_summary: int = 120) -> str:
+    digest = hashlib.sha256(str(raw or "").encode("utf-8")).hexdigest()[:16]
+    summary = _redact_text(str(raw or "").strip())
+    if len(summary) > max_summary:
+        summary = summary[:max_summary]
+    return f"[HASH:{digest}] {summary}".strip()
+
+
+def _sanitize_for_logging(value: Any, *, field_name: str = "") -> Any:
+    if isinstance(value, dict):
+        sanitized: Dict[str, Any] = {}
+        for key, item in value.items():
+            safe_key = str(key)
+            sanitized[safe_key] = _sanitize_for_logging(item, field_name=safe_key)
+        return sanitized
+    if isinstance(value, list):
+        return [_sanitize_for_logging(item, field_name=field_name) for item in value]
+    if isinstance(value, str):
+        if _SETTINGS.log_message_mode == "hash_summary" and field_name in _MESSAGE_KEYS:
+            return _hash_with_summary(value)
+        return _redact_text(value)
+    return value
 
 
 def _safe_str(value: Any, max_len: int) -> Optional[str]:
@@ -245,10 +300,24 @@ def upsert_session_state(
                     resolved_pending = existing_pending if pending_action is _UNSET else pending_action
                     resolved_selection = existing_selection if selection is _UNSET else selection
                     resolved_summary = existing_summary if summary_short is _UNSET else _safe_str(summary_short, 1000)
+                    if isinstance(resolved_summary, str):
+                        resolved_summary = _safe_str(_sanitize_for_logging(resolved_summary, field_name="summary_short"), 1000)
 
-                    unresolved_json = None if resolved_unresolved is None else json.dumps(resolved_unresolved, ensure_ascii=False)
-                    pending_json = None if resolved_pending is None else json.dumps(resolved_pending, ensure_ascii=False)
-                    selection_json = None if resolved_selection is None else json.dumps(resolved_selection, ensure_ascii=False)
+                    unresolved_json = (
+                        None
+                        if resolved_unresolved is None
+                        else json.dumps(_sanitize_for_logging(resolved_unresolved), ensure_ascii=False)
+                    )
+                    pending_json = (
+                        None
+                        if resolved_pending is None
+                        else json.dumps(_sanitize_for_logging(resolved_pending), ensure_ascii=False)
+                    )
+                    selection_json = (
+                        None
+                        if resolved_selection is None
+                        else json.dumps(_sanitize_for_logging(resolved_selection), ensure_ascii=False)
+                    )
 
                     cursor.execute(
                         """
@@ -337,7 +406,7 @@ def append_turn_event(
 
     payload_json = None
     if isinstance(payload, dict):
-        payload_json = json.dumps(payload, ensure_ascii=False)
+        payload_json = json.dumps(_sanitize_for_logging(payload), ensure_ascii=False)
 
     try:
         with _lock:
@@ -412,7 +481,8 @@ def append_action_audit(
     safe_result = _safe_str(result, 32) or "RECORDED"
     safe_actor_user = _safe_str(actor_user_id, 64)
     safe_actor_admin = _safe_str(actor_admin_id, 64)
-    safe_target = _safe_str(target_ref, 128)
+    sanitized_target = _sanitize_for_logging(target_ref, field_name="target_ref") if isinstance(target_ref, str) else target_ref
+    safe_target = _safe_str(sanitized_target, 128)
     safe_trace_id = _safe_str(trace_id, 64)
     safe_request_id = _safe_str(request_id, 64)
     safe_reason = _safe_str(reason_code, 64)
@@ -421,8 +491,8 @@ def append_action_audit(
     if not conversation or not safe_action_type or not safe_trace_id or not safe_request_id:
         return False
 
-    auth_json = json.dumps(auth_context or {}, ensure_ascii=False)
-    metadata_json = json.dumps(metadata or {}, ensure_ascii=False)
+    auth_json = json.dumps(_sanitize_for_logging(auth_context or {}), ensure_ascii=False)
+    metadata_json = json.dumps(_sanitize_for_logging(metadata or {}), ensure_ascii=False)
 
     try:
         with _lock:
