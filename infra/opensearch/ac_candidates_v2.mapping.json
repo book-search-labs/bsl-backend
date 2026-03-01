@@ -104,7 +104,7 @@
         "search_analyzer": "ac_auto_search",
         "index_prefixes": {
           "min_chars": 2,
-          "max_chars": 20
+          "max_chars": 19
         },
         "fields": {
           "exact": {

@@ -137,6 +137,9 @@ models/
 ./scripts/mis/run_mis_embed.sh
 ```
 
+`run_mis_embed.sh` sets `MIS_TIMEOUT_MS=5000` by default so ONNX embedding calls do not fail with
+the generic 200ms service timeout.
+
 ### Smoke test
 
 ```bash

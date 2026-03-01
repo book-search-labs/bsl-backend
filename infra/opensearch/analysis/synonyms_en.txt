@@ -1,0 +1,2 @@
+# Optional English synonyms (synonym_graph format).
+# Example: kid,children,youth

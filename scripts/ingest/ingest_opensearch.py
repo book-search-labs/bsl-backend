@@ -48,7 +48,7 @@ ENABLE_CHUNK_INDEX = os.environ.get("ENABLE_CHUNK_INDEX", "0") == "1"
 
 EMBED_PROVIDER = os.environ.get("EMBED_PROVIDER", "mis").lower()
 MIS_URL = os.environ.get("MIS_URL", "").rstrip("/")
-EMBED_MODEL = os.environ.get("EMBED_MODEL", "")
+EMBED_MODEL = os.environ.get("EMBED_MODEL", "multilingual-e5-small")
 EMBED_BATCH_SIZE = int(os.environ.get("EMBED_BATCH_SIZE", "32"))
 EMBED_TIMEOUT_SEC = float(os.environ.get("EMBED_TIMEOUT_SEC", "5"))
 EMBED_MAX_RETRY = int(os.environ.get("EMBED_MAX_RETRY", "3"))

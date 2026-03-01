@@ -23,7 +23,7 @@ bff:
       timeout-ms: ${SS_TIMEOUT_MS:400}
     autocomplete-service:
       base-url: ${AC_BASE_URL:http://localhost:8081}
-      timeout-ms: ${AC_TIMEOUT_MS:200}
+      timeout-ms: ${AC_TIMEOUT_MS:500}
   outbox:
     enabled: ${BFF_OUTBOX_ENABLED:false}
 

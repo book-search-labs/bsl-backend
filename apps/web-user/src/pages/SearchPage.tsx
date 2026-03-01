@@ -622,10 +622,15 @@ export default function SearchPage() {
           </div>
         </div>
 
-        <form className="search-form-inline search-form--page" onSubmit={handleSubmit}>
+        <form className="search-form-inline search-form--page" onSubmit={handleSubmit} autoComplete="off">
           <input
             className="form-control form-control-lg search-input"
-            type="search"
+            type="text"
+            name="page-search-input"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
             placeholder="도서, 저자, 키워드를 입력하세요"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}

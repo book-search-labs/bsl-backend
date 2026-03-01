@@ -95,8 +95,7 @@ public class OpenSearchGateway {
             List.of(
                 Map.of("field_value_factor", Map.of("field", "weight", "factor", WEIGHT_FACTOR, "missing", 0)),
                 Map.of("field_value_factor", Map.of("field", "ctr_7d", "factor", CTR_FACTOR, "missing", 0)),
-                Map.of("field_value_factor", Map.of("field", "popularity_7d", "factor", POPULARITY_FACTOR, "missing", 0)),
-                Map.of("gauss", Map.of("last_seen_at", Map.of("origin", "now", "scale", "14d", "decay", 0.5d)))
+                Map.of("field_value_factor", Map.of("field", "popularity_7d", "factor", POPULARITY_FACTOR, "missing", 0))
             )
         );
 
@@ -140,8 +139,7 @@ public class OpenSearchGateway {
             List.of(
                 Map.of("field_value_factor", Map.of("field", "weight", "factor", WEIGHT_FACTOR, "missing", 0)),
                 Map.of("field_value_factor", Map.of("field", "ctr_7d", "factor", CTR_FACTOR, "missing", 0)),
-                Map.of("field_value_factor", Map.of("field", "popularity_7d", "factor", POPULARITY_FACTOR, "missing", 0)),
-                Map.of("gauss", Map.of("last_seen_at", Map.of("origin", "now", "scale", "14d", "decay", 0.5d)))
+                Map.of("field_value_factor", Map.of("field", "popularity_7d", "factor", POPULARITY_FACTOR, "missing", 0))
             )
         );
 

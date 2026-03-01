@@ -1,0 +1,2 @@
+# Optional Korean synonyms (synonym_graph format).
+# Example: 아동,어린이,키즈

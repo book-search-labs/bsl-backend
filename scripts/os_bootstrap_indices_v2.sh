@@ -81,6 +81,18 @@ for i in $(seq 1 30); do
   sleep 1
 done
 
+plugins="$(curl -fsS "$OS_URL/_cat/plugins?h=component" || true)"
+if ! printf '%s\n' "$plugins" | grep -qx "analysis-nori"; then
+  echo "Missing OpenSearch plugin: analysis-nori" >&2
+  echo "Rebuild opensearch image with infra/docker/opensearch/Dockerfile and restart." >&2
+  exit 1
+fi
+if ! printf '%s\n' "$plugins" | grep -qx "analysis-icu"; then
+  echo "Missing OpenSearch plugin: analysis-icu" >&2
+  echo "Rebuild opensearch image with infra/docker/opensearch/Dockerfile and restart." >&2
+  exit 1
+fi
+
 index_exists() {
   local index_name="$1"
   local code

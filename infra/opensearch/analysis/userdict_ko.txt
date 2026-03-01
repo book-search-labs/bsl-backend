@@ -1,0 +1,2 @@
+# Optional nori user dictionary.
+# Format example: 도서명,NNG

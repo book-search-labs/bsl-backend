@@ -41,6 +41,7 @@ services:
     volumes:
       - opensearch-data:/usr/share/opensearch/data
       - opensearch-backup:/usr/share/opensearch/backup
+      - ./infra/opensearch/analysis:/usr/share/opensearch/config/analysis:ro
 
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.11.1

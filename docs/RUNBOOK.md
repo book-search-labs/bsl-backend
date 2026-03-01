@@ -357,6 +357,18 @@ curl http://localhost:9200
 curl -s http://localhost:9200/_cat/aliases?v
 ```
 
+### v2 mapping prerequisites
+- OpenSearch plugins: `analysis-nori`, `analysis-icu`
+- Required files (mounted by `compose.yaml`):  
+  `infra/opensearch/analysis/userdict_ko.txt`  
+  `infra/opensearch/analysis/synonyms_ko.txt`  
+  `infra/opensearch/analysis/synonyms_en.txt`
+
+Verify plugins:
+```bash
+curl -s http://localhost:9200/_cat/plugins?v | rg 'analysis-(nori|icu)'
+```
+
 ### If bootstrap alias update returns 404
 The alias cleanup in `scripts/os_bootstrap_indices_v1_1.sh` removes aliases by index pattern
 (`books_doc_v1_*`, `books_vec_v*`, etc.). If an alias currently points to an index outside those

@@ -577,6 +577,61 @@
   border-bottom: 1px solid rgba(11, 79, 108, 0.12);
 }
 
+.search-suggestion-header--with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.search-suggestion-clear {
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0;
+}
+
+.search-suggestion-clear:hover,
+.search-suggestion-clear:focus {
+  color: var(--brand-strong);
+  text-decoration: underline;
+}
+
+.search-suggestion--recent {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.search-suggestion-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-weight: 600;
+}
+
+.search-suggestion-delete {
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.search-suggestion-delete:hover,
+.search-suggestion-delete:focus {
+  color: #ad2f2f;
+}
+
 .search-suggestion.active,
 .search-suggestion:focus {
   background: rgba(11, 79, 108, 0.12);

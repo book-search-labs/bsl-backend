@@ -296,6 +296,23 @@ export default function AppShell() {
     })
   }, [])
 
+  const removeRecentQuery = useCallback((value: string) => {
+    const trimmed = value.trim()
+    if (!trimmed) return
+    setRecentQueries((prev) => {
+      const next = prev.filter((item) => item.toLowerCase() !== trimmed.toLowerCase())
+      saveRecentQueries(next)
+      return next
+    })
+    setActiveIndex(-1)
+  }, [])
+
+  const clearRecentQueries = useCallback(() => {
+    setRecentQueries([])
+    saveRecentQueries([])
+    setActiveIndex(-1)
+  }, [])
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const trimmed = query.trim()
@@ -486,7 +503,12 @@ export default function AppShell() {
                 </span>
               </Link>
               <div className="search-shell">
-                <form ref={formRef} className="search-form search-form--header" onSubmit={handleSubmit}>
+                <form
+                  ref={formRef}
+                  className="search-form search-form--header"
+                  onSubmit={handleSubmit}
+                  autoComplete="off"
+                >
                   <label className="visually-hidden" htmlFor="global-search">
                     Search books
                   </label>
@@ -494,7 +516,12 @@ export default function AppShell() {
                     <input
                       id="global-search"
                       className="form-control form-control-lg"
-                      type="search"
+                      type="text"
+                      name="global-search-input"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
                       placeholder="도서, 저자, 시리즈, ISBN을 검색하세요"
                       value={query}
                       onChange={handleInputChange}
@@ -529,26 +556,53 @@ export default function AppShell() {
                           <div className="search-suggestion-group">
                             {!hasQuery && recentItems.length > 0 ? (
                               <>
-                                <div className="search-suggestion-header">최근 검색어</div>
+                                <div className="search-suggestion-header search-suggestion-header--with-action">
+                                  <span>최근 검색어</span>
+                                  <button
+                                    type="button"
+                                    className="search-suggestion-clear"
+                                    onMouseDown={(event) => event.preventDefault()}
+                                    onClick={clearRecentQueries}
+                                  >
+                                    전체 삭제
+                                  </button>
+                                </div>
                                 {recentItems.map((item, index) => {
                                   const globalIndex = index
                                   const isActive = globalIndex === activeIndex
                                   const itemId = `global-search-option-${globalIndex}`
                                   return (
-                                    <button
+                                    <div
                                       key={`recent-${item.text}-${index}`}
-                                      id={itemId}
-                                      type="button"
-                                      role="option"
-                                      aria-selected={isActive}
                                       className={`list-group-item list-group-item-action search-suggestion${
                                         isActive ? ' active' : ''
-                                      }`}
-                                      onClick={() => handleSelectSuggestion(item)}
+                                      } search-suggestion--recent`}
                                     >
-                                      <span className="search-suggestion-text">{item.text}</span>
-                                      <span className="search-suggestion-meta">최근</span>
-                                    </button>
+                                      <button
+                                        id={itemId}
+                                        type="button"
+                                        role="option"
+                                        aria-selected={isActive}
+                                        className={`search-suggestion-main${isActive ? ' active' : ''}`}
+                                        onClick={() => handleSelectSuggestion(item)}
+                                      >
+                                        <span className="search-suggestion-text">{item.text}</span>
+                                        <span className="search-suggestion-meta">최근</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="search-suggestion-delete"
+                                        aria-label={`최근 검색어 ${item.text} 삭제`}
+                                        onMouseDown={(event) => event.preventDefault()}
+                                        onClick={(event) => {
+                                          event.preventDefault()
+                                          event.stopPropagation()
+                                          removeRecentQuery(item.text)
+                                        }}
+                                      >
+                                        삭제
+                                      </button>
+                                    </div>
                                   )
                                 })}
                               </>
