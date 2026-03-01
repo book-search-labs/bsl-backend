@@ -398,6 +398,47 @@ def _looks_like_reference_query(query: str, *, has_selection_state: bool) -> boo
     return has_selection_state
 
 
+def _looks_like_selection_followup_query(query: str) -> bool:
+    q = _normalize_text(query)
+    if not q:
+        return False
+    followup_tokens = [
+        "다른 출판사",
+        "다른 판본",
+        "다른 버전",
+        "더 쉬운",
+        "쉬운 버전",
+        "더 어려운",
+        "어려운 버전",
+        "비슷한 거",
+        "유사한",
+        "other publisher",
+        "easier version",
+        "harder version",
+    ]
+    return any(token in q for token in followup_tokens)
+
+
+def _selection_seed_candidate(selection_state: dict[str, Any]) -> dict[str, Any] | None:
+    candidates = selection_state.get("last_candidates") if isinstance(selection_state.get("last_candidates"), list) else []
+    selected_book = selection_state.get("selected_book") if isinstance(selection_state.get("selected_book"), dict) else None
+    selected_index = selection_state.get("selected_index")
+    if isinstance(selected_book, dict) and str(selected_book.get("title") or "").strip():
+        return selected_book
+    if isinstance(selected_index, int) and selected_index > 0:
+        for candidate in candidates:
+            if not isinstance(candidate, dict):
+                continue
+            if int(candidate.get("index") or 0) == selected_index:
+                return candidate
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        if str(candidate.get("title") or "").strip():
+            return candidate
+    return None
+
+
 def _build_selection_candidates(candidates: list[dict[str, Any]], *, max_items: int = 5) -> list[dict[str, Any]]:
     built: list[dict[str, Any]] = []
     for idx, item in enumerate(candidates[:max_items], start=1):
@@ -1822,10 +1863,27 @@ async def _handle_book_recommendation(
     user_id: str | None,
     trace_id: str,
     request_id: str,
+    seed_book: dict[str, Any] | None = None,
+    followup_query: str | None = None,
 ) -> dict[str, Any]:
-    book_slots = extract_book_query_slots(query)
-    seed_query = _extract_recommendation_seed_query(query, book_slots=book_slots)
-    lookup_query = canonical_book_query(book_slots, seed_query or query) or query
+    raw_slots = extract_book_query_slots(query)
+    context_seed_book = seed_book if isinstance(seed_book, dict) else {}
+    context_seed_isbn = normalize_isbn(str(context_seed_book.get("isbn") or "").strip())
+    context_seed_title = str(context_seed_book.get("title") or "").strip()
+    effective_slots = BookQuerySlots(
+        isbn=raw_slots.isbn or context_seed_isbn,
+        title=raw_slots.title or (context_seed_title or None),
+        series=raw_slots.series,
+        volume=raw_slots.volume,
+        format=raw_slots.format,
+    )
+    seed_query = _extract_recommendation_seed_query(query, book_slots=effective_slots)
+    lookup_query = canonical_book_query(effective_slots, seed_query or query) or query
+    followup_text = str(followup_query or "").strip()
+    if context_seed_book and followup_text:
+        seed_anchor = context_seed_title or str(effective_slots.title or effective_slots.isbn or lookup_query).strip()
+        if seed_anchor:
+            lookup_query = f"{seed_anchor} {followup_text}".strip()
     candidates = await retrieve_candidates(lookup_query, trace_id, request_id, top_k=10)
 
     if not candidates and seed_query and seed_query != query:
@@ -1839,11 +1897,11 @@ async def _handle_book_recommendation(
             "추천 후보를 찾지 못했습니다. 도서 제목/저자/ISBN 중 하나를 함께 입력해 주세요.",
             tool_name="book_recommend",
             endpoint="OS /books_doc_read/_search",
-            source_snippet=f"seed_query={lookup_query}, slots={slots_to_dict(book_slots)}, candidate_count=0",
+            source_snippet=f"seed_query={lookup_query}, slots={slots_to_dict(effective_slots)}, candidate_count=0",
         )
 
-    normalized_seed = _normalize_title_for_compare(seed_query or str(book_slots.title or ""))
-    seed_isbn = book_slots.isbn
+    normalized_seed = _normalize_title_for_compare(seed_query or str(effective_slots.title or context_seed_title))
+    seed_isbn = effective_slots.isbn
     filtered: list[dict[str, Any]] = []
     seed_hit: dict[str, Any] | None = None
     for candidate in candidates:
@@ -1871,7 +1929,7 @@ async def _handle_book_recommendation(
             tool_name="book_recommend",
             endpoint="OS /books_doc_read/_search",
             source_snippet=(
-                f"seed_query={lookup_query}, slots={slots_to_dict(book_slots)}, "
+                f"seed_query={lookup_query}, slots={slots_to_dict(effective_slots)}, "
                 f"candidate_count={len(candidates)}, filtered_count={len(filtered)}"
             ),
         )
@@ -1879,10 +1937,10 @@ async def _handle_book_recommendation(
     seed_title = ""
     if isinstance(seed_hit, dict):
         seed_title = str(seed_hit.get("title") or "").strip()
-    elif isinstance(book_slots.title, str) and book_slots.title:
-        seed_title = book_slots.title
-    elif isinstance(book_slots.series, str) and book_slots.series and isinstance(book_slots.volume, int) and book_slots.volume > 0:
-        seed_title = f"{book_slots.series} {book_slots.volume}권"
+    elif isinstance(effective_slots.title, str) and effective_slots.title:
+        seed_title = effective_slots.title
+    elif isinstance(effective_slots.series, str) and effective_slots.series and isinstance(effective_slots.volume, int) and effective_slots.volume > 0:
+        seed_title = f"{effective_slots.series} {effective_slots.volume}권"
     elif seed_query:
         seed_title = str(seed_query).strip()
     prefix = f"'{seed_title}' 기준 추천 도서입니다.\n" if seed_title else "요청하신 기준으로 추천 도서를 정리했습니다.\n"
@@ -1904,7 +1962,7 @@ async def _handle_book_recommendation(
         content,
         tool_name="book_recommend",
         endpoint="OS /books_doc_read/_search",
-        source_snippet=f"seed_query={lookup_query}, slots={slots_to_dict(book_slots)}, candidate_count={len(candidates)}",
+        source_snippet=f"seed_query={lookup_query}, slots={slots_to_dict(effective_slots)}, candidate_count={len(candidates)}",
     )
 
 
@@ -3027,6 +3085,7 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
     selection_state = _selection_state_from_db(session_id)
     has_selection_state = isinstance(selection_state, dict)
     is_reference_query = _looks_like_reference_query(query, has_selection_state=has_selection_state)
+    is_selection_followup_query = _looks_like_selection_followup_query(query)
     intent = _detect_intent(query)
     order_ref = _extract_order_ref(query)
     has_order_ref = order_ref.order_id is not None or order_ref.order_no is not None
@@ -3126,6 +3185,24 @@ async def run_tool_chat(request: dict[str, Any], trace_id: str, request_id: str)
             endpoint="STATE / chat_session_state.selection",
             source_snippet=f"session_id={session_id}, selected_index={selected_index}",
         )
+
+    if decision.route == ROUTE_ANSWER and intent.name == "BOOK_RECOMMEND":
+        has_explicit_book_anchor = bool(book_slots.isbn or book_slots.title)
+        if is_selection_followup_query and isinstance(selection_state, dict) and not has_explicit_book_anchor:
+            seed_candidate = _selection_seed_candidate(selection_state)
+            if isinstance(seed_candidate, dict):
+                metrics.inc("chat_reference_resolve_total", {"type": "selection_followup", "result": "resolved"})
+                return await _handle_book_recommendation(
+                    query,
+                    session_id=session_id,
+                    user_id=user_id,
+                    trace_id=trace_id,
+                    request_id=request_id,
+                    seed_book=seed_candidate,
+                    followup_query=query,
+                )
+            metrics.inc("chat_reference_resolve_total", {"type": "selection_followup", "result": "unresolved"})
+            metrics.inc("chat_reference_unresolved_total")
 
     if intent.name == "NONE":
         return None

@@ -512,6 +512,36 @@
           "expected": {"status": "forbidden", "reason_code": "AUTH_FORBIDDEN"}
         }
       ]
+    },
+    {
+      "id": "S21_recommend_followup_with_selected_seed",
+      "candidate_sequences": {
+        "책 추천해줘": [
+          {"doc_id": "doc-1", "title": "추천 도서 A", "author": "저자A", "score": 0.91},
+          {"doc_id": "doc-2", "title": "추천 도서 B", "author": "저자B", "score": 0.82}
+        ],
+        "추천 도서 B 다른 출판사 책 추천해줘": [
+          {"doc_id": "doc-2", "title": "추천 도서 B", "author": "저자B", "score": 0.87},
+          {"doc_id": "doc-3", "title": "다른 출판사 추천 도서", "author": "저자C", "score": 0.79}
+        ]
+      },
+      "turns": [
+        {
+          "query": "책 추천해줘",
+          "user_id": null,
+          "expected": {"status": "ok", "reason_code": "OK"}
+        },
+        {
+          "query": "2번째로 할게",
+          "user_id": null,
+          "expected": {"status": "ok", "reason_code": "OK"}
+        },
+        {
+          "query": "다른 출판사 책 추천해줘",
+          "user_id": null,
+          "expected": {"status": "ok", "reason_code": "OK"}
+        }
+      ]
     }
   ]
 }
