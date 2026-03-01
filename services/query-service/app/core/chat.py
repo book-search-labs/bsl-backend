@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import json
 import os
@@ -541,6 +542,235 @@ def _admission_block_reason(payload: Dict[str, Any]) -> Optional[str]:
     if _llm_max_completion_tokens_per_turn() <= 0:
         return "LLM_COMPLETION_BUDGET_EXCEEDED"
     return None
+
+
+def _chat_engine_mode() -> str:
+    raw = os.getenv("QS_CHAT_ENGINE_MODE", "agent").strip().lower()
+    if raw in {"legacy", "agent", "canary", "shadow"}:
+        return raw
+    return "agent"
+
+
+def _chat_engine_canary_percent() -> int:
+    return min(100, max(0, int(os.getenv("QS_CHAT_ENGINE_CANARY_PERCENT", "5"))))
+
+
+def _chat_rollout_gate_window_sec() -> int:
+    return max(30, int(os.getenv("QS_CHAT_ROLLOUT_GATE_WINDOW_SEC", "300")))
+
+
+def _chat_rollout_gate_min_samples() -> int:
+    return max(1, int(os.getenv("QS_CHAT_ROLLOUT_GATE_MIN_SAMPLES", "20")))
+
+
+def _chat_rollout_gate_fail_ratio_threshold() -> float:
+    return min(1.0, max(0.0, float(os.getenv("QS_CHAT_ROLLOUT_GATE_FAIL_RATIO_THRESHOLD", "0.2"))))
+
+
+def _chat_rollout_rollback_cooldown_sec() -> int:
+    return max(60, int(os.getenv("QS_CHAT_ROLLOUT_ROLLBACK_COOLDOWN_SEC", "60")))
+
+
+def _chat_rollout_auto_rollback_enabled() -> bool:
+    return str(os.getenv("QS_CHAT_ROLLOUT_AUTO_ROLLBACK_ENABLED", "1")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _chat_rollout_rollback_cache_key() -> str:
+    return "chat:rollout:rollback"
+
+
+def _chat_rollout_gate_cache_key(engine: str) -> str:
+    return f"chat:rollout:gate:{engine}"
+
+
+def _chat_engine_bucket(request: Dict[str, Any], request_id: str) -> int:
+    session_id = request.get("session_id") if isinstance(request.get("session_id"), str) else ""
+    user_id = _extract_user_id(request) or ""
+    seed = f"{session_id}:{user_id}:{request_id}"
+    digest = hashlib.sha256(seed.encode("utf-8")).hexdigest()
+    return int(digest[:8], 16) % 100
+
+
+def _get_active_rollout_rollback() -> Optional[Dict[str, Any]]:
+    cached = _CACHE.get_json(_chat_rollout_rollback_cache_key())
+    if not isinstance(cached, dict):
+        return None
+    until = int(cached.get("until_ts") or 0)
+    now_ts = int(time.time())
+    if until <= now_ts:
+        return None
+    return {
+        "until_ts": until,
+        "reason": str(cached.get("reason") or "unknown"),
+        "fail_ratio": float(cached.get("fail_ratio") or 0.0),
+    }
+
+
+def _set_rollout_rollback(reason: str, fail_ratio: float, total: int, failures: int) -> None:
+    cooldown = _chat_rollout_rollback_cooldown_sec()
+    until_ts = int(time.time()) + cooldown
+    event_request_id = f"rollout-rollback-{int(time.time() * 1000)}"
+    _CACHE.set_json(
+        _chat_rollout_rollback_cache_key(),
+        {
+            "until_ts": until_ts,
+            "reason": reason,
+            "fail_ratio": float(fail_ratio),
+            "total": int(total),
+            "failures": int(failures),
+            "updated_at": int(time.time()),
+        },
+        ttl=cooldown,
+    )
+    append_action_audit(
+        conversation_id="rollout:chat",
+        action_type="CHAT_ENGINE_ROLLBACK",
+        action_state="EXECUTED",
+        decision="ALLOW",
+        result="SUCCESS",
+        actor_user_id=None,
+        actor_admin_id="system",
+        target_ref="chat.engine",
+        auth_context={"mode": _chat_engine_mode(), "source": "auto_gate"},
+        trace_id="rollout",
+        request_id=event_request_id,
+        reason_code=reason,
+        idempotency_key=event_request_id,
+        metadata={"fail_ratio": fail_ratio, "total": total, "failures": failures, "until_ts": until_ts},
+    )
+    metrics.inc("chat_rollout_rollback_total", {"reason": reason})
+
+
+def _select_rollout_engine(request: Dict[str, Any], request_id: str) -> Dict[str, Any]:
+    mode = _chat_engine_mode()
+    rollback = _get_active_rollout_rollback()
+    if rollback is not None:
+        metrics.inc("chat_rollout_traffic_ratio", {"engine": "legacy"})
+        return {
+            "mode": mode,
+            "effective_engine": "legacy",
+            "shadow_enabled": False,
+            "reason": "auto_rollback",
+            "rollback": rollback,
+        }
+
+    if mode == "legacy":
+        metrics.inc("chat_rollout_traffic_ratio", {"engine": "legacy"})
+        return {"mode": mode, "effective_engine": "legacy", "shadow_enabled": False, "reason": "fixed"}
+    if mode == "agent":
+        metrics.inc("chat_rollout_traffic_ratio", {"engine": "agent"})
+        return {"mode": mode, "effective_engine": "agent", "shadow_enabled": False, "reason": "fixed"}
+    if mode == "canary":
+        bucket = _chat_engine_bucket(request, request_id)
+        threshold = _chat_engine_canary_percent()
+        engine = "agent" if bucket < threshold else "legacy"
+        metrics.inc("chat_rollout_traffic_ratio", {"engine": engine})
+        return {
+            "mode": mode,
+            "effective_engine": engine,
+            "shadow_enabled": False,
+            "reason": "canary",
+            "bucket": bucket,
+            "threshold": threshold,
+        }
+    # shadow mode: primary legacy, secondary simulated agent compare
+    metrics.inc("chat_rollout_traffic_ratio", {"engine": "legacy"})
+    return {"mode": "shadow", "effective_engine": "legacy", "shadow_enabled": True, "reason": "shadow"}
+
+
+def _is_rollout_failure(response: Dict[str, Any]) -> bool:
+    status = str(response.get("status") or "").strip().lower()
+    reason = str(response.get("reason_code") or "").strip().upper()
+    if status in {"error"}:
+        return True
+    failure_reasons = {
+        "PROVIDER_TIMEOUT",
+        "TOOL_UNAVAILABLE",
+        "LLM_NO_CITATIONS",
+        "LLM_LOW_CITATION_COVERAGE",
+        "OUTPUT_GUARD_FORBIDDEN_CLAIM",
+        "DENY_CLAIM:NO_TOOL_RESULT",
+    }
+    return reason in failure_reasons
+
+
+def _record_rollout_gate(engine: str, response: Dict[str, Any]) -> None:
+    if engine != "agent":
+        return
+    if not _chat_rollout_auto_rollback_enabled():
+        return
+    gate_key = _chat_rollout_gate_cache_key(engine)
+    now_ts = int(time.time())
+    raw = _CACHE.get_json(gate_key)
+    window_start = now_ts
+    total = 0
+    failures = 0
+    if isinstance(raw, dict):
+        window_start = int(raw.get("window_start") or now_ts)
+        total = int(raw.get("total") or 0)
+        failures = int(raw.get("failures") or 0)
+    if now_ts - window_start > _chat_rollout_gate_window_sec():
+        window_start = now_ts
+        total = 0
+        failures = 0
+    total += 1
+    if _is_rollout_failure(response):
+        failures += 1
+    fail_ratio = float(failures) / float(max(1, total))
+    _CACHE.set_json(
+        gate_key,
+        {
+            "window_start": window_start,
+            "total": total,
+            "failures": failures,
+            "fail_ratio": fail_ratio,
+            "updated_at": now_ts,
+        },
+        ttl=max(_chat_rollout_gate_window_sec() * 2, 120),
+    )
+    metrics.set("chat_rollout_failure_ratio", {"engine": engine}, value=fail_ratio)
+    gate_result = "pass"
+    if total >= _chat_rollout_gate_min_samples() and fail_ratio > _chat_rollout_gate_fail_ratio_threshold():
+        gate_result = "rollback"
+        _set_rollout_rollback("gate_failure_ratio", fail_ratio, total, failures)
+    metrics.inc("chat_rollout_gate_total", {"engine": engine, "result": gate_result})
+
+
+async def _shadow_agent_signature(request: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, str]:
+    validation_reason = _validate_chat_request(request)
+    if validation_reason:
+        return {"status": "fallback", "reason_code": validation_reason}
+    prepared = await _prepare_chat(request, trace_id, request_id, session_id=None, user_id=None)
+    if not prepared.get("ok"):
+        response = prepared.get("response") if isinstance(prepared.get("response"), dict) else {}
+        reason_code = str(response.get("reason_code") or str(prepared.get("reason") or "RAG_NO_CHUNKS"))
+        return {"status": "fallback", "reason_code": reason_code}
+    payload = _build_llm_payload(
+        request,
+        trace_id,
+        request_id,
+        str(prepared.get("query") or ""),
+        list(prepared.get("selected") or []),
+    )
+    admission_reason = _admission_block_reason(payload)
+    if admission_reason:
+        return {"status": "fallback", "reason_code": admission_reason}
+    return {"status": "ok", "reason_code": "SHADOW_SIMULATED_OK"}
+
+
+def _record_shadow_diff(primary_response: Dict[str, Any], shadow_signature: Dict[str, str]) -> None:
+    primary_status = "ok" if str(primary_response.get("status") or "").lower() == "ok" else "fallback"
+    primary_reason = str(primary_response.get("reason_code") or "")
+    shadow_status = str(shadow_signature.get("status") or "fallback")
+    shadow_reason = str(shadow_signature.get("reason_code") or "UNKNOWN")
+    if primary_status == shadow_status:
+        metrics.inc("chat_rollout_shadow_diff_total", {"result": "match"})
+    else:
+        metrics.inc("chat_rollout_shadow_diff_total", {"result": "diff"})
+    if primary_reason == shadow_reason:
+        metrics.inc("chat_rollout_shadow_reason_total", {"result": "match"})
+    else:
+        metrics.inc("chat_rollout_shadow_reason_total", {"result": "diff"})
 
 
 def _llm_stream_enabled() -> bool:
@@ -1776,7 +2006,13 @@ async def _prepare_chat(
     }
 
 
-async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
+async def _run_chat_impl(
+    request: Dict[str, Any],
+    trace_id: str,
+    request_id: str,
+    *,
+    allow_tools: bool,
+) -> Dict[str, Any]:
     user_id = _extract_user_id(request)
     session_id = _resolve_session_id(request, user_id)
     query_text = _extract_query_text(request)
@@ -1807,7 +2043,7 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
             user_id=user_id,
         )
         return response
-    tool_response = await run_tool_chat(request, trace_id, request_id)
+    tool_response = await run_tool_chat(request, trace_id, request_id) if allow_tools else None
     if tool_response is not None:
         _reset_fallback_count(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
         _clear_unresolved_context(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
@@ -1998,7 +2234,13 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
     return response
 
 
-async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: str) -> AsyncIterator[str]:
+async def _run_chat_stream_impl(
+    request: Dict[str, Any],
+    trace_id: str,
+    request_id: str,
+    *,
+    allow_tools: bool,
+) -> AsyncIterator[str]:
     user_id = _extract_user_id(request)
     session_id = _resolve_session_id(request, user_id)
     query_text = _extract_query_text(request)
@@ -2061,7 +2303,7 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
         metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
         metrics.inc("chat_requests_total", {"decision": "fallback"})
         return
-    tool_response = await run_tool_chat(request, trace_id, request_id)
+    tool_response = await run_tool_chat(request, trace_id, request_id) if allow_tools else None
     if tool_response is not None:
         _reset_fallback_count(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
         _clear_unresolved_context(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
@@ -2716,6 +2958,48 @@ async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: st
         },
     )
     metrics.inc("chat_requests_total", {"decision": "ok"})
+
+
+async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
+    rollout = _select_rollout_engine(request, request_id)
+    effective_engine = str(rollout.get("effective_engine") or "agent")
+    allow_tools = effective_engine == "agent"
+    response = await _run_chat_impl(
+        request,
+        trace_id,
+        request_id,
+        allow_tools=allow_tools,
+    )
+    _record_rollout_gate(effective_engine, response)
+    if bool(rollout.get("shadow_enabled")):
+        try:
+            shadow_signature = await _shadow_agent_signature(request, trace_id, f"{request_id}:shadow")
+            _record_shadow_diff(response, shadow_signature)
+        except Exception:
+            metrics.inc("chat_rollout_shadow_diff_total", {"result": "error"})
+    return response
+
+
+async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: str) -> AsyncIterator[str]:
+    rollout = _select_rollout_engine(request, request_id)
+    effective_engine = str(rollout.get("effective_engine") or "agent")
+    allow_tools = effective_engine == "agent"
+    if bool(rollout.get("shadow_enabled")):
+        async def _shadow_probe() -> None:
+            try:
+                await _shadow_agent_signature(request, trace_id, f"{request_id}:shadow")
+                metrics.inc("chat_rollout_shadow_diff_total", {"result": "stream_observed"})
+            except Exception:
+                metrics.inc("chat_rollout_shadow_diff_total", {"result": "error"})
+
+        asyncio.create_task(_shadow_probe())
+    async for event in _run_chat_stream_impl(
+        request,
+        trace_id,
+        request_id,
+        allow_tools=allow_tools,
+    ):
+        yield event
 
 
 async def explain_chat_rag(request: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
