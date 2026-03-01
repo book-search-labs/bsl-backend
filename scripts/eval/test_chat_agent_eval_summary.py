@@ -82,3 +82,21 @@ def test_main_writes_summary_reports(tmp_path, monkeypatch):
     assert reports
     loaded = json.loads(reports[-1].read_text(encoding="utf-8"))
     assert loaded["gate"]["pass"] is True
+
+
+def test_evaluate_freshness_flags_stale_report():
+    module = _load_module()
+    summary = {
+        "recommend": {
+            "present": True,
+            "gate_pass": True,
+            "generated_at": "2000-01-01T00:00:00+00:00",
+            "failures": [],
+        },
+        "rollout": {"present": False, "gate_pass": None, "generated_at": None, "failures": []},
+        "semantic_cache": {"present": False, "gate_pass": None, "generated_at": None, "failures": []},
+        "regression_suite": {"present": False, "gate_pass": None, "generated_at": None, "failures": []},
+    }
+    failures = module.evaluate_freshness(summary, max_age_minutes=5)
+    assert len(failures) == 1
+    assert "stale report" in failures[0]

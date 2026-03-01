@@ -77,6 +77,43 @@ def evaluate_overall(summary: dict[str, Any], *, require_all: bool) -> tuple[boo
     return overall_pass, failures
 
 
+def _parse_iso_datetime(text: Any) -> datetime | None:
+    if not isinstance(text, str):
+        return None
+    raw = text.strip()
+    if not raw:
+        return None
+    if raw.endswith("Z"):
+        raw = raw[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(raw)
+    except Exception:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def evaluate_freshness(summary: dict[str, Any], *, max_age_minutes: int) -> list[str]:
+    if max_age_minutes <= 0:
+        return []
+    failures: list[str] = []
+    now = datetime.now(timezone.utc)
+    max_age_sec = max_age_minutes * 60
+    for name in sorted(_COMPONENTS.keys()):
+        component = summary.get(name) if isinstance(summary.get(name), dict) else {}
+        if not bool(component.get("present")):
+            continue
+        generated_at = _parse_iso_datetime(component.get("generated_at"))
+        if generated_at is None:
+            failures.append(f"{name}: invalid generated_at")
+            continue
+        age_sec = (now - generated_at).total_seconds()
+        if age_sec > float(max_age_sec):
+            failures.append(f"{name}: stale report age_sec={int(age_sec)} > max_age_sec={int(max_age_sec)}")
+    return failures
+
+
 def render_markdown(report: dict[str, Any]) -> str:
     components = report.get("components") if isinstance(report.get("components"), dict) else {}
     gate = report.get("gate") if isinstance(report.get("gate"), dict) else {}
@@ -115,6 +152,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--out", default="data/eval/reports")
     parser.add_argument("--prefix", default="chat_agent_eval_summary")
     parser.add_argument("--require-all", action="store_true")
+    parser.add_argument("--max-age-minutes", type=int, default=0)
     parser.add_argument("--gate", action="store_true")
     parser.add_argument("--write-baseline", default="")
     return parser.parse_args()
@@ -125,6 +163,10 @@ def main() -> int:
     reports_dir = Path(args.reports_dir)
     components = summarize_components(reports_dir)
     overall_pass, failures = evaluate_overall(components, require_all=bool(args.require_all))
+    freshness_failures = evaluate_freshness(components, max_age_minutes=max(0, int(args.max_age_minutes)))
+    if freshness_failures:
+        overall_pass = False
+        failures.extend(freshness_failures)
 
     report = {
         "version": "v1",
@@ -135,6 +177,7 @@ def main() -> int:
             "pass": overall_pass,
             "failures": failures,
             "require_all": bool(args.require_all),
+            "max_age_minutes": max(0, int(args.max_age_minutes)),
         },
     }
 

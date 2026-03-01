@@ -325,10 +325,12 @@ if [ "${RUN_CHAT_AGENT_SUMMARY_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_AGENT_SUMMARY_REPORTS_DIR="${CHAT_AGENT_SUMMARY_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
     CHAT_AGENT_SUMMARY_REQUIRE_ALL="${CHAT_AGENT_SUMMARY_REQUIRE_ALL:-0}"
+    CHAT_AGENT_SUMMARY_MAX_AGE_MINUTES="${CHAT_AGENT_SUMMARY_MAX_AGE_MINUTES:-0}"
     CHAT_AGENT_SUMMARY_ARGS=(
       "$ROOT_DIR/scripts/eval/chat_agent_eval_summary.py"
       --reports-dir "$CHAT_AGENT_SUMMARY_REPORTS_DIR"
       --out "$CHAT_AGENT_SUMMARY_REPORTS_DIR"
+      --max-age-minutes "$CHAT_AGENT_SUMMARY_MAX_AGE_MINUTES"
       --gate
     )
     if [ "$CHAT_AGENT_SUMMARY_REQUIRE_ALL" = "1" ]; then
