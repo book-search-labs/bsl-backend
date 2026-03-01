@@ -47,21 +47,19 @@ fi
 "$PYTHON_BIN" "${EXPORT_ARGS[@]}"
 
 echo "[2/3] aggregate feedback and generate backlog seeds"
-if [ -s "$FEEDBACK_JSONL" ]; then
-  "$PYTHON_BIN" "$ROOT_DIR/scripts/chat/aggregate_feedback.py" \
-    --input "$FEEDBACK_JSONL" \
-    --output "$FEEDBACK_SUMMARY" \
-    --backlog-output "$FEEDBACK_BACKLOG"
-  if [ -f "$FEEDBACK_BACKLOG" ]; then
-    "$PYTHON_BIN" "$ROOT_DIR/scripts/chat/render_feedback_backlog_md.py" \
-      --input "$FEEDBACK_BACKLOG" \
-      --output "$FEEDBACK_BACKLOG_MD"
-    "$PYTHON_BIN" "$ROOT_DIR/scripts/chat/sync_feedback_backlog_tickets.py" \
-      --input "$FEEDBACK_BACKLOG" \
-      --output-dir "$FEEDBACK_BACKLOG_TICKETS_DIR"
-  fi
-else
-  echo "  - feedback jsonl is empty; skipping aggregate/backlog"
+"$PYTHON_BIN" "$ROOT_DIR/scripts/chat/aggregate_feedback.py" \
+  --input "$FEEDBACK_JSONL" \
+  --output "$FEEDBACK_SUMMARY" \
+  --backlog-output "$FEEDBACK_BACKLOG" \
+  --allow-empty
+
+if [ -f "$FEEDBACK_BACKLOG" ]; then
+  "$PYTHON_BIN" "$ROOT_DIR/scripts/chat/render_feedback_backlog_md.py" \
+    --input "$FEEDBACK_BACKLOG" \
+    --output "$FEEDBACK_BACKLOG_MD"
+  "$PYTHON_BIN" "$ROOT_DIR/scripts/chat/sync_feedback_backlog_tickets.py" \
+    --input "$FEEDBACK_BACKLOG" \
+    --output-dir "$FEEDBACK_BACKLOG_TICKETS_DIR"
 fi
 
 echo "[3/3] generate recommendation quality report"

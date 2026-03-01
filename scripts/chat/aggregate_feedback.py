@@ -46,6 +46,20 @@ def summarize_feedback(records: list[dict[str, Any]]) -> tuple[dict[str, Any], d
     return summary, dict(reason_counts)
 
 
+def build_empty_summary() -> dict[str, Any]:
+    return {
+        "total": 0,
+        "rating_up": 0,
+        "rating_down": 0,
+        "hallucination": 0,
+        "insufficient": 0,
+        "down_rate": 0.0,
+        "hallucination_rate": 0.0,
+        "insufficient_rate": 0.0,
+        "reason_counts": {},
+    }
+
+
 def build_backlog_items(
     summary: dict[str, Any],
     reason_counts: dict[str, int],
@@ -132,15 +146,20 @@ def main() -> int:
     parser.add_argument("--hallucination-rate-threshold", type=float, default=0.12)
     parser.add_argument("--insufficient-rate-threshold", type=float, default=0.2)
     parser.add_argument("--top-reason-count-threshold", type=int, default=5)
+    parser.add_argument("--allow-empty", action="store_true")
     args = parser.parse_args()
 
     records = load_jsonl(Path(args.input))
-    if not records:
+    if not records and not args.allow_empty:
         print("[FAIL] no feedback records")
         return 1
 
-    summary, reason_counts = summarize_feedback(records)
-    summary["reason_counts"] = reason_counts
+    if records:
+        summary, reason_counts = summarize_feedback(records)
+        summary["reason_counts"] = reason_counts
+    else:
+        reason_counts = {}
+        summary = build_empty_summary()
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -175,6 +194,9 @@ def main() -> int:
         backlog_path.parent.mkdir(parents=True, exist_ok=True)
         backlog_path.write_text(json.dumps(backlog_payload, ensure_ascii=True, indent=2), encoding="utf-8")
         print(f"[OK] wrote backlog -> {backlog_path}")
+
+    if not records and args.allow_empty:
+        print("[OK] no feedback records; emitted empty summary/backlog payloads")
     return 0
 
 

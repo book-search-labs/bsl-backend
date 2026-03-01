@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 
 
@@ -57,3 +58,44 @@ def test_build_backlog_items_respects_thresholds():
     assert "chat.feedback.insufficient_rate" in item_ids
     assert "chat.feedback.reason.recommend_low_diversity" in item_ids
     assert "chat.feedback.reason.policy_mismatch" not in item_ids
+
+
+def test_build_empty_summary_returns_zero_baseline():
+    module = _load_module()
+    summary = module.build_empty_summary()
+    assert summary["total"] == 0
+    assert summary["rating_up"] == 0
+    assert summary["rating_down"] == 0
+    assert summary["down_rate"] == 0.0
+    assert summary["reason_counts"] == {}
+
+
+def test_main_allow_empty_writes_summary_and_backlog(tmp_path, monkeypatch):
+    module = _load_module()
+    input_path = tmp_path / "feedback.jsonl"
+    output_path = tmp_path / "feedback_summary.json"
+    backlog_path = tmp_path / "feedback_backlog.json"
+    input_path.write_text("", encoding="utf-8")
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "aggregate_feedback.py",
+            "--input",
+            str(input_path),
+            "--output",
+            str(output_path),
+            "--backlog-output",
+            str(backlog_path),
+            "--allow-empty",
+        ],
+    )
+
+    assert module.main() == 0
+    summary = json.loads(output_path.read_text(encoding="utf-8"))
+    backlog = json.loads(backlog_path.read_text(encoding="utf-8"))
+    assert summary["total"] == 0
+    assert summary["reason_counts"] == {}
+    assert backlog["total"] == 0
+    assert backlog["items"] == []
+    assert backlog["source"] == str(input_path)
