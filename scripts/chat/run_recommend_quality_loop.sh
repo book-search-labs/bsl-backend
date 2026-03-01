@@ -36,6 +36,9 @@ RECOMMEND_OPS_BASE_URL="${CHAT_RECOMMEND_OPS_BASE_URL:-http://localhost:8088}"
 RECOMMEND_OPS_ADMIN_ID="${CHAT_RECOMMEND_OPS_ADMIN_ID:-1}"
 RECOMMEND_SNAPSHOT_BEFORE="${CHAT_RECOMMEND_SNAPSHOT_BEFORE:-$ROOT_DIR/evaluation/chat/recommend_experiment_snapshot_before.json}"
 RECOMMEND_SNAPSHOT_AFTER="${CHAT_RECOMMEND_SNAPSHOT_AFTER:-$ROOT_DIR/evaluation/chat/recommend_experiment_snapshot_after.json}"
+ROLLOUT_CAPTURE_SNAPSHOT="${CHAT_ROLLOUT_CAPTURE_SNAPSHOT:-1}"
+ROLLOUT_SNAPSHOT_BEFORE="${CHAT_ROLLOUT_SNAPSHOT_BEFORE:-$ROOT_DIR/evaluation/chat/rollout_snapshot_before.json}"
+ROLLOUT_SNAPSHOT_AFTER="${CHAT_ROLLOUT_SNAPSHOT_AFTER:-$ROOT_DIR/evaluation/chat/rollout_snapshot_after.json}"
 
 if [ "$RECOMMEND_CAPTURE_SNAPSHOT" = "1" ]; then
   echo "[0/3] capture recommend experiment snapshot (before)"
@@ -47,6 +50,18 @@ if [ "$RECOMMEND_CAPTURE_SNAPSHOT" = "1" ]; then
     echo "  - wrote snapshot(before): $RECOMMEND_SNAPSHOT_BEFORE"
   else
     echo "  - snapshot(before) unavailable; continuing"
+  fi
+fi
+if [ "$ROLLOUT_CAPTURE_SNAPSHOT" = "1" ]; then
+  echo "[0/3] capture chat rollout snapshot (before)"
+  if "$PYTHON_BIN" "$ROOT_DIR/scripts/chat/rollout_ops.py" \
+      --base-url "$RECOMMEND_OPS_BASE_URL" \
+      --admin-id "$RECOMMEND_OPS_ADMIN_ID" \
+      --output "$ROLLOUT_SNAPSHOT_BEFORE" \
+      snapshot >/dev/null 2>&1; then
+    echo "  - wrote rollout snapshot(before): $ROLLOUT_SNAPSHOT_BEFORE"
+  else
+    echo "  - rollout snapshot(before) unavailable; continuing"
   fi
 fi
 
@@ -108,6 +123,18 @@ if [ "$RECOMMEND_CAPTURE_SNAPSHOT" = "1" ]; then
     echo "  - wrote snapshot(after): $RECOMMEND_SNAPSHOT_AFTER"
   else
     echo "  - snapshot(after) unavailable; continuing"
+  fi
+fi
+if [ "$ROLLOUT_CAPTURE_SNAPSHOT" = "1" ]; then
+  echo "[post] capture chat rollout snapshot (after)"
+  if "$PYTHON_BIN" "$ROOT_DIR/scripts/chat/rollout_ops.py" \
+      --base-url "$RECOMMEND_OPS_BASE_URL" \
+      --admin-id "$RECOMMEND_OPS_ADMIN_ID" \
+      --output "$ROLLOUT_SNAPSHOT_AFTER" \
+      snapshot >/dev/null 2>&1; then
+    echo "  - wrote rollout snapshot(after): $ROLLOUT_SNAPSHOT_AFTER"
+  else
+    echo "  - rollout snapshot(after) unavailable; continuing"
   fi
 fi
 

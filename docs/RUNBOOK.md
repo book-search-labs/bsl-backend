@@ -150,10 +150,13 @@ python3 scripts/chat/sync_feedback_backlog_tickets.py \
 기본 실행 시 추천 실험 상태를 루프 전/후로 함께 저장한다:
 - `evaluation/chat/recommend_experiment_snapshot_before.json`
 - `evaluation/chat/recommend_experiment_snapshot_after.json`
+- `evaluation/chat/rollout_snapshot_before.json`
+- `evaluation/chat/rollout_snapshot_after.json`
 
 스냅샷 캡처를 끄려면:
 ```bash
 CHAT_RECOMMEND_CAPTURE_SNAPSHOT=0 ./scripts/chat/run_recommend_quality_loop.sh
+CHAT_ROLLOUT_CAPTURE_SNAPSHOT=0 ./scripts/chat/run_recommend_quality_loop.sh
 ```
 
 ### Debug endpoint
