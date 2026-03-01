@@ -127,7 +127,7 @@ else
   echo "  - set RUN_RERANK_EVAL=1 to enable"
 fi
 
-echo "[7/10] Chat recommend eval gate (optional)"
+echo "[7/10] Chat recommend/rollout eval gate (optional)"
 if [ "${RUN_CHAT_RECOMMEND_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_RECOMMEND_METRICS_URL="${CHAT_RECOMMEND_METRICS_URL:-http://localhost:8001/metrics}"
@@ -173,6 +173,61 @@ if [ "${RUN_CHAT_RECOMMEND_EVAL:-0}" = "1" ]; then
   fi
 else
   echo "  - set RUN_CHAT_RECOMMEND_EVAL=1 to enable"
+fi
+
+if [ "${RUN_CHAT_ROLLOUT_EVAL:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_ROLLOUT_METRICS_URL="${CHAT_ROLLOUT_METRICS_URL:-http://localhost:8001/metrics}"
+    CHAT_ROLLOUT_URL="${CHAT_ROLLOUT_URL:-http://localhost:8001/internal/chat/rollout}"
+    CHAT_ROLLOUT_TIMEOUT="${CHAT_ROLLOUT_TIMEOUT:-2.0}"
+    CHAT_ROLLOUT_MIN_AGENT_SAMPLES="${CHAT_ROLLOUT_MIN_AGENT_SAMPLES:-20}"
+    CHAT_ROLLOUT_MAX_FAILURE_RATIO="${CHAT_ROLLOUT_MAX_FAILURE_RATIO:-0.2}"
+    CHAT_ROLLOUT_MAX_ROLLBACK_TOTAL="${CHAT_ROLLOUT_MAX_ROLLBACK_TOTAL:-0}"
+    CHAT_ROLLOUT_REQUIRE_MIN_SAMPLES="${CHAT_ROLLOUT_REQUIRE_MIN_SAMPLES:-1}"
+    CHAT_ROLLOUT_ALLOW_ACTIVE_ROLLBACK="${CHAT_ROLLOUT_ALLOW_ACTIVE_ROLLBACK:-0}"
+    CHAT_ROLLOUT_BASELINE_PATH="${CHAT_ROLLOUT_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/chat_rollout_eval_baseline.json}"
+
+    CHAT_ROLLOUT_DEPS_OK=1
+    if command -v curl >/dev/null 2>&1; then
+      if ! curl -fsS --max-time 2 "$CHAT_ROLLOUT_METRICS_URL" >/dev/null; then
+        echo "  - chat rollout eval skipped: metrics endpoint unavailable ($CHAT_ROLLOUT_METRICS_URL)"
+        CHAT_ROLLOUT_DEPS_OK=0
+      fi
+      if ! curl -fsS --max-time 2 "$CHAT_ROLLOUT_URL" >/dev/null; then
+        echo "  - chat rollout eval skipped: rollout endpoint unavailable ($CHAT_ROLLOUT_URL)"
+        CHAT_ROLLOUT_DEPS_OK=0
+      fi
+    else
+      echo "  - curl not found; running chat rollout eval without dependency precheck"
+    fi
+
+    if [ "$CHAT_ROLLOUT_DEPS_OK" = "1" ]; then
+      CHAT_ROLLOUT_ARGS=(
+        "$ROOT_DIR/scripts/eval/chat_rollout_eval.py"
+        --metrics-url "$CHAT_ROLLOUT_METRICS_URL"
+        --rollout-url "$CHAT_ROLLOUT_URL"
+        --timeout "$CHAT_ROLLOUT_TIMEOUT"
+        --min-agent-samples "$CHAT_ROLLOUT_MIN_AGENT_SAMPLES"
+        --max-failure-ratio "$CHAT_ROLLOUT_MAX_FAILURE_RATIO"
+        --max-rollback-total "$CHAT_ROLLOUT_MAX_ROLLBACK_TOTAL"
+        --gate
+      )
+      if [ "$CHAT_ROLLOUT_REQUIRE_MIN_SAMPLES" = "1" ]; then
+        CHAT_ROLLOUT_ARGS+=(--require-min-samples)
+      fi
+      if [ "$CHAT_ROLLOUT_ALLOW_ACTIVE_ROLLBACK" = "1" ]; then
+        CHAT_ROLLOUT_ARGS+=(--allow-active-rollback)
+      fi
+      if [ -f "$CHAT_ROLLOUT_BASELINE_PATH" ]; then
+        CHAT_ROLLOUT_ARGS+=(--baseline-report "$CHAT_ROLLOUT_BASELINE_PATH")
+      fi
+      $PYTHON_BIN "${CHAT_ROLLOUT_ARGS[@]}" || exit 1
+    fi
+  else
+    echo "  - python not found; skipping chat rollout eval gate"
+  fi
+else
+  echo "  - set RUN_CHAT_ROLLOUT_EVAL=1 to enable"
 fi
 
 echo "[8/10] Canonical quality checks (optional)"

@@ -121,6 +121,18 @@ python3 scripts/eval/chat_recommend_eval.py \
 ```
 품질 게이트를 강제하려면 `--gate`를 추가한다.
 
+롤아웃(canary/shadow) 게이트를 별도로 점검하려면:
+```bash
+python3 scripts/eval/chat_rollout_eval.py \
+  --metrics-url http://localhost:8001/metrics \
+  --rollout-url http://localhost:8001/internal/chat/rollout \
+  --require-min-samples \
+  --min-agent-samples 20 \
+  --max-failure-ratio 0.2 \
+  --max-rollback-total 0 \
+  --out data/eval/reports
+```
+
 피드백 집계와 개선 백로그 시드 생성:
 ```bash
 python3 scripts/chat/export_feedback_events.py \

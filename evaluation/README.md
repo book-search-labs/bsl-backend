@@ -70,6 +70,36 @@ python3 scripts/eval/chat_recommend_eval.py \
 RUN_CHAT_RECOMMEND_EVAL=1 ./scripts/test.sh
 ```
 
+## Chat rollout quality report
+
+Use `scripts/eval/chat_rollout_eval.py` to evaluate canary/shadow rollout safety metrics:
+
+```bash
+python3 scripts/eval/chat_rollout_eval.py \
+  --metrics-url http://localhost:8001/metrics \
+  --rollout-url http://localhost:8001/internal/chat/rollout \
+  --require-min-samples \
+  --min-agent-samples 20 \
+  --max-failure-ratio 0.2 \
+  --max-rollback-total 0 \
+  --out data/eval/reports
+```
+
+To fail CI/local gate on threshold violation:
+
+```bash
+python3 scripts/eval/chat_rollout_eval.py \
+  --metrics-url http://localhost:8001/metrics \
+  --rollout-url http://localhost:8001/internal/chat/rollout \
+  --gate
+```
+
+`./scripts/test.sh`에서 옵션 게이트로 실행하려면:
+
+```bash
+RUN_CHAT_ROLLOUT_EVAL=1 ./scripts/test.sh
+```
+
 피드백/품질 루프를 한 번에 실행하려면:
 
 ```bash
