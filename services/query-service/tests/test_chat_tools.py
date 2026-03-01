@@ -110,6 +110,53 @@ def test_refund_policy_topic_cache_reuses_composed_content(monkeypatch):
     assert first["answer"]["content"] == second["answer"]["content"]
 
 
+def test_record_entity_normalization_metrics_emits_all_slot_types(monkeypatch):
+    calls = []
+
+    def fake_inc(name, labels=None):
+        calls.append((name, dict(labels or {})))
+
+    monkeypatch.setattr(chat_tools.metrics, "inc", fake_inc)
+    slots = chat_tools.BookQuerySlots(
+        isbn="9780306406157",
+        title="시드 도서",
+        series="시리즈A",
+        volume=2,
+        format="ebook",
+    )
+
+    chat_tools._record_entity_normalization_metrics(slots)
+
+    normalized_calls = [item for item in calls if item[0] == "chat_entity_normalize_total"]
+    assert len(normalized_calls) == 5
+    assert ("chat_entity_normalize_total", {"type": "isbn", "result": "resolved"}) in normalized_calls
+    assert ("chat_entity_normalize_total", {"type": "volume", "result": "resolved"}) in normalized_calls
+
+
+def test_record_entity_ambiguity_metrics_emits_on_same_title_candidates(monkeypatch):
+    calls = []
+
+    def fake_inc(name, labels=None):
+        calls.append((name, dict(labels or {})))
+
+    monkeypatch.setattr(chat_tools.metrics, "inc", fake_inc)
+    slots = chat_tools.BookQuerySlots(
+        isbn=None,
+        title="해리포터",
+        series=None,
+        volume=None,
+        format=None,
+    )
+    candidates = [
+        {"doc_id": "doc-1", "title": "해리포터", "author": "저자A", "isbn": "9780306406157"},
+        {"doc_id": "doc-2", "title": "해리포터", "author": "저자B", "isbn": "9780306406158"},
+    ]
+
+    chat_tools._record_entity_ambiguity_metrics(slots, candidates)
+
+    assert ("chat_entity_ambiguous_total", {"type": "title"}) in calls
+
+
 def test_run_tool_chat_book_recommendation_without_login(monkeypatch):
     async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
         assert query in {"周易辭典", "도서 '周易辭典' 기준으로 비슷한 책을 추천해줘"}

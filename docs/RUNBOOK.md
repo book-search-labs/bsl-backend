@@ -96,6 +96,8 @@ curl -s -XPOST http://localhost:8088/chat \
 - `chat_recommend_experiment_auto_disable_total{reason}`
 - `chat_recommend_experiment_block_rate{variant}`
 - `chat_recommend_experiment_config_update_total{result}`
+- `chat_entity_normalize_total{type,result}`
+- `chat_entity_ambiguous_total{type}`
 - `chat_rollout_traffic_ratio{engine}`
 - `chat_rollout_gate_total{engine,result}`
 - `chat_rollout_failure_ratio{engine}`

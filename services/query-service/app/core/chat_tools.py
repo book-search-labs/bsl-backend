@@ -604,6 +604,49 @@ def _normalize_title_for_compare(value: str) -> str:
     return re.sub(r"\s+", "", (value or "").strip().lower())
 
 
+def _record_entity_normalization_metrics(slots: BookQuerySlots) -> None:
+    metric_items = {
+        "isbn": bool(isinstance(slots.isbn, str) and slots.isbn.strip()),
+        "title": bool(isinstance(slots.title, str) and slots.title.strip()),
+        "series": bool(isinstance(slots.series, str) and slots.series.strip()),
+        "volume": bool(isinstance(slots.volume, int) and slots.volume > 0),
+        "format": bool(isinstance(slots.format, str) and slots.format.strip()),
+    }
+    for entity_type, resolved in metric_items.items():
+        metrics.inc(
+            "chat_entity_normalize_total",
+            {
+                "type": entity_type,
+                "result": "resolved" if resolved else "missing",
+            },
+        )
+
+
+def _record_entity_ambiguity_metrics(slots: BookQuerySlots, candidates: list[dict[str, Any]]) -> None:
+    if not isinstance(slots.title, str) or not slots.title.strip():
+        return
+    if isinstance(slots.isbn, str) and slots.isbn.strip():
+        return
+    normalized_title = _normalize_title_for_compare(slots.title)
+    if not normalized_title:
+        return
+
+    discriminator_set: set[tuple[str, str]] = set()
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        title = str(candidate.get("title") or "").strip()
+        if _normalize_title_for_compare(title) != normalized_title:
+            continue
+        author = _normalize_title_for_compare(str(candidate.get("author") or ""))
+        raw_isbn = str(candidate.get("isbn") or "").strip()
+        normalized_isbn = normalize_isbn(raw_isbn) or _normalize_title_for_compare(str(candidate.get("doc_id") or ""))
+        discriminator_set.add((author, normalized_isbn))
+
+    if len(discriminator_set) >= 2:
+        metrics.inc("chat_entity_ambiguous_total", {"type": "title"})
+
+
 def _selection_state_from_db(session_id: str) -> dict[str, Any] | None:
     row = get_durable_chat_session_state(session_id)
     if not isinstance(row, dict):
@@ -2545,6 +2588,7 @@ async def _handle_book_recommendation(
     followup_query: str | None = None,
 ) -> dict[str, Any]:
     raw_slots = extract_book_query_slots(query)
+    _record_entity_normalization_metrics(raw_slots)
     context_seed_book = seed_book if isinstance(seed_book, dict) else {}
     context_seed_isbn = normalize_isbn(str(context_seed_book.get("isbn") or "").strip())
     context_seed_title = str(context_seed_book.get("title") or "").strip()
@@ -2577,6 +2621,8 @@ async def _handle_book_recommendation(
             endpoint="OS /books_doc_read/_search",
             source_snippet=f"seed_query={lookup_query}, slots={slots_to_dict(effective_slots)}, candidate_count=0",
         )
+
+    _record_entity_ambiguity_metrics(effective_slots, candidates)
 
     normalized_seed = _normalize_title_for_compare(seed_query or str(effective_slots.title or context_seed_title))
     seed_isbn = effective_slots.isbn
