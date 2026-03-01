@@ -699,6 +699,224 @@
           "expected": {"status": "ok", "reason_code": "OK"}
         }
       ]
+    },
+    {
+      "id": "S31_recommend_followup_without_selection_seed_first",
+      "candidate_sequences": {
+        "책 추천해줘": [
+          {"doc_id": "doc-1", "title": "추천 도서 A", "author": "저자A", "score": 0.91},
+          {"doc_id": "doc-2", "title": "추천 도서 B", "author": "저자B", "score": 0.82}
+        ],
+        "추천 도서 A 다른 출판사 책 추천해줘": [
+          {"doc_id": "doc-a2", "title": "추천 도서 A (개정판)", "author": "저자A", "score": 0.88},
+          {"doc_id": "doc-a3", "title": "다른 출판사 A", "author": "저자C", "score": 0.79}
+        ]
+      },
+      "turns": [
+        {
+          "query": "책 추천해줘",
+          "user_id": null,
+          "expected": {"status": "ok", "reason_code": "OK"}
+        },
+        {
+          "query": "다른 출판사 책 추천해줘",
+          "user_id": null,
+          "expected": {"status": "ok", "reason_code": "OK"}
+        }
+      ]
+    },
+    {
+      "id": "S32_recommend_reference_out_of_range",
+      "candidate_sequences": {
+        "책 추천해줘": [
+          {"doc_id": "doc-1", "title": "추천 도서 A", "author": "저자A", "score": 0.91},
+          {"doc_id": "doc-2", "title": "추천 도서 B", "author": "저자B", "score": 0.82}
+        ]
+      },
+      "turns": [
+        {
+          "query": "책 추천해줘",
+          "user_id": null,
+          "expected": {"status": "ok", "reason_code": "OK"}
+        },
+        {
+          "query": "5번째로 할게",
+          "user_id": null,
+          "expected": {"status": "needs_input", "reason_code": "MISSING_INPUT"}
+        }
+      ]
+    },
+    {
+      "id": "S33_refund_retry_requires_confirmation_phrase",
+      "commerce_sequences": {
+        "GET /orders/12": [
+          {
+            "response": {
+              "order": {
+                "order_id": 12,
+                "order_no": "ORD202602220001",
+                "status": "DELIVERED",
+                "total_amount": 33000,
+                "shipping_fee": 3000,
+                "payment_method": "CARD"
+              }
+            }
+          }
+        ],
+        "POST /refunds": [
+          {
+            "error": {"code": "tool_timeout", "message": "timeout", "status_code": 504}
+          },
+          {
+            "response": {
+              "refund": {
+                "refund_id": 91,
+                "order_id": 12,
+                "status": "REQUESTED",
+                "amount": 30000
+              }
+            }
+          }
+        ]
+      },
+      "turns": [
+        {
+          "query": "주문 12 환불 신청해줘",
+          "user_id": "1",
+          "capture_token": true,
+          "expected": {"status": "pending_confirmation", "reason_code": "CONFIRMATION_REQUIRED"},
+          "expected_workflow_state": "AWAITING_CONFIRMATION"
+        },
+        {
+          "query": "확인 {{token}}",
+          "user_id": "1",
+          "expected": {"status": "tool_fallback", "reason_code": "TOOL_RETRYABLE_FAILURE"},
+          "expected_workflow_state": "FAILED_RETRYABLE"
+        },
+        {
+          "query": "다시 시도해줘",
+          "user_id": "1",
+          "expected": {"status": "pending_confirmation", "reason_code": "RETRY_CONFIRMATION_REQUIRED"},
+          "expected_workflow_state": "FAILED_RETRYABLE"
+        },
+        {
+          "query": "확인 {{token}}",
+          "user_id": "1",
+          "expected": {"status": "ok", "reason_code": "OK"},
+          "expect_no_pending_workflow": true
+        }
+      ]
+    },
+    {
+      "id": "S34_cancel_expired_then_restart",
+      "commerce_sequences": {
+        "GET /orders/12": [
+          {
+            "response": {
+              "order": {
+                "order_id": 12,
+                "order_no": "ORD202602220001",
+                "status": "PAID",
+                "total_amount": 33000,
+                "shipping_fee": 3000,
+                "payment_method": "CARD"
+              }
+            }
+          },
+          {
+            "response": {
+              "order": {
+                "order_id": 12,
+                "order_no": "ORD202602220001",
+                "status": "PAID",
+                "total_amount": 33000,
+                "shipping_fee": 3000,
+                "payment_method": "CARD"
+              }
+            }
+          }
+        ]
+      },
+      "start_time": 1700000000,
+      "turns": [
+        {
+          "query": "주문 12 취소해줘",
+          "user_id": "1",
+          "capture_token": true,
+          "expected": {"status": "pending_confirmation", "reason_code": "CONFIRMATION_REQUIRED"},
+          "expected_workflow_state": "AWAITING_CONFIRMATION"
+        },
+        {
+          "query": "확인 {{token}}",
+          "user_id": "1",
+          "advance_sec": 400,
+          "expected": {"status": "expired", "reason_code": "CONFIRMATION_EXPIRED"},
+          "expect_no_pending_workflow": true
+        },
+        {
+          "query": "주문 12 취소해줘",
+          "user_id": "1",
+          "capture_token": true,
+          "expected": {"status": "pending_confirmation", "reason_code": "CONFIRMATION_REQUIRED"},
+          "expected_workflow_state": "AWAITING_CONFIRMATION"
+        }
+      ]
+    },
+    {
+      "id": "S35_ticket_status_uses_recent_list_fallback",
+      "commerce_sequences": {
+        "GET /support/tickets?limit=1": [
+          {
+            "response": {
+              "items": [
+                {
+                  "ticket_id": 901,
+                  "ticket_no": "STK202602239901"
+                }
+              ]
+            }
+          }
+        ],
+        "GET /support/tickets/by-number/STK202602239901": [
+          {
+            "response": {
+              "ticket": {
+                "ticket_id": 901,
+                "ticket_no": "STK202602239901",
+                "status": "RECEIVED",
+                "category": "GENERAL",
+                "severity": "LOW"
+              },
+              "expected_response_minutes": 150
+            }
+          }
+        ],
+        "GET /support/tickets/901/events": [
+          {"response": {"items": []}}
+        ]
+      },
+      "turns": [
+        {
+          "query": "문의 상태 확인해줘",
+          "user_id": "1",
+          "expected": {"status": "ok", "reason_code": "OK"}
+        }
+      ]
+    },
+    {
+      "id": "S36_ticket_status_recent_lookup_empty_needs_input",
+      "commerce_sequences": {
+        "GET /support/tickets?limit=1": [
+          {"response": {"items": []}}
+        ]
+      },
+      "turns": [
+        {
+          "query": "문의 상태 확인해줘",
+          "user_id": "1",
+          "expected": {"status": "needs_input", "reason_code": "MISSING_INPUT"}
+        }
+      ]
     }
   ]
 }

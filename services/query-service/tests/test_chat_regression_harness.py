@@ -63,7 +63,7 @@ def test_chat_regression_fixture_shape():
     suite = _load_suite()
     scenarios = suite.get("scenarios")
     assert isinstance(scenarios, list)
-    assert len(scenarios) >= 20
+    assert len(scenarios) >= 30
     for scenario in scenarios:
         assert isinstance(scenario, dict)
         assert isinstance(scenario.get("id"), str)
