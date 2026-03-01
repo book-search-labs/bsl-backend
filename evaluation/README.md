@@ -131,6 +131,8 @@ RUN_CHAT_REGRESSION_SUITE_EVAL=1 ./scripts/test.sh
 
 또한 `CHAT_RECOMMEND_METRICS_URL`와 `CHAT_ROLLOUT_URL`이 둘 다 접근 가능하면
 추천/롤아웃 eval 리포트를 `data/eval/reports`에 함께 생성한다.
+회귀 픽스처가 존재하면(`CHAT_REGRESSION_FIXTURE`) 멀티턴 회귀셋 커버리지 리포트도 함께 생성한다.
+`CHAT_REGRESSION_GATE=1`을 지정하면 루프 내에서 회귀셋 임계치 게이트를 강제할 수 있다.
 
 실험 설정/상태를 운영에서 빠르게 조정하려면:
 

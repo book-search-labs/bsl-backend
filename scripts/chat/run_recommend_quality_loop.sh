@@ -35,6 +35,15 @@ ROLLOUT_URL="${CHAT_ROLLOUT_URL:-http://localhost:8001/internal/chat/rollout}"
 ROLLOUT_MIN_AGENT_SAMPLES="${CHAT_ROLLOUT_MIN_AGENT_SAMPLES:-20}"
 ROLLOUT_MAX_FAILURE_RATIO="${CHAT_ROLLOUT_MAX_FAILURE_RATIO:-0.2}"
 ROLLOUT_MAX_ROLLBACK_TOTAL="${CHAT_ROLLOUT_MAX_ROLLBACK_TOTAL:-0}"
+REGRESSION_FIXTURE="${CHAT_REGRESSION_FIXTURE:-$ROOT_DIR/services/query-service/tests/fixtures/chat_state_regression_v1.json}"
+REGRESSION_INGEST_DIR="${CHAT_REGRESSION_INGEST_DIR:-$FEEDBACK_BACKLOG_TICKETS_DIR}"
+REGRESSION_MIN_SCENARIOS="${CHAT_REGRESSION_MIN_SCENARIOS:-30}"
+REGRESSION_MIN_TURNS="${CHAT_REGRESSION_MIN_TURNS:-45}"
+REGRESSION_MIN_MULTI_TURN="${CHAT_REGRESSION_MIN_MULTI_TURN:-12}"
+REGRESSION_MIN_BOOK_SCENARIOS="${CHAT_REGRESSION_MIN_BOOK_SCENARIOS:-8}"
+REGRESSION_REQUIRE_INGEST="${CHAT_REGRESSION_REQUIRE_INGEST:-0}"
+REGRESSION_MIN_INGEST_CASES="${CHAT_REGRESSION_MIN_INGEST_CASES:-1}"
+REGRESSION_GATE="${CHAT_REGRESSION_GATE:-0}"
 RECOMMEND_CAPTURE_SNAPSHOT="${CHAT_RECOMMEND_CAPTURE_SNAPSHOT:-1}"
 RECOMMEND_OPS_BASE_URL="${CHAT_RECOMMEND_OPS_BASE_URL:-http://localhost:8088}"
 RECOMMEND_OPS_ADMIN_ID="${CHAT_RECOMMEND_OPS_ADMIN_ID:-1}"
@@ -99,7 +108,7 @@ if [ -f "$FEEDBACK_BACKLOG" ]; then
     --output-dir "$FEEDBACK_BACKLOG_TICKETS_DIR"
 fi
 
-echo "[3/3] generate recommendation/rollout quality reports"
+echo "[3/3] generate recommendation/rollout/regression quality reports"
 if command -v curl >/dev/null 2>&1; then
   if curl -fsS --max-time 2 "$RECOMMEND_METRICS_URL" >/dev/null; then
     "$PYTHON_BIN" "$ROOT_DIR/scripts/eval/chat_recommend_eval.py" \
@@ -127,6 +136,29 @@ if command -v curl >/dev/null 2>&1; then
   fi
 else
   echo "  - curl not found; skipping recommend/rollout eval reports"
+fi
+
+if [ -f "$REGRESSION_FIXTURE" ]; then
+  REGRESSION_ARGS=(
+    "$ROOT_DIR/scripts/eval/chat_regression_suite_eval.py"
+    --fixture "$REGRESSION_FIXTURE"
+    --ingest-dir "$REGRESSION_INGEST_DIR"
+    --min-scenarios "$REGRESSION_MIN_SCENARIOS"
+    --min-turns "$REGRESSION_MIN_TURNS"
+    --min-multi-turn-scenarios "$REGRESSION_MIN_MULTI_TURN"
+    --min-book-scenarios "$REGRESSION_MIN_BOOK_SCENARIOS"
+    --min-ingest-cases "$REGRESSION_MIN_INGEST_CASES"
+    --out "$RECOMMEND_REPORT_OUT"
+  )
+  if [ "$REGRESSION_REQUIRE_INGEST" = "1" ]; then
+    REGRESSION_ARGS+=(--require-ingest)
+  fi
+  if [ "$REGRESSION_GATE" = "1" ]; then
+    REGRESSION_ARGS+=(--gate)
+  fi
+  "$PYTHON_BIN" "${REGRESSION_ARGS[@]}"
+else
+  echo "  - regression fixture unavailable ($REGRESSION_FIXTURE); skipping regression eval report"
 fi
 
 if [ "$RECOMMEND_CAPTURE_SNAPSHOT" = "1" ]; then
