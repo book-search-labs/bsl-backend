@@ -1206,10 +1206,16 @@ def _semantic_cache_drift_key() -> str:
     return "rag:sem:drift"
 
 
+def _semantic_cache_policy_version() -> str:
+    raw = str(os.getenv("QS_CHAT_POLICY_TOPIC_VERSION", "v1")).strip()
+    sanitized = re.sub(r"[^A-Za-z0-9_.-]", "_", raw)
+    return sanitized or "v1"
+
+
 def _semantic_cache_topic_key(topic: str, locale: str) -> str:
     normalized_topic = _normalize_query(topic).replace(" ", "_") or "generic"
     normalized_locale = (locale or "ko-KR").strip() or "ko-KR"
-    return f"rag:sem:{normalized_topic}:{normalized_locale}:{_prompt_version()}"
+    return f"rag:sem:{normalized_topic}:{normalized_locale}:{_semantic_cache_policy_version()}:{_prompt_version()}"
 
 
 def _semantic_cache_similarity(a: str, b: str) -> float:
@@ -1229,26 +1235,39 @@ def _semantic_cache_similarity(a: str, b: str) -> float:
     return max(jaccard, ratio)
 
 
-def _semantic_cache_topic_for_query(query: str) -> Optional[str]:
+def _semantic_cache_topic_classify(query: str) -> tuple[Optional[str], str]:
     normalized = _normalize_query(query)
     if not normalized:
-        return None
+        return None, "EMPTY_QUERY"
     policy_keywords = ["정책", "조건", "정리", "안내", "절차", "규정", "기준", "수수료", "가능", "policy", "guide"]
     if not any(keyword in normalized for keyword in policy_keywords):
-        return None
+        return None, "LANE_NOT_ALLOWED"
     if re.search(r"\bord\d{6,}\b", normalized, flags=re.IGNORECASE):
-        return None
+        return None, "LOOKUP_REFERENCE_DETECTED"
     if re.search(r"\b\d{4,}\b", normalized):
-        return None
+        return None, "LOOKUP_REFERENCE_DETECTED"
     if any(keyword in normalized for keyword in ["조회", "상태", "tracking", "lookup", "내역"]):
-        return None
-    if any(keyword in normalized for keyword in ["환불", "반품", "refund", "return"]):
-        return "refund"
+        return None, "LOOKUP_LANE_BLOCKED"
+    has_refund_keyword = any(keyword in normalized for keyword in ["환불", "반품", "refund", "return"])
+    if has_refund_keyword and any(
+        keyword in normalized
+        for keyword in ["전자책", "ebook", "e-book", "digital", "epub", "pdf", "다운로드"]
+    ):
+        return "EbookRefundPolicy", "CLASSIFIED"
+    if has_refund_keyword:
+        return "RefundPolicy", "CLASSIFIED"
     if any(keyword in normalized for keyword in ["배송", "택배", "출고", "shipping", "shipment", "delivery"]):
-        return "shipping"
-    if any(keyword in normalized for keyword in ["주문", "결제", "취소", "order", "payment", "cancel"]):
-        return "order"
-    return None
+        return "ShippingPolicy", "CLASSIFIED"
+    if any(keyword in normalized for keyword in ["주문 취소", "취소", "cancel", "cancellation"]):
+        return "OrderCancelPolicy", "CLASSIFIED"
+    if any(keyword in normalized for keyword in ["주문", "결제", "order", "payment"]):
+        return "OrderPolicy", "CLASSIFIED"
+    return None, "TOPIC_UNCLASSIFIED"
+
+
+def _semantic_cache_topic_for_query(query: str) -> Optional[str]:
+    topic, _ = _semantic_cache_topic_classify(query)
+    return topic
 
 
 def _semantic_cache_claim_safe(answer_text: str, citations: List[str]) -> tuple[bool, str]:
@@ -1313,15 +1332,18 @@ def _semantic_cache_lookup(query: str, locale: str, trace_id: str, request_id: s
     disable_reason = _semantic_cache_auto_disabled_reason()
     if disable_reason:
         metrics.inc("chat_semantic_cache_block_total", {"reason": disable_reason})
+        metrics.inc("chat_policy_topic_miss_total", {"reason": disable_reason})
         return None
-    topic = _semantic_cache_topic_for_query(query)
+    topic, topic_reason = _semantic_cache_topic_classify(query)
     if not topic:
         metrics.inc("chat_semantic_cache_block_total", {"reason": "LANE_NOT_ALLOWED"})
+        metrics.inc("chat_policy_topic_miss_total", {"reason": topic_reason})
         return None
     cached = _CACHE.get_json(_semantic_cache_topic_key(topic, locale))
     entries = cached.get("entries") if isinstance(cached, dict) else None
     if not isinstance(entries, list) or not entries:
         metrics.inc("chat_semantic_cache_block_total", {"reason": "NO_CANDIDATE"})
+        metrics.inc("chat_policy_topic_miss_total", {"reason": "NO_CANDIDATE"})
         return None
     threshold = _semantic_cache_similarity_threshold()
     best_response: Optional[Dict[str, Any]] = None
@@ -1343,9 +1365,11 @@ def _semantic_cache_lookup(query: str, locale: str, trace_id: str, request_id: s
         best_response = response
     if not isinstance(best_response, dict):
         metrics.inc("chat_semantic_cache_block_total", {"reason": "SIMILARITY_THRESHOLD"})
+        metrics.inc("chat_policy_topic_miss_total", {"reason": "SIMILARITY_THRESHOLD"})
         return None
     if str(best_response.get("status") or "").strip().lower() != "ok":
         metrics.inc("chat_semantic_cache_block_total", {"reason": "BAD_STATUS"})
+        metrics.inc("chat_policy_topic_miss_total", {"reason": "BAD_STATUS"})
         _semantic_cache_record_quality(ok=False, reason="BAD_STATUS")
         return None
     answer_obj = best_response.get("answer") if isinstance(best_response.get("answer"), dict) else {}
@@ -1354,17 +1378,19 @@ def _semantic_cache_lookup(query: str, locale: str, trace_id: str, request_id: s
     claim_safe, claim_reason = _semantic_cache_claim_safe(answer_text, citations)
     if not claim_safe:
         metrics.inc("chat_semantic_cache_block_total", {"reason": claim_reason})
+        metrics.inc("chat_policy_topic_miss_total", {"reason": claim_reason})
         _semantic_cache_record_quality(ok=False, reason=claim_reason)
         return None
     _semantic_cache_record_quality(ok=True, reason="HIT")
     metrics.inc("chat_semantic_cache_hit_total", {"lane": "policy", "topic": topic})
+    metrics.inc("chat_policy_topic_cache_hit_total", {"topic": topic})
     return _semantic_cache_rebind_response(best_response, trace_id, request_id)
 
 
 def _semantic_cache_store(query: str, locale: str, response: Dict[str, Any]) -> None:
     if not _semantic_cache_enabled():
         return
-    topic = _semantic_cache_topic_for_query(query)
+    topic, _ = _semantic_cache_topic_classify(query)
     if not topic:
         return
     if str(response.get("status") or "").strip().lower() != "ok":
@@ -4174,6 +4200,7 @@ def _semantic_cache_snapshot() -> Dict[str, Any]:
     drift_rate = float(drift.get("error_rate") or 0.0) if isinstance(drift, dict) else 0.0
     return {
         "enabled": _semantic_cache_enabled(),
+        "policy_topic_version": _semantic_cache_policy_version(),
         "auto_disabled": disabled_until > now_ts,
         "disabled_until": disabled_until if disabled_until > now_ts else None,
         "disable_reason": str(disable.get("reason") or "") if isinstance(disable, dict) and disabled_until > now_ts else None,

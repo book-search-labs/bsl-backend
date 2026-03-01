@@ -112,6 +112,8 @@ curl -s -XPOST http://localhost:8088/chat \
 - `chat_recommend_experiment_config_update_total{result}`
 - `chat_entity_normalize_total{type,result}`
 - `chat_entity_ambiguous_total{type}`
+- `chat_policy_topic_cache_hit_total{topic}`
+- `chat_policy_topic_miss_total{reason}`
 - `chat_rollout_traffic_ratio{engine}`
 - `chat_rollout_gate_total{engine,result}`
 - `chat_rollout_failure_ratio{engine}`
@@ -197,6 +199,8 @@ python3 scripts/eval/chat_semantic_cache_eval.py \
   --gate
 ```
 `RUN_CHAT_SEMANTIC_CACHE_EVAL=1 ./scripts/test.sh`로 옵션 게이트를 활성화할 수 있다.
+정책 토픽 캐시 버전은 `QS_CHAT_POLICY_TOPIC_VERSION`으로 관리하며,
+`RefundPolicy/ShippingPolicy/OrderCancelPolicy/EbookRefundPolicy` 온톨로지 키로 정규화된다.
 
 피드백 집계와 개선 백로그 시드 생성:
 ```bash
