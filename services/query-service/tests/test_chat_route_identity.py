@@ -122,6 +122,17 @@ def test_chat_session_state_route_returns_payload(monkeypatch):
                 "window_sec": 60,
                 "window_start": 1760000000,
             },
+            "semantic_cache": {
+                "enabled": True,
+                "auto_disabled": False,
+                "disabled_until": None,
+                "disable_reason": None,
+                "similarity_threshold": 0.82,
+                "drift_total": 4,
+                "drift_errors": 0,
+                "drift_error_rate": 0.0,
+                "drift_max_error_rate": 0.2,
+            },
             "trace_id": trace_id,
             "request_id": request_id,
         }
@@ -141,6 +152,8 @@ def test_chat_session_state_route_returns_payload(monkeypatch):
     assert data["session"]["selection_snapshot"]["selected_title"] == "도서 B"
     assert data["session"]["pending_action_snapshot"]["type"] == "REFUND_REQUEST"
     assert data["session"]["llm_call_budget"]["limit"] == 5
+    assert data["session"]["semantic_cache"]["enabled"] is True
+    assert data["session"]["semantic_cache"]["drift_total"] == 4
     assert any(name == "chat_session_state_requests_total" and labels.get("result") == "ok" for name, labels in captured)
 
 

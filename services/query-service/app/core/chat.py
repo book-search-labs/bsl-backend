@@ -3610,6 +3610,27 @@ def get_chat_provider_snapshot(trace_id: str, request_id: str) -> Dict[str, Any]
     }
 
 
+def _semantic_cache_snapshot() -> Dict[str, Any]:
+    disable = _CACHE.get_json(_semantic_cache_disable_key())
+    drift = _CACHE.get_json(_semantic_cache_drift_key())
+    now_ts = int(time.time())
+    disabled_until = int(disable.get("until_ts") or 0) if isinstance(disable, dict) else 0
+    drift_total = int(drift.get("total") or 0) if isinstance(drift, dict) else 0
+    drift_errors = int(drift.get("errors") or 0) if isinstance(drift, dict) else 0
+    drift_rate = float(drift.get("error_rate") or 0.0) if isinstance(drift, dict) else 0.0
+    return {
+        "enabled": _semantic_cache_enabled(),
+        "auto_disabled": disabled_until > now_ts,
+        "disabled_until": disabled_until if disabled_until > now_ts else None,
+        "disable_reason": str(disable.get("reason") or "") if isinstance(disable, dict) and disabled_until > now_ts else None,
+        "similarity_threshold": _semantic_cache_similarity_threshold(),
+        "drift_total": max(0, drift_total),
+        "drift_errors": max(0, drift_errors),
+        "drift_error_rate": max(0.0, drift_rate),
+        "drift_max_error_rate": _semantic_cache_drift_max_error_rate(),
+    }
+
+
 def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> Dict[str, Any]:
     if not _is_valid_session_id(session_id):
         raise ValueError("invalid_session_id")
@@ -3671,6 +3692,7 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
                 "expires_at": pending_action.get("expires_at"),
             }
     llm_budget_snapshot = _load_llm_call_budget_snapshot(session_id, _session_user_from_session_id(session_id))
+    semantic_snapshot = _semantic_cache_snapshot()
     return {
         "session_id": session_id,
         "state_version": int(durable_state.get("state_version")) if isinstance(durable_state, dict) and isinstance(durable_state.get("state_version"), int) else None,
@@ -3684,6 +3706,7 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
         "selection_snapshot": selection_snapshot,
         "pending_action_snapshot": pending_action_snapshot,
         "llm_call_budget": llm_budget_snapshot,
+        "semantic_cache": semantic_snapshot,
         "trace_id": trace_id,
         "request_id": request_id,
     }

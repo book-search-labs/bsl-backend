@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 from fastapi.testclient import TestClient
 
@@ -268,6 +269,35 @@ def test_get_chat_session_state_includes_llm_call_budget_snapshot(monkeypatch):
     assert llm_budget["count"] >= 2
     assert llm_budget["limited"] is True
     assert llm_budget["window_sec"] == 60
+
+
+def test_get_chat_session_state_includes_semantic_cache_snapshot(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_SEMANTIC_CACHE_ENABLED", "1")
+    monkeypatch.setenv("QS_CHAT_SEMANTIC_CACHE_DRIFT_MAX_ERROR_RATE", "0.3")
+    now_ts = int(time.time())
+    chat._CACHE.set_json(
+        chat._semantic_cache_disable_key(),
+        {"until_ts": now_ts + 120, "reason": "DRIFT_AUTO_DISABLED", "error_rate": 0.5},
+        ttl=120,
+    )
+    chat._CACHE.set_json(
+        chat._semantic_cache_drift_key(),
+        {"total": 5, "errors": 2, "error_rate": 0.4, "updated_at": now_ts},
+        ttl=300,
+    )
+
+    state = chat.get_chat_session_state("u:701:default", "trace_now", "req_now")
+    semantic = state.get("semantic_cache")
+
+    assert isinstance(semantic, dict)
+    assert semantic["enabled"] is True
+    assert semantic["auto_disabled"] is True
+    assert semantic["disable_reason"] == "DRIFT_AUTO_DISABLED"
+    assert semantic["drift_total"] == 5
+    assert semantic["drift_errors"] == 2
+    assert semantic["drift_error_rate"] == 0.4
+    assert semantic["drift_max_error_rate"] == 0.3
 
 
 def test_get_chat_session_state_includes_selection_and_pending_snapshots(monkeypatch):
