@@ -1,4 +1,5 @@
 import asyncio
+from difflib import SequenceMatcher
 import hashlib
 import json
 import os
@@ -898,6 +899,34 @@ def _answer_cache_enabled() -> bool:
     return str(os.getenv("QS_RAG_ANSWER_CACHE_ENABLED", "1")).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _semantic_cache_enabled() -> bool:
+    return str(os.getenv("QS_CHAT_SEMANTIC_CACHE_ENABLED", "0")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _semantic_cache_ttl_sec() -> int:
+    return max(60, int(os.getenv("QS_CHAT_SEMANTIC_CACHE_TTL_SEC", "300")))
+
+
+def _semantic_cache_similarity_threshold() -> float:
+    return min(1.0, max(0.0, float(os.getenv("QS_CHAT_SEMANTIC_CACHE_SIMILARITY_THRESHOLD", "0.82"))))
+
+
+def _semantic_cache_max_candidates() -> int:
+    return max(1, int(os.getenv("QS_CHAT_SEMANTIC_CACHE_MAX_CANDIDATES", "20")))
+
+
+def _semantic_cache_drift_min_samples() -> int:
+    return max(1, int(os.getenv("QS_CHAT_SEMANTIC_CACHE_DRIFT_MIN_SAMPLES", "20")))
+
+
+def _semantic_cache_drift_max_error_rate() -> float:
+    return min(1.0, max(0.0, float(os.getenv("QS_CHAT_SEMANTIC_CACHE_DRIFT_MAX_ERROR_RATE", "0.2"))))
+
+
+def _semantic_cache_auto_disable_sec() -> int:
+    return max(60, int(os.getenv("QS_CHAT_SEMANTIC_CACHE_AUTO_DISABLE_SEC", "300")))
+
+
 def _bad_score_threshold() -> float:
     return float(os.getenv("QS_RAG_BAD_SCORE_THRESHOLD", "0.03"))
 
@@ -992,6 +1021,204 @@ def _normalize_query(text: str) -> str:
 
 def _hash_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def _semantic_cache_disable_key() -> str:
+    return "rag:sem:disable"
+
+
+def _semantic_cache_drift_key() -> str:
+    return "rag:sem:drift"
+
+
+def _semantic_cache_topic_key(topic: str, locale: str) -> str:
+    normalized_topic = _normalize_query(topic).replace(" ", "_") or "generic"
+    normalized_locale = (locale or "ko-KR").strip() or "ko-KR"
+    return f"rag:sem:{normalized_topic}:{normalized_locale}:{_prompt_version()}"
+
+
+def _semantic_cache_similarity(a: str, b: str) -> float:
+    left = _normalize_query(a)
+    right = _normalize_query(b)
+    if not left or not right:
+        return 0.0
+    if left == right:
+        return 1.0
+    left_tokens = {token for token in left.split(" ") if token}
+    right_tokens = {token for token in right.split(" ") if token}
+    jaccard = 0.0
+    union = left_tokens | right_tokens
+    if union:
+        jaccard = float(len(left_tokens & right_tokens)) / float(len(union))
+    ratio = SequenceMatcher(None, left, right).ratio()
+    return max(jaccard, ratio)
+
+
+def _semantic_cache_topic_for_query(query: str) -> Optional[str]:
+    normalized = _normalize_query(query)
+    if not normalized:
+        return None
+    policy_keywords = ["정책", "조건", "정리", "안내", "절차", "규정", "기준", "수수료", "가능", "policy", "guide"]
+    if not any(keyword in normalized for keyword in policy_keywords):
+        return None
+    if re.search(r"\bord\d{6,}\b", normalized, flags=re.IGNORECASE):
+        return None
+    if re.search(r"\b\d{4,}\b", normalized):
+        return None
+    if any(keyword in normalized for keyword in ["조회", "상태", "tracking", "lookup", "내역"]):
+        return None
+    if any(keyword in normalized for keyword in ["환불", "반품", "refund", "return"]):
+        return "refund"
+    if any(keyword in normalized for keyword in ["배송", "택배", "출고", "shipping", "shipment", "delivery"]):
+        return "shipping"
+    if any(keyword in normalized for keyword in ["주문", "결제", "취소", "order", "payment", "cancel"]):
+        return "order"
+    return None
+
+
+def _semantic_cache_claim_safe(answer_text: str, citations: List[str]) -> tuple[bool, str]:
+    answer = (answer_text or "").strip()
+    if not answer:
+        return False, "EMPTY_ANSWER"
+    if not citations:
+        return False, "NO_CITATIONS"
+    if _contains_forbidden_claim(answer):
+        return False, "FORBIDDEN_CLAIM"
+    return True, "OK"
+
+
+def _semantic_cache_auto_disabled_reason() -> Optional[str]:
+    cached = _CACHE.get_json(_semantic_cache_disable_key())
+    if not isinstance(cached, dict):
+        return None
+    until_ts = int(cached.get("until_ts") or 0)
+    if until_ts <= int(time.time()):
+        return None
+    return str(cached.get("reason") or "AUTO_DISABLED")
+
+
+def _semantic_cache_record_quality(*, ok: bool, reason: str) -> None:
+    state = _CACHE.get_json(_semantic_cache_drift_key())
+    total = 0
+    errors = 0
+    if isinstance(state, dict):
+        total = max(0, int(state.get("total") or 0))
+        errors = max(0, int(state.get("errors") or 0))
+    total += 1
+    if not ok:
+        errors += 1
+    error_rate = float(errors) / float(max(1, total))
+    _CACHE.set_json(
+        _semantic_cache_drift_key(),
+        {"total": total, "errors": errors, "error_rate": error_rate, "updated_at": int(time.time())},
+        ttl=max(_semantic_cache_auto_disable_sec() * 4, 1800),
+    )
+    if total >= _semantic_cache_drift_min_samples() and error_rate > _semantic_cache_drift_max_error_rate():
+        until_ts = int(time.time()) + _semantic_cache_auto_disable_sec()
+        _CACHE.set_json(
+            _semantic_cache_disable_key(),
+            {"until_ts": until_ts, "reason": "DRIFT_AUTO_DISABLED", "error_rate": error_rate},
+            ttl=_semantic_cache_auto_disable_sec(),
+        )
+        metrics.inc("chat_semantic_cache_auto_disable_total", {"reason": "drift"})
+        metrics.inc("chat_semantic_cache_block_total", {"reason": "AUTO_DISABLED"})
+    metrics.inc("chat_semantic_cache_quality_total", {"result": "ok" if ok else "error", "reason": reason})
+
+
+def _semantic_cache_rebind_response(response: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
+    rebound = dict(response)
+    rebound["trace_id"] = trace_id
+    rebound["request_id"] = request_id
+    return rebound
+
+
+def _semantic_cache_lookup(query: str, locale: str, trace_id: str, request_id: str) -> Optional[Dict[str, Any]]:
+    if not _semantic_cache_enabled():
+        return None
+    disable_reason = _semantic_cache_auto_disabled_reason()
+    if disable_reason:
+        metrics.inc("chat_semantic_cache_block_total", {"reason": disable_reason})
+        return None
+    topic = _semantic_cache_topic_for_query(query)
+    if not topic:
+        metrics.inc("chat_semantic_cache_block_total", {"reason": "LANE_NOT_ALLOWED"})
+        return None
+    cached = _CACHE.get_json(_semantic_cache_topic_key(topic, locale))
+    entries = cached.get("entries") if isinstance(cached, dict) else None
+    if not isinstance(entries, list) or not entries:
+        metrics.inc("chat_semantic_cache_block_total", {"reason": "NO_CANDIDATE"})
+        return None
+    threshold = _semantic_cache_similarity_threshold()
+    best_response: Optional[Dict[str, Any]] = None
+    best_score = 0.0
+    query_norm = _normalize_query(query)
+    for item in entries:
+        if not isinstance(item, dict):
+            continue
+        response = item.get("response")
+        if not isinstance(response, dict):
+            continue
+        candidate_query = str(item.get("query_norm") or item.get("query") or "").strip()
+        if not candidate_query:
+            continue
+        score = _semantic_cache_similarity(query_norm, candidate_query)
+        if score < threshold or score < best_score:
+            continue
+        best_score = score
+        best_response = response
+    if not isinstance(best_response, dict):
+        metrics.inc("chat_semantic_cache_block_total", {"reason": "SIMILARITY_THRESHOLD"})
+        return None
+    if str(best_response.get("status") or "").strip().lower() != "ok":
+        metrics.inc("chat_semantic_cache_block_total", {"reason": "BAD_STATUS"})
+        _semantic_cache_record_quality(ok=False, reason="BAD_STATUS")
+        return None
+    answer_obj = best_response.get("answer") if isinstance(best_response.get("answer"), dict) else {}
+    answer_text = str(answer_obj.get("content") or "")
+    citations = [str(item) for item in (best_response.get("citations") or []) if isinstance(item, str)]
+    claim_safe, claim_reason = _semantic_cache_claim_safe(answer_text, citations)
+    if not claim_safe:
+        metrics.inc("chat_semantic_cache_block_total", {"reason": claim_reason})
+        _semantic_cache_record_quality(ok=False, reason=claim_reason)
+        return None
+    _semantic_cache_record_quality(ok=True, reason="HIT")
+    metrics.inc("chat_semantic_cache_hit_total", {"lane": "policy", "topic": topic})
+    return _semantic_cache_rebind_response(best_response, trace_id, request_id)
+
+
+def _semantic_cache_store(query: str, locale: str, response: Dict[str, Any]) -> None:
+    if not _semantic_cache_enabled():
+        return
+    topic = _semantic_cache_topic_for_query(query)
+    if not topic:
+        return
+    if str(response.get("status") or "").strip().lower() != "ok":
+        return
+    answer_obj = response.get("answer") if isinstance(response.get("answer"), dict) else {}
+    answer_text = str(answer_obj.get("content") or "")
+    citations = [str(item) for item in (response.get("citations") or []) if isinstance(item, str)]
+    claim_safe, claim_reason = _semantic_cache_claim_safe(answer_text, citations)
+    if not claim_safe:
+        metrics.inc("chat_semantic_cache_block_total", {"reason": claim_reason})
+        return
+    key = _semantic_cache_topic_key(topic, locale)
+    cached = _CACHE.get_json(key)
+    entries = cached.get("entries") if isinstance(cached, dict) and isinstance(cached.get("entries"), list) else []
+    query_norm = _normalize_query(query)
+    next_entries: List[Dict[str, Any]] = [
+        {"query": query, "query_norm": query_norm, "response": dict(response), "created_at": int(time.time())}
+    ]
+    for item in entries:
+        if not isinstance(item, dict):
+            continue
+        existing_norm = _normalize_query(str(item.get("query_norm") or item.get("query") or ""))
+        if existing_norm and existing_norm == query_norm:
+            continue
+        next_entries.append(item)
+        if len(next_entries) >= _semantic_cache_max_candidates():
+            break
+    _CACHE.set_json(key, {"entries": next_entries, "topic": topic}, ttl=max(1, _semantic_cache_ttl_sec()))
+    metrics.inc("chat_semantic_cache_store_total", {"lane": "policy", "topic": topic})
 
 
 def _canonical_key(query: str, locale: str) -> str:
@@ -2204,6 +2431,24 @@ async def _run_chat_impl(
             metrics.inc("chat_requests_total", {"decision": "answer_cache_hit"})
             return cached.get("response")
 
+    semantic_cached = _semantic_cache_lookup(query, str(locale), trace_id, request_id)
+    if isinstance(semantic_cached, dict):
+        semantic_citations = [str(item) for item in (semantic_cached.get("citations") or []) if isinstance(item, str)]
+        _reset_fallback_count(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
+        _clear_unresolved_context(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
+        _append_turn_event_safe(
+            session_id,
+            request_id,
+            "TURN_COMPLETED",
+            trace_id=trace_id,
+            route="SEMANTIC_CACHE_HIT",
+            reason_code=str(semantic_cached.get("reason_code") or "OK"),
+            payload={"status": str(semantic_cached.get("status") or "ok"), "cache": "semantic"},
+        )
+        metrics.inc("chat_answer_risk_band_total", {"band": _compute_risk_band(query, str(semantic_cached.get("status") or "ok"), semantic_citations, None)})
+        metrics.inc("chat_requests_total", {"decision": "semantic_cache_hit"})
+        return semantic_cached
+
     payload = _build_llm_payload(request, trace_id, request_id, query, selected)
     admission_reason = _admission_block_reason(payload)
     if admission_reason:
@@ -2364,6 +2609,7 @@ async def _run_chat_impl(
     metrics.inc("chat_answer_risk_band_total", {"band": _compute_risk_band(query, "ok", citations, None)})
     if _answer_cache_enabled():
         _CACHE.set_json(answer_cache_key, {"response": response}, ttl=max(1, _answer_cache_ttl_sec()))
+    _semantic_cache_store(query, str(locale), response)
 
     _reset_fallback_count(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
     _clear_unresolved_context(session_id, trace_id=trace_id, request_id=request_id, user_id=user_id)
@@ -2630,6 +2876,56 @@ async def _run_chat_stream_impl(
             metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
             metrics.inc("chat_requests_total", {"decision": "answer_cache_hit"})
             return
+
+    semantic_cached = _semantic_cache_lookup(query, str(locale), trace_id, request_id)
+    if isinstance(semantic_cached, dict):
+        semantic_answer = semantic_cached.get("answer") if isinstance(semantic_cached.get("answer"), dict) else {}
+        semantic_citations = [str(item) for item in (semantic_cached.get("citations") or []) if isinstance(item, str)]
+        semantic_status = str(semantic_cached.get("status") or "ok")
+        semantic_reason_code = str(semantic_cached.get("reason_code") or "OK")
+        semantic_recoverable = bool(semantic_cached.get("recoverable")) if isinstance(semantic_cached.get("recoverable"), bool) else False
+        semantic_next_action = str(semantic_cached.get("next_action") or "NONE")
+        semantic_retry_after_ms = semantic_cached.get("retry_after_ms")
+        semantic_fallback_count = semantic_cached.get("fallback_count")
+        semantic_escalated = bool(semantic_cached.get("escalated")) if isinstance(semantic_cached.get("escalated"), bool) else False
+        risk_band = _compute_risk_band(query, semantic_status, semantic_citations, None)
+        yield _sse_event(
+            "meta",
+            {
+                "trace_id": trace_id,
+                "request_id": request_id,
+                "status": "cached_semantic",
+                "sources": semantic_cached.get("sources") if isinstance(semantic_cached.get("sources"), list) else sources,
+                "citations": semantic_citations,
+                "risk_band": risk_band,
+                "reason_code": semantic_reason_code,
+                "recoverable": semantic_recoverable,
+                "next_action": semantic_next_action,
+                "retry_after_ms": semantic_retry_after_ms,
+                "fallback_count": semantic_fallback_count,
+                "escalated": semantic_escalated,
+            },
+        )
+        yield _sse_event("delta", {"delta": semantic_answer.get("content") or ""})
+        yield _sse_event(
+            "done",
+            {
+                "status": semantic_status,
+                "citations": semantic_citations,
+                "risk_band": risk_band,
+                "reason_code": semantic_reason_code,
+                "recoverable": semantic_recoverable,
+                "next_action": semantic_next_action,
+                "retry_after_ms": semantic_retry_after_ms,
+                "fallback_count": semantic_fallback_count,
+                "escalated": semantic_escalated,
+            },
+        )
+        _reset_fallback_count(session_id)
+        _clear_unresolved_context(session_id)
+        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
+        metrics.inc("chat_requests_total", {"decision": "semantic_cache_hit"})
+        return
 
     payload = _build_llm_payload(request, trace_id, request_id, query, selected)
     admission_reason = _admission_block_reason(payload)
@@ -2938,6 +3234,7 @@ async def _run_chat_stream_impl(
             }
             if _answer_cache_enabled():
                 _CACHE.set_json(answer_cache_key, {"response": response}, ttl=max(1, _answer_cache_ttl_sec()))
+            _semantic_cache_store(query, str(locale), response)
             _reset_fallback_count(session_id)
             _clear_unresolved_context(session_id)
             metrics.inc("chat_answer_risk_band_total", {"band": risk_band})

@@ -183,6 +183,7 @@ All structured responses that follow `contracts/*` must include:
 - `message + history` 총 길이: `QS_CHAT_MAX_TOTAL_CHARS` (기본 6000)
 - `session_id` 형식: `QS_CHAT_SESSION_ID_PATTERN` / 길이 `QS_CHAT_SESSION_ID_MAX_LEN` 검증
 - 인증된 사용자 요청은 `session_id`가 사용자 네임스페이스(`u:{user_id}:...`)로 정규화된다. 교차 사용자 세션(`u:{other_user}:...`)은 `403 forbidden`.
+- `QS_CHAT_SEMANTIC_CACHE_ENABLED=1`인 경우에도 semantic cache는 정책/정적 안내 lane(토픽 일치 + 유사도 임계치 충족)에서만 제한적으로 재사용되며, 조회/쓰기성 질의는 차단된다.
 - 제한 위반 시 HTTP 200 + `status=insufficient_evidence`와 `reason_code`(`CHAT_MESSAGE_TOO_LONG`, `CHAT_HISTORY_TOO_LONG`, `CHAT_PAYLOAD_TOO_LARGE` 등)로 복구 힌트를 반환
 
 ### Response

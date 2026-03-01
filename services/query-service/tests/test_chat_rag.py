@@ -616,6 +616,144 @@ def test_run_chat_records_admission_audit_on_call_rate_limit(monkeypatch):
     )
 
 
+def test_run_chat_semantic_cache_reuses_policy_lane(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_ENGINE_MODE", "legacy")
+    monkeypatch.setenv("QS_CHAT_SEMANTIC_CACHE_ENABLED", "1")
+    monkeypatch.setenv("QS_CHAT_SEMANTIC_CACHE_SIMILARITY_THRESHOLD", "0.2")
+    monkeypatch.setenv("QS_RAG_ANSWER_CACHE_ENABLED", "0")
+    calls = {"count": 0}
+
+    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
+        query = str((request.get("message") or {}).get("content") or "")
+        return {
+            "ok": True,
+            "query": query,
+            "canonical_key": f"ck:{request_id}",
+            "locale": "ko-KR",
+            "selected": [
+                {
+                    "chunk_id": "chunk-1",
+                    "citation_key": "chunk-1",
+                    "doc_id": "doc-1",
+                    "title": "환불 정책",
+                    "url": "https://example.com/refund",
+                    "snippet": "환불 정책 요약",
+                    "score": 0.9,
+                }
+            ],
+        }
+
+    async def fake_tool_chat(request, trace_id, request_id):
+        return None
+
+    async def fake_call_llm_json(payload, trace_id, request_id):
+        calls["count"] += 1
+        return {"content": "환불 정책 요약입니다.", "citations": ["chunk-1"]}
+
+    monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
+    monkeypatch.setattr(chat, "run_tool_chat", fake_tool_chat)
+    monkeypatch.setattr(chat, "_call_llm_json", fake_call_llm_json)
+    monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
+
+    first = asyncio.run(chat.run_chat({"message": {"role": "user", "content": "환불 정책 안내해줘"}}, "trace_test", "req_sem_1"))
+    second = asyncio.run(chat.run_chat({"message": {"role": "user", "content": "환불 정책 정리해줘"}}, "trace_test", "req_sem_2"))
+
+    assert first["status"] == "ok"
+    assert second["status"] == "ok"
+    assert second["request_id"] == "req_sem_2"
+    assert calls["count"] == 1
+
+
+def test_run_chat_semantic_cache_blocks_lookup_write_lane(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_ENGINE_MODE", "legacy")
+    monkeypatch.setenv("QS_CHAT_SEMANTIC_CACHE_ENABLED", "1")
+    monkeypatch.setenv("QS_CHAT_SEMANTIC_CACHE_SIMILARITY_THRESHOLD", "0.0")
+    monkeypatch.setenv("QS_RAG_ANSWER_CACHE_ENABLED", "0")
+    calls = {"count": 0}
+
+    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
+        query = str((request.get("message") or {}).get("content") or "")
+        return {
+            "ok": True,
+            "query": query,
+            "canonical_key": f"ck:{request_id}",
+            "locale": "ko-KR",
+            "selected": [
+                {
+                    "chunk_id": "chunk-1",
+                    "citation_key": "chunk-1",
+                    "doc_id": "doc-1",
+                    "title": "주문 상태",
+                    "url": "https://example.com/order",
+                    "snippet": "주문 상태 안내",
+                    "score": 0.9,
+                }
+            ],
+        }
+
+    async def fake_tool_chat(request, trace_id, request_id):
+        return None
+
+    async def fake_call_llm_json(payload, trace_id, request_id):
+        calls["count"] += 1
+        return {"content": "주문 상태 안내입니다.", "citations": ["chunk-1"]}
+
+    monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
+    monkeypatch.setattr(chat, "run_tool_chat", fake_tool_chat)
+    monkeypatch.setattr(chat, "_call_llm_json", fake_call_llm_json)
+    monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
+
+    payload = {"message": {"role": "user", "content": "주문 1234 상태 알려줘"}}
+    _ = asyncio.run(chat.run_chat(payload, "trace_test", "req_lookup_1"))
+    _ = asyncio.run(chat.run_chat(payload, "trace_test", "req_lookup_2"))
+
+    assert calls["count"] == 2
+
+
+def test_semantic_cache_auto_disables_on_quality_drift(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_SEMANTIC_CACHE_ENABLED", "1")
+    monkeypatch.setenv("QS_CHAT_SEMANTIC_CACHE_DRIFT_MIN_SAMPLES", "1")
+    monkeypatch.setenv("QS_CHAT_SEMANTIC_CACHE_DRIFT_MAX_ERROR_RATE", "0")
+    monkeypatch.setenv("QS_CHAT_SEMANTIC_CACHE_AUTO_DISABLE_SEC", "120")
+
+    key = chat._semantic_cache_topic_key("refund", "ko-KR")
+    chat._CACHE.set_json(
+        key,
+        {
+            "entries": [
+                {
+                    "query": "환불 정책 안내해줘",
+                    "query_norm": "환불 정책 안내해줘",
+                    "response": {
+                        "version": "v1",
+                        "trace_id": "old_trace",
+                        "request_id": "old_req",
+                        "answer": {"role": "assistant", "content": "환불 정책 안내입니다."},
+                        "sources": [],
+                        "citations": [],
+                        "status": "ok",
+                        "reason_code": "OK",
+                        "recoverable": False,
+                        "next_action": "NONE",
+                        "retry_after_ms": None,
+                    },
+                }
+            ]
+        },
+        ttl=300,
+    )
+
+    hit = chat._semantic_cache_lookup("환불 정책 안내해줘", "ko-KR", "trace_test", "req_test")
+
+    assert hit is None
+    disabled = chat._CACHE.get_json(chat._semantic_cache_disable_key())
+    assert isinstance(disabled, dict)
+    assert disabled.get("reason") == "DRIFT_AUTO_DISABLED"
+
+
 def test_run_chat_stream_emits_error_when_citation_mapping_fails(monkeypatch):
     chat._CACHE = CacheClient(None)
 
