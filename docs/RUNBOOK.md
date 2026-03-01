@@ -236,6 +236,8 @@ override 갱신 요청은 `chat_recommend_experiment_config_requests_total{resul
 python3 scripts/chat/recommend_experiment_ops.py snapshot
 python3 scripts/chat/recommend_experiment_ops.py reset --payload-json '{"clear_overrides":true}'
 python3 scripts/chat/recommend_experiment_ops.py config --payload-json '{"overrides":{"diversity_percent":70}}'
+python3 scripts/chat/rollout_ops.py snapshot
+python3 scripts/chat/rollout_ops.py reset --payload-json '{"engine":"agent","clear_gate":true,"clear_rollback":true}'
 ```
 
 세션별 fallback/미해결 컨텍스트 상태는:
