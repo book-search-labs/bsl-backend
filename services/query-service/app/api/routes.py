@@ -24,7 +24,11 @@ from app.core.chat import (
     run_chat,
     run_chat_stream,
 )
-from app.core.chat_tools import get_recommend_experiment_snapshot, reset_recommend_experiment_state
+from app.core.chat_tools import (
+    get_recommend_experiment_snapshot,
+    reset_recommend_experiment_state,
+    update_recommend_experiment_config_overrides,
+)
 from app.core.understanding import parse_understanding
 
 router = APIRouter()
@@ -401,6 +405,73 @@ async def chat_recommend_experiment_reset(request: Request):
         "request_id": request_id,
         "status": "ok",
         "reset": snapshot,
+    }
+    return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
+
+
+@router.post("/internal/chat/recommend/experiment/config")
+async def chat_recommend_experiment_config(request: Request):
+    trace_id, request_id, _, traceparent = _extract_ids(request)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if isinstance(body, dict):
+        if isinstance(body.get("trace_id"), str) and body.get("trace_id"):
+            trace_id = body.get("trace_id")
+        if isinstance(body.get("request_id"), str) and body.get("request_id"):
+            request_id = body.get("request_id")
+    else:
+        body = {}
+
+    raw_overrides = body.get("overrides")
+    if raw_overrides is not None and not isinstance(raw_overrides, dict):
+        metrics.inc("chat_recommend_experiment_config_requests_total", {"result": "invalid_request"})
+        return _error_response(
+            "invalid_request",
+            "overrides must be a JSON object when provided.",
+            trace_id,
+            request_id,
+        )
+
+    raw_clear = body.get("clear_overrides")
+    clear_overrides = False
+    if raw_clear is not None:
+        if not isinstance(raw_clear, bool):
+            metrics.inc("chat_recommend_experiment_config_requests_total", {"result": "invalid_request"})
+            return _error_response(
+                "invalid_request",
+                "clear_overrides must be boolean when provided.",
+                trace_id,
+                request_id,
+            )
+        clear_overrides = raw_clear
+
+    overrides = raw_overrides if isinstance(raw_overrides, dict) else None
+    if not clear_overrides and not overrides:
+        metrics.inc("chat_recommend_experiment_config_requests_total", {"result": "empty_patch"})
+        return _error_response(
+            "invalid_request",
+            "Either overrides or clear_overrides=true is required.",
+            trace_id,
+            request_id,
+        )
+
+    try:
+        config_update = update_recommend_experiment_config_overrides(overrides, clear=clear_overrides)
+    except ValueError as exc:
+        metrics.inc("chat_recommend_experiment_config_requests_total", {"result": "invalid_override"})
+        return _error_response("invalid_request", str(exc), trace_id, request_id)
+
+    snapshot = get_recommend_experiment_snapshot()
+    metrics.inc("chat_recommend_experiment_config_requests_total", {"result": "ok"})
+    payload = {
+        "version": "v1",
+        "trace_id": trace_id,
+        "request_id": request_id,
+        "status": "ok",
+        "config_update": config_update,
+        "experiment": snapshot,
     }
     return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
 

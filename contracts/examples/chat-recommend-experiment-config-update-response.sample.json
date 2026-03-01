@@ -1,0 +1,35 @@
+{
+  "version": "v1",
+  "trace_id": "trace_02",
+  "request_id": "req_02",
+  "status": "ok",
+  "config_update": {
+    "updated_at": 1760000000,
+    "ttl_sec": 604800,
+    "overrides": {
+      "enabled": true,
+      "diversity_percent": 70,
+      "max_block_rate": 0.35
+    }
+  },
+  "experiment": {
+    "enabled": true,
+    "auto_disabled": false,
+    "disabled_until": null,
+    "disable_reason": null,
+    "total": 15,
+    "blocked": 2,
+    "block_rate": 0.1333,
+    "min_samples": 20,
+    "max_block_rate": 0.35,
+    "diversity_percent": 70,
+    "auto_disable_sec": 600,
+    "quality_min_candidates": 2,
+    "quality_min_diversity": 2,
+    "config_overrides": {
+      "enabled": true,
+      "diversity_percent": 70,
+      "max_block_rate": 0.35
+    }
+  }
+}

@@ -284,6 +284,23 @@ All structured responses that follow `contracts/*` must include:
 - `clear_overrides=true`면 기존 override를 비우고 `overrides`만 다시 적용한다.
 - 응답 본문은 Query Service `/internal/chat/recommend/experiment/reset` payload를 그대로 전달한다.
 
+## POST `/chat/recommend/experiment/config`
+**Purpose**: patch recommendation experiment runtime overrides without resetting counters (ops/admin only).  
+**Alias**: `POST /v1/chat/recommend/experiment/config`
+
+### Request
+- Contract: `contracts/chat-recommend-experiment-config-update-request.schema.json`
+- Example: `contracts/examples/chat-recommend-experiment-config-update-request.sample.json`
+
+### Response
+- Contract: `contracts/chat-recommend-experiment-config-update-response.schema.json`
+- Example: `contracts/examples/chat-recommend-experiment-config-update-response.sample.json`
+
+### Notes
+- 관리자 인증 컨텍스트가 없으면 `403 forbidden`.
+- `clear_overrides=true` 또는 `overrides` patch 중 하나는 필수다.
+- 응답 본문은 Query Service `/internal/chat/recommend/experiment/config` payload를 그대로 전달한다.
+
 ## GET `/autocomplete`
 **Purpose**: return query suggestions for a prefix.
 

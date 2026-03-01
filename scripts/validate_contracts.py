@@ -52,6 +52,8 @@ SCHEMA_FILES = {
     "agent-alias-upsert-request.sample.json": CONTRACTS_DIR / "agent-alias-upsert-request.schema.json",
     "agent-alias-response.sample.json": CONTRACTS_DIR / "agent-alias-response.schema.json",
     "chat-provider-snapshot-response.sample.json": CONTRACTS_DIR / "chat-provider-snapshot-response.schema.json",
+    "chat-recommend-experiment-config-update-request.sample.json": CONTRACTS_DIR / "chat-recommend-experiment-config-update-request.schema.json",
+    "chat-recommend-experiment-config-update-response.sample.json": CONTRACTS_DIR / "chat-recommend-experiment-config-update-response.schema.json",
     "chat-recommend-experiment-response.sample.json": CONTRACTS_DIR / "chat-recommend-experiment-response.schema.json",
     "chat-recommend-experiment-reset-request.sample.json": CONTRACTS_DIR / "chat-recommend-experiment-reset-request.schema.json",
     "chat-recommend-experiment-reset-response.sample.json": CONTRACTS_DIR / "chat-recommend-experiment-reset-response.schema.json",

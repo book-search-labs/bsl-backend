@@ -639,4 +639,81 @@ class ChatControllerTest {
         Map<String, Object> overrides = (Map<String, Object>) payload.get("overrides");
         assertEquals(70, ((Number) overrides.get("diversity_percent")).intValue());
     }
+
+    @Test
+    void chatRecommendExperimentConfigRequiresAdmin() throws Exception {
+        mockMvc.perform(post("/chat/recommend/experiment/config")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error.code").value("forbidden"));
+
+        verify(queryServiceClient, never()).chatRecommendExperimentConfig(any(), anyMap());
+    }
+
+    @Test
+    void chatRecommendExperimentConfigProxyForAdmin() throws Exception {
+        AuthContextHolder.set(new AuthContext("101", "1"));
+        JsonNode responseNode = objectMapper.readTree(
+            "{"
+                + "\"version\":\"v1\","
+                + "\"trace_id\":\"trace_a\","
+                + "\"request_id\":\"req_a\","
+                + "\"status\":\"ok\","
+                + "\"config_update\":{"
+                + "\"updated_at\":1760000200,"
+                + "\"ttl_sec\":604800,"
+                + "\"overrides\":{\"diversity_percent\":70}"
+                + "},"
+                + "\"experiment\":{\"enabled\":true,\"total\":10,\"blocked\":1,\"block_rate\":0.1}"
+                + "}"
+        );
+        when(queryServiceClient.chatRecommendExperimentConfig(any(), anyMap())).thenReturn(responseNode);
+
+        String body = "{"
+            + "\"clear_overrides\":true,"
+            + "\"overrides\":{\"diversity_percent\":70}"
+            + "}";
+
+        mockMvc.perform(post("/chat/recommend/experiment/config")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"))
+            .andExpect(jsonPath("$.config_update.overrides.diversity_percent").value(70));
+
+        ArgumentCaptor<Map<String, Object>> mapCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(queryServiceClient).chatRecommendExperimentConfig(any(), mapCaptor.capture());
+        Map<String, Object> payload = mapCaptor.getValue();
+        assertEquals(Boolean.TRUE, payload.get("clear_overrides"));
+    }
+
+    @Test
+    void v1ChatRecommendExperimentConfigProxyForAdmin() throws Exception {
+        AuthContextHolder.set(new AuthContext("101", "1"));
+        JsonNode responseNode = objectMapper.readTree(
+            "{"
+                + "\"version\":\"v1\","
+                + "\"trace_id\":\"trace_a\","
+                + "\"request_id\":\"req_a\","
+                + "\"status\":\"ok\","
+                + "\"config_update\":{"
+                + "\"updated_at\":1760000200,"
+                + "\"ttl_sec\":604800,"
+                + "\"overrides\":{\"enabled\":true}"
+                + "},"
+                + "\"experiment\":{\"enabled\":true,\"total\":10,\"blocked\":1,\"block_rate\":0.1}"
+                + "}"
+        );
+        when(queryServiceClient.chatRecommendExperimentConfig(any(), anyMap())).thenReturn(responseNode);
+
+        mockMvc.perform(post("/v1/chat/recommend/experiment/config")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"overrides\":{\"enabled\":true}}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"))
+            .andExpect(jsonPath("$.config_update.overrides.enabled").value(true));
+
+        verify(queryServiceClient).chatRecommendExperimentConfig(any(), anyMap());
+    }
 }

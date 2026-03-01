@@ -185,7 +185,20 @@ curl -s -X POST http://localhost:8001/internal/chat/recommend/experiment/reset \
     }
   }'
 ```
+실험 카운터를 유지한 채 override만 갱신하려면:
+```bash
+curl -s -X POST http://localhost:8001/internal/chat/recommend/experiment/config \
+  -H "content-type: application/json" \
+  -d '{
+    "clear_overrides": true,
+    "overrides": {
+      "diversity_percent": 70,
+      "max_block_rate": 0.35
+    }
+  }'
+```
 초기화 관측은 `chat_recommend_experiment_reset_total{result}`와 `chat_recommend_experiment_reset_requests_total{result}`로 확인한다.
+override 갱신 요청은 `chat_recommend_experiment_config_requests_total{result}`/`chat_recommend_experiment_config_update_total{result}`로 확인한다.
 
 세션별 fallback/미해결 컨텍스트 상태는:
 ```bash
@@ -250,6 +263,10 @@ curl -s -X POST "http://localhost:8088/chat/recommend/experiment/reset" \
   -H "x-admin-id: 1" \
   -H "content-type: application/json" \
   -d '{"clear_overrides":true,"overrides":{"diversity_percent":70}}'
+curl -s -X POST "http://localhost:8088/chat/recommend/experiment/config" \
+  -H "x-admin-id: 1" \
+  -H "content-type: application/json" \
+  -d '{"overrides":{"diversity_percent":70,"max_block_rate":0.35}}'
 ```
 
 ## Sample Dev Bootstrap (Recommended)

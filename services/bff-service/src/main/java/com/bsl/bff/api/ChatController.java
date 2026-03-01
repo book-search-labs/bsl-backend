@@ -167,6 +167,19 @@ public class ChatController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/recommend/experiment/config")
+    public ResponseEntity<JsonNode> recommendExperimentConfig(
+        @RequestBody(required = false) Map<String, Object> request
+    ) {
+        RequestContext context = RequestContextHolder.get();
+        requireAdminContext();
+        JsonNode response = queryServiceClient.chatRecommendExperimentConfig(context, request == null ? Map.of() : request);
+        if (response == null) {
+            throw new DownstreamException(HttpStatus.BAD_GATEWAY, "query_service_error", "Query service response is empty");
+        }
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/session/state")
     public ResponseEntity<JsonNode> sessionState(
         @RequestParam(value = "session_id", required = false) String sessionId

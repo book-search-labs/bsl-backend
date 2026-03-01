@@ -1,0 +1,10 @@
+{
+  "trace_id": "trace_02",
+  "request_id": "req_02",
+  "clear_overrides": true,
+  "overrides": {
+    "enabled": true,
+    "diversity_percent": 70,
+    "max_block_rate": 0.35
+  }
+}

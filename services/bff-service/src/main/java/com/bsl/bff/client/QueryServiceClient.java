@@ -344,6 +344,28 @@ public class QueryServiceClient {
         }
     }
 
+    public JsonNode chatRecommendExperimentConfig(RequestContext context, Map<String, Object> requestBody) {
+        String url = properties.getBaseUrl() + "/internal/chat/recommend/experiment/config";
+        HttpHeaders headers = DownstreamHeaders.from(context);
+        enrichAuthHeaders(headers);
+        headers.add(HttpHeaders.CONTENT_TYPE, "application/json");
+        Map<String, Object> body = requestBody == null ? new HashMap<>() : requestBody;
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+        try {
+            ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.POST, entity, JsonNode.class);
+            return response.getBody();
+        } catch (ResourceAccessException ex) {
+            throw new DownstreamException(HttpStatus.SERVICE_UNAVAILABLE, "query_service_timeout", "Query service timeout");
+        } catch (HttpStatusCodeException ex) {
+            HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+            if (status == null) {
+                status = HttpStatus.SERVICE_UNAVAILABLE;
+            }
+            throw new DownstreamException(status, "query_service_error", "Query service error");
+        }
+    }
+
     private void streamSse(InputStream bodyStream, SseEmitter emitter, ChatStreamResult result) throws IOException {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(bodyStream, StandardCharsets.UTF_8))) {
             String eventName = "message";

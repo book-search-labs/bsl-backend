@@ -212,6 +212,87 @@ def test_chat_recommend_experiment_reset_route_rejects_invalid_override_value(mo
     assert "max_block_rate" in payload["error"]["message"]
 
 
+def test_chat_recommend_experiment_config_route_returns_payload(monkeypatch):
+    captured = {}
+
+    def fake_update_recommend_experiment_config_overrides(overrides, *, clear=False):
+        captured["overrides"] = overrides
+        captured["clear"] = clear
+        return {"updated_at": 1760000200, "ttl_sec": 604800, "overrides": {"enabled": True, "diversity_percent": 70}}
+
+    monkeypatch.setattr(routes, "update_recommend_experiment_config_overrides", fake_update_recommend_experiment_config_overrides)
+    monkeypatch.setattr(
+        routes,
+        "get_recommend_experiment_snapshot",
+        lambda: {
+            "enabled": True,
+            "auto_disabled": False,
+            "disabled_until": None,
+            "disable_reason": None,
+            "total": 12,
+            "blocked": 2,
+            "block_rate": 0.16,
+            "min_samples": 20,
+            "max_block_rate": 0.4,
+            "diversity_percent": 70,
+            "auto_disable_sec": 600,
+            "quality_min_candidates": 2,
+            "quality_min_diversity": 2,
+            "config_overrides": {"enabled": True, "diversity_percent": 70},
+        },
+    )
+
+    client = TestClient(app)
+    response = client.post(
+        "/internal/chat/recommend/experiment/config",
+        json={"clear_overrides": True, "overrides": {"enabled": True, "diversity_percent": 70}},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["config_update"]["overrides"]["diversity_percent"] == 70
+    assert data["experiment"]["config_overrides"]["enabled"] is True
+    assert captured["clear"] is True
+    assert captured["overrides"]["diversity_percent"] == 70
+
+
+def test_chat_recommend_experiment_config_route_requires_patch_payload():
+    client = TestClient(app)
+    response = client.post("/internal/chat/recommend/experiment/config", json={})
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_request"
+
+
+def test_chat_recommend_experiment_config_route_rejects_invalid_overrides():
+    client = TestClient(app)
+    response = client.post("/internal/chat/recommend/experiment/config", json={"overrides": "bad"})
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_request"
+
+
+def test_chat_recommend_experiment_config_route_rejects_invalid_override_value(monkeypatch):
+    def fake_update_recommend_experiment_config_overrides(overrides, *, clear=False):
+        raise ValueError("override.max_block_rate must be between 0 and 1")
+
+    monkeypatch.setattr(routes, "update_recommend_experiment_config_overrides", fake_update_recommend_experiment_config_overrides)
+
+    client = TestClient(app)
+    response = client.post(
+        "/internal/chat/recommend/experiment/config",
+        json={"overrides": {"max_block_rate": 1.5}},
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_request"
+    assert "max_block_rate" in payload["error"]["message"]
+
+
 def test_chat_session_state_route_returns_payload(monkeypatch):
     captured = []
 

@@ -115,6 +115,28 @@ class QueryServiceClientTest {
         assertThat(((java.util.Map<?, ?>) body).get("clear_overrides")).isEqualTo(Boolean.TRUE);
     }
 
+    @Test
+    void chatRecommendExperimentConfigForwardsAuthHeadersAndBody() {
+        RestTemplate restTemplate = mock(RestTemplate.class);
+        ObjectMapper mapper = new ObjectMapper();
+        QueryServiceClient client = new QueryServiceClient(restTemplate, downstream("http://localhost:8001"), mapper);
+        ObjectNode ok = mapper.createObjectNode();
+        ok.put("status", "ok");
+        when(restTemplate.exchange(eq("http://localhost:8001/internal/chat/recommend/experiment/config"), eq(HttpMethod.POST), any(HttpEntity.class), eq(com.fasterxml.jackson.databind.JsonNode.class)))
+            .thenReturn(ResponseEntity.ok(ok));
+
+        AuthContextHolder.set(new AuthContext("101", "42"));
+        client.chatRecommendExperimentConfig(null, java.util.Map.of("overrides", java.util.Map.of("diversity_percent", 70)));
+
+        ArgumentCaptor<HttpEntity> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).exchange(eq("http://localhost:8001/internal/chat/recommend/experiment/config"), eq(HttpMethod.POST), entityCaptor.capture(), eq(com.fasterxml.jackson.databind.JsonNode.class));
+        assertThat(entityCaptor.getValue().getHeaders().getFirst("x-user-id")).isEqualTo("101");
+        assertThat(entityCaptor.getValue().getHeaders().getFirst("x-admin-id")).isEqualTo("42");
+        Object body = entityCaptor.getValue().getBody();
+        assertThat(body).isInstanceOf(java.util.Map.class);
+        assertThat(((java.util.Map<?, ?>) body).get("overrides")).isNotNull();
+    }
+
     private DownstreamProperties downstream(String queryBaseUrl) {
         DownstreamProperties properties = new DownstreamProperties();
         DownstreamProperties.ServiceProperties query = new DownstreamProperties.ServiceProperties();
