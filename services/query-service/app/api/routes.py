@@ -385,6 +385,7 @@ async def chat_session_state(request: Request):
             "llm_call_budget": snapshot.get("llm_call_budget"),
             "semantic_cache": snapshot.get("semantic_cache"),
             "episode_memory": snapshot.get("episode_memory"),
+            "recommend_experiment": snapshot.get("recommend_experiment"),
         },
     }
     return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))

@@ -329,6 +329,34 @@ def test_get_chat_session_state_includes_episode_memory_snapshot(monkeypatch):
     assert episode_memory["items"][0] == "최근 전자책 위주로 보고 있어요"
 
 
+def test_get_chat_session_state_includes_recommend_experiment_snapshot(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setattr(
+        chat,
+        "get_recommend_experiment_snapshot",
+        lambda: {
+            "enabled": True,
+            "auto_disabled": False,
+            "disabled_until": None,
+            "disable_reason": None,
+            "total": 10,
+            "blocked": 2,
+            "block_rate": 0.2,
+            "min_samples": 20,
+            "max_block_rate": 0.4,
+        },
+    )
+
+    state = chat.get_chat_session_state("u:802:default", "trace_now", "req_now")
+    recommend = state.get("recommend_experiment")
+
+    assert isinstance(recommend, dict)
+    assert recommend["enabled"] is True
+    assert recommend["total"] == 10
+    assert recommend["block_rate"] == 0.2
+    assert recommend["max_block_rate"] == 0.4
+
+
 def test_get_chat_session_state_includes_selection_and_pending_snapshots(monkeypatch):
     chat._CACHE = CacheClient(None)
     session_id = "u:460:default"

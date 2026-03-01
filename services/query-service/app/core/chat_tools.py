@@ -2219,6 +2219,24 @@ def _record_recommend_experiment_quality(*, blocked: bool) -> None:
         metrics.inc("chat_recommend_experiment_auto_disable_total", {"reason": "quality_block_rate"})
 
 
+def get_recommend_experiment_snapshot() -> dict[str, Any]:
+    disable = _CACHE.get_json(_recommend_experiment_disable_key())
+    state = _CACHE.get_json(_recommend_experiment_state_key())
+    now_ts = int(time.time())
+    disabled_until = int(disable.get("until_ts") or 0) if isinstance(disable, dict) else 0
+    return {
+        "enabled": _recommend_experiment_enabled(),
+        "auto_disabled": disabled_until > now_ts,
+        "disabled_until": disabled_until if disabled_until > now_ts else None,
+        "disable_reason": str(disable.get("reason") or "") if isinstance(disable, dict) and disabled_until > now_ts else None,
+        "total": max(0, int(state.get("total") or 0)) if isinstance(state, dict) else 0,
+        "blocked": max(0, int(state.get("blocked") or 0)) if isinstance(state, dict) else 0,
+        "block_rate": max(0.0, float(state.get("block_rate") or 0.0)) if isinstance(state, dict) else 0.0,
+        "min_samples": _recommend_experiment_min_samples(),
+        "max_block_rate": _recommend_experiment_max_block_rate(),
+    }
+
+
 def _recommendation_variant(
     *,
     session_id: str,

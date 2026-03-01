@@ -18,7 +18,7 @@ from app.core.chat_state_store import (
     get_session_state as get_durable_chat_session_state,
     upsert_session_state,
 )
-from app.core.chat_tools import reset_ticket_session_context, run_tool_chat
+from app.core.chat_tools import get_recommend_experiment_snapshot, reset_ticket_session_context, run_tool_chat
 from app.core.rag import retrieve_chunks_with_trace
 from app.core.rag_candidates import retrieve_candidates
 from app.core.rewrite import run_rewrite
@@ -4098,6 +4098,7 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
     llm_budget_snapshot = _load_llm_call_budget_snapshot(session_id, _session_user_from_session_id(session_id))
     semantic_snapshot = _semantic_cache_snapshot()
     episode_snapshot = _episode_memory_snapshot(_session_user_from_session_id(session_id))
+    recommend_snapshot = get_recommend_experiment_snapshot()
     return {
         "session_id": session_id,
         "state_version": int(durable_state.get("state_version")) if isinstance(durable_state, dict) and isinstance(durable_state.get("state_version"), int) else None,
@@ -4113,6 +4114,7 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
         "llm_call_budget": llm_budget_snapshot,
         "semantic_cache": semantic_snapshot,
         "episode_memory": episode_snapshot,
+        "recommend_experiment": recommend_snapshot,
         "trace_id": trace_id,
         "request_id": request_id,
     }

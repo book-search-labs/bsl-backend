@@ -139,6 +139,17 @@ def test_chat_session_state_route_returns_payload(monkeypatch):
                 "count": 2,
                 "items": ["전자책 선호", "입문서 선호"],
             },
+            "recommend_experiment": {
+                "enabled": True,
+                "auto_disabled": False,
+                "disabled_until": None,
+                "disable_reason": None,
+                "total": 12,
+                "blocked": 3,
+                "block_rate": 0.25,
+                "min_samples": 20,
+                "max_block_rate": 0.4,
+            },
             "trace_id": trace_id,
             "request_id": request_id,
         }
@@ -161,6 +172,7 @@ def test_chat_session_state_route_returns_payload(monkeypatch):
     assert data["session"]["semantic_cache"]["enabled"] is True
     assert data["session"]["semantic_cache"]["drift_total"] == 4
     assert data["session"]["episode_memory"]["count"] == 2
+    assert data["session"]["recommend_experiment"]["block_rate"] == 0.25
     assert any(name == "chat_session_state_requests_total" and labels.get("result") == "ok" for name, labels in captured)
 
 
