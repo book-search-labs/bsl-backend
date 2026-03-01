@@ -257,6 +257,42 @@ def test_run_tool_chat_book_recommendation_normalizes_isbn10_seed(monkeypatch):
     assert "비슷한 도서 B" in result["answer"]["content"]
 
 
+def test_run_tool_chat_book_recommendation_routes_ambiguous_seed_to_options(monkeypatch):
+    captured = {}
+
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        return [
+            {"doc_id": "doc-seed-a", "title": "공통 제목", "author": "저자A", "isbn": "9780306406157", "score": 0.98},
+            {"doc_id": "doc-seed-b", "title": "공통 제목", "author": "저자B", "isbn": "9780306406158", "score": 0.97},
+            {"doc_id": "doc-c", "title": "다른 제목", "author": "저자C", "isbn": "9780306406159", "score": 0.83},
+        ]
+
+    def fake_upsert_session_state(conversation_id, **kwargs):
+        captured["conversation_id"] = conversation_id
+        captured["selection"] = kwargs.get("selection")
+        return {"selection": kwargs.get("selection")}
+
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+    monkeypatch.setattr(chat_tools, "upsert_session_state", fake_upsert_session_state)
+
+    payload = {
+        "session_id": "sess-reco-ambiguous",
+        "message": {"role": "user", "content": "도서 '공통 제목' 기준으로 추천해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_book_recommend_ambiguous"))
+
+    assert result is not None
+    assert result["status"] == "needs_input"
+    assert result["reason_code"] == "ROUTE:OPTIONS:DISAMBIGUATE:BOOK"
+    assert "번호로 선택" in result["answer"]["content"]
+    assert captured["conversation_id"] == "sess-reco-ambiguous"
+    assert isinstance(captured["selection"], dict)
+    assert captured["selection"]["type"] == "BOOK_RECOMMENDATION"
+    assert len(captured["selection"]["last_candidates"]) == 2
+
+
 def test_run_tool_chat_book_recommendation_persists_selection_state(monkeypatch):
     captured = {}
 

@@ -622,29 +622,39 @@ def _record_entity_normalization_metrics(slots: BookQuerySlots) -> None:
         )
 
 
-def _record_entity_ambiguity_metrics(slots: BookQuerySlots, candidates: list[dict[str, Any]]) -> None:
+def _collect_title_ambiguity_candidates(slots: BookQuerySlots, candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if not isinstance(slots.title, str) or not slots.title.strip():
-        return
+        return []
     if isinstance(slots.isbn, str) and slots.isbn.strip():
-        return
+        return []
     normalized_title = _normalize_title_for_compare(slots.title)
     if not normalized_title:
-        return
+        return []
 
     discriminator_set: set[tuple[str, str]] = set()
+    matched_candidates: list[dict[str, Any]] = []
     for candidate in candidates:
         if not isinstance(candidate, dict):
             continue
         title = str(candidate.get("title") or "").strip()
         if _normalize_title_for_compare(title) != normalized_title:
             continue
+        matched_candidates.append(candidate)
         author = _normalize_title_for_compare(str(candidate.get("author") or ""))
         raw_isbn = str(candidate.get("isbn") or "").strip()
         normalized_isbn = normalize_isbn(raw_isbn) or _normalize_title_for_compare(str(candidate.get("doc_id") or ""))
         discriminator_set.add((author, normalized_isbn))
 
     if len(discriminator_set) >= 2:
+        return matched_candidates
+    return []
+
+
+def _record_entity_ambiguity_metrics(slots: BookQuerySlots, candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    ambiguous = _collect_title_ambiguity_candidates(slots, candidates)
+    if ambiguous:
         metrics.inc("chat_entity_ambiguous_total", {"type": "title"})
+    return ambiguous
 
 
 def _selection_state_from_db(session_id: str) -> dict[str, Any] | None:
@@ -2622,7 +2632,33 @@ async def _handle_book_recommendation(
             source_snippet=f"seed_query={lookup_query}, slots={slots_to_dict(effective_slots)}, candidate_count=0",
         )
 
-    _record_entity_ambiguity_metrics(effective_slots, candidates)
+    ambiguous_title_candidates = _record_entity_ambiguity_metrics(effective_slots, candidates)
+    if ambiguous_title_candidates:
+        selection_candidates = _build_selection_candidates(ambiguous_title_candidates, max_items=5)
+        if selection_candidates:
+            _save_selection_state(
+                session_id,
+                user_id=user_id,
+                trace_id=trace_id,
+                request_id=request_id,
+                candidates=selection_candidates,
+                selected_index=None,
+            )
+            option_text = _render_selection_options({"last_candidates": selection_candidates})
+            return _build_response(
+                trace_id,
+                request_id,
+                "needs_input",
+                "입력하신 제목과 일치하는 도서가 여러 권입니다.\n" + option_text,
+                tool_name="book_recommend",
+                endpoint="OS /books_doc_read/_search",
+                source_snippet=(
+                    f"seed_query={lookup_query}, slots={slots_to_dict(effective_slots)}, "
+                    f"candidate_count={len(candidates)}, ambiguous_count={len(ambiguous_title_candidates)}"
+                ),
+                reason_code="ROUTE:OPTIONS:DISAMBIGUATE:BOOK",
+                next_action="PROVIDE_REQUIRED_INFO",
+            )
 
     normalized_seed = _normalize_title_for_compare(seed_query or str(effective_slots.title or context_seed_title))
     seed_isbn = effective_slots.isbn
