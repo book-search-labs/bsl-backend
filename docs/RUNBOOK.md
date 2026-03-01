@@ -184,7 +184,7 @@ python3 scripts/chat/sync_feedback_backlog_tickets.py \
 - `evaluation/chat/rollout_snapshot_after.json`
 
 `CHAT_RECOMMEND_METRICS_URL`와 `CHAT_ROLLOUT_URL`이 모두 접근 가능하면
-추천/롤아웃 eval 리포트를 `data/eval/reports`에 자동 생성한다.
+추천/롤아웃/semantic cache eval 리포트를 `data/eval/reports`에 자동 생성한다.
 회귀 픽스처(`CHAT_REGRESSION_FIXTURE`)가 존재하면 멀티턴 회귀셋 커버리지 리포트도 함께 생성된다.
 `CHAT_REGRESSION_GATE=1`을 주면 루프에서 회귀셋 게이트를 강제한다.
 

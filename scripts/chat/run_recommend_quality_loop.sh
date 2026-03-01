@@ -35,6 +35,11 @@ ROLLOUT_URL="${CHAT_ROLLOUT_URL:-http://localhost:8001/internal/chat/rollout}"
 ROLLOUT_MIN_AGENT_SAMPLES="${CHAT_ROLLOUT_MIN_AGENT_SAMPLES:-20}"
 ROLLOUT_MAX_FAILURE_RATIO="${CHAT_ROLLOUT_MAX_FAILURE_RATIO:-0.2}"
 ROLLOUT_MAX_ROLLBACK_TOTAL="${CHAT_ROLLOUT_MAX_ROLLBACK_TOTAL:-0}"
+SEMANTIC_SESSION_ID="${CHAT_SEMANTIC_SESSION_ID:-$RECOMMEND_SESSION_ID}"
+SEMANTIC_MIN_QUALITY_SAMPLES="${CHAT_SEMANTIC_MIN_QUALITY_SAMPLES:-20}"
+SEMANTIC_MAX_ERROR_RATE="${CHAT_SEMANTIC_MAX_ERROR_RATE:-0.2}"
+SEMANTIC_MAX_AUTO_DISABLE_TOTAL="${CHAT_SEMANTIC_MAX_AUTO_DISABLE_TOTAL:-0}"
+SEMANTIC_REQUIRE_MIN_SAMPLES="${CHAT_SEMANTIC_REQUIRE_MIN_SAMPLES:-1}"
 REGRESSION_FIXTURE="${CHAT_REGRESSION_FIXTURE:-$ROOT_DIR/services/query-service/tests/fixtures/chat_state_regression_v1.json}"
 REGRESSION_INGEST_DIR="${CHAT_REGRESSION_INGEST_DIR:-$FEEDBACK_BACKLOG_TICKETS_DIR}"
 REGRESSION_MIN_SCENARIOS="${CHAT_REGRESSION_MIN_SCENARIOS:-30}"
@@ -108,7 +113,7 @@ if [ -f "$FEEDBACK_BACKLOG" ]; then
     --output-dir "$FEEDBACK_BACKLOG_TICKETS_DIR"
 fi
 
-echo "[3/3] generate recommendation/rollout/regression quality reports"
+echo "[3/3] generate recommendation/rollout/semantic/regression quality reports"
 if command -v curl >/dev/null 2>&1; then
   if curl -fsS --max-time 2 "$RECOMMEND_METRICS_URL" >/dev/null; then
     "$PYTHON_BIN" "$ROOT_DIR/scripts/eval/chat_recommend_eval.py" \
@@ -131,11 +136,24 @@ if command -v curl >/dev/null 2>&1; then
     else
       echo "  - rollout endpoint unavailable ($ROLLOUT_URL); skipping rollout eval report"
     fi
+    SEMANTIC_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_semantic_cache_eval.py"
+      --metrics-url "$RECOMMEND_METRICS_URL"
+      --session-id "$SEMANTIC_SESSION_ID"
+      --min-quality-samples "$SEMANTIC_MIN_QUALITY_SAMPLES"
+      --max-error-rate "$SEMANTIC_MAX_ERROR_RATE"
+      --max-auto-disable-total "$SEMANTIC_MAX_AUTO_DISABLE_TOTAL"
+      --out "$RECOMMEND_REPORT_OUT"
+    )
+    if [ "$SEMANTIC_REQUIRE_MIN_SAMPLES" = "1" ]; then
+      SEMANTIC_ARGS+=(--require-min-samples)
+    fi
+    "$PYTHON_BIN" "${SEMANTIC_ARGS[@]}"
   else
-    echo "  - metrics endpoint unavailable ($RECOMMEND_METRICS_URL); skipping recommend/rollout eval reports"
+    echo "  - metrics endpoint unavailable ($RECOMMEND_METRICS_URL); skipping recommend/rollout/semantic eval reports"
   fi
 else
-  echo "  - curl not found; skipping recommend/rollout eval reports"
+  echo "  - curl not found; skipping recommend/rollout/semantic eval reports"
 fi
 
 if [ -f "$REGRESSION_FIXTURE" ]; then
