@@ -133,6 +133,14 @@ python3 scripts/eval/chat_rollout_eval.py \
   --out data/eval/reports
 ```
 
+멀티턴 회귀셋 커버리지 게이트를 점검하려면:
+```bash
+python3 scripts/eval/chat_regression_suite_eval.py \
+  --fixture services/query-service/tests/fixtures/chat_state_regression_v1.json \
+  --gate
+```
+`RUN_CHAT_REGRESSION_SUITE_EVAL=1 ./scripts/test.sh`로 CI/로컬 옵션 게이트를 활성화할 수 있다.
+
 피드백 집계와 개선 백로그 시드 생성:
 ```bash
 python3 scripts/chat/export_feedback_events.py \

@@ -100,6 +100,23 @@ python3 scripts/eval/chat_rollout_eval.py \
 RUN_CHAT_ROLLOUT_EVAL=1 ./scripts/test.sh
 ```
 
+멀티턴 회귀셋 규모/도메인 커버리지 게이트를 점검하려면:
+
+```bash
+python3 scripts/eval/chat_regression_suite_eval.py \
+  --fixture services/query-service/tests/fixtures/chat_state_regression_v1.json \
+  --gate
+```
+
+`./scripts/test.sh`에서 옵션 게이트로 실행하려면:
+
+```bash
+RUN_CHAT_REGRESSION_SUITE_EVAL=1 ./scripts/test.sh
+```
+
+리포트의 `metrics` 필드에는 운영 지표 키(`chat_regression_suite_size{domain=*}`,
+`chat_regression_new_case_ingest_total`)가 함께 기록된다.
+
 피드백/품질 루프를 한 번에 실행하려면:
 
 ```bash

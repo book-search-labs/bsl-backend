@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[1/10] Contract validation (optional)"
+echo "[1/11] Contract validation (optional)"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN=""
 if command -v python >/dev/null 2>&1; then
@@ -20,9 +20,9 @@ else
   echo "  - python not found; skipping contract validation"
 fi
 
-echo "[2/10] Contract compatibility gate (optional)"
+echo "[2/11] Contract compatibility gate (optional)"
 
-echo "[3/10] Event schema compatibility check (optional)"
+echo "[3/11] Event schema compatibility check (optional)"
 if [ "${RUN_SCHEMA_CHECK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/kafka/schema_compat_check.py" || exit 1
@@ -38,7 +38,7 @@ else
   echo "  - python not found; skipping contract compatibility check"
 fi
 
-echo "[4/10] Feature spec validation (optional)"
+echo "[4/11] Feature spec validation (optional)"
 if [ -n "$PYTHON_BIN" ]; then
   if $PYTHON_BIN -c "import yaml" >/dev/null 2>&1; then
     $PYTHON_BIN "$ROOT_DIR/scripts/validate_feature_spec.py" || exit 1
@@ -49,7 +49,7 @@ else
   echo "  - python not found; skipping feature spec validation"
 fi
 
-echo "[5/10] Offline eval gate (optional)"
+echo "[5/11] Offline eval gate (optional)"
 if [ "${RUN_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     EVAL_RUN_PATH="${EVAL_RUN_PATH:-$ROOT_DIR/evaluation/runs/sample_run.jsonl}"
@@ -62,7 +62,7 @@ else
   echo "  - set RUN_EVAL=1 to enable"
 fi
 
-echo "[6/10] Rerank eval gate (optional)"
+echo "[6/11] Rerank eval gate (optional)"
 if [ "${RUN_RERANK_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     RERANK_BASELINE_PATH="${RERANK_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/rerank_eval_sample.json}"
@@ -127,7 +127,7 @@ else
   echo "  - set RUN_RERANK_EVAL=1 to enable"
 fi
 
-echo "[7/10] Chat recommend/rollout eval gate (optional)"
+echo "[7/11] Chat recommend/rollout eval gate (optional)"
 if [ "${RUN_CHAT_RECOMMEND_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_RECOMMEND_METRICS_URL="${CHAT_RECOMMEND_METRICS_URL:-http://localhost:8001/metrics}"
@@ -230,7 +230,51 @@ else
   echo "  - set RUN_CHAT_ROLLOUT_EVAL=1 to enable"
 fi
 
-echo "[8/10] Canonical quality checks (optional)"
+echo "[8/11] Chat regression suite gate (optional)"
+if [ "${RUN_CHAT_REGRESSION_SUITE_EVAL:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_REGRESSION_FIXTURE="${CHAT_REGRESSION_FIXTURE:-$ROOT_DIR/services/query-service/tests/fixtures/chat_state_regression_v1.json}"
+    CHAT_REGRESSION_INGEST_DIR="${CHAT_REGRESSION_INGEST_DIR:-$ROOT_DIR/tasks/backlog/generated/feedback}"
+    CHAT_REGRESSION_MIN_SCENARIOS="${CHAT_REGRESSION_MIN_SCENARIOS:-30}"
+    CHAT_REGRESSION_MIN_TURNS="${CHAT_REGRESSION_MIN_TURNS:-45}"
+    CHAT_REGRESSION_MIN_MULTI_TURN="${CHAT_REGRESSION_MIN_MULTI_TURN:-12}"
+    CHAT_REGRESSION_MIN_BOOK_SCENARIOS="${CHAT_REGRESSION_MIN_BOOK_SCENARIOS:-8}"
+    CHAT_REGRESSION_REQUIRE_INGEST="${CHAT_REGRESSION_REQUIRE_INGEST:-0}"
+    CHAT_REGRESSION_MIN_INGEST_CASES="${CHAT_REGRESSION_MIN_INGEST_CASES:-1}"
+    CHAT_REGRESSION_BASELINE_PATH="${CHAT_REGRESSION_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/chat_regression_suite_eval_baseline.json}"
+    CHAT_REGRESSION_MAX_SCENARIO_DROP="${CHAT_REGRESSION_MAX_SCENARIO_DROP:-0}"
+    CHAT_REGRESSION_MAX_TURN_DROP="${CHAT_REGRESSION_MAX_TURN_DROP:-0}"
+    CHAT_REGRESSION_MAX_BOOK_DROP="${CHAT_REGRESSION_MAX_BOOK_DROP:-0}"
+
+    CHAT_REGRESSION_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_regression_suite_eval.py"
+      --fixture "$CHAT_REGRESSION_FIXTURE"
+      --ingest-dir "$CHAT_REGRESSION_INGEST_DIR"
+      --min-scenarios "$CHAT_REGRESSION_MIN_SCENARIOS"
+      --min-turns "$CHAT_REGRESSION_MIN_TURNS"
+      --min-multi-turn-scenarios "$CHAT_REGRESSION_MIN_MULTI_TURN"
+      --min-book-scenarios "$CHAT_REGRESSION_MIN_BOOK_SCENARIOS"
+      --min-ingest-cases "$CHAT_REGRESSION_MIN_INGEST_CASES"
+      --max-scenario-drop "$CHAT_REGRESSION_MAX_SCENARIO_DROP"
+      --max-turn-drop "$CHAT_REGRESSION_MAX_TURN_DROP"
+      --max-book-drop "$CHAT_REGRESSION_MAX_BOOK_DROP"
+      --gate
+    )
+    if [ "$CHAT_REGRESSION_REQUIRE_INGEST" = "1" ]; then
+      CHAT_REGRESSION_ARGS+=(--require-ingest)
+    fi
+    if [ -f "$CHAT_REGRESSION_BASELINE_PATH" ]; then
+      CHAT_REGRESSION_ARGS+=(--baseline-report "$CHAT_REGRESSION_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_REGRESSION_ARGS[@]}" || exit 1
+  else
+    echo "  - python not found; skipping chat regression suite gate"
+  fi
+else
+  echo "  - set RUN_CHAT_REGRESSION_SUITE_EVAL=1 to enable"
+fi
+
+echo "[9/11] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -241,7 +285,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[9/10] E2E tests (optional)"
+echo "[10/11] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -252,4 +296,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[10/10] Done"
+echo "[11/11] Done"
