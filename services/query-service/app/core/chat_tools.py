@@ -578,6 +578,69 @@ def _build_tool_source(tool_name: str, endpoint: str, snippet: str) -> tuple[lis
     return [source], [citation_key]
 
 
+def _contains_success_claim(content: str) -> bool:
+    normalized = _normalize_text(content)
+    if not normalized:
+        return False
+    patterns = [
+        "조회가 완료",
+        "조회 완료",
+        "취소가 완료",
+        "환불 접수가 완료",
+        "접수가 완료",
+        "실행이 완료",
+    ]
+    return any(pattern in normalized for pattern in patterns)
+
+
+def _claim_repair_response(base: dict[str, Any], reason_code: str) -> dict[str, Any]:
+    repaired = dict(base)
+    if reason_code == "DENY_CLAIM:NOT_CONFIRMED":
+        repaired["status"] = "pending_confirmation"
+        repaired["reason_code"] = reason_code
+        repaired["recoverable"] = True
+        repaired["next_action"] = "CONFIRM_ACTION"
+        repaired["retry_after_ms"] = None
+        repaired["answer"] = {
+            "role": "assistant",
+            "content": "확인 절차가 끝나지 않아 완료를 안내할 수 없습니다. 확인 코드를 입력해 주세요.",
+        }
+        return repaired
+    repaired["status"] = "tool_fallback"
+    repaired["reason_code"] = reason_code
+    repaired["recoverable"] = True
+    repaired["next_action"] = "RETRY"
+    repaired["retry_after_ms"] = 3000
+    repaired["answer"] = {
+        "role": "assistant",
+        "content": "실행/조회 근거를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    }
+    return repaired
+
+
+def _apply_claim_verifier(base: dict[str, Any]) -> dict[str, Any]:
+    status = str(base.get("status") or "")
+    reason_code = str(base.get("reason_code") or "")
+    answer = base.get("answer") if isinstance(base.get("answer"), dict) else {}
+    content = str(answer.get("content") or "")
+    has_success_claim = _contains_success_claim(content)
+    if not has_success_claim:
+        return base
+
+    if reason_code in {"CONFIRMATION_REQUIRED", "DENY_EXECUTE:NOT_CONFIRMED"}:
+        metrics.inc("chat_claim_block_total", {"reason": "DENY_CLAIM:NOT_CONFIRMED"})
+        metrics.inc("chat_claim_repair_total", {"reason": "DENY_CLAIM:NOT_CONFIRMED"})
+        return _claim_repair_response(base, "DENY_CLAIM:NOT_CONFIRMED")
+
+    sources = base.get("sources") if isinstance(base.get("sources"), list) else []
+    citations = base.get("citations") if isinstance(base.get("citations"), list) else []
+    if status == "ok" and (not sources or not citations):
+        metrics.inc("chat_claim_block_total", {"reason": "DENY_CLAIM:NO_TOOL_RESULT"})
+        metrics.inc("chat_claim_repair_total", {"reason": "DENY_CLAIM:NO_TOOL_RESULT"})
+        return _claim_repair_response(base, "DENY_CLAIM:NO_TOOL_RESULT")
+    return base
+
+
 def _build_response(
     trace_id: str,
     request_id: str,
@@ -622,7 +685,7 @@ def _build_response(
             "source": "tool",
         },
     )
-    return {
+    response = {
         "version": "v1",
         "trace_id": trace_id,
         "request_id": request_id,
@@ -635,6 +698,7 @@ def _build_response(
         "sources": sources,
         "citations": citations,
     }
+    return _apply_claim_verifier(response)
 
 
 def _resolve_session_id(request: dict[str, Any], user_id: str | None) -> str:

@@ -1854,6 +1854,33 @@ def test_build_response_emits_recovery_hint_metric():
     assert after.get(key, 0) >= before.get(key, 0) + 1
 
 
+def test_build_response_repairs_success_claim_without_evidence():
+    response = chat_tools._build_response(
+        "trace_test",
+        "req_claim_no_evidence",
+        "ok",
+        "주문 조회가 완료되었습니다.",
+    )
+
+    assert response["status"] == "tool_fallback"
+    assert response["reason_code"] == "DENY_CLAIM:NO_TOOL_RESULT"
+    assert response["next_action"] == "RETRY"
+
+
+def test_build_response_repairs_not_confirmed_success_claim():
+    response = chat_tools._build_response(
+        "trace_test",
+        "req_claim_not_confirmed",
+        "pending_confirmation",
+        "환불 접수가 완료되었습니다.",
+    )
+
+    assert response["status"] == "pending_confirmation"
+    assert response["reason_code"] == "DENY_CLAIM:NOT_CONFIRMED"
+    assert response["next_action"] == "CONFIRM_ACTION"
+    assert "확인 절차" in response["answer"]["content"]
+
+
 def test_call_commerce_timeout_emits_chat_timeout_metric(monkeypatch):
     class FakeAsyncClient:
         async def __aenter__(self):
