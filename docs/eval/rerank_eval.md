@@ -11,9 +11,8 @@ Measure rerank quality improvements and guard against regressions.
 ```bash
 python3 scripts/eval/rerank_eval.py \
   --mis-url http://localhost:8005 \
-  --ranking-url http://localhost:8004 \
+  --ranking-url http://localhost:8082 \
   --os-url http://localhost:9200 \
-  --mis-model multilingual-e5-small \
   --rerank-topk 50 \
   --out data/eval/reports
 ```

@@ -34,7 +34,9 @@ def embed_queries_mis(
     vectors: List[List[float]] = []
     for start in range(0, len(texts), batch_size):
         batch = texts[start : start + batch_size]
-        payload = {"model": model, "texts": batch, "normalize": True}
+        payload: Dict[str, Any] = {"texts": batch, "normalize": True}
+        if model:
+            payload["model"] = model
         data = post_json(f"{mis_url.rstrip('/')}/v1/embed", payload, timeout)
         batch_vectors = data.get("vectors") or []
         if len(batch_vectors) != len(batch):
@@ -66,7 +68,7 @@ def search_lexical(os_url: str, index: str, query: str, topk: int, timeout: floa
         "query": {
             "multi_match": {
                 "query": query,
-                "fields": ["title_ko", "title_en", "authors.name_ko", "series_name", "publisher_name"],
+                "fields": ["title_ko", "title_en", "author_names_ko", "series_name", "publisher_name"],
             }
         },
     }
@@ -372,8 +374,8 @@ def main() -> int:
     parser.add_argument("--doc-index", default="books_doc_read")
     parser.add_argument("--vec-index", default="books_vec_read")
     parser.add_argument("--mis-url", default="http://localhost:8005")
-    parser.add_argument("--mis-model", default="multilingual-e5-small")
-    parser.add_argument("--ranking-url", default="http://localhost:8004")
+    parser.add_argument("--mis-model", default="")
+    parser.add_argument("--ranking-url", default="http://localhost:8082")
     parser.add_argument("--lex-topk", type=int, default=200)
     parser.add_argument("--vec-topk", type=int, default=200)
     parser.add_argument("--rrf-k", type=int, default=60)
