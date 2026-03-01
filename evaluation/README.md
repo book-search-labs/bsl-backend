@@ -246,3 +246,8 @@ python3 scripts/chat/apply_regression_fixture_candidates.py \
   --dry-run \
   --allow-empty
 ```
+
+품질 루프에서는 아래 env로 동일 동작을 제어할 수 있다:
+- `CHAT_FEEDBACK_REGRESSION_APPLY_DRY_RUN` (기본 `1`)
+- `CHAT_FEEDBACK_REGRESSION_APPLY_ALLOW_REVIEW` (기본 `0`)
+- `CHAT_FEEDBACK_REGRESSION_APPLY_MAX_ADD` (기본 `0`, 0은 제한 없음)

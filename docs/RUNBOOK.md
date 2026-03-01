@@ -212,6 +212,10 @@ python3 scripts/chat/apply_regression_fixture_candidates.py \
 회귀 시드 초안은 `tasks/backlog/generated/chat_feedback_regression_seeds.md`에 생성된다.
 fixture 편입 후보 초안은 `tasks/backlog/generated/chat_feedback_regression_fixture_candidates.md`에 생성된다.
 fixture 적용 보고서는 `tasks/backlog/generated/chat_feedback_regression_fixture_apply_report.md`에 생성된다.
+quality loop env 토글:
+- `CHAT_FEEDBACK_REGRESSION_APPLY_DRY_RUN` (기본 `1`)
+- `CHAT_FEEDBACK_REGRESSION_APPLY_ALLOW_REVIEW` (기본 `0`)
+- `CHAT_FEEDBACK_REGRESSION_APPLY_MAX_ADD` (기본 `0`, 0은 제한 없음)
 위 단계를 한 번에 수행하려면:
 ```bash
 ./scripts/chat/run_recommend_quality_loop.sh
