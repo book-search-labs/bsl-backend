@@ -134,6 +134,21 @@ RUN_CHAT_REGRESSION_SUITE_EVAL=1 ./scripts/test.sh
 `chat_regression_new_case_ingest_total`)가 함께 기록된다.
 기본 ingest 집계 경로는 `tasks/backlog/generated`이며 `README.md`/`_index.md`는 제외된다.
 
+개별 리포트를 종합한 에이전트 품질 요약을 생성하려면:
+
+```bash
+python3 scripts/eval/chat_agent_eval_summary.py \
+  --reports-dir data/eval/reports \
+  --require-all \
+  --gate
+```
+
+`./scripts/test.sh`에서 옵션 게이트로 실행하려면:
+
+```bash
+RUN_CHAT_AGENT_SUMMARY_EVAL=1 ./scripts/test.sh
+```
+
 피드백/품질 루프를 한 번에 실행하려면:
 
 ```bash
@@ -150,6 +165,7 @@ RUN_CHAT_REGRESSION_SUITE_EVAL=1 ./scripts/test.sh
 추천/롤아웃/semantic cache eval 리포트를 `data/eval/reports`에 함께 생성한다.
 회귀 픽스처가 존재하면(`CHAT_REGRESSION_FIXTURE`) 멀티턴 회귀셋 커버리지 리포트도 함께 생성한다.
 `CHAT_REGRESSION_GATE=1`을 지정하면 루프 내에서 회귀셋 임계치 게이트를 강제할 수 있다.
+기본값으로 `chat_agent_eval_summary` 종합 리포트도 함께 생성된다(`CHAT_AGENT_SUMMARY_ENABLED=1`).
 
 실험 설정/상태를 운영에서 빠르게 조정하려면:
 

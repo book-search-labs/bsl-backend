@@ -142,6 +142,15 @@ python3 scripts/eval/chat_regression_suite_eval.py \
 `RUN_CHAT_REGRESSION_SUITE_EVAL=1 ./scripts/test.sh`로 CI/로컬 옵션 게이트를 활성화할 수 있다.
 기본 ingest 집계 경로는 `tasks/backlog/generated`이며 `README.md`/`_index.md`는 자동 제외된다.
 
+종합 요약 게이트를 점검하려면:
+```bash
+python3 scripts/eval/chat_agent_eval_summary.py \
+  --reports-dir data/eval/reports \
+  --require-all \
+  --gate
+```
+`RUN_CHAT_AGENT_SUMMARY_EVAL=1 ./scripts/test.sh`로 옵션 게이트를 활성화할 수 있다.
+
 semantic cache 안전 게이트를 점검하려면:
 ```bash
 python3 scripts/eval/chat_semantic_cache_eval.py \
@@ -195,6 +204,7 @@ python3 scripts/chat/generate_feedback_regression_seeds.py \
 추천/롤아웃/semantic cache eval 리포트를 `data/eval/reports`에 자동 생성한다.
 회귀 픽스처(`CHAT_REGRESSION_FIXTURE`)가 존재하면 멀티턴 회귀셋 커버리지 리포트도 함께 생성된다.
 `CHAT_REGRESSION_GATE=1`을 주면 루프에서 회귀셋 게이트를 강제한다.
+기본값으로 `chat_agent_eval_summary` 종합 리포트도 함께 생성된다(`CHAT_AGENT_SUMMARY_ENABLED=1`).
 
 스냅샷 캡처를 끄려면:
 ```bash

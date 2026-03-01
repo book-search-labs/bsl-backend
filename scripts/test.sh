@@ -321,6 +321,27 @@ else
   echo "  - set RUN_CHAT_REGRESSION_SUITE_EVAL=1 to enable"
 fi
 
+if [ "${RUN_CHAT_AGENT_SUMMARY_EVAL:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_AGENT_SUMMARY_REPORTS_DIR="${CHAT_AGENT_SUMMARY_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_AGENT_SUMMARY_REQUIRE_ALL="${CHAT_AGENT_SUMMARY_REQUIRE_ALL:-0}"
+    CHAT_AGENT_SUMMARY_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_agent_eval_summary.py"
+      --reports-dir "$CHAT_AGENT_SUMMARY_REPORTS_DIR"
+      --out "$CHAT_AGENT_SUMMARY_REPORTS_DIR"
+      --gate
+    )
+    if [ "$CHAT_AGENT_SUMMARY_REQUIRE_ALL" = "1" ]; then
+      CHAT_AGENT_SUMMARY_ARGS+=(--require-all)
+    fi
+    $PYTHON_BIN "${CHAT_AGENT_SUMMARY_ARGS[@]}" || exit 1
+  else
+    echo "  - python not found; skipping chat agent summary gate"
+  fi
+else
+  echo "  - set RUN_CHAT_AGENT_SUMMARY_EVAL=1 to enable"
+fi
+
 echo "[9/11] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
