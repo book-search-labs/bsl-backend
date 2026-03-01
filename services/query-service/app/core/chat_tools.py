@@ -1927,6 +1927,18 @@ def _build_recommendation_reason(
     return "시드 기준으로 장르/주제를 확장한 후보입니다."
 
 
+def _recommendation_next_actions(candidate_count: int) -> str:
+    if candidate_count <= 0:
+        return ""
+    select_hint = f"1~{min(3, candidate_count)}번 후보를 번호로 선택"
+    return (
+        "\n\n다음으로 진행할 수 있어요:\n"
+        f"- {select_hint}\n"
+        "- 다른 출판사 추천\n"
+        "- 더 쉬운 버전 추천"
+    )
+
+
 def _format_recommendation_lines(
     items: list[dict[str, Any]],
     *,
@@ -2047,7 +2059,7 @@ async def _handle_book_recommendation(
     elif seed_query:
         seed_title = str(seed_query).strip()
     prefix = f"'{seed_title}' 기준 추천 도서입니다.\n" if seed_title else "요청하신 기준으로 추천 도서를 정리했습니다.\n"
-    content = prefix + "\n".join(lines)
+    content = prefix + "\n".join(lines) + _recommendation_next_actions(len(lines))
     selection_candidates = _build_selection_candidates(recommended, max_items=5)
     if selection_candidates:
         _save_selection_state(
@@ -2149,7 +2161,7 @@ async def _handle_cart_recommendation(
         )
 
     lines = _format_recommendation_lines(merged, max_items=5, query_context="cart")
-    content = "장바구니 도서를 기준으로 추천 도서를 정리했습니다.\n" + "\n".join(lines)
+    content = "장바구니 도서를 기준으로 추천 도서를 정리했습니다.\n" + "\n".join(lines) + _recommendation_next_actions(len(lines))
     selection_candidates = _build_selection_candidates(merged, max_items=5)
     if selection_candidates:
         _save_selection_state(

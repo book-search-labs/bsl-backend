@@ -117,6 +117,7 @@ def test_run_tool_chat_book_recommendation_without_login(monkeypatch):
     assert "中國民間宗教史" in result["answer"]["content"]
     assert "馬列主義與宗敎的衝突" in result["answer"]["content"]
     assert "추천 이유:" in result["answer"]["content"]
+    assert "다음으로 진행할 수 있어요" in result["answer"]["content"]
     assert result["citations"]
     assert result["sources"][0]["url"] == "OS /books_doc_read/_search"
 
@@ -406,6 +407,7 @@ def test_run_tool_chat_cart_recommendation_with_login(monkeypatch):
     assert "영미문화 교육론" in result["answer"]["content"]
     assert "中國民間宗教史" in result["answer"]["content"]
     assert "추천 이유:" in result["answer"]["content"]
+    assert "다음으로 진행할 수 있어요" in result["answer"]["content"]
     assert result["citations"]
     assert result["sources"][0]["url"] == "GET /api/v1/cart"
 
