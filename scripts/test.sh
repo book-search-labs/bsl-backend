@@ -384,6 +384,7 @@ if [ "${RUN_CHAT_PIPELINE_TESTS:-0}" = "1" ]; then
       "$ROOT_DIR/scripts/eval/test_chat_regression_suite_eval.py" \
       "$ROOT_DIR/scripts/eval/test_chat_agent_eval_summary.py" \
       "$ROOT_DIR/scripts/eval/test_purge_old_reports.py" \
+      "$ROOT_DIR/services/query-service/tests/test_chat_state_store_sanitize.py" \
       "$ROOT_DIR/services/query-service/tests/test_chat_regression_harness.py" || exit 1
   else
     echo "  - python not found; skipping chat pipeline tests"
