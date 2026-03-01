@@ -1051,6 +1051,47 @@ def test_semantic_cache_lookup_records_policy_topic_hit_metric(monkeypatch):
     )
 
 
+def test_semantic_cache_policy_version_change_invalidates_entries(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_SEMANTIC_CACHE_ENABLED", "1")
+    monkeypatch.setenv("QS_CHAT_SEMANTIC_CACHE_SIMILARITY_THRESHOLD", "0.0")
+    monkeypatch.setenv("QS_CHAT_POLICY_TOPIC_VERSION", "v1")
+
+    key_v1 = chat._semantic_cache_topic_key("RefundPolicy", "ko-KR")
+    chat._CACHE.set_json(
+        key_v1,
+        {
+            "entries": [
+                {
+                    "query": "환불 정책 안내해줘",
+                    "query_norm": "환불 정책 안내해줘",
+                    "response": {
+                        "version": "v1",
+                        "trace_id": "old_trace",
+                        "request_id": "old_req",
+                        "answer": {"role": "assistant", "content": "환불 정책 안내입니다."},
+                        "sources": [{"citation_key": "chunk-1"}],
+                        "citations": ["chunk-1"],
+                        "status": "ok",
+                        "reason_code": "OK",
+                        "recoverable": False,
+                        "next_action": "NONE",
+                        "retry_after_ms": None,
+                    },
+                }
+            ]
+        },
+        ttl=300,
+    )
+
+    hit_v1 = chat._semantic_cache_lookup("환불 정책 안내해줘", "ko-KR", "trace_test", "req_v1")
+    assert isinstance(hit_v1, dict)
+
+    monkeypatch.setenv("QS_CHAT_POLICY_TOPIC_VERSION", "v2")
+    hit_v2 = chat._semantic_cache_lookup("환불 정책 안내해줘", "ko-KR", "trace_test", "req_v2")
+    assert hit_v2 is None
+
+
 def test_run_chat_semantic_cache_blocks_lookup_write_lane(monkeypatch):
     chat._CACHE = CacheClient(None)
     monkeypatch.setenv("QS_CHAT_ENGINE_MODE", "legacy")
