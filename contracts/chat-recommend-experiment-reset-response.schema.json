@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://booksearch/contracts/chat-recommend-experiment-reset-response.schema.json",
+  "title": "Chat Recommend Experiment Reset Response",
+  "type": "object",
+  "required": ["version", "trace_id", "request_id", "status", "reset"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "v1"
+    },
+    "trace_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ok"]
+    },
+    "reset": {
+      "type": "object",
+      "required": ["reset_applied", "reset_at_ms", "before", "after"],
+      "properties": {
+        "reset_applied": {
+          "type": "boolean"
+        },
+        "reset_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "before": {
+          "$ref": "#/$defs/experimentSnapshot"
+        },
+        "after": {
+          "$ref": "#/$defs/experimentSnapshot"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "experimentSnapshot": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "auto_disabled",
+        "total",
+        "blocked",
+        "block_rate",
+        "min_samples",
+        "max_block_rate"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "auto_disabled": {
+          "type": "boolean"
+        },
+        "disabled_until": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "disable_reason": {
+          "type": ["string", "null"]
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "block_rate": {
+          "type": "number",
+          "minimum": 0
+        },
+        "min_samples": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_block_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,32 @@
+{
+  "version": "v1",
+  "trace_id": "trace_01",
+  "request_id": "req_01",
+  "status": "ok",
+  "reset": {
+    "reset_applied": true,
+    "reset_at_ms": 1760000000000,
+    "before": {
+      "enabled": true,
+      "auto_disabled": true,
+      "disabled_until": 1760000300,
+      "disable_reason": "QUALITY_BLOCK_RATE",
+      "total": 15,
+      "blocked": 8,
+      "block_rate": 0.5333,
+      "min_samples": 20,
+      "max_block_rate": 0.4
+    },
+    "after": {
+      "enabled": true,
+      "auto_disabled": false,
+      "disabled_until": null,
+      "disable_reason": null,
+      "total": 0,
+      "blocked": 0,
+      "block_rate": 0.0,
+      "min_samples": 20,
+      "max_block_rate": 0.4
+    }
+  }
+}

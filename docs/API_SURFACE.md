@@ -258,6 +258,10 @@ All structured responses that follow `contracts/*` must include:
 **Purpose**: proxy recommendation experiment diagnostics from Query Service (ops/admin only).  
 **Alias**: `GET /v1/chat/recommend/experiment`
 
+### Response
+- Contract: `contracts/chat-recommend-experiment-response.schema.json`
+- Example: `contracts/examples/chat-recommend-experiment-response.sample.json`
+
 ### Notes
 - 관리자 인증 컨텍스트가 없으면 `403 forbidden`.
 - 응답 본문은 Query Service `/internal/chat/recommend/experiment` payload를 그대로 전달한다.
@@ -270,6 +274,10 @@ All structured responses that follow `contracts/*` must include:
 ```json
 {}
 ```
+
+### Response
+- Contract: `contracts/chat-recommend-experiment-reset-response.schema.json`
+- Example: `contracts/examples/chat-recommend-experiment-reset-response.sample.json`
 
 ### Notes
 - 관리자 인증 컨텍스트가 없으면 `403 forbidden`.
@@ -669,26 +677,9 @@ If supported, the server should treat it as:
 ## GET `/internal/chat/recommend/experiment`
 **Purpose**: Internal recommendation experiment diagnostics snapshot (enabled/auto-disabled/block-rate state).
 
-### Response (MVP shape)
-```json
-{
-  "version": "v1",
-  "trace_id": "string",
-  "request_id": "string",
-  "status": "ok",
-  "experiment": {
-    "enabled": true,
-    "auto_disabled": false,
-    "disabled_until": null,
-    "disable_reason": null,
-    "total": 12,
-    "blocked": 3,
-    "block_rate": 0.25,
-    "min_samples": 20,
-    "max_block_rate": 0.4
-  }
-}
-```
+### Response
+- Contract: `contracts/chat-recommend-experiment-response.schema.json`
+- Example: `contracts/examples/chat-recommend-experiment-response.sample.json`
 
 ## POST `/internal/chat/recommend/experiment/reset`
 **Purpose**: Internal recommendation experiment state reset (quality counters + auto-disable latch clear).
@@ -698,21 +689,9 @@ If supported, the server should treat it as:
 {}
 ```
 
-### Response (MVP shape)
-```json
-{
-  "version": "v1",
-  "trace_id": "string",
-  "request_id": "string",
-  "status": "ok",
-  "reset": {
-    "reset_applied": true,
-    "reset_at_ms": 1760000000000,
-    "before": {"total": 15, "blocked": 8, "block_rate": 0.53},
-    "after": {"total": 0, "blocked": 0, "block_rate": 0.0}
-  }
-}
-```
+### Response
+- Contract: `contracts/chat-recommend-experiment-reset-response.schema.json`
+- Example: `contracts/examples/chat-recommend-experiment-reset-response.sample.json`
 
 ## GET `/internal/chat/session/state`
 **Purpose**: Internal chat session diagnostics snapshot (fallback count + unresolved context).

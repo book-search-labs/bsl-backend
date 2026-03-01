@@ -1,0 +1,17 @@
+{
+  "version": "v1",
+  "trace_id": "trace_01",
+  "request_id": "req_01",
+  "status": "ok",
+  "experiment": {
+    "enabled": true,
+    "auto_disabled": false,
+    "disabled_until": null,
+    "disable_reason": null,
+    "total": 12,
+    "blocked": 3,
+    "block_rate": 0.25,
+    "min_samples": 20,
+    "max_block_rate": 0.4
+  }
+}
