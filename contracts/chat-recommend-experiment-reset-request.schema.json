@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://booksearch/contracts/chat-recommend-experiment-reset-request.schema.json",
+  "title": "Chat Recommend Experiment Reset Request",
+  "type": "object",
+  "properties": {
+    "trace_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "clear_overrides": {
+      "type": "boolean"
+    },
+    "overrides": {
+      "$ref": "#/$defs/configOverrides"
+    }
+  },
+  "$defs": {
+    "configOverrides": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "diversity_percent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "min_samples": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_block_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "auto_disable_sec": {
+          "type": "integer",
+          "minimum": 60
+        },
+        "quality_min_candidates": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "quality_min_diversity": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

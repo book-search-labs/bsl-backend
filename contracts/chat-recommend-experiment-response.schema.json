@@ -71,9 +71,64 @@
           "type": "number",
           "minimum": 0,
           "maximum": 1
+        },
+        "diversity_percent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "auto_disable_sec": {
+          "type": "integer",
+          "minimum": 60
+        },
+        "quality_min_candidates": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "quality_min_diversity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "config_overrides": {
+          "$ref": "#/$defs/configOverrides"
         }
       },
       "additionalProperties": true
+    },
+    "configOverrides": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "diversity_percent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "min_samples": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_block_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "auto_disable_sec": {
+          "type": "integer",
+          "minimum": 60
+        },
+        "quality_min_candidates": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "quality_min_diversity": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": true

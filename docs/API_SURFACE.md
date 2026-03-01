@@ -271,20 +271,8 @@ All structured responses that follow `contracts/*` must include:
 **Alias**: `POST /v1/chat/recommend/experiment/reset`
 
 ### Request
-```json
-{
-  "clear_overrides": false,
-  "overrides": {
-    "enabled": true,
-    "diversity_percent": 70,
-    "min_samples": 20,
-    "max_block_rate": 0.4,
-    "auto_disable_sec": 600,
-    "quality_min_candidates": 2,
-    "quality_min_diversity": 2
-  }
-}
-```
+- Contract: `contracts/chat-recommend-experiment-reset-request.schema.json`
+- Example: `contracts/examples/chat-recommend-experiment-reset-request.sample.json`
 
 ### Response
 - Contract: `contracts/chat-recommend-experiment-reset-response.schema.json`

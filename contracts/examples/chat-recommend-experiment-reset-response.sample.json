@@ -15,7 +15,15 @@
       "blocked": 8,
       "block_rate": 0.5333,
       "min_samples": 20,
-      "max_block_rate": 0.4
+      "max_block_rate": 0.4,
+      "diversity_percent": 50,
+      "auto_disable_sec": 600,
+      "quality_min_candidates": 2,
+      "quality_min_diversity": 2,
+      "config_overrides": {
+        "enabled": true,
+        "diversity_percent": 70
+      }
     },
     "after": {
       "enabled": true,
@@ -26,7 +34,23 @@
       "blocked": 0,
       "block_rate": 0.0,
       "min_samples": 20,
-      "max_block_rate": 0.4
+      "max_block_rate": 0.4,
+      "diversity_percent": 70,
+      "auto_disable_sec": 600,
+      "quality_min_candidates": 2,
+      "quality_min_diversity": 2,
+      "config_overrides": {
+        "enabled": true,
+        "diversity_percent": 70
+      }
+    },
+    "override": {
+      "updated_at": 1760000000,
+      "ttl_sec": 604800,
+      "overrides": {
+        "enabled": true,
+        "diversity_percent": 70
+      }
     }
   }
 }

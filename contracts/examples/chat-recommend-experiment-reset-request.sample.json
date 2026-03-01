@@ -1,0 +1,14 @@
+{
+  "trace_id": "trace_01",
+  "request_id": "req_01",
+  "clear_overrides": true,
+  "overrides": {
+    "enabled": true,
+    "diversity_percent": 70,
+    "min_samples": 20,
+    "max_block_rate": 0.4,
+    "auto_disable_sec": 600,
+    "quality_min_candidates": 2,
+    "quality_min_diversity": 2
+  }
+}

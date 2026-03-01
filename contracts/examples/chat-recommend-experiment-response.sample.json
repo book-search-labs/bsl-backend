@@ -12,6 +12,14 @@
     "blocked": 3,
     "block_rate": 0.25,
     "min_samples": 20,
-    "max_block_rate": 0.4
+    "max_block_rate": 0.4,
+    "diversity_percent": 70,
+    "auto_disable_sec": 600,
+    "quality_min_candidates": 2,
+    "quality_min_diversity": 2,
+    "config_overrides": {
+      "enabled": true,
+      "diversity_percent": 70
+    }
   }
 }
