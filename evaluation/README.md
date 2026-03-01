@@ -254,6 +254,7 @@ python3 scripts/chat/apply_regression_fixture_candidates.py \
   --report-json evaluation/chat/feedback_regression_fixture_apply_report.json \
   --report-md tasks/backlog/generated/chat_feedback_regression_fixture_apply_report.md \
   --dry-run \
+  --fail-on-blocked-review \
   --allow-empty
 ```
 

@@ -209,6 +209,7 @@ python3 scripts/chat/apply_regression_fixture_candidates.py \
   --report-json evaluation/chat/feedback_regression_fixture_apply_report.json \
   --report-md tasks/backlog/generated/chat_feedback_regression_fixture_apply_report.md \
   --dry-run \
+  --fail-on-blocked-review \
   --allow-empty
 ```
 `--allow-empty`를 사용하면 피드백 0건일 때도 summary/backlog/ticket 산출물이 갱신되어
@@ -220,6 +221,7 @@ quality loop env 토글:
 - `CHAT_FEEDBACK_REGRESSION_APPLY_DRY_RUN` (기본 `1`)
 - `CHAT_FEEDBACK_REGRESSION_APPLY_ALLOW_REVIEW` (기본 `0`)
 - `CHAT_FEEDBACK_REGRESSION_APPLY_MAX_ADD` (기본 `0`, 0은 제한 없음)
+추가로 `--fail-on-blocked-review`를 주면 review_required 후보가 남아 있을 때 실패 처리할 수 있다.
 위 단계를 한 번에 수행하려면:
 ```bash
 ./scripts/chat/run_recommend_quality_loop.sh

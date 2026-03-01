@@ -130,3 +130,43 @@ def test_main_without_allow_empty_fails_on_empty_candidates(tmp_path, monkeypatc
         ],
     )
     assert module.main() == 1
+
+
+def test_main_fail_on_blocked_review(tmp_path, monkeypatch):
+    module = _load_module()
+    fixture_path = tmp_path / "fixture.json"
+    candidates_path = tmp_path / "candidates.json"
+    report_json = tmp_path / "report.json"
+    report_md = tmp_path / "report.md"
+    fixture_path.write_text(json.dumps({"suite": "v1", "scenarios": [{"id": "S1", "turns": [{"query": "a"}]}]}), encoding="utf-8")
+    candidates_path.write_text(
+        json.dumps(
+            {
+                "candidates": [
+                    {
+                        "scenario_id": "F_NEW_1",
+                        "review_required": True,
+                        "scenario": {"id": "F_NEW_1", "turns": [{"query": "b"}]},
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "apply_regression_fixture_candidates.py",
+            "--fixture",
+            str(fixture_path),
+            "--candidates-json",
+            str(candidates_path),
+            "--report-json",
+            str(report_json),
+            "--report-md",
+            str(report_md),
+            "--dry-run",
+            "--fail-on-blocked-review",
+        ],
+    )
+    assert module.main() == 2

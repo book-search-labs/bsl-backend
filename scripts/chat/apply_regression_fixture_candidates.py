@@ -158,6 +158,7 @@ def main() -> int:
     parser.add_argument("--max-add", type=int, default=0)
     parser.add_argument("--allow-review-required", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--fail-on-blocked-review", action="store_true")
     parser.add_argument("--allow-empty", action="store_true")
     args = parser.parse_args()
 
@@ -191,6 +192,10 @@ def main() -> int:
         encoding="utf-8",
     )
     print(f"[OK] wrote apply report markdown -> {report_md_path}")
+
+    if bool(args.fail_on_blocked_review) and int(report.get("skipped_review_count") or 0) > 0:
+        print("[FAIL] blocked review-required candidates exist")
+        return 2
 
     if args.dry_run:
         print("[OK] dry-run enabled; fixture not modified")
