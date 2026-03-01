@@ -140,6 +140,14 @@ python3 scripts/chat/sync_feedback_backlog_tickets.py \
 ```bash
 ./scripts/chat/run_recommend_quality_loop.sh
 ```
+기본 실행 시 추천 실험 상태를 루프 전/후로 함께 저장한다:
+- `evaluation/chat/recommend_experiment_snapshot_before.json`
+- `evaluation/chat/recommend_experiment_snapshot_after.json`
+
+스냅샷 캡처를 끄려면:
+```bash
+CHAT_RECOMMEND_CAPTURE_SNAPSHOT=0 ./scripts/chat/run_recommend_quality_loop.sh
+```
 
 ### Debug endpoint
 운영 중 라우팅 의사결정을 빠르게 확인하려면:

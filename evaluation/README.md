@@ -76,6 +76,10 @@ RUN_CHAT_RECOMMEND_EVAL=1 ./scripts/test.sh
 ./scripts/chat/run_recommend_quality_loop.sh
 ```
 
+기본 실행 시 루프 전/후 추천 실험 스냅샷이 함께 저장된다:
+- `evaluation/chat/recommend_experiment_snapshot_before.json`
+- `evaluation/chat/recommend_experiment_snapshot_after.json`
+
 실험 설정/상태를 운영에서 빠르게 조정하려면:
 
 ```bash

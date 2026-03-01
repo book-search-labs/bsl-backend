@@ -31,6 +31,24 @@ RECOMMEND_REPORT_OUT="${CHAT_RECOMMEND_REPORT_OUT:-$ROOT_DIR/data/eval/reports}"
 RECOMMEND_MIN_SAMPLES="${CHAT_RECOMMEND_MIN_SAMPLES:-20}"
 RECOMMEND_MAX_BLOCK_RATE="${CHAT_RECOMMEND_MAX_BLOCK_RATE:-0.4}"
 RECOMMEND_MAX_AUTO_DISABLE_TOTAL="${CHAT_RECOMMEND_MAX_AUTO_DISABLE_TOTAL:-0}"
+RECOMMEND_CAPTURE_SNAPSHOT="${CHAT_RECOMMEND_CAPTURE_SNAPSHOT:-1}"
+RECOMMEND_OPS_BASE_URL="${CHAT_RECOMMEND_OPS_BASE_URL:-http://localhost:8088}"
+RECOMMEND_OPS_ADMIN_ID="${CHAT_RECOMMEND_OPS_ADMIN_ID:-1}"
+RECOMMEND_SNAPSHOT_BEFORE="${CHAT_RECOMMEND_SNAPSHOT_BEFORE:-$ROOT_DIR/evaluation/chat/recommend_experiment_snapshot_before.json}"
+RECOMMEND_SNAPSHOT_AFTER="${CHAT_RECOMMEND_SNAPSHOT_AFTER:-$ROOT_DIR/evaluation/chat/recommend_experiment_snapshot_after.json}"
+
+if [ "$RECOMMEND_CAPTURE_SNAPSHOT" = "1" ]; then
+  echo "[0/3] capture recommend experiment snapshot (before)"
+  if "$PYTHON_BIN" "$ROOT_DIR/scripts/chat/recommend_experiment_ops.py" \
+      --base-url "$RECOMMEND_OPS_BASE_URL" \
+      --admin-id "$RECOMMEND_OPS_ADMIN_ID" \
+      --output "$RECOMMEND_SNAPSHOT_BEFORE" \
+      snapshot >/dev/null 2>&1; then
+    echo "  - wrote snapshot(before): $RECOMMEND_SNAPSHOT_BEFORE"
+  else
+    echo "  - snapshot(before) unavailable; continuing"
+  fi
+fi
 
 echo "[1/3] export chat feedback outbox events"
 EXPORT_ARGS=(
@@ -78,6 +96,19 @@ if command -v curl >/dev/null 2>&1; then
   fi
 else
   echo "  - curl not found; skipping recommend eval report"
+fi
+
+if [ "$RECOMMEND_CAPTURE_SNAPSHOT" = "1" ]; then
+  echo "[post] capture recommend experiment snapshot (after)"
+  if "$PYTHON_BIN" "$ROOT_DIR/scripts/chat/recommend_experiment_ops.py" \
+      --base-url "$RECOMMEND_OPS_BASE_URL" \
+      --admin-id "$RECOMMEND_OPS_ADMIN_ID" \
+      --output "$RECOMMEND_SNAPSHOT_AFTER" \
+      snapshot >/dev/null 2>&1; then
+    echo "  - wrote snapshot(after): $RECOMMEND_SNAPSHOT_AFTER"
+  else
+    echo "  - snapshot(after) unavailable; continuing"
+  fi
 fi
 
 echo "[DONE] chat recommendation quality loop completed"
