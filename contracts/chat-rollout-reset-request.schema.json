@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://booksearch/contracts/chat-rollout-reset-request.schema.json",
+  "title": "Chat Rollout Reset Request",
+  "type": "object",
+  "properties": {
+    "trace_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "clear_gate": {
+      "type": "boolean"
+    },
+    "clear_rollback": {
+      "type": "boolean"
+    },
+    "engine": {
+      "type": "string",
+      "enum": ["agent", "legacy"]
+    }
+  },
+  "additionalProperties": false
+}

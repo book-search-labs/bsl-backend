@@ -1,0 +1,76 @@
+{
+  "version": "v1",
+  "trace_id": "trace_rollout",
+  "request_id": "req_rollout",
+  "status": "ok",
+  "reset": {
+    "reset_applied": true,
+    "reset_at_ms": 1760002000000,
+    "before": {
+      "mode": "canary",
+      "canary_percent": 5,
+      "auto_rollback_enabled": true,
+      "gate_window_sec": 300,
+      "gate_min_samples": 20,
+      "gate_fail_ratio_threshold": 0.2,
+      "rollback_cooldown_sec": 60,
+      "active_rollback": {
+        "until_ts": 1760002300,
+        "reason": "gate_failure_ratio",
+        "fail_ratio": 0.45
+      },
+      "gates": {
+        "agent": {
+          "engine": "agent",
+          "window_start": 1760001000,
+          "total": 18,
+          "failures": 8,
+          "fail_ratio": 0.4444,
+          "updated_at": 1760001050
+        },
+        "legacy": {
+          "engine": "legacy",
+          "window_start": null,
+          "total": 0,
+          "failures": 0,
+          "fail_ratio": 0.0,
+          "updated_at": null
+        }
+      }
+    },
+    "after": {
+      "mode": "canary",
+      "canary_percent": 5,
+      "auto_rollback_enabled": true,
+      "gate_window_sec": 300,
+      "gate_min_samples": 20,
+      "gate_fail_ratio_threshold": 0.2,
+      "rollback_cooldown_sec": 60,
+      "active_rollback": null,
+      "gates": {
+        "agent": {
+          "engine": "agent",
+          "window_start": null,
+          "total": 0,
+          "failures": 0,
+          "fail_ratio": 0.0,
+          "updated_at": null
+        },
+        "legacy": {
+          "engine": "legacy",
+          "window_start": null,
+          "total": 0,
+          "failures": 0,
+          "fail_ratio": 0.0,
+          "updated_at": null
+        }
+      }
+    },
+    "options": {
+      "clear_gate": true,
+      "clear_rollback": true,
+      "engine": "agent",
+      "cleared_gate_engines": ["agent"]
+    }
+  }
+}

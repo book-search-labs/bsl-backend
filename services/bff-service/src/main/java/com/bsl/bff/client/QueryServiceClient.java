@@ -318,6 +318,48 @@ public class QueryServiceClient {
         }
     }
 
+    public JsonNode chatRolloutSnapshot(RequestContext context) {
+        String url = properties.getBaseUrl() + "/internal/chat/rollout";
+        HttpHeaders headers = DownstreamHeaders.from(context);
+        enrichAuthHeaders(headers);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.GET, entity, JsonNode.class);
+            return response.getBody();
+        } catch (ResourceAccessException ex) {
+            throw new DownstreamException(HttpStatus.SERVICE_UNAVAILABLE, "query_service_timeout", "Query service timeout");
+        } catch (HttpStatusCodeException ex) {
+            HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+            if (status == null) {
+                status = HttpStatus.SERVICE_UNAVAILABLE;
+            }
+            throw new DownstreamException(status, "query_service_error", "Query service error");
+        }
+    }
+
+    public JsonNode resetChatRollout(RequestContext context, Map<String, Object> requestBody) {
+        String url = properties.getBaseUrl() + "/internal/chat/rollout/reset";
+        HttpHeaders headers = DownstreamHeaders.from(context);
+        enrichAuthHeaders(headers);
+        headers.add(HttpHeaders.CONTENT_TYPE, "application/json");
+        Map<String, Object> body = requestBody == null ? new HashMap<>() : requestBody;
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+        try {
+            ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.POST, entity, JsonNode.class);
+            return response.getBody();
+        } catch (ResourceAccessException ex) {
+            throw new DownstreamException(HttpStatus.SERVICE_UNAVAILABLE, "query_service_timeout", "Query service timeout");
+        } catch (HttpStatusCodeException ex) {
+            HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+            if (status == null) {
+                status = HttpStatus.SERVICE_UNAVAILABLE;
+            }
+            throw new DownstreamException(status, "query_service_error", "Query service error");
+        }
+    }
+
     public JsonNode resetChatRecommendExperiment(RequestContext context) {
         return resetChatRecommendExperiment(context, null);
     }

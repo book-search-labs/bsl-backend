@@ -19,7 +19,9 @@ from app.core.spell import run_spell
 from app.core.chat import (
     explain_chat_rag,
     get_chat_provider_snapshot,
+    get_chat_rollout_snapshot,
     get_chat_session_state,
+    reset_chat_rollout_state,
     reset_chat_session_state,
     run_chat,
     run_chat_stream,
@@ -337,6 +339,83 @@ async def chat_provider_snapshot(request: Request):
         "request_id": request_id,
         "status": "ok",
         "snapshot": get_chat_provider_snapshot(trace_id, request_id),
+    }
+    return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
+
+
+@router.get("/internal/chat/rollout")
+async def chat_rollout_snapshot(request: Request):
+    trace_id, request_id, _, traceparent = _extract_ids(request)
+    snapshot = get_chat_rollout_snapshot(trace_id, request_id)
+    metrics.inc("chat_rollout_snapshot_requests_total", {"result": "ok"})
+    payload = {
+        "version": "v1",
+        "trace_id": trace_id,
+        "request_id": request_id,
+        "status": "ok",
+        "rollout": snapshot,
+    }
+    return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
+
+
+@router.post("/internal/chat/rollout/reset")
+async def chat_rollout_reset(request: Request):
+    trace_id, request_id, _, traceparent = _extract_ids(request)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if isinstance(body, dict):
+        if isinstance(body.get("trace_id"), str) and body.get("trace_id"):
+            trace_id = body.get("trace_id")
+        if isinstance(body.get("request_id"), str) and body.get("request_id"):
+            request_id = body.get("request_id")
+    else:
+        body = {}
+
+    clear_gate = True
+    clear_rollback = True
+    engine: str | None = None
+    raw_clear_gate = body.get("clear_gate")
+    if raw_clear_gate is not None:
+        if not isinstance(raw_clear_gate, bool):
+            metrics.inc("chat_rollout_reset_requests_total", {"result": "invalid_request"})
+            return _error_response("invalid_request", "clear_gate must be boolean when provided.", trace_id, request_id)
+        clear_gate = raw_clear_gate
+    raw_clear_rollback = body.get("clear_rollback")
+    if raw_clear_rollback is not None:
+        if not isinstance(raw_clear_rollback, bool):
+            metrics.inc("chat_rollout_reset_requests_total", {"result": "invalid_request"})
+            return _error_response("invalid_request", "clear_rollback must be boolean when provided.", trace_id, request_id)
+        clear_rollback = raw_clear_rollback
+    raw_engine = body.get("engine")
+    if raw_engine is not None:
+        if not isinstance(raw_engine, str):
+            metrics.inc("chat_rollout_reset_requests_total", {"result": "invalid_request"})
+            return _error_response("invalid_request", "engine must be string when provided.", trace_id, request_id)
+        engine = raw_engine.strip().lower() or None
+    admin_id = request.headers.get("x-admin-id")
+    actor_admin_id = admin_id.strip() if isinstance(admin_id, str) and admin_id.strip() else None
+    try:
+        reset = reset_chat_rollout_state(
+            trace_id,
+            request_id,
+            clear_gate=clear_gate,
+            clear_rollback=clear_rollback,
+            engine=engine,
+            actor_admin_id=actor_admin_id,
+        )
+    except ValueError as exc:
+        metrics.inc("chat_rollout_reset_requests_total", {"result": "invalid_engine"})
+        return _error_response("invalid_request", str(exc), trace_id, request_id)
+
+    metrics.inc("chat_rollout_reset_requests_total", {"result": "ok"})
+    payload = {
+        "version": "v1",
+        "trace_id": trace_id,
+        "request_id": request_id,
+        "status": "ok",
+        "reset": reset,
     }
     return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
 

@@ -846,6 +846,110 @@ def _record_rollout_gate(engine: str, response: Dict[str, Any]) -> None:
     metrics.inc("chat_rollout_gate_total", {"engine": engine, "result": gate_result})
 
 
+def _rollout_gate_snapshot(engine: str) -> Dict[str, Any]:
+    raw = _CACHE.get_json(_chat_rollout_gate_cache_key(engine))
+    if not isinstance(raw, dict):
+        return {
+            "engine": engine,
+            "window_start": None,
+            "total": 0,
+            "failures": 0,
+            "fail_ratio": 0.0,
+            "updated_at": None,
+        }
+    return {
+        "engine": engine,
+        "window_start": int(raw.get("window_start") or 0) or None,
+        "total": max(0, int(raw.get("total") or 0)),
+        "failures": max(0, int(raw.get("failures") or 0)),
+        "fail_ratio": max(0.0, float(raw.get("fail_ratio") or 0.0)),
+        "updated_at": int(raw.get("updated_at") or 0) or None,
+    }
+
+
+def get_chat_rollout_snapshot(trace_id: str, request_id: str) -> Dict[str, Any]:
+    return {
+        "mode": _chat_engine_mode(),
+        "canary_percent": _chat_engine_canary_percent(),
+        "auto_rollback_enabled": _chat_rollout_auto_rollback_enabled(),
+        "gate_window_sec": _chat_rollout_gate_window_sec(),
+        "gate_min_samples": _chat_rollout_gate_min_samples(),
+        "gate_fail_ratio_threshold": _chat_rollout_gate_fail_ratio_threshold(),
+        "rollback_cooldown_sec": _chat_rollout_rollback_cooldown_sec(),
+        "active_rollback": _get_active_rollout_rollback(),
+        "gates": {
+            "agent": _rollout_gate_snapshot("agent"),
+            "legacy": _rollout_gate_snapshot("legacy"),
+        },
+        "trace_id": trace_id,
+        "request_id": request_id,
+    }
+
+
+def reset_chat_rollout_state(
+    trace_id: str,
+    request_id: str,
+    *,
+    clear_gate: bool = True,
+    clear_rollback: bool = True,
+    engine: Optional[str] = None,
+    actor_admin_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    normalized_engine = str(engine or "").strip().lower() or None
+    if normalized_engine not in {None, "agent", "legacy"}:
+        raise ValueError("invalid_engine")
+    before = get_chat_rollout_snapshot(trace_id, request_id)
+
+    cleared_engines: List[str] = []
+    if clear_gate:
+        targets = [normalized_engine] if normalized_engine else ["agent", "legacy"]
+        for target in targets:
+            if target is None:
+                continue
+            _CACHE.set_json(_chat_rollout_gate_cache_key(target), {"cleared": True}, ttl=1)
+            cleared_engines.append(target)
+    if clear_rollback:
+        _CACHE.set_json(_chat_rollout_rollback_cache_key(), {"cleared": True}, ttl=1)
+
+    after = get_chat_rollout_snapshot(trace_id, request_id)
+    reset_at_ms = int(time.time() * 1000)
+    append_action_audit(
+        conversation_id="rollout:chat",
+        action_type="CHAT_ROLLOUT_RESET",
+        action_state="EXECUTED",
+        decision="ALLOW",
+        result="SUCCESS",
+        actor_user_id=None,
+        actor_admin_id=actor_admin_id,
+        target_ref="chat.engine",
+        auth_context={"mode": _chat_engine_mode(), "source": "manual"},
+        trace_id=trace_id,
+        request_id=request_id,
+        reason_code="MANUAL_RESET",
+        idempotency_key=f"rollout-reset:{request_id}",
+        metadata={
+            "clear_gate": clear_gate,
+            "clear_rollback": clear_rollback,
+            "engine": normalized_engine,
+            "cleared_gate_engines": cleared_engines,
+            "reset_at_ms": reset_at_ms,
+        },
+    )
+    metrics.inc("chat_rollout_reset_total", {"result": "ok"})
+    return {
+        "reset_applied": True,
+        "reset_at_ms": reset_at_ms,
+        "before": before,
+        "after": after,
+        "options": {
+            "clear_gate": clear_gate,
+            "clear_rollback": clear_rollback,
+            "engine": normalized_engine,
+            "cleared_gate_engines": cleared_engines,
+        },
+    }
+
+
 async def _shadow_agent_signature(request: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, str]:
     validation_reason = _validate_chat_request(request)
     if validation_reason:

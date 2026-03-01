@@ -1,0 +1,7 @@
+{
+  "trace_id": "trace_rollout",
+  "request_id": "req_rollout",
+  "clear_gate": true,
+  "clear_rollback": true,
+  "engine": "agent"
+}

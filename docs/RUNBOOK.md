@@ -96,6 +96,13 @@ curl -s -XPOST http://localhost:8088/chat \
 - `chat_recommend_experiment_auto_disable_total{reason}`
 - `chat_recommend_experiment_block_rate{variant}`
 - `chat_recommend_experiment_config_update_total{result}`
+- `chat_rollout_traffic_ratio{engine}`
+- `chat_rollout_gate_total{engine,result}`
+- `chat_rollout_failure_ratio{engine}`
+- `chat_rollout_rollback_total{reason}`
+- `chat_rollout_reset_total{result}`
+- `chat_rollout_snapshot_requests_total{result}`
+- `chat_rollout_reset_requests_total{result}`
 - `chat_memory_opt_in_total{result,source}`
 - `chat_memory_retrieval_total{result}`
 - `chat_memory_delete_total{result}`
@@ -163,6 +170,22 @@ Provider 전체 스냅샷은:
 curl -s http://localhost:8001/internal/chat/providers
 ```
 응답의 `snapshot.providers[]`에서 provider별 `cooldown`/`stats`를, `snapshot.routing.final_chain`에서 현재 우선순위를 확인한다.
+
+롤아웃 상태 스냅샷은:
+```bash
+curl -s http://localhost:8001/internal/chat/rollout
+```
+응답의 `rollout.mode/canary_percent`, `rollout.gates.agent.fail_ratio`, `rollout.active_rollback`으로
+canary/shadow 진행 상태와 auto rollback latch를 즉시 점검한다.
+
+롤아웃 gate/latch를 수동 초기화하려면:
+```bash
+curl -s -X POST http://localhost:8001/internal/chat/rollout/reset \
+  -H "x-admin-id: 1" \
+  -H "content-type: application/json" \
+  -d '{"clear_gate":true,"clear_rollback":true}'
+```
+특정 엔진 gate만 지우려면 `engine`을 지정한다 (`agent|legacy`).
 
 추천 실험 상태 스냅샷은:
 ```bash
@@ -282,6 +305,12 @@ curl -s -X POST "http://localhost:8088/chat/recommend/experiment/config" \
   -H "x-admin-id: 1" \
   -H "content-type: application/json" \
   -d '{"overrides":{"diversity_percent":70,"max_block_rate":0.35}}'
+curl -s "http://localhost:8088/chat/rollout" \
+  -H "x-admin-id: 1"
+curl -s -X POST "http://localhost:8088/chat/rollout/reset" \
+  -H "x-admin-id: 1" \
+  -H "content-type: application/json" \
+  -d '{"clear_gate":true,"clear_rollback":true}'
 ```
 
 ## Sample Dev Bootstrap (Recommended)

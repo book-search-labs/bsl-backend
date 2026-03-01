@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://booksearch/contracts/chat-rollout-snapshot-response.schema.json",
+  "title": "Chat Rollout Snapshot Response",
+  "type": "object",
+  "required": ["version", "trace_id", "request_id", "status", "rollout"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "v1"
+    },
+    "trace_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ok"]
+    },
+    "rollout": {
+      "$ref": "#/$defs/rolloutSnapshot"
+    }
+  },
+  "$defs": {
+    "rolloutSnapshot": {
+      "type": "object",
+      "required": [
+        "mode",
+        "canary_percent",
+        "auto_rollback_enabled",
+        "gate_window_sec",
+        "gate_min_samples",
+        "gate_fail_ratio_threshold",
+        "rollback_cooldown_sec",
+        "active_rollback",
+        "gates"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["legacy", "agent", "canary", "shadow"]
+        },
+        "canary_percent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "auto_rollback_enabled": {
+          "type": "boolean"
+        },
+        "gate_window_sec": {
+          "type": "integer",
+          "minimum": 30
+        },
+        "gate_min_samples": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "gate_fail_ratio_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "rollback_cooldown_sec": {
+          "type": "integer",
+          "minimum": 60
+        },
+        "active_rollback": {
+          "type": ["object", "null"],
+          "properties": {
+            "until_ts": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "reason": {
+              "type": "string"
+            },
+            "fail_ratio": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": true
+        },
+        "gates": {
+          "type": "object",
+          "required": ["agent", "legacy"],
+          "properties": {
+            "agent": {
+              "$ref": "#/$defs/gateSnapshot"
+            },
+            "legacy": {
+              "$ref": "#/$defs/gateSnapshot"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "gateSnapshot": {
+      "type": "object",
+      "required": ["engine", "window_start", "total", "failures", "fail_ratio", "updated_at"],
+      "properties": {
+        "engine": {
+          "type": "string",
+          "enum": ["agent", "legacy"]
+        },
+        "window_start": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fail_ratio": {
+          "type": "number",
+          "minimum": 0
+        },
+        "updated_at": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

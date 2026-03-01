@@ -301,6 +301,35 @@ All structured responses that follow `contracts/*` must include:
 - `clear_overrides=true` 또는 `overrides` patch 중 하나는 필수다.
 - 응답 본문은 Query Service `/internal/chat/recommend/experiment/config` payload를 그대로 전달한다.
 
+## GET `/chat/rollout`
+**Purpose**: proxy chat engine rollout snapshot (ops/admin only).  
+**Alias**: `GET /v1/chat/rollout`
+
+### Response
+- Contract: `contracts/chat-rollout-snapshot-response.schema.json`
+- Example: `contracts/examples/chat-rollout-snapshot-response.sample.json`
+
+### Notes
+- 관리자 인증 컨텍스트가 없으면 `403 forbidden`.
+- 응답 본문은 Query Service `/internal/chat/rollout` payload를 그대로 전달한다.
+
+## POST `/chat/rollout/reset`
+**Purpose**: reset chat rollout gate/rollback runtime state (ops/admin only).  
+**Alias**: `POST /v1/chat/rollout/reset`
+
+### Request
+- Contract: `contracts/chat-rollout-reset-request.schema.json`
+- Example: `contracts/examples/chat-rollout-reset-request.sample.json`
+
+### Response
+- Contract: `contracts/chat-rollout-reset-response.schema.json`
+- Example: `contracts/examples/chat-rollout-reset-response.sample.json`
+
+### Notes
+- 관리자 인증 컨텍스트가 없으면 `403 forbidden`.
+- `engine`을 지정하면 해당 gate 상태만 선택적으로 초기화할 수 있다.
+- 응답 본문은 Query Service `/internal/chat/rollout/reset` payload를 그대로 전달한다.
+
 ## GET `/autocomplete`
 **Purpose**: return query suggestions for a prefix.
 
@@ -691,6 +720,24 @@ If supported, the server should treat it as:
 ### Response
 - Contract: `contracts/chat-provider-snapshot-response.schema.json`
 - Example: `contracts/examples/chat-provider-snapshot-response.sample.json`
+
+## GET `/internal/chat/rollout`
+**Purpose**: Internal chat engine rollout snapshot (mode/canary/gate/rollback 상태).
+
+### Response
+- Contract: `contracts/chat-rollout-snapshot-response.schema.json`
+- Example: `contracts/examples/chat-rollout-snapshot-response.sample.json`
+
+## POST `/internal/chat/rollout/reset`
+**Purpose**: Internal chat rollout gate/rollback state reset.
+
+### Request
+- Contract: `contracts/chat-rollout-reset-request.schema.json`
+- Example: `contracts/examples/chat-rollout-reset-request.sample.json`
+
+### Response
+- Contract: `contracts/chat-rollout-reset-response.schema.json`
+- Example: `contracts/examples/chat-rollout-reset-response.sample.json`
 
 ## GET `/internal/chat/recommend/experiment`
 **Purpose**: Internal recommendation experiment diagnostics snapshot (enabled/auto-disabled/block-rate state).

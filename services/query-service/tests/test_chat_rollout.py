@@ -52,6 +52,53 @@ def test_record_rollout_gate_triggers_auto_rollback(monkeypatch):
     assert rollback["reason"] == "gate_failure_ratio"
 
 
+def test_get_chat_rollout_snapshot_includes_gate_and_config(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_ENGINE_MODE", "canary")
+    monkeypatch.setenv("QS_CHAT_ENGINE_CANARY_PERCENT", "7")
+    chat._CACHE.set_json(
+        chat._chat_rollout_gate_cache_key("agent"),
+        {"window_start": 1760000000, "total": 9, "failures": 2, "fail_ratio": 0.2222, "updated_at": 1760000005},
+        ttl=300,
+    )
+
+    snapshot = chat.get_chat_rollout_snapshot("trace_test", "req_snapshot")
+
+    assert snapshot["mode"] == "canary"
+    assert snapshot["canary_percent"] == 7
+    assert snapshot["gates"]["agent"]["total"] == 9
+    assert snapshot["gates"]["agent"]["failures"] == 2
+    assert snapshot["trace_id"] == "trace_test"
+    assert snapshot["request_id"] == "req_snapshot"
+
+
+def test_reset_chat_rollout_state_clears_gate_and_rollback(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_ROLLOUT_ROLLBACK_COOLDOWN_SEC", "120")
+    chat._CACHE.set_json(
+        chat._chat_rollout_gate_cache_key("agent"),
+        {"window_start": 1760000000, "total": 11, "failures": 3, "fail_ratio": 0.2727},
+        ttl=300,
+    )
+    chat._set_rollout_rollback("gate_failure_ratio", 0.6, 10, 6)
+
+    reset = chat.reset_chat_rollout_state(
+        "trace_test",
+        "req_reset",
+        clear_gate=True,
+        clear_rollback=True,
+        engine="agent",
+        actor_admin_id="1",
+    )
+
+    assert reset["reset_applied"] is True
+    assert reset["before"]["active_rollback"] is not None
+    assert reset["before"]["gates"]["agent"]["total"] == 11
+    assert reset["after"]["active_rollback"] is None
+    assert reset["after"]["gates"]["agent"]["total"] == 0
+    assert reset["options"]["cleared_gate_engines"] == ["agent"]
+
+
 def test_run_chat_uses_legacy_engine_without_tools(monkeypatch):
     chat._CACHE = CacheClient(None)
     monkeypatch.setenv("QS_CHAT_ENGINE_MODE", "legacy")

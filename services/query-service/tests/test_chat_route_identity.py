@@ -80,6 +80,111 @@ def test_chat_provider_snapshot_route_returns_payload(monkeypatch):
     assert data["snapshot"]["routing"]["final_chain"][0] == "primary"
 
 
+def test_chat_rollout_snapshot_route_returns_payload(monkeypatch):
+    monkeypatch.setattr(
+        routes,
+        "get_chat_rollout_snapshot",
+        lambda trace_id, request_id: {
+            "mode": "canary",
+            "canary_percent": 5,
+            "auto_rollback_enabled": True,
+            "gate_window_sec": 300,
+            "gate_min_samples": 20,
+            "gate_fail_ratio_threshold": 0.2,
+            "rollback_cooldown_sec": 60,
+            "active_rollback": None,
+            "gates": {
+                "agent": {"engine": "agent", "total": 10, "failures": 1, "fail_ratio": 0.1},
+                "legacy": {"engine": "legacy", "total": 5, "failures": 0, "fail_ratio": 0.0},
+            },
+            "trace_id": trace_id,
+            "request_id": request_id,
+        },
+    )
+
+    client = TestClient(app)
+    response = client.get("/internal/chat/rollout")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["rollout"]["mode"] == "canary"
+    assert data["rollout"]["gates"]["agent"]["total"] == 10
+
+
+def test_chat_rollout_reset_route_returns_payload(monkeypatch):
+    captured = {}
+
+    def fake_reset_chat_rollout_state(
+        trace_id,
+        request_id,
+        *,
+        clear_gate=True,
+        clear_rollback=True,
+        engine=None,
+        actor_admin_id=None,
+    ):
+        captured["clear_gate"] = clear_gate
+        captured["clear_rollback"] = clear_rollback
+        captured["engine"] = engine
+        captured["actor_admin_id"] = actor_admin_id
+        return {
+            "reset_applied": True,
+            "reset_at_ms": 1760000300000,
+            "before": {"mode": "canary"},
+            "after": {"mode": "canary"},
+            "options": {"clear_gate": clear_gate, "clear_rollback": clear_rollback, "engine": engine},
+        }
+
+    monkeypatch.setattr(routes, "reset_chat_rollout_state", fake_reset_chat_rollout_state)
+
+    client = TestClient(app)
+    response = client.post(
+        "/internal/chat/rollout/reset",
+        headers={"x-admin-id": "1"},
+        json={"clear_gate": True, "clear_rollback": False, "engine": "agent"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["reset"]["reset_applied"] is True
+    assert captured["clear_gate"] is True
+    assert captured["clear_rollback"] is False
+    assert captured["engine"] == "agent"
+    assert captured["actor_admin_id"] == "1"
+
+
+def test_chat_rollout_reset_route_rejects_invalid_engine():
+    client = TestClient(app)
+    response = client.post("/internal/chat/rollout/reset", json={"engine": 1})
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_request"
+
+
+def test_chat_rollout_reset_route_rejects_invalid_engine_value(monkeypatch):
+    def fake_reset_chat_rollout_state(
+        trace_id,
+        request_id,
+        *,
+        clear_gate=True,
+        clear_rollback=True,
+        engine=None,
+        actor_admin_id=None,
+    ):
+        raise ValueError("invalid_engine")
+
+    monkeypatch.setattr(routes, "reset_chat_rollout_state", fake_reset_chat_rollout_state)
+    client = TestClient(app)
+    response = client.post("/internal/chat/rollout/reset", json={"engine": "unknown"})
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_request"
+
+
 def test_chat_recommend_experiment_snapshot_route_returns_payload(monkeypatch):
     monkeypatch.setattr(
         routes,

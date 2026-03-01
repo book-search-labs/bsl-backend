@@ -154,6 +154,30 @@ public class ChatController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/rollout")
+    public ResponseEntity<JsonNode> rolloutSnapshot() {
+        RequestContext context = RequestContextHolder.get();
+        requireAdminContext();
+        JsonNode response = queryServiceClient.chatRolloutSnapshot(context);
+        if (response == null) {
+            throw new DownstreamException(HttpStatus.BAD_GATEWAY, "query_service_error", "Query service response is empty");
+        }
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/rollout/reset")
+    public ResponseEntity<JsonNode> rolloutReset(
+        @RequestBody(required = false) Map<String, Object> request
+    ) {
+        RequestContext context = RequestContextHolder.get();
+        requireAdminContext();
+        JsonNode response = queryServiceClient.resetChatRollout(context, request == null ? Map.of() : request);
+        if (response == null) {
+            throw new DownstreamException(HttpStatus.BAD_GATEWAY, "query_service_error", "Query service response is empty");
+        }
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/recommend/experiment/reset")
     public ResponseEntity<JsonNode> recommendExperimentReset(
         @RequestBody(required = false) Map<String, Object> request

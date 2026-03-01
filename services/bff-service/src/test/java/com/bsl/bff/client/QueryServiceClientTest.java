@@ -94,6 +94,47 @@ class QueryServiceClientTest {
     }
 
     @Test
+    void chatRolloutSnapshotForwardsAuthHeaders() {
+        RestTemplate restTemplate = mock(RestTemplate.class);
+        ObjectMapper mapper = new ObjectMapper();
+        QueryServiceClient client = new QueryServiceClient(restTemplate, downstream("http://localhost:8001"), mapper);
+        ObjectNode ok = mapper.createObjectNode();
+        ok.put("status", "ok");
+        when(restTemplate.exchange(eq("http://localhost:8001/internal/chat/rollout"), eq(HttpMethod.GET), any(HttpEntity.class), eq(com.fasterxml.jackson.databind.JsonNode.class)))
+            .thenReturn(ResponseEntity.ok(ok));
+
+        AuthContextHolder.set(new AuthContext("101", "42"));
+        client.chatRolloutSnapshot(null);
+
+        ArgumentCaptor<HttpEntity> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).exchange(eq("http://localhost:8001/internal/chat/rollout"), eq(HttpMethod.GET), entityCaptor.capture(), eq(com.fasterxml.jackson.databind.JsonNode.class));
+        assertThat(entityCaptor.getValue().getHeaders().getFirst("x-user-id")).isEqualTo("101");
+        assertThat(entityCaptor.getValue().getHeaders().getFirst("x-admin-id")).isEqualTo("42");
+    }
+
+    @Test
+    void resetChatRolloutForwardsAuthHeaders() {
+        RestTemplate restTemplate = mock(RestTemplate.class);
+        ObjectMapper mapper = new ObjectMapper();
+        QueryServiceClient client = new QueryServiceClient(restTemplate, downstream("http://localhost:8001"), mapper);
+        ObjectNode ok = mapper.createObjectNode();
+        ok.put("status", "ok");
+        when(restTemplate.exchange(eq("http://localhost:8001/internal/chat/rollout/reset"), eq(HttpMethod.POST), any(HttpEntity.class), eq(com.fasterxml.jackson.databind.JsonNode.class)))
+            .thenReturn(ResponseEntity.ok(ok));
+
+        AuthContextHolder.set(new AuthContext("101", "42"));
+        client.resetChatRollout(null, java.util.Map.of("clear_gate", true));
+
+        ArgumentCaptor<HttpEntity> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).exchange(eq("http://localhost:8001/internal/chat/rollout/reset"), eq(HttpMethod.POST), entityCaptor.capture(), eq(com.fasterxml.jackson.databind.JsonNode.class));
+        assertThat(entityCaptor.getValue().getHeaders().getFirst("x-user-id")).isEqualTo("101");
+        assertThat(entityCaptor.getValue().getHeaders().getFirst("x-admin-id")).isEqualTo("42");
+        Object body = entityCaptor.getValue().getBody();
+        assertThat(body).isInstanceOf(java.util.Map.class);
+        assertThat(((java.util.Map<?, ?>) body).get("clear_gate")).isEqualTo(Boolean.TRUE);
+    }
+
+    @Test
     void resetChatRecommendExperimentForwardsAuthHeaders() {
         RestTemplate restTemplate = mock(RestTemplate.class);
         ObjectMapper mapper = new ObjectMapper();

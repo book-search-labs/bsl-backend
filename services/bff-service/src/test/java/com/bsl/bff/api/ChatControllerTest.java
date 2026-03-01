@@ -483,6 +483,115 @@ class ChatControllerTest {
     }
 
     @Test
+    void chatRolloutSnapshotRequiresAdmin() throws Exception {
+        mockMvc.perform(get("/chat/rollout"))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error.code").value("forbidden"));
+
+        verify(queryServiceClient, never()).chatRolloutSnapshot(any());
+    }
+
+    @Test
+    void chatRolloutSnapshotProxyForAdmin() throws Exception {
+        AuthContextHolder.set(new AuthContext("101", "1"));
+        JsonNode responseNode = objectMapper.readTree(
+            "{"
+                + "\"version\":\"v1\","
+                + "\"trace_id\":\"trace_rollout\","
+                + "\"request_id\":\"req_rollout\","
+                + "\"status\":\"ok\","
+                + "\"rollout\":{\"mode\":\"canary\",\"canary_percent\":5}"
+                + "}"
+        );
+        when(queryServiceClient.chatRolloutSnapshot(any())).thenReturn(responseNode);
+
+        mockMvc.perform(get("/chat/rollout"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"))
+            .andExpect(jsonPath("$.rollout.mode").value("canary"));
+    }
+
+    @Test
+    void v1ChatRolloutSnapshotProxyForAdmin() throws Exception {
+        AuthContextHolder.set(new AuthContext("101", "1"));
+        JsonNode responseNode = objectMapper.readTree(
+            "{"
+                + "\"version\":\"v1\","
+                + "\"trace_id\":\"trace_rollout\","
+                + "\"request_id\":\"req_rollout\","
+                + "\"status\":\"ok\","
+                + "\"rollout\":{\"mode\":\"shadow\",\"canary_percent\":5}"
+                + "}"
+        );
+        when(queryServiceClient.chatRolloutSnapshot(any())).thenReturn(responseNode);
+
+        mockMvc.perform(get("/v1/chat/rollout"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"))
+            .andExpect(jsonPath("$.rollout.mode").value("shadow"));
+    }
+
+    @Test
+    void chatRolloutResetRequiresAdmin() throws Exception {
+        mockMvc.perform(post("/chat/rollout/reset")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error.code").value("forbidden"));
+
+        verify(queryServiceClient, never()).resetChatRollout(any(), anyMap());
+    }
+
+    @Test
+    void chatRolloutResetProxyForAdmin() throws Exception {
+        AuthContextHolder.set(new AuthContext("101", "1"));
+        JsonNode responseNode = objectMapper.readTree(
+            "{"
+                + "\"version\":\"v1\","
+                + "\"trace_id\":\"trace_rollout\","
+                + "\"request_id\":\"req_rollout\","
+                + "\"status\":\"ok\","
+                + "\"reset\":{\"reset_applied\":true,\"options\":{\"engine\":\"agent\"}}"
+                + "}"
+        );
+        when(queryServiceClient.resetChatRollout(any(), anyMap())).thenReturn(responseNode);
+
+        mockMvc.perform(post("/chat/rollout/reset")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"engine\":\"agent\",\"clear_gate\":true}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"))
+            .andExpect(jsonPath("$.reset.reset_applied").value(true))
+            .andExpect(jsonPath("$.reset.options.engine").value("agent"));
+
+        verify(queryServiceClient).resetChatRollout(any(), anyMap());
+    }
+
+    @Test
+    void v1ChatRolloutResetProxyForAdmin() throws Exception {
+        AuthContextHolder.set(new AuthContext("101", "1"));
+        JsonNode responseNode = objectMapper.readTree(
+            "{"
+                + "\"version\":\"v1\","
+                + "\"trace_id\":\"trace_rollout\","
+                + "\"request_id\":\"req_rollout\","
+                + "\"status\":\"ok\","
+                + "\"reset\":{\"reset_applied\":true}"
+                + "}"
+        );
+        when(queryServiceClient.resetChatRollout(any(), anyMap())).thenReturn(responseNode);
+
+        mockMvc.perform(post("/v1/chat/rollout/reset")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"clear_rollback\":true}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"))
+            .andExpect(jsonPath("$.reset.reset_applied").value(true));
+
+        verify(queryServiceClient).resetChatRollout(any(), anyMap());
+    }
+
+    @Test
     void chatRecommendExperimentSnapshotProxyForAdmin() throws Exception {
         AuthContextHolder.set(new AuthContext("101", "1"));
         JsonNode responseNode = objectMapper.readTree(
