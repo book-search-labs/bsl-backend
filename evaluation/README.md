@@ -76,6 +76,14 @@ RUN_CHAT_RECOMMEND_EVAL=1 ./scripts/test.sh
 ./scripts/chat/run_recommend_quality_loop.sh
 ```
 
+실험 설정/상태를 운영에서 빠르게 조정하려면:
+
+```bash
+python3 scripts/chat/recommend_experiment_ops.py snapshot
+python3 scripts/chat/recommend_experiment_ops.py config --payload-json '{"overrides":{"diversity_percent":70,"max_block_rate":0.35}}'
+python3 scripts/chat/recommend_experiment_ops.py reset --payload-json '{"clear_overrides":true}'
+```
+
 ## Chat feedback aggregation -> backlog seeds
 
 Use `scripts/chat/aggregate_feedback.py` to summarize feedback and generate actionable backlog seeds:
