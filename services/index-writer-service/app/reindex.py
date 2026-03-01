@@ -120,6 +120,30 @@ def choose_isbn10(rows: List[Dict[str, Any]], extras: Optional[Dict[str, Any]]) 
     return None
 
 
+def choose_series_name(extras: Optional[Dict[str, Any]]) -> Optional[str]:
+    if not extras:
+        return None
+    candidates = [
+        extras.get("series_name"),
+        extras.get("seriesName"),
+        extras.get("series"),
+        extras.get("collection"),
+    ]
+    for candidate in candidates:
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()
+    if isinstance(extras.get("series"), list):
+        for entry in extras.get("series"):
+            if isinstance(entry, str) and entry.strip():
+                return entry.strip()
+            if isinstance(entry, dict):
+                for key in ("name", "label", "value"):
+                    nested = entry.get(key)
+                    if isinstance(nested, str) and nested.strip():
+                        return nested.strip()
+    return None
+
+
 def collect_isbn_candidates(rows: List[Dict[str, Any]], extras: Optional[Dict[str, Any]]) -> List[str]:
     candidates: List[str] = []
     for row in rows:
@@ -200,6 +224,17 @@ def build_authors(rows: List[Dict[str, Any]]) -> Optional[List[Dict[str, Any]]]:
     return authors or None
 
 
+def flatten_author_names(authors: Optional[List[Dict[str, Any]]], key: str) -> Optional[List[str]]:
+    if not authors:
+        return None
+    names: List[str] = []
+    for author in authors:
+        value = author.get(key)
+        if isinstance(value, str) and value.strip() and value not in names:
+            names.append(value)
+    return names or None
+
+
 def build_concepts(rows: List[Dict[str, Any]]) -> Tuple[Optional[List[str]], Optional[List[str]]]:
     if not rows:
         return None, None
@@ -278,6 +313,7 @@ def build_document(
         or material.get("publisher")
     )
     issued_year = override.get("issued_year") or material.get("issued_year")
+    series_name = choose_series_name(extras)
 
     edition_labels = normalize_list(extras.get("edition_labels") or extras.get("editionLabels"))
     volume = coerce_int(extras.get("volume"))
@@ -288,6 +324,8 @@ def build_document(
     isbn13 = choose_isbn13(identifiers.get(material_id, []), extras)
     isbn10 = choose_isbn10(identifiers.get(material_id, []), extras)
     authors = build_authors(agents.get(material_id, []))
+    author_names_ko = flatten_author_names(authors, "name_ko")
+    author_names_en = flatten_author_names(authors, "name_en")
     concept_ids, category_paths = build_concepts(concepts.get(material_id, []))
 
     is_hidden = bool(override.get("hidden"))
@@ -303,8 +341,14 @@ def build_document(
         doc["title_ko"] = title_ko
     if title_en:
         doc["title_en"] = title_en
+    if series_name:
+        doc["series_name"] = series_name
     if authors:
         doc["authors"] = authors
+    if author_names_ko:
+        doc["author_names_ko"] = author_names_ko
+    if author_names_en:
+        doc["author_names_en"] = author_names_en
     if publisher_name:
         doc["publisher_name"] = publisher_name
     if isbn13 or isbn10:
@@ -550,7 +594,7 @@ def run_sample_query(client: OpenSearchClient, index_name: str, query_text: str)
         "query": {
             "multi_match": {
                 "query": query_text,
-                "fields": ["title_ko", "title_en", "authors.name_ko", "authors.name_en"],
+                "fields": ["title_ko", "title_en", "author_names_ko", "author_names_en"],
             }
         },
     }

@@ -234,7 +234,7 @@ sequenceDiagram
   alt cache hit
     R-->>A: topK
   else cache miss
-    A->>O: prefix query (ac_read)
+    A->>O: prefix query (ac_candidates_read)
     O-->>A: candidates
   end
   A-->>B: suggestions

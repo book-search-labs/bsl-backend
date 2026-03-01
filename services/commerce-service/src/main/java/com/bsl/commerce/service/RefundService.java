@@ -35,6 +35,7 @@ public class RefundService {
     private final PaymentRepository paymentRepository;
     private final InventoryService inventoryService;
     private final OrderService orderService;
+    private final LedgerService ledgerService;
     private final OpsTaskRepository opsTaskRepository;
     private final CommerceProperties properties;
     private final ObjectMapper objectMapper;
@@ -45,6 +46,7 @@ public class RefundService {
         PaymentRepository paymentRepository,
         InventoryService inventoryService,
         OrderService orderService,
+        LedgerService ledgerService,
         OpsTaskRepository opsTaskRepository,
         CommerceProperties properties,
         ObjectMapper objectMapper
@@ -54,6 +56,7 @@ public class RefundService {
         this.paymentRepository = paymentRepository;
         this.inventoryService = inventoryService;
         this.orderService = orderService;
+        this.ledgerService = ledgerService;
         this.opsTaskRepository = opsTaskRepository;
         this.properties = properties;
         this.objectMapper = objectMapper;
@@ -240,6 +243,17 @@ public class RefundService {
             );
             opsTaskRepository.insertTask("INVENTORY_RESTOCK", "OPEN", JsonUtils.toJson(objectMapper, payload));
         }
+
+        Map<String, Object> order = orderRepository.findOrderById(JdbcUtils.asLong(refund.get("order_id")));
+        String currency = order == null ? "KRW" : JdbcUtils.asString(order.get("currency"));
+        ledgerService.recordRefund(
+            refundId,
+            JdbcUtils.asLong(refund.get("order_id")),
+            JdbcUtils.asLong(refund.get("payment_id")),
+            currency,
+            items,
+            sellerByOrderItem
+        );
 
         boolean partial = isPartialRefund(JdbcUtils.asLong(refund.get("order_id")));
         orderService.markRefunded(JdbcUtils.asLong(refund.get("order_id")), partial);

@@ -22,7 +22,7 @@ It is intentionally concise, implementation-agnostic, and **must not contradict 
 - Query Service (QS): `http://localhost:8001`
 - Search Service (SS): `http://localhost:8002`
 - Autocomplete Service (ACS): `http://localhost:8003`
-- Ranking Service (RS): `http://localhost:8004`
+- Ranking Service (RS): `http://localhost:8082`
 - Model Inference Service (MIS): `http://localhost:8005`
 
 > Ports are defaults for local development. Production deployment may differ.
@@ -966,6 +966,33 @@ If supported, the server should treat it as:
 - `GET /api/v1/my/inquiries`
 - `POST /api/v1/my/inquiries`
 
+### Payment Notes
+- `POST /api/v1/payments/{paymentId}/mock/complete`는 `dev` profile에서만 활성화된다.
+- 결제 provider 선택 기본값은 `payments.default-provider` 설정으로 제어한다.
+- 결제 확정(`CAPTURED`)은 webhook 처리(`POST /api/v1/payments/webhook/{provider}`)에서만 전이된다.
+
+### Payment Create (`POST /api/v1/payments`)
+- Request contract: `contracts/payment-create-request.schema.json`
+- Request example: `contracts/examples/payment-create-request.sample.json`
+- Response contract: `contracts/payment-response.schema.json`
+- Response example: `contracts/examples/payment-response.sample.json`
+- 확장 필드:
+  - `payment.checkout_session_id`
+  - `payment.checkout_url`
+  - `payment.return_url`
+  - `payment.webhook_url`
+  - `payment.expires_at`
+
+### Payment Read (`GET /api/v1/payments/{paymentId}`)
+- Response contract: `contracts/payment-response.schema.json`
+
+### Payment Webhook (`POST /api/v1/payments/webhook/{provider}`)
+- Headers:
+  - `X-Event-Id` (optional; 없으면 payload `event_id` 또는 payload hash 사용)
+  - `X-Signature` (HMAC SHA-256, provider secret)
+- Payload 예시 핵심 필드:
+  - `event_id`, `payment_id`, `status`, `provider_payment_id`, `occurred_at`
+
 ### Home Events/Notices
 - `GET /api/v1/home/panels`
   - Query params
@@ -1105,14 +1132,25 @@ If supported, the server should treat it as:
 - `GET /admin/inventory/balance?sku_id=...`
 - `GET /admin/inventory/ledger?sku_id=...`
 - `POST /admin/inventory/adjust`
-- `GET /admin/payments`
+- `GET /admin/payments?limit=&status=&provider=&from=YYYY-MM-DD&to=YYYY-MM-DD`
 - `GET /admin/payments/{paymentId}`
+- `GET /admin/payments/webhook-events?limit=&status=&provider=`
+- `GET /admin/payments/{paymentId}/webhook-events`
 - `POST /admin/payments/{paymentId}/cancel`
+- `POST /admin/payments/webhook-events/{eventId}/retry`
 - `GET /admin/refunds`
 - `GET /admin/refunds/{refundId}`
 - `POST /admin/refunds`
 - `POST /admin/refunds/{refundId}/approve`
 - `POST /admin/refunds/{refundId}/process`
+- `GET /admin/settlements/cycles?limit=&status=&from=YYYY-MM-DD&to=YYYY-MM-DD`
+- `POST /admin/settlements/cycles`
+- `GET /admin/settlements/cycles/{cycleId}`
+- `GET /admin/settlements/cycles/{cycleId}/lines`
+- `POST /admin/settlements/cycles/{cycleId}/payouts`
+- `GET /admin/settlements/payouts?limit=&status=`
+- `POST /admin/settlements/payouts/{payoutId}/retry`
+- `GET /admin/settlements/reconciliation?limit=&from=YYYY-MM-DD&to=YYYY-MM-DD`
 - `GET /admin/shipments`
 - `GET /admin/shipments/{shipmentId}`
 - `POST /admin/shipments/{shipmentId}/label`

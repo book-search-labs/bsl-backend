@@ -807,7 +807,6 @@ export default function AppShell() {
                     }}
                   >
                     <option value="">Family Site</option>
-                    <option value="https://www.kyobobook.co.kr">교보문고</option>
                     <option value="https://www.booklog.co.kr">북로그</option>
                   </select>
                 </label>

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "payment-response.schema.json",
+  "title": "PaymentResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "trace_id", "request_id", "payment"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": ["string", "null"] },
+    "request_id": { "type": ["string", "null"] },
+    "payment": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["payment_id", "order_id", "status", "amount", "currency", "provider"],
+      "properties": {
+        "payment_id": { "type": "integer", "minimum": 1 },
+        "order_id": { "type": "integer", "minimum": 1 },
+        "status": {
+          "type": "string",
+          "enum": ["READY", "PROCESSING", "AUTHORIZED", "CAPTURED", "FAILED", "CANCELED", "REFUNDED", "INITIATED"]
+        },
+        "amount": { "type": "integer", "minimum": 0 },
+        "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+        "provider": { "type": "string", "minLength": 1 },
+        "method": { "type": ["string", "null"] },
+        "provider_payment_id": { "type": ["string", "null"] },
+        "failure_reason": { "type": ["string", "null"] },
+        "checkout_session_id": { "type": ["string", "null"] },
+        "checkout_url": { "type": ["string", "null"] },
+        "return_url": { "type": ["string", "null"] },
+        "webhook_url": { "type": ["string", "null"] },
+        "expires_at": { "type": ["string", "null"] },
+        "authorized_at": { "type": ["string", "null"] },
+        "captured_at": { "type": ["string", "null"] },
+        "failed_at": { "type": ["string", "null"] },
+        "canceled_at": { "type": ["string", "null"] },
+        "created_at": { "type": ["string", "null"] },
+        "updated_at": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

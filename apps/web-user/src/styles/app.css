@@ -2214,6 +2214,10 @@
   font-weight: 700;
 }
 
+.book-tile-cover-link {
+  display: block;
+}
+
 .book-tile-cover-title {
   font-size: 0.85rem;
 }

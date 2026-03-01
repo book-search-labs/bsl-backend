@@ -295,6 +295,57 @@ python3 scripts/commerce/backfill_current_offers.py --all-materials --workers 12
 ./scripts/local_down.sh
 ```
 
+`local_up.sh`는 기본으로 `pg-simulator(:8090)`도 함께 올립니다.
+필요 없으면 비활성화:
+```bash
+ENABLE_PG_SIMULATOR=0 ./scripts/local_up.sh
+```
+
+결제 웹훅 실패 자동 재시도 스케줄러는 commerce-service에서 기본 활성화됩니다.
+운영/로컬 튜닝:
+```bash
+export PAYMENTS_WEBHOOK_RETRY_ENABLED=true
+export PAYMENTS_WEBHOOK_RETRY_DELAY_MS=30000
+export PAYMENTS_WEBHOOK_RETRY_INITIAL_DELAY_MS=20000
+export PAYMENTS_WEBHOOK_RETRY_BATCH_SIZE=20
+export PAYMENTS_WEBHOOK_RETRY_MAX_ATTEMPTS=3
+export PAYMENTS_WEBHOOK_RETRY_BACKOFF_SECONDS=30
+```
+
+관측 지표(Actuator/Prometheus):
+- `commerce.webhook.events.total{provider,outcome}`
+- `commerce.webhook.retry.total{outcome}`
+- `commerce.webhook.retry.events.total{outcome}`
+- `commerce.settlement.cycles.total{outcome}`
+- `commerce.settlement.lines.total{outcome}`
+- `commerce.settlement.payout.total{outcome}`
+- `commerce.settlement.payout.retry.total{outcome}`
+- `commerce.settlement.cycle.status.total{status}`
+
+### Payment async drill (pg-simulator)
+1. web-user에서 결제 진행 후 `pg-simulator` 체크아웃 화면에서 시나리오 버튼 선택
+2. 지연 웹훅(`성공 5초/10초`) 선택 시:
+   - return_url로 먼저 복귀
+   - `/api/v1/payments/{id}` 상태가 `PROCESSING -> CAPTURED`로 전이되는지 확인
+3. 중복 웹훅(`성공 + 중복 웹훅 3회`) 선택 시:
+   - 최초 1회만 상태 전이되고 나머지는 duplicate 처리되는지 확인
+   - `GET /admin/payments/{paymentId}/webhook-events`에서 `process_status` 확인
+4. 웹훅만 전송(`복귀 없음`) 선택 시:
+   - 사용자 복귀 없이도 webhook로 결제가 확정되는지 확인
+5. 실패 이벤트 수동 재처리:
+   - `POST /admin/payments/webhook-events/{eventId}/retry`
+   - 원본 이벤트가 webhook queue에서 `RETRIED`로 전환되는지 확인
+
+### Settlement drill (cycle/payout/reconciliation)
+1. `POST /admin/settlements/cycles`로 기간 사이클 생성
+2. `POST /admin/settlements/cycles/{cycleId}/payouts` 실행
+3. 실패 건 재시도:
+   - `GET /admin/settlements/payouts?status=FAILED`
+   - `POST /admin/settlements/payouts/{payoutId}/retry`
+4. 원장 불일치 확인:
+   - `GET /admin/settlements/reconciliation?from=YYYY-MM-DD&to=YYYY-MM-DD`
+   - `payment_amount` vs `sale_amount` 및 `ledger_entry_count` 확인
+
 Skip demo seed when you only want ingest-based data:
 ```bash
 SEED_DEMO_DATA=0 ./scripts/local_up.sh
@@ -322,7 +373,7 @@ OS_URL=http://localhost:9200 scripts/os_bootstrap_indices_v1_1.sh
 
 ### Smoke checks
 ```bash
-curl -s -XPOST http://localhost:9200/ac_read/_search -H 'Content-Type: application/json' -d '{"query":{"match":{"text":"해"}},"size":5}'
+curl -s -XPOST http://localhost:9200/ac_candidates_read/_search -H 'Content-Type: application/json' -d '{"query":{"match":{"text":"해"}},"size":5}'
 curl -s -XPOST http://localhost:9200/authors_doc_read/_search -H 'Content-Type: application/json' -d '{"query":{"match":{"name_ko":"롤링"}},"size":5}'
 curl -s -XPOST http://localhost:9200/series_doc_read/_search -H 'Content-Type: application/json' -d '{"query":{"match":{"name":"해리"}},"size":5}'
 ```
@@ -404,7 +455,7 @@ EMBED_PROVIDER=toy ./scripts/ingest/run_ingest_opensearch.sh
 OpenSearch ingest now writes:
 - `books_doc_write` (BM25)
 - `books_vec_write` (vector embeddings; required for hybrid search)
-- `ac_write` (autocomplete)
+- `ac_candidates_write` (autocomplete)
 - `authors_doc_write` (optional, when enabled)
 
 ### Common overrides
@@ -452,7 +503,7 @@ python3 scripts/autocomplete/aggregate_events.py
 ```
 
 Defaults:
-- OpenSearch alias: `AC_ALIAS=ac_write`
+- OpenSearch alias: `AC_ALIAS=ac_candidates_write`
 - Redis cache keys: `AUTOCOMPLETE_CACHE_KEY_PREFIX=ac:prefix:`
 - Decay half-life: `AC_DECAY_HALF_LIFE_SEC=604800`
 

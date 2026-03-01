@@ -33,6 +33,7 @@ public class CommerceProxyController {
             "/admin/inventory/**",
             "/admin/payments/**",
             "/admin/refunds/**",
+            "/admin/settlements/**",
             "/admin/shipments/**",
             "/admin/support/**"
         },

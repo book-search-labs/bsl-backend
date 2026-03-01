@@ -440,7 +440,11 @@ export default function HomePage() {
 
                       return (
                         <article key={docId ?? `${section.key}-${index}`} className="book-tile book-tile--compact">
-                          <div className={`book-tile-cover book-tile-cover--${decor.tone}`}>
+                          <Link
+                            className={`book-tile-cover book-tile-cover-link book-tile-cover--${decor.tone}`}
+                            to={detailLink}
+                            aria-label={`${title} 상세보기`}
+                          >
                             <BookCover
                               className="book-cover-image"
                               title={title}
@@ -450,7 +454,7 @@ export default function HomePage() {
                               size="M"
                             />
                             <span className="book-tile-rank">#{index + 1}</span>
-                          </div>
+                          </Link>
                           <div className="book-tile-body">
                             <h3 className="book-tile-title">{title}</h3>
                             <p className="book-tile-meta">{formatAuthors(authors)}</p>

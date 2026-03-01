@@ -6,11 +6,15 @@ import com.bsl.commerce.common.RequestContextHolder;
 import com.bsl.commerce.service.PaymentService;
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
+import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,9 +23,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1")
 public class PaymentController {
     private final PaymentService paymentService;
+    private final Environment environment;
 
-    public PaymentController(PaymentService paymentService) {
+    public PaymentController(PaymentService paymentService, Environment environment) {
         this.paymentService = paymentService;
+        this.environment = environment;
     }
 
     @PostMapping("/payments")
@@ -33,7 +39,10 @@ public class PaymentController {
             request.orderId,
             request.amount,
             request.method,
-            request.idempotencyKey
+            request.idempotencyKey,
+            request.provider,
+            request.returnUrl,
+            request.webhookUrl
         );
         Map<String, Object> response = base();
         response.put("payment", payment);
@@ -50,6 +59,9 @@ public class PaymentController {
 
     @PostMapping("/payments/{paymentId}/mock/complete")
     public Map<String, Object> mockComplete(@PathVariable long paymentId, @RequestBody PaymentMockRequest request) {
+        if (!environment.acceptsProfiles(Profiles.of("dev"))) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "지원하지 않는 엔드포인트입니다.");
+        }
         String result = request == null ? "SUCCESS" : request.result;
         Map<String, Object> payment = paymentService.mockComplete(paymentId, result);
         Map<String, Object> response = base();
@@ -57,16 +69,35 @@ public class PaymentController {
         return response;
     }
 
-    @PostMapping("/payments/webhook/{provider}")
+    @PostMapping(value = "/payments/webhook/{provider}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> webhook(
         @PathVariable String provider,
+        @RequestHeader(name = "X-Signature", required = false) String signature,
+        @RequestHeader(name = "X-Event-Id", required = false) String eventIdHeader,
         @RequestParam(name = "event_id", required = false) String eventId,
-        @RequestBody(required = false) Map<String, Object> payload
+        @RequestBody(required = false) String rawPayload
     ) {
-        paymentService.handleWebhook(provider, payload, eventId);
+        String resolvedEventId = firstNonBlank(eventIdHeader, eventId);
+        Map<String, Object> webhook = paymentService.handleWebhook(provider, rawPayload, signature, resolvedEventId);
         Map<String, Object> response = base();
-        response.put("status", "ok");
+        response.putAll(webhook);
         return response;
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (value == null) {
+                continue;
+            }
+            String trimmed = value.trim();
+            if (!trimmed.isEmpty()) {
+                return trimmed;
+            }
+        }
+        return null;
     }
 
     private Map<String, Object> base() {
@@ -83,6 +114,9 @@ public class PaymentController {
         public Integer amount;
         public String method;
         public String idempotencyKey;
+        public String provider;
+        public String returnUrl;
+        public String webhookUrl;
     }
 
     public static class PaymentMockRequest {

@@ -21,7 +21,7 @@ opensearch:
   username: ${OPENSEARCH_USERNAME:}
   password: ${OPENSEARCH_PASSWORD:}
   timeout-ms: 300
-  index: ac_read
+  index: ${OPENSEARCH_AC_INDEX:ac_candidates_read}
 
 autocomplete:
   cache:

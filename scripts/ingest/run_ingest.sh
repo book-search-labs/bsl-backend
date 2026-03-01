@@ -104,7 +104,7 @@ bootstrap_opensearch_if_needed() {
   if [ "$BOOTSTRAP_OS" = "0" ]; then
     return 0
   fi
-  if alias_exists "books_doc_write" && alias_exists "ac_write"; then
+  if alias_exists "books_doc_write" && (alias_exists "ac_candidates_write" || alias_exists "ac_write"); then
     return 0
   fi
   echo "Bootstrapping OpenSearch indices/aliases (KEEP_INDEX=1)..."

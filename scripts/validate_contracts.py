@@ -36,6 +36,8 @@ SCHEMA_FILES = {
     "home-preorder-reserve-response.sample.json": CONTRACTS_DIR / "home-preorder-reserve-response.schema.json",
     "auth-login-request.sample.json": CONTRACTS_DIR / "auth-login-request.schema.json",
     "auth-session-response.sample.json": CONTRACTS_DIR / "auth-session-response.schema.json",
+    "payment-create-request.sample.json": CONTRACTS_DIR / "payment-create-request.schema.json",
+    "payment-response.sample.json": CONTRACTS_DIR / "payment-response.schema.json",
     "error.sample.json": CONTRACTS_DIR / "error.schema.json",
     "reindex-job-create-request.sample.json": CONTRACTS_DIR / "reindex-job-create-request.schema.json",
     "reindex-job-response.sample.json": CONTRACTS_DIR / "reindex-job-response.schema.json",

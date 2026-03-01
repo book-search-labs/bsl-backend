@@ -82,6 +82,7 @@ const sidebarItems: SidebarNode[] = [
         children: [
           { type: "leaf", key: "ops-commerce-products", label: "Products", to: "/ops/commerce/products" },
           { type: "leaf", key: "ops-commerce-payments", label: "Payments & Refunds", to: "/ops/commerce/payments" },
+          { type: "leaf", key: "ops-commerce-settlements", label: "Settlements", to: "/ops/commerce/settlements" },
           { type: "leaf", key: "ops-commerce-shipping", label: "Shipping", to: "/ops/commerce/shipping" },
         ],
       },

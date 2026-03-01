@@ -22,7 +22,7 @@ class OpenSearchGatewayTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void lexicalQueryAddsContainsFallbackForKoreanCompoundToken() throws Exception {
+    void lexicalQueryUsesV2FieldsAndVisibilityFilter() throws Exception {
         RestTemplate restTemplate = new RestTemplate();
         MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
         OpenSearchGateway gateway = new OpenSearchGateway(restTemplate, objectMapper, properties());
@@ -34,25 +34,35 @@ class OpenSearchGatewayTest {
                 JsonNode root = objectMapper.readTree(body);
                 JsonNode boolNode = root.path("query").path("bool");
 
+                assertThat(root.path("track_total_hits").asBoolean()).isFalse();
                 assertThat(boolNode.path("minimum_should_match").asInt()).isEqualTo(1);
+
+                JsonNode filter = boolNode.path("filter");
+                assertThat(filter.isArray()).isTrue();
+                assertThat(filter.toString()).contains("\"is_hidden\":false");
+
                 JsonNode should = boolNode.path("should");
                 assertThat(should.isArray()).isTrue();
 
-                boolean hasNgramFallback = false;
-                boolean hasContainsFallback = false;
+                boolean hasCompact = false;
+                boolean hasBoolPrefix = false;
+                boolean hasWildcard = false;
                 for (JsonNode clause : should) {
                     JsonNode mm = clause.path("multi_match");
-                    if (mm.isObject() && mm.path("fields").toString().contains("title_ko.ngram")) {
-                        hasNgramFallback = true;
+                    if (mm.isObject() && mm.path("fields").toString().contains("title_ko.compact")) {
+                        hasCompact = true;
                     }
-                    JsonNode wildcard = clause.path("wildcard").path("title_ko.raw");
-                    if (wildcard.isObject() && "*영어교육*".equals(wildcard.path("value").asText())) {
-                        hasContainsFallback = true;
+                    if (mm.isObject() && "bool_prefix".equals(mm.path("type").asText())) {
+                        hasBoolPrefix = true;
+                    }
+                    if (clause.has("wildcard")) {
+                        hasWildcard = true;
                     }
                 }
 
-                assertThat(hasNgramFallback).isTrue();
-                assertThat(hasContainsFallback).isTrue();
+                assertThat(hasCompact).isTrue();
+                assertThat(hasBoolPrefix).isTrue();
+                assertThat(hasWildcard).isFalse();
             })
             .andRespond(withSuccess("{\"hits\":{\"hits\":[]}}", MediaType.APPLICATION_JSON));
 
@@ -61,7 +71,7 @@ class OpenSearchGatewayTest {
     }
 
     @Test
-    void lexicalQuerySkipsContainsFallbackForOneCharacterQuery() throws Exception {
+    void lexicalByDslAddsGlobalFilterContract() throws Exception {
         RestTemplate restTemplate = new RestTemplate();
         MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
         OpenSearchGateway gateway = new OpenSearchGateway(restTemplate, objectMapper, properties());
@@ -71,43 +81,75 @@ class OpenSearchGatewayTest {
             .andExpect(request -> {
                 String body = ((MockClientHttpRequest) request).getBodyAsString(StandardCharsets.UTF_8);
                 JsonNode root = objectMapper.readTree(body);
-                JsonNode should = root.path("query").path("bool").path("should");
-
-                boolean hasWildcard = false;
-                for (JsonNode clause : should) {
-                    if (clause.path("wildcard").has("title_ko.raw")) {
-                        hasWildcard = true;
-                        break;
-                    }
-                }
-                assertThat(hasWildcard).isFalse();
+                JsonNode filter = root.path("query").path("bool").path("filter");
+                assertThat(filter.isArray()).isTrue();
+                assertThat(filter.toString()).contains("\"is_hidden\":false");
+                assertThat(filter.toString()).contains("\"language_code\":\"ko\"");
             })
             .andRespond(withSuccess("{\"hits\":{\"hits\":[]}}", MediaType.APPLICATION_JSON));
 
-        gateway.searchLexicalDetailed("영", 10, null, null, null, null, null, null, false);
+        gateway.searchLexicalByDslDetailed(
+            Map.of("bool", Map.of("must", List.of(Map.of("match", Map.of("title_ko", "해리"))))),
+            10,
+            null,
+            List.of(Map.of("term", Map.of("language_code", "ko"))),
+            false
+        );
         server.verify();
     }
 
     @Test
-    void matchAllWithKdcFilterDoesNotUseScriptSort() throws Exception {
+    void vectorQueryAddsVisibilityFilterAndDocIdSource() throws Exception {
         RestTemplate restTemplate = new RestTemplate();
         MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
         OpenSearchGateway gateway = new OpenSearchGateway(restTemplate, objectMapper, properties());
 
-        server.expect(requestTo("http://localhost:9200/books_doc_read/_search"))
+        server.expect(requestTo("http://localhost:9200/books_vec_read/_search"))
             .andExpect(method(POST))
             .andExpect(request -> {
                 String body = ((MockClientHttpRequest) request).getBodyAsString(StandardCharsets.UTF_8);
                 JsonNode root = objectMapper.readTree(body);
-                JsonNode sort = root.path("sort");
-                assertThat(sort.isMissingNode()).isTrue();
+                JsonNode filter = root.path("query").path("knn").path("embedding").path("filter").path("bool").path("filter");
+
+                assertThat(root.path("track_total_hits").asBoolean()).isFalse();
+                assertThat(root.path("_source").toString()).contains("doc_id");
+                assertThat(filter.toString()).contains("\"is_hidden\":false");
+                assertThat(filter.toString()).contains("\"kdc_code\":\"800\"");
             })
             .andRespond(withSuccess("{\"hits\":{\"hits\":[]}}", MediaType.APPLICATION_JSON));
 
-        gateway.searchMatchAllDetailed(
+        gateway.searchVectorDetailed(
+            List.of(0.1d, 0.2d),
             10,
             null,
-            List.of(Map.of("terms", Map.of("kdc_path_codes", List.of("700")))),
+            List.of(Map.of("term", Map.of("kdc_code", "800"))),
+            false
+        );
+        server.verify();
+    }
+
+    @Test
+    void chunkVectorQueryKeepsProvidedFiltersOnly() throws Exception {
+        RestTemplate restTemplate = new RestTemplate();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        OpenSearchGateway gateway = new OpenSearchGateway(restTemplate, objectMapper, properties());
+
+        server.expect(requestTo("http://localhost:9200/book_chunks_v1/_search"))
+            .andExpect(method(POST))
+            .andExpect(request -> {
+                String body = ((MockClientHttpRequest) request).getBodyAsString(StandardCharsets.UTF_8);
+                JsonNode root = objectMapper.readTree(body);
+                JsonNode filter = root.path("query").path("knn").path("embedding").path("filter").path("bool").path("filter");
+                assertThat(filter.toString()).contains("\"language_code\":\"ko\"");
+                assertThat(filter.toString()).doesNotContain("is_hidden");
+            })
+            .andRespond(withSuccess("{\"hits\":{\"hits\":[]}}", MediaType.APPLICATION_JSON));
+
+        gateway.searchChunkVectorDetailed(
+            List.of(0.1d, 0.2d),
+            10,
+            null,
+            List.of(Map.of("term", Map.of("language_code", "ko"))),
             false
         );
         server.verify();

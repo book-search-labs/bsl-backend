@@ -43,6 +43,9 @@ class RefundServiceTest {
     private OrderService orderService;
 
     @Mock
+    private LedgerService ledgerService;
+
+    @Mock
     private OpsTaskRepository opsTaskRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -57,6 +60,7 @@ class RefundServiceTest {
             paymentRepository,
             inventoryService,
             orderService,
+            ledgerService,
             opsTaskRepository,
             properties,
             objectMapper

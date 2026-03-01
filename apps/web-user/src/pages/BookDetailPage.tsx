@@ -190,6 +190,7 @@ export default function BookDetailPage() {
 
   const [cachedHit, setCachedHit] = useState<CachedHit | null>(null)
   const dwellContextRef = useRef<CachedHit | null>(null)
+  const detailTopRef = useRef<HTMLDivElement | null>(null)
   const [book, setBook] = useState<Book | null>(null)
 
   const [loading, setLoading] = useState(false)
@@ -211,6 +212,17 @@ export default function BookDetailPage() {
   const [wishlisted, setWishlisted] = useState(false)
   const [commerceMessage, setCommerceMessage] = useState<string | null>(null)
   const [wishlistMessage, setWishlistMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    const raf = window.requestAnimationFrame(() => {
+      if (detailTopRef.current) {
+        detailTopRef.current.scrollIntoView({ block: 'start', behavior: 'auto' })
+        return
+      }
+      window.scrollTo({ top: 0, behavior: 'auto' })
+    })
+    return () => window.cancelAnimationFrame(raf)
+  }, [docId])
 
   useEffect(() => {
     let isActive = true
@@ -623,7 +635,7 @@ export default function BookDetailPage() {
 
   return (
     <section className="page-section">
-      <div className="container py-5 detail-page">
+      <div ref={detailTopRef} className="container py-5 detail-page">
         <div className="detail-header">
           <div className="detail-breadcrumb">
             <Link to="/">홈</Link>

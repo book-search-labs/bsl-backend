@@ -250,7 +250,7 @@ class SearchControllerQcV11Test {
     }
 
     @Test
-    void expandsPreferredLogicalFieldsWithNgramFallbacks() throws Exception {
+    void expandsPreferredLogicalFieldsWithV2Fallbacks() throws Exception {
         when(openSearchGateway.searchLexicalDetailed(eq("문화지도"), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean()))
             .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of(), Map.of()));
         when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
@@ -284,8 +284,8 @@ class SearchControllerQcV11Test {
             anyBoolean()
         );
         List<String> fields = fieldsCaptor.getValue();
-        org.junit.jupiter.api.Assertions.assertTrue(fields.contains("title_ko.ngram"));
-        org.junit.jupiter.api.Assertions.assertTrue(fields.contains("authors.name_ko.ngram"));
+        org.junit.jupiter.api.Assertions.assertTrue(fields.contains("title_ko.compact"));
+        org.junit.jupiter.api.Assertions.assertTrue(fields.contains("author_names_ko.auto"));
     }
 
     @Test

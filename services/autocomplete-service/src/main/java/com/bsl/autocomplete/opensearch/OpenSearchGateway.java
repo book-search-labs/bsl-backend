@@ -22,10 +22,9 @@ import org.springframework.web.client.RestTemplate;
 
 @Component
 public class OpenSearchGateway {
-    private static final int MAX_EXPANSIONS = 50;
-    private static final double WEIGHT_FACTOR = 0.02;
-    private static final double CTR_FACTOR = 5.0;
-    private static final double POPULARITY_FACTOR = 2.0;
+    private static final double WEIGHT_FACTOR = 0.01;
+    private static final double CTR_FACTOR = 1.0;
+    private static final double POPULARITY_FACTOR = 0.1;
 
     private final ObjectMapper objectMapper;
     private final OpenSearchProperties properties;
@@ -50,29 +49,42 @@ public class OpenSearchGateway {
     }
 
     private List<SuggestionHit> searchSuggestionsInternal(String query, int size, boolean includeBlocked) {
-        Map<String, Object> phrasePrefix = new LinkedHashMap<>();
-        phrasePrefix.put("query", query);
-        phrasePrefix.put("max_expansions", MAX_EXPANSIONS);
-
-        Map<String, Object> matchPhrasePrefix = Map.of("text", phrasePrefix);
-
-        Map<String, Object> matchQuery = new LinkedHashMap<>();
-        matchQuery.put("query", query);
-        matchQuery.put("operator", "and");
-
-        Map<String, Object> fallbackMatch = Map.of("text", matchQuery);
-
         List<Map<String, Object>> shouldQueries = List.of(
-            Map.of("match_phrase_prefix", matchPhrasePrefix),
-            Map.of("match", fallbackMatch)
+            Map.of(
+                "multi_match",
+                Map.of(
+                    "query",
+                    query,
+                    "type",
+                    "bool_prefix",
+                    "fields",
+                    List.of("text^3")
+                )
+            ),
+            Map.of(
+                "match",
+                Map.of(
+                    "text.compact",
+                    Map.of(
+                        "query",
+                        query,
+                        "boost",
+                        1.5d
+                    )
+                )
+            )
         );
 
         Map<String, Object> boolQuery = new LinkedHashMap<>();
+        List<Map<String, Object>> filter = new ArrayList<>();
+        if (!includeBlocked) {
+            filter.add(Map.of("term", Map.of("is_blocked", false)));
+        }
+        if (!filter.isEmpty()) {
+            boolQuery.put("filter", filter);
+        }
         boolQuery.put("should", shouldQueries);
         boolQuery.put("minimum_should_match", 1);
-        if (!includeBlocked) {
-            boolQuery.put("must_not", List.of(Map.of("term", Map.of("is_blocked", true))));
-        }
 
         Map<String, Object> functionScore = new LinkedHashMap<>();
         functionScore.put("query", Map.of("bool", boolQuery));
@@ -81,9 +93,10 @@ public class OpenSearchGateway {
         functionScore.put(
             "functions",
             List.of(
-                Map.of("field_value_factor", Map.of("field", "weight", "factor", WEIGHT_FACTOR, "missing", 1)),
+                Map.of("field_value_factor", Map.of("field", "weight", "factor", WEIGHT_FACTOR, "missing", 0)),
                 Map.of("field_value_factor", Map.of("field", "ctr_7d", "factor", CTR_FACTOR, "missing", 0)),
-                Map.of("field_value_factor", Map.of("field", "popularity_7d", "factor", POPULARITY_FACTOR, "missing", 0))
+                Map.of("field_value_factor", Map.of("field", "popularity_7d", "factor", POPULARITY_FACTOR, "missing", 0)),
+                Map.of("gauss", Map.of("last_seen_at", Map.of("origin", "now", "scale", "14d", "decay", 0.5d)))
             )
         );
 
@@ -95,7 +108,6 @@ public class OpenSearchGateway {
             "type",
             "lang",
             "text",
-            "value",
             "target_id",
             "target_doc_id",
             "weight",
@@ -111,8 +123,12 @@ public class OpenSearchGateway {
     private List<SuggestionHit> searchTrendingSuggestionsInternal(int size, boolean includeBlocked) {
         Map<String, Object> boolQuery = new LinkedHashMap<>();
         boolQuery.put("must", List.of(Map.of("match_all", Map.of())));
+        List<Map<String, Object>> filter = new ArrayList<>();
         if (!includeBlocked) {
-            boolQuery.put("must_not", List.of(Map.of("term", Map.of("is_blocked", true))));
+            filter.add(Map.of("term", Map.of("is_blocked", false)));
+        }
+        if (!filter.isEmpty()) {
+            boolQuery.put("filter", filter);
         }
 
         Map<String, Object> functionScore = new LinkedHashMap<>();
@@ -122,9 +138,10 @@ public class OpenSearchGateway {
         functionScore.put(
             "functions",
             List.of(
-                Map.of("field_value_factor", Map.of("field", "weight", "factor", WEIGHT_FACTOR, "missing", 1)),
+                Map.of("field_value_factor", Map.of("field", "weight", "factor", WEIGHT_FACTOR, "missing", 0)),
                 Map.of("field_value_factor", Map.of("field", "ctr_7d", "factor", CTR_FACTOR, "missing", 0)),
-                Map.of("field_value_factor", Map.of("field", "popularity_7d", "factor", POPULARITY_FACTOR, "missing", 0))
+                Map.of("field_value_factor", Map.of("field", "popularity_7d", "factor", POPULARITY_FACTOR, "missing", 0)),
+                Map.of("gauss", Map.of("last_seen_at", Map.of("origin", "now", "scale", "14d", "decay", 0.5d)))
             )
         );
 
@@ -142,7 +159,6 @@ public class OpenSearchGateway {
             "type",
             "lang",
             "text",
-            "value",
             "target_id",
             "target_doc_id",
             "weight",

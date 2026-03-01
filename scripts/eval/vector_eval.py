@@ -78,7 +78,7 @@ def search_lexical(os_url: str, index: str, query: str, topk: int, timeout: floa
         "query": {
             "multi_match": {
                 "query": query,
-                "fields": ["title_ko", "title_en", "authors.name_ko", "series_name", "publisher_name"],
+                "fields": ["title_ko", "title_en", "author_names_ko", "series_name", "publisher_name"],
             }
         },
     }

@@ -99,7 +99,10 @@ export default function RagOpsPage() {
                 <Form.Label>Upload a document (md/txt/html)</Form.Label>
                 <Form.Control
                   type="file"
-                  onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
+                  onChange={(event) => {
+                    const input = event.target as HTMLInputElement;
+                    setUploadFile(input.files?.[0] ?? null);
+                  }}
                 />
               </Form.Group>
               <Button

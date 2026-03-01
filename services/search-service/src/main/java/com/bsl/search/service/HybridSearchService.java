@@ -1898,27 +1898,39 @@ public class HybridSearchService {
             }
             String normalized = field.trim().toLowerCase(Locale.ROOT);
             if ("title_ko".equals(normalized)) {
-                mapped.add("title_ko");
-                mapped.add("title_ko.edge");
-                mapped.add("title_ko.ngram");
-            } else if ("title_ko.edge".equals(normalized)) {
-                mapped.add("title_ko.edge");
-            } else if ("title_ko.ngram".equals(normalized)) {
-                mapped.add("title_ko.ngram");
+                addIfAbsent(mapped, "title_ko");
+                addIfAbsent(mapped, "title_ko.compact");
+                addIfAbsent(mapped, "title_ko.auto");
+            } else if ("title_en".equals(normalized)) {
+                addIfAbsent(mapped, "title_en");
+                addIfAbsent(mapped, "title_en.compact");
+                addIfAbsent(mapped, "title_en.auto");
             } else if ("author_ko".equals(normalized)) {
-                mapped.add("authors.name_ko");
-                mapped.add("authors.name_ko.ngram");
-            } else if ("series_ko".equals(normalized)) {
-                mapped.add("series_name");
-                mapped.add("series_name.ngram");
+                addIfAbsent(mapped, "author_names_ko");
+                addIfAbsent(mapped, "author_names_ko.compact");
+                addIfAbsent(mapped, "author_names_ko.auto");
+                addIfAbsent(mapped, "author_names_en");
+                addIfAbsent(mapped, "author_names_en.compact");
+                addIfAbsent(mapped, "author_names_en.auto");
+            } else if ("series_ko".equals(normalized) || "series_name".equals(normalized)) {
+                addIfAbsent(mapped, "series_name");
+                addIfAbsent(mapped, "series_name.compact");
+                addIfAbsent(mapped, "series_name.auto");
             } else if ("publisher".equals(normalized) || "publisher_name".equals(normalized)) {
-                mapped.add("publisher_name");
-                mapped.add("publisher_name.ngram");
+                addIfAbsent(mapped, "publisher_name");
+                addIfAbsent(mapped, "publisher_name.compact");
+                addIfAbsent(mapped, "publisher_name.auto");
             } else if ("isbn13".equals(normalized) || "isbn".equals(normalized)) {
-                mapped.add("identifiers.isbn13");
+                addIfAbsent(mapped, "identifiers.isbn13");
             }
         }
         return mapped.isEmpty() ? null : mapped;
+    }
+
+    private void addIfAbsent(List<String> target, String value) {
+        if (!target.contains(value)) {
+            target.add(value);
+        }
     }
 
     private Map<String, Object> buildLexicalQueryOverride(QueryContextV1_1 qc, String selectedQueryText) {
@@ -1931,7 +1943,7 @@ public class HybridSearchService {
             : trimToNull(qc.getUnderstanding().getConstraints().getResidualText());
         String fallbackText = firstNonBlank(residualText, selectedQueryText);
 
-        List<String> isbnValues = cleanValues(entities.getIsbn());
+        List<String> isbnValues = normalizeIsbnValues(cleanValues(entities.getIsbn()));
         if (!isbnValues.isEmpty()) {
             List<Map<String, Object>> isbnShould = new ArrayList<>();
             for (String isbn : isbnValues) {
@@ -1946,20 +1958,29 @@ public class HybridSearchService {
             Map<String, Object> bool = new LinkedHashMap<>();
             bool.put("must", List.of(Map.of("bool", isbnBool)));
             if (!isBlank(fallbackText)) {
-                bool.put("should", List.of(buildResidualMultiMatch(fallbackText)));
+                bool.put("should", List.of(buildIsbnResidualDisMax(fallbackText)));
             }
+            bool.put("minimum_should_match", 0);
             return Map.of("bool", bool);
         }
 
         List<Map<String, Object>> must = new ArrayList<>();
-        addBoostedMatch(must, "authors.name_ko", firstValue(entities.getAuthor()), 3.0d);
-        addBoostedMatch(must, "authors.name_ko.ngram", firstValue(entities.getAuthor()), 2.0d);
-        addBoostedMatch(must, "title_ko", firstValue(entities.getTitle()), 3.0d);
-        addBoostedMatch(must, "title_ko.ngram", firstValue(entities.getTitle()), 2.2d);
-        addBoostedMatch(must, "series_name", firstValue(entities.getSeries()), 2.5d);
-        addBoostedMatch(must, "series_name.ngram", firstValue(entities.getSeries()), 1.9d);
-        addBoostedMatch(must, "publisher_name", firstValue(entities.getPublisher()), 2.0d);
-        addBoostedMatch(must, "publisher_name.ngram", firstValue(entities.getPublisher()), 1.5d);
+        String author = firstValue(entities.getAuthor());
+        String title = firstValue(entities.getTitle());
+        String series = firstValue(entities.getSeries());
+        String publisher = firstValue(entities.getPublisher());
+        if (!isBlank(author)) {
+            must.add(buildAuthorEntityMustBlock(author));
+        }
+        if (!isBlank(title)) {
+            must.add(buildTitleEntityMustBlock(title));
+        }
+        if (!isBlank(series)) {
+            must.add(buildSeriesEntityMustBlock(series));
+        }
+        if (!isBlank(publisher)) {
+            must.add(buildPublisherEntityMustBlock(publisher));
+        }
 
         if (must.isEmpty()) {
             return null;
@@ -1970,48 +1991,178 @@ public class HybridSearchService {
         if (!isBlank(fallbackText)) {
             bool.put("should", List.of(buildResidualMultiMatch(fallbackText)));
         }
+        bool.put("minimum_should_match", 0);
         return Map.of("bool", bool);
     }
 
-    private Map<String, Object> buildResidualMultiMatch(String query) {
+    private Map<String, Object> buildAuthorEntityMustBlock(String author) {
         return Map.of(
-            "multi_match",
+            "bool",
             Map.of(
-                "query",
-                query,
-                "fields",
+                "should",
                 List.of(
-                    "title_ko^2",
-                    "title_ko.ngram^1.6",
-                    "title_en^1.4",
-                    "title_en.ngram^1.2",
-                    "series_name^1.5",
-                    "series_name.ngram^1.2",
-                    "publisher_name^1.2",
-                    "publisher_name.ngram^1.0"
-                )
+                    Map.of("match", Map.of("author_names_ko", Map.of("query", author, "boost", 3.0d))),
+                    Map.of("match", Map.of("author_names_ko.compact", Map.of("query", author, "boost", 2.2d))),
+                    Map.of("match", Map.of("author_names_en", Map.of("query", author, "boost", 1.8d))),
+                    buildMultiMatchClause(
+                        author,
+                        "bool_prefix",
+                        List.of("author_names_ko.auto^1.6", "author_names_en.auto^1.3"),
+                        null
+                    )
+                ),
+                "minimum_should_match",
+                1
             )
         );
     }
 
-    private void addBoostedMatch(List<Map<String, Object>> must, String field, String value, double boost) {
-        if (isBlank(value)) {
-            return;
-        }
-        must.add(
+    private Map<String, Object> buildTitleEntityMustBlock(String title) {
+        return Map.of(
+            "bool",
             Map.of(
-                "match",
-                Map.of(
-                    field,
-                    Map.of(
-                        "query",
-                        value,
-                        "boost",
-                        boost
+                "should",
+                List.of(
+                    Map.of("match", Map.of("title_ko", Map.of("query", title, "boost", 3.0d))),
+                    Map.of("match", Map.of("title_ko.compact", Map.of("query", title, "boost", 2.2d))),
+                    Map.of("match_phrase", Map.of("title_ko", Map.of("query", title, "slop", 1, "boost", 6.0d))),
+                    buildMultiMatchClause(
+                        title,
+                        "bool_prefix",
+                        List.of("title_ko.auto^1.8", "title_en.auto^1.5"),
+                        null
+                    )
+                ),
+                "minimum_should_match",
+                1
+            )
+        );
+    }
+
+    private Map<String, Object> buildSeriesEntityMustBlock(String series) {
+        return Map.of(
+            "bool",
+            Map.of(
+                "should",
+                List.of(
+                    Map.of("match", Map.of("series_name", Map.of("query", series, "boost", 2.5d))),
+                    Map.of("match", Map.of("series_name.compact", Map.of("query", series, "boost", 1.9d))),
+                    Map.of("match_phrase", Map.of("series_name", Map.of("query", series, "slop", 1, "boost", 4.0d))),
+                    buildMultiMatchClause(
+                        series,
+                        "bool_prefix",
+                        List.of("series_name.auto^1.6"),
+                        null
+                    )
+                ),
+                "minimum_should_match",
+                1
+            )
+        );
+    }
+
+    private Map<String, Object> buildPublisherEntityMustBlock(String publisher) {
+        return Map.of(
+            "bool",
+            Map.of(
+                "should",
+                List.of(
+                    Map.of("match", Map.of("publisher_name", Map.of("query", publisher, "boost", 2.0d))),
+                    Map.of("match", Map.of("publisher_name.compact", Map.of("query", publisher, "boost", 1.5d))),
+                    buildMultiMatchClause(
+                        publisher,
+                        "bool_prefix",
+                        List.of("publisher_name.auto^1.4"),
+                        null
+                    )
+                ),
+                "minimum_should_match",
+                1
+            )
+        );
+    }
+
+    private Map<String, Object> buildIsbnResidualDisMax(String residual) {
+        return Map.of(
+            "dis_max",
+            Map.of(
+                "tie_breaker",
+                0.2d,
+                "queries",
+                List.of(
+                    buildMultiMatchClause(
+                        residual,
+                        "best_fields",
+                        List.of(
+                            "title_ko^3",
+                            "title_en^2.5",
+                            "series_name^2",
+                            "publisher_name^1.8",
+                            "author_names_ko^1.6",
+                            "author_names_en^1.4"
+                        ),
+                        "or"
+                    ),
+                    buildMultiMatchClause(
+                        residual,
+                        "best_fields",
+                        List.of(
+                            "title_ko.compact^2.2",
+                            "title_en.compact^2.0",
+                            "series_name.compact^1.6",
+                            "publisher_name.compact^1.4",
+                            "author_names_ko.compact^1.4"
+                        ),
+                        "or"
+                    ),
+                    buildMultiMatchClause(
+                        residual,
+                        "bool_prefix",
+                        List.of(
+                            "title_ko.auto^1.8",
+                            "title_en.auto^1.6",
+                            "series_name.auto^1.3",
+                            "publisher_name.auto^1.2",
+                            "author_names_ko.auto^1.2"
+                        ),
+                        null
                     )
                 )
             )
         );
+    }
+
+    private Map<String, Object> buildResidualMultiMatch(String query) {
+        return buildMultiMatchClause(
+            query,
+            "best_fields",
+            List.of(
+                "title_ko^2",
+                "title_en^1.6",
+                "series_name^1.4",
+                "publisher_name^1.2",
+                "author_names_ko^1.2",
+                "author_names_en^1.1"
+            ),
+            "or"
+        );
+    }
+
+    private Map<String, Object> buildMultiMatchClause(
+        String query,
+        String type,
+        List<String> fields,
+        String operator
+    ) {
+        Map<String, Object> multiMatch = new LinkedHashMap<>();
+        multiMatch.put("query", query);
+        multiMatch.put("type", type);
+        multiMatch.put("fields", fields);
+        if (!isBlank(operator)) {
+            multiMatch.put("operator", operator);
+        }
+        multiMatch.put("lenient", true);
+        return Map.of("multi_match", multiMatch);
     }
 
     private List<String> cleanValues(List<String> values) {
@@ -2041,6 +2192,53 @@ public class HybridSearchService {
             }
         }
         return null;
+    }
+
+    private List<String> normalizeIsbnValues(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        List<String> normalized = new ArrayList<>();
+        for (String value : values) {
+            String candidate = normalizeIsbn(value);
+            if (candidate == null || candidate.isEmpty()) {
+                continue;
+            }
+            if (!normalized.contains(candidate)) {
+                normalized.add(candidate);
+            }
+        }
+        return normalized;
+    }
+
+    private String normalizeIsbn(Object value) {
+        String text;
+        if (value instanceof Number number) {
+            text = String.valueOf(number);
+        } else if (value instanceof String raw) {
+            text = raw;
+        } else {
+            return null;
+        }
+        if (text.isBlank()) {
+            return null;
+        }
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (ch == 'x' || ch == 'X') {
+                builder.append('X');
+                continue;
+            }
+            if (Character.isDigit(ch)) {
+                int numeric = Character.getNumericValue(ch);
+                if (numeric >= 0 && numeric <= 9) {
+                    builder.append((char) ('0' + numeric));
+                }
+            }
+        }
+        String normalized = builder.toString();
+        return normalized.isEmpty() ? null : normalized;
     }
 
     private List<Map<String, Object>> buildFilters(QueryContextV1_1.RetrievalHints hints) {
@@ -2095,7 +2293,21 @@ public class HybridSearchService {
             return Map.of("term", Map.of("edition_labels", value));
         }
         if ("isbn13".equals(normalized)) {
-            return Map.of("term", Map.of("identifiers.isbn13", value));
+            if (value instanceof List<?> values) {
+                List<String> isbnValues = new ArrayList<>();
+                for (Object entry : values) {
+                    String normalizedIsbn = normalizeIsbn(entry);
+                    if (normalizedIsbn != null && !isbnValues.contains(normalizedIsbn)) {
+                        isbnValues.add(normalizedIsbn);
+                    }
+                }
+                if (isbnValues.isEmpty()) {
+                    return null;
+                }
+                return Map.of("terms", Map.of("identifiers.isbn13", isbnValues));
+            }
+            String normalizedIsbn = normalizeIsbn(value);
+            return normalizedIsbn == null ? null : Map.of("term", Map.of("identifiers.isbn13", normalizedIsbn));
         }
         if ("language_code".equals(normalized)) {
             return Map.of("term", Map.of("language_code", value));

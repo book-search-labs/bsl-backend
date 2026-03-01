@@ -9,6 +9,17 @@ export type Payment = {
   currency: string
   method?: string
   provider?: string
+  provider_payment_id?: string | null
+  failure_reason?: string | null
+  checkout_session_id?: string | null
+  checkout_url?: string | null
+  return_url?: string | null
+  webhook_url?: string | null
+  expires_at?: string | null
+  authorized_at?: string | null
+  captured_at?: string | null
+  failed_at?: string | null
+  canceled_at?: string | null
 }
 
 function joinUrl(base: string, path: string) {
@@ -26,7 +37,15 @@ async function callApi<T>(path: string, init?: JsonInit) {
   })
 }
 
-export async function createPayment(payload: { orderId: number; amount: number; method?: string; idempotencyKey?: string }) {
+export async function createPayment(payload: {
+  orderId: number
+  amount: number
+  method?: string
+  idempotencyKey?: string
+  provider?: 'MOCK' | 'LOCAL_SIM' | 'TOSS' | 'STRIPE'
+  returnUrl?: string
+  webhookUrl?: string
+}) {
   const response = await callApi<{ payment: Payment }>('/api/v1/payments', {
     method: 'POST',
     body: payload,

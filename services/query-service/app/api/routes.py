@@ -643,7 +643,7 @@ def _build_qc_v11_response(
     if series_hint and series_hint not in series_entities:
         series_entities.append(series_hint)
 
-    default_preferred = ["title_ko", "title_ko.edge", "series_ko", "author_ko"]
+    default_preferred = ["title_ko", "series_ko", "author_ko"]
     if not preferred_fields:
         preferred_fields = default_preferred
 
@@ -1174,7 +1174,7 @@ def _build_retrieval_hints(plan_id: str, canonical_key: str, tenant_id: str) -> 
             "topKHint": 300,
             "analyzerHint": "ko_search",
             "minimumShouldMatch": "2<75%",
-            "preferredLogicalFields": ["title_ko", "title_ko.edge", "series_ko", "author_ko"],
+            "preferredLogicalFields": ["title_ko", "series_ko", "author_ko"],
         },
         "vector": {
             "enabled": True,
