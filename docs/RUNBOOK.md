@@ -122,7 +122,8 @@ python3 scripts/chat/export_feedback_events.py \
 python3 scripts/chat/aggregate_feedback.py \
   --input evaluation/chat/feedback.jsonl \
   --output evaluation/chat/feedback_summary.json \
-  --backlog-output evaluation/chat/feedback_backlog.json
+  --backlog-output evaluation/chat/feedback_backlog.json \
+  --allow-empty
 
 python3 scripts/chat/render_feedback_backlog_md.py \
   --input evaluation/chat/feedback_backlog.json \
@@ -132,6 +133,8 @@ python3 scripts/chat/sync_feedback_backlog_tickets.py \
   --input evaluation/chat/feedback_backlog.json \
   --output-dir tasks/backlog/generated/feedback
 ```
+`--allow-empty`를 사용하면 피드백 0건일 때도 summary/backlog/ticket 산출물이 갱신되어
+이전 실행의 stale 자동 티켓이 남지 않는다.
 위 단계를 한 번에 수행하려면:
 ```bash
 ./scripts/chat/run_recommend_quality_loop.sh

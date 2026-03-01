@@ -99,3 +99,24 @@ def test_main_allow_empty_writes_summary_and_backlog(tmp_path, monkeypatch):
     assert backlog["total"] == 0
     assert backlog["items"] == []
     assert backlog["source"] == str(input_path)
+
+
+def test_main_without_allow_empty_returns_failure_on_empty_input(tmp_path, monkeypatch):
+    module = _load_module()
+    input_path = tmp_path / "feedback.jsonl"
+    output_path = tmp_path / "feedback_summary.json"
+    input_path.write_text("", encoding="utf-8")
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "aggregate_feedback.py",
+            "--input",
+            str(input_path),
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert module.main() == 1
+    assert not output_path.exists()

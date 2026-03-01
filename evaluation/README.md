@@ -88,7 +88,8 @@ python3 scripts/chat/export_feedback_events.py \
 python3 scripts/chat/aggregate_feedback.py \
   --input evaluation/chat/feedback.jsonl \
   --output evaluation/chat/feedback_summary.json \
-  --backlog-output evaluation/chat/feedback_backlog.json
+  --backlog-output evaluation/chat/feedback_backlog.json \
+  --allow-empty
 
 python3 scripts/chat/render_feedback_backlog_md.py \
   --input evaluation/chat/feedback_backlog.json \
@@ -98,3 +99,6 @@ python3 scripts/chat/sync_feedback_backlog_tickets.py \
   --input evaluation/chat/feedback_backlog.json \
   --output-dir tasks/backlog/generated/feedback
 ```
+
+`--allow-empty`를 사용하면 피드백 이벤트가 0건이어도 summary/backlog가 빈 payload로 갱신되어
+이전 실행에서 남은 산출물이 stale 상태로 유지되지 않는다.
