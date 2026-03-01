@@ -104,6 +104,24 @@ def test_chat_session_state_route_returns_payload(monkeypatch):
                 "updated_at": 1760000000,
                 "query_preview": "환불 조건 문의",
             },
+            "selection_snapshot": {
+                "type": "BOOK_RECOMMENDATION",
+                "candidates_count": 3,
+                "selected_index": 2,
+                "selected_title": "도서 B",
+            },
+            "pending_action_snapshot": {
+                "type": "REFUND_REQUEST",
+                "state": "AWAITING_CONFIRMATION",
+                "expires_at": 1760001234,
+            },
+            "llm_call_budget": {
+                "count": 2,
+                "limit": 5,
+                "limited": False,
+                "window_sec": 60,
+                "window_start": 1760000000,
+            },
             "trace_id": trace_id,
             "request_id": request_id,
         }
@@ -120,6 +138,9 @@ def test_chat_session_state_route_returns_payload(monkeypatch):
     assert data["session"]["fallback_count"] == 2
     assert data["session"]["recommended_action"] == "RETRY"
     assert data["session"]["unresolved_context"]["reason_code"] == "LLM_NO_CITATIONS"
+    assert data["session"]["selection_snapshot"]["selected_title"] == "도서 B"
+    assert data["session"]["pending_action_snapshot"]["type"] == "REFUND_REQUEST"
+    assert data["session"]["llm_call_budget"]["limit"] == 5
     assert any(name == "chat_session_state_requests_total" and labels.get("result") == "ok" for name, labels in captured)
 
 

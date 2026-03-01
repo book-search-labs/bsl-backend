@@ -380,6 +380,9 @@ async def chat_session_state(request: Request):
             "recommended_action": snapshot["recommended_action"],
             "recommended_message": snapshot["recommended_message"],
             "unresolved_context": snapshot["unresolved_context"],
+            "selection_snapshot": snapshot.get("selection_snapshot"),
+            "pending_action_snapshot": snapshot.get("pending_action_snapshot"),
+            "llm_call_budget": snapshot.get("llm_call_budget"),
         },
     }
     return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
