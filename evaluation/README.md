@@ -154,6 +154,20 @@ RUN_CHAT_AGENT_SUMMARY_EVAL=1 ./scripts/test.sh
 리포트의 `metrics` 필드에는 `chat_agent_eval_summary_gate_pass`와
 `chat_agent_eval_component_*{component=*}` 지표 스냅샷이 포함된다.
 
+누적된 timestamp 리포트를 정리하려면:
+
+```bash
+python3 scripts/eval/purge_old_reports.py \
+  --reports-dir data/eval/reports \
+  --retention-days 14 \
+  --keep-latest-per-prefix 3 \
+  --dry-run
+```
+
+실제 삭제를 적용하려면 `--dry-run`을 제거한다.
+이 스크립트는 `*_YYYYMMDD_HHMMSS.{json,md}` 패턴만 대상으로 하며
+`*_baseline.json` 같은 비 timestamp 파일은 유지한다.
+
 chat 품질 파이프라인 스크립트 단위테스트 묶음을 실행하려면:
 
 ```bash
@@ -262,3 +276,9 @@ python3 scripts/chat/apply_regression_fixture_candidates.py \
 - `CHAT_FEEDBACK_REGRESSION_APPLY_DRY_RUN` (기본 `1`)
 - `CHAT_FEEDBACK_REGRESSION_APPLY_ALLOW_REVIEW` (기본 `0`)
 - `CHAT_FEEDBACK_REGRESSION_APPLY_MAX_ADD` (기본 `0`, 0은 제한 없음)
+- `CHAT_REPORT_RETENTION_ENABLED` (기본 `0`)
+- `CHAT_REPORT_RETENTION_DAYS` (기본 `14`)
+- `CHAT_REPORT_RETENTION_KEEP_LATEST_PER_PREFIX` (기본 `3`)
+- `CHAT_REPORT_RETENTION_DRY_RUN` (기본 `1`)
+- `CHAT_REPORT_RETENTION_SUMMARY_JSON` (기본 `evaluation/chat/report_retention_summary.json`)
+- `CHAT_REPORT_RETENTION_STRICT` (기본 `0`)

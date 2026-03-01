@@ -160,6 +160,18 @@ chat 관련 게이트를 일괄 실행하려면 `RUN_CHAT_ALL_EVALS=1 ./scripts/
 이 모드는 metrics/rollout endpoint와 최신 리포트가 준비되어 있어야 하며,
 준비되지 않으면 요약 게이트(`require-all`)에서 실패할 수 있다.
 
+누적된 timestamp 리포트를 정리하려면:
+```bash
+python3 scripts/eval/purge_old_reports.py \
+  --reports-dir data/eval/reports \
+  --retention-days 14 \
+  --keep-latest-per-prefix 3 \
+  --dry-run
+```
+실제 삭제를 적용하려면 `--dry-run`을 제거한다.
+이 스크립트는 `*_YYYYMMDD_HHMMSS.{json,md}` 파일만 대상으로 하며
+`*_baseline.json` 같은 비 timestamp 파일은 유지한다.
+
 semantic cache 안전 게이트를 점검하려면:
 ```bash
 python3 scripts/eval/chat_semantic_cache_eval.py \
@@ -221,6 +233,12 @@ quality loop env 토글:
 - `CHAT_FEEDBACK_REGRESSION_APPLY_DRY_RUN` (기본 `1`)
 - `CHAT_FEEDBACK_REGRESSION_APPLY_ALLOW_REVIEW` (기본 `0`)
 - `CHAT_FEEDBACK_REGRESSION_APPLY_MAX_ADD` (기본 `0`, 0은 제한 없음)
+- `CHAT_REPORT_RETENTION_ENABLED` (기본 `0`)
+- `CHAT_REPORT_RETENTION_DAYS` (기본 `14`)
+- `CHAT_REPORT_RETENTION_KEEP_LATEST_PER_PREFIX` (기본 `3`)
+- `CHAT_REPORT_RETENTION_DRY_RUN` (기본 `1`)
+- `CHAT_REPORT_RETENTION_SUMMARY_JSON` (기본 `evaluation/chat/report_retention_summary.json`)
+- `CHAT_REPORT_RETENTION_STRICT` (기본 `0`)
 추가로 `--fail-on-blocked-review`를 주면 review_required 후보가 남아 있을 때 실패 처리할 수 있다.
 위 단계를 한 번에 수행하려면:
 ```bash
@@ -1024,6 +1042,26 @@ QS_CHAT_ACTION_AUDIT_RETENTION_DAYS=90 \
 QS_CHAT_RETENTION_DELETE_BATCH_SIZE=1000 \
 python3 ./scripts/privacy/purge_chat_retention.py
 ```
+
+## Eval report retention cleanup
+Dry-run (preview deletions):
+```bash
+python3 ./scripts/eval/purge_old_reports.py \
+  --reports-dir data/eval/reports \
+  --retention-days 14 \
+  --keep-latest-per-prefix 3 \
+  --dry-run
+```
+
+Apply delete:
+```bash
+python3 ./scripts/eval/purge_old_reports.py \
+  --reports-dir data/eval/reports \
+  --retention-days 14 \
+  --keep-latest-per-prefix 3 \
+  --summary-json evaluation/chat/report_retention_summary.json
+```
+timestamp suffix가 없는 baseline/report 파일은 유지된다.
 
 ## DR rehearsal (minimum)
 1) Take a **MySQL** backup + **OpenSearch** snapshot.

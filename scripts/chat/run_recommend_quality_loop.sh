@@ -66,6 +66,12 @@ AGENT_SUMMARY_ENABLED="${CHAT_AGENT_SUMMARY_ENABLED:-1}"
 AGENT_SUMMARY_REQUIRE_ALL="${CHAT_AGENT_SUMMARY_REQUIRE_ALL:-0}"
 AGENT_SUMMARY_GATE="${CHAT_AGENT_SUMMARY_GATE:-0}"
 AGENT_SUMMARY_MAX_AGE_MINUTES="${CHAT_AGENT_SUMMARY_MAX_AGE_MINUTES:-0}"
+REPORT_RETENTION_ENABLED="${CHAT_REPORT_RETENTION_ENABLED:-0}"
+REPORT_RETENTION_DAYS="${CHAT_REPORT_RETENTION_DAYS:-14}"
+REPORT_RETENTION_KEEP_LATEST="${CHAT_REPORT_RETENTION_KEEP_LATEST_PER_PREFIX:-3}"
+REPORT_RETENTION_DRY_RUN="${CHAT_REPORT_RETENTION_DRY_RUN:-1}"
+REPORT_RETENTION_SUMMARY_JSON="${CHAT_REPORT_RETENTION_SUMMARY_JSON:-$ROOT_DIR/evaluation/chat/report_retention_summary.json}"
+REPORT_RETENTION_STRICT="${CHAT_REPORT_RETENTION_STRICT:-0}"
 RECOMMEND_CAPTURE_SNAPSHOT="${CHAT_RECOMMEND_CAPTURE_SNAPSHOT:-1}"
 RECOMMEND_OPS_BASE_URL="${CHAT_RECOMMEND_OPS_BASE_URL:-http://localhost:8088}"
 RECOMMEND_OPS_ADMIN_ID="${CHAT_RECOMMEND_OPS_ADMIN_ID:-1}"
@@ -277,6 +283,29 @@ if [ "$ROLLOUT_CAPTURE_SNAPSHOT" = "1" ]; then
     echo "  - wrote rollout snapshot(after): $ROLLOUT_SNAPSHOT_AFTER"
   else
     echo "  - rollout snapshot(after) unavailable; continuing"
+  fi
+fi
+
+if [ "$REPORT_RETENTION_ENABLED" = "1" ]; then
+  echo "[post] purge old eval reports"
+  REPORT_RETENTION_ARGS=(
+    "$ROOT_DIR/scripts/eval/purge_old_reports.py"
+    --reports-dir "$RECOMMEND_REPORT_OUT"
+    --retention-days "$REPORT_RETENTION_DAYS"
+    --keep-latest-per-prefix "$REPORT_RETENTION_KEEP_LATEST"
+    --summary-json "$REPORT_RETENTION_SUMMARY_JSON"
+  )
+  if [ "$REPORT_RETENTION_DRY_RUN" = "1" ]; then
+    REPORT_RETENTION_ARGS+=(--dry-run)
+  fi
+  if "$PYTHON_BIN" "${REPORT_RETENTION_ARGS[@]}"; then
+    echo "  - eval report retention completed"
+  else
+    if [ "$REPORT_RETENTION_STRICT" = "1" ]; then
+      echo "  - eval report retention failed (strict mode); exiting"
+      exit 1
+    fi
+    echo "  - eval report retention failed; continuing"
   fi
 fi
 
