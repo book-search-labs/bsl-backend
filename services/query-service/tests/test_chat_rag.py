@@ -182,6 +182,7 @@ def test_reset_chat_session_state_clears_fallback_and_unresolved_context(monkeyp
     assert reset["reset_applied"] is True
     assert reset["previous_fallback_count"] == 3
     assert reset["previous_unresolved_context"] is True
+    assert reset["previous_llm_call_count"] == 0
     assert state["fallback_count"] == 0
     assert state["unresolved_context"] is None
     assert called == [session_id]
@@ -266,8 +267,27 @@ def test_reset_chat_session_state_appends_action_audit(monkeypatch):
     assert result["state_version"] == 9
     assert len(audit_calls) == 1
     assert audit_calls[0]["action_type"] == "SESSION_RESET"
+    assert "previous_llm_call_count" in audit_calls[0]["metadata"]
     assert len(event_calls) == 1
     assert event_calls[0]["event_type"] == "SESSION_RESET"
+
+
+def test_reset_chat_session_state_clears_llm_call_rate_budget(monkeypatch):
+    chat._CACHE = CacheClient(None)
+    monkeypatch.setenv("QS_CHAT_MAX_LLM_CALLS_PER_MINUTE", "1")
+    session_id = "u:352:default"
+    user_id = "352"
+
+    assert chat._reserve_llm_call_budget(session_id, user_id, mode="json") is None
+    assert chat._reserve_llm_call_budget(session_id, user_id, mode="json") == "LLM_CALL_RATE_LIMITED"
+
+    monkeypatch.setattr(chat, "reset_ticket_session_context", lambda sid: None)
+    monkeypatch.setattr(chat, "get_durable_chat_session_state", lambda sid: {"state_version": 11})
+
+    reset = chat.reset_chat_session_state(session_id, "trace_now", "req_now")
+
+    assert reset["previous_llm_call_count"] >= 1
+    assert chat._reserve_llm_call_budget(session_id, user_id, mode="json") is None
 
 
 def test_run_chat_stream_emits_done_with_validated_citations(monkeypatch):

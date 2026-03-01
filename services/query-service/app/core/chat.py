@@ -556,6 +556,39 @@ def _llm_call_rate_cache_key(session_id: Optional[str], user_id: Optional[str]) 
     return "chat:llm:call_rate:anon"
 
 
+def _llm_call_rate_cache_keys(session_id: Optional[str], user_id: Optional[str]) -> List[str]:
+    keys: List[str] = []
+    if isinstance(user_id, str) and user_id.strip():
+        keys.append(_llm_call_rate_cache_key(None, user_id.strip()))
+    if isinstance(session_id, str) and session_id.strip():
+        keys.append(_llm_call_rate_cache_key(session_id.strip(), None))
+    if not keys:
+        keys.append(_llm_call_rate_cache_key(None, None))
+    deduped: List[str] = []
+    for key in keys:
+        if key not in deduped:
+            deduped.append(key)
+    return deduped
+
+
+def _load_llm_call_budget_count(session_id: Optional[str], user_id: Optional[str]) -> int:
+    max_count = 0
+    for key in _llm_call_rate_cache_keys(session_id, user_id):
+        cached = _CACHE.get_json(key)
+        if not isinstance(cached, dict):
+            continue
+        count = int(cached.get("count") or 0)
+        if count > max_count:
+            max_count = count
+    return max(0, max_count)
+
+
+def _clear_llm_call_budget(session_id: Optional[str], user_id: Optional[str]) -> None:
+    now_ts = int(time.time())
+    for key in _llm_call_rate_cache_keys(session_id, user_id):
+        _CACHE.set_json(key, {"count": 0, "window_start": now_ts, "updated_at": now_ts}, ttl=5)
+
+
 def _reserve_llm_call_budget(session_id: Optional[str], user_id: Optional[str], *, mode: str) -> Optional[str]:
     limit = _llm_max_calls_per_minute()
     if limit <= 0:
@@ -3315,10 +3348,13 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
 def reset_chat_session_state(session_id: str, trace_id: str, request_id: str) -> Dict[str, Any]:
     if not _is_valid_session_id(session_id):
         raise ValueError("invalid_session_id")
+    reset_user_id = _session_user_from_session_id(session_id)
     previous_fallback_count = _load_fallback_count(session_id)
     previous_unresolved_context = isinstance(_load_unresolved_context(session_id), dict)
+    previous_llm_call_count = _load_llm_call_budget_count(session_id, reset_user_id)
     _reset_fallback_count(session_id, trace_id=trace_id, request_id=request_id)
     _clear_unresolved_context(session_id, trace_id=trace_id, request_id=request_id)
+    _clear_llm_call_budget(session_id, reset_user_id)
     _append_action_audit_safe(
         session_id,
         trace_id=trace_id,
@@ -3328,6 +3364,7 @@ def reset_chat_session_state(session_id: str, trace_id: str, request_id: str) ->
         metadata={
             "previous_fallback_count": previous_fallback_count,
             "previous_unresolved_context": previous_unresolved_context,
+            "previous_llm_call_count": previous_llm_call_count,
         },
     )
     _append_turn_event_safe(
@@ -3340,6 +3377,7 @@ def reset_chat_session_state(session_id: str, trace_id: str, request_id: str) ->
         payload={
             "previous_fallback_count": previous_fallback_count,
             "previous_unresolved_context": previous_unresolved_context,
+            "previous_llm_call_count": previous_llm_call_count,
         },
     )
     reset_ticket_session_context(session_id)
@@ -3349,6 +3387,7 @@ def reset_chat_session_state(session_id: str, trace_id: str, request_id: str) ->
         "reset_applied": True,
         "previous_fallback_count": previous_fallback_count,
         "previous_unresolved_context": previous_unresolved_context,
+        "previous_llm_call_count": previous_llm_call_count,
         "state_version": int(durable_state.get("state_version")) if isinstance(durable_state, dict) and isinstance(durable_state.get("state_version"), int) else None,
         "reset_at_ms": int(time.time() * 1000),
         "trace_id": trace_id,
