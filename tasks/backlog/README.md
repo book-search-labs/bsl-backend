@@ -126,3 +126,11 @@
 - B-0613 chat tool reliability v1 (timeout/retry/circuit breaker)
 - B-0614 chat LLM budget guard + admission v1
 - B-0620 book entity normalization v1
+
+### P1 (운영/배포/선택 UX 확장)
+- B-0606 chat execution claim guard + verifier v1
+- B-0607 chat compose v2 (structured ui hints + guided flow)
+- B-0609 chat observability v1 (reason code/trace/audit)
+- B-0610 chat engine rollout (shadow/canary/auto rollback)
+- B-0621 book search/recommend candidate UX + selection coupling
+- B-0622 book recommendation tool pipeline (seed/candidate/explain)
