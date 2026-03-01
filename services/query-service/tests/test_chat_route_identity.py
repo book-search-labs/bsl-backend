@@ -164,6 +164,24 @@ def test_chat_rollout_reset_route_rejects_invalid_engine():
     assert payload["error"]["code"] == "invalid_request"
 
 
+def test_chat_rollout_reset_route_rejects_invalid_clear_gate():
+    client = TestClient(app)
+    response = client.post("/internal/chat/rollout/reset", json={"clear_gate": "yes"})
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_request"
+
+
+def test_chat_rollout_reset_route_rejects_invalid_clear_rollback():
+    client = TestClient(app)
+    response = client.post("/internal/chat/rollout/reset", json={"clear_rollback": 1})
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_request"
+
+
 def test_chat_rollout_reset_route_rejects_invalid_engine_value(monkeypatch):
     def fake_reset_chat_rollout_state(
         trace_id,
