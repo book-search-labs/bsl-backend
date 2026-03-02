@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, Mapping
 import hashlib
 import time
 
@@ -33,6 +33,11 @@ from app.core.chat_graph.reason_taxonomy import (
     DEFAULT_UNSPECIFIED_REASON_CODE,
     normalize_reason_code,
     record_reason_code_event,
+)
+from app.core.chat_graph.langsmith_trace import (
+    TraceDecision,
+    emit_trace_event,
+    resolve_trace_decision,
 )
 
 
@@ -120,6 +125,19 @@ async def run_chat_graph(
         query=query,
         user_id=user_id,
     )
+    trace_context = _build_trace_context(request, session_id=session_id, user_id=user_id)
+    trace_decision = resolve_trace_decision(trace_id=trace_id, session_id=session_id, context=trace_context)
+    await _safe_emit_trace_event(
+        decision=trace_decision,
+        run_id=resolved_run_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        session_id=session_id,
+        event_type="run_start",
+        node=None,
+        metadata=_trace_metadata(state, trace_context),
+        payload={"query": query},
+    )
     if record_run:
         start_run_record(
             run_id=resolved_run_id,
@@ -140,34 +158,90 @@ async def run_chat_graph(
     try:
         state = await _run_node("load_state", state, _load_state_node)
         _record_state_reason_code(state, source="load_state")
+        await _emit_node_trace(
+            trace_decision=trace_decision,
+            run_id=resolved_run_id,
+            node="load_state",
+            state=state,
+            trace_context=trace_context,
+        )
         if record_run:
             append_checkpoint(resolved_run_id, "load_state", state)
         state = await _run_node("understand", state, _understand_node)
         _record_state_reason_code(state, source="understand")
+        await _emit_node_trace(
+            trace_decision=trace_decision,
+            run_id=resolved_run_id,
+            node="understand",
+            state=state,
+            trace_context=trace_context,
+        )
         if record_run:
             append_checkpoint(resolved_run_id, "understand", state)
         state = await _run_node("policy_decide", state, _policy_decide_node)
         _record_state_reason_code(state, source="policy_decide")
+        await _emit_node_trace(
+            trace_decision=trace_decision,
+            run_id=resolved_run_id,
+            node="policy_decide",
+            state=state,
+            trace_context=trace_context,
+        )
         if record_run:
             append_checkpoint(resolved_run_id, "policy_decide", state)
         state = await _run_node("authz_gate", state, _authz_gate_node_factory(request, trace_id, request_id))
         _record_state_reason_code(state, source="authz_gate")
+        await _emit_node_trace(
+            trace_decision=trace_decision,
+            run_id=resolved_run_id,
+            node="authz_gate",
+            state=state,
+            trace_context=trace_context,
+        )
         if record_run:
             append_checkpoint(resolved_run_id, "authz_gate", state)
         state = await _run_node("execute", state, _execute_node_factory(request, trace_id, request_id, legacy_executor))
         _record_state_reason_code(state, source="execute")
+        await _emit_node_trace(
+            trace_decision=trace_decision,
+            run_id=resolved_run_id,
+            node="execute",
+            state=state,
+            trace_context=trace_context,
+        )
         if record_run:
             append_checkpoint(resolved_run_id, "execute", state)
         state = await _run_node("compose", state, _compose_node)
         _record_state_reason_code(state, source="compose")
+        await _emit_node_trace(
+            trace_decision=trace_decision,
+            run_id=resolved_run_id,
+            node="compose",
+            state=state,
+            trace_context=trace_context,
+        )
         if record_run:
             append_checkpoint(resolved_run_id, "compose", state)
         state = await _run_node("verify", state, _verify_node)
         _record_state_reason_code(state, source="verify")
+        await _emit_node_trace(
+            trace_decision=trace_decision,
+            run_id=resolved_run_id,
+            node="verify",
+            state=state,
+            trace_context=trace_context,
+        )
         if record_run:
             append_checkpoint(resolved_run_id, "verify", state)
         state = await _run_node("persist", state, _persist_node)
         _record_state_reason_code(state, source="persist")
+        await _emit_node_trace(
+            trace_decision=trace_decision,
+            run_id=resolved_run_id,
+            node="persist",
+            state=state,
+            trace_context=trace_context,
+        )
         if record_run:
             append_checkpoint(resolved_run_id, "persist", state)
     except ChatGraphStateValidationError as exc:
@@ -179,6 +253,17 @@ async def run_chat_graph(
             reason_code=exc.reason_code,
         )
         _record_state_reason_code(handled, source="error_handler")
+        await _safe_emit_trace_event(
+            decision=trace_decision,
+            run_id=resolved_run_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            session_id=session_id,
+            event_type="run_error",
+            node=exc.stage,
+            metadata=_trace_metadata(handled, trace_context),
+            payload={"stage": exc.stage, "reason_code": exc.reason_code},
+        )
         error_response = _state_response(handled)
         if record_run:
             finish_run(
@@ -197,6 +282,17 @@ async def run_chat_graph(
             reason_code="CHAT_GRAPH_RUNTIME_ERROR",
         )
         _record_state_reason_code(handled, source="error_handler")
+        await _safe_emit_trace_event(
+            decision=trace_decision,
+            run_id=resolved_run_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            session_id=session_id,
+            event_type="run_error",
+            node="runtime",
+            metadata=_trace_metadata(handled, trace_context),
+            payload={"stage": "runtime", "reason_code": "CHAT_GRAPH_RUNTIME_ERROR"},
+        )
         error_response = _state_response(handled)
         if record_run:
             finish_run(
@@ -212,6 +308,24 @@ async def run_chat_graph(
         state,
         response=final_response,
         source="response",
+    )
+    await _safe_emit_trace_event(
+        decision=trace_decision,
+        run_id=resolved_run_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        session_id=session_id,
+        event_type="run_end",
+        node=None,
+        metadata=_trace_metadata(state, trace_context),
+        payload={
+            "status": final_response.get("status"),
+            "reason_code": final_response.get("reason_code"),
+            "next_action": final_response.get("next_action"),
+            "answer": final_response.get("answer", {}).get("content")
+            if isinstance(final_response.get("answer"), dict)
+            else "",
+        },
     )
     if record_run:
         tool_result = state.get("tool_result") if isinstance(state.get("tool_result"), dict) else {}
@@ -258,6 +372,92 @@ def _record_response_reason_code(
         source=source,
         reason_code=reason_code,
     )
+
+
+def _build_trace_context(
+    request: dict[str, Any],
+    *,
+    session_id: str,
+    user_id: str | None,
+) -> dict[str, str]:
+    client = request.get("client") if isinstance(request.get("client"), dict) else {}
+    tenant_id = str(client.get("tenant_id") or "")
+    channel = str(client.get("channel") or "web")
+    return {
+        "tenant_id": tenant_id,
+        "channel": channel,
+        "user_id": str(user_id or ""),
+        "session_id": session_id,
+    }
+
+
+def _trace_metadata(state: ChatGraphState, context: Mapping[str, str]) -> dict[str, Any]:
+    return {
+        "trace_id": str(state.get("trace_id") or ""),
+        "request_id": str(state.get("request_id") or ""),
+        "session_id": str(state.get("session_id") or ""),
+        "route": str(state.get("route") or ""),
+        "reason_code": str(state.get("reason_code") or ""),
+        "state_version": int(state.get("state_version") or 0),
+        "tenant_id": str(context.get("tenant_id") or ""),
+        "channel": str(context.get("channel") or ""),
+        "user_id": str(context.get("user_id") or ""),
+    }
+
+
+async def _emit_node_trace(
+    *,
+    trace_decision: TraceDecision,
+    run_id: str,
+    node: str,
+    state: ChatGraphState,
+    trace_context: Mapping[str, str],
+) -> None:
+    response = state.get("response") if isinstance(state.get("response"), dict) else {}
+    await _safe_emit_trace_event(
+        decision=trace_decision,
+        run_id=run_id,
+        trace_id=str(state.get("trace_id") or ""),
+        request_id=str(state.get("request_id") or ""),
+        session_id=str(state.get("session_id") or ""),
+        event_type="node",
+        node=node,
+        metadata=_trace_metadata(state, trace_context),
+        payload={
+            "route": str(state.get("route") or ""),
+            "reason_code": str(state.get("reason_code") or ""),
+            "response_status": str(response.get("status") or ""),
+        },
+    )
+
+
+async def _safe_emit_trace_event(
+    *,
+    decision: TraceDecision,
+    run_id: str,
+    trace_id: str,
+    request_id: str,
+    session_id: str,
+    event_type: str,
+    node: str | None,
+    metadata: Mapping[str, Any],
+    payload: Mapping[str, Any],
+) -> None:
+    try:
+        await emit_trace_event(
+            decision=decision,
+            run_id=run_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            session_id=session_id,
+            event_type=event_type,
+            node=node,
+            metadata=metadata,
+            payload=payload,
+        )
+    except Exception:
+        # Trace export must never block runtime path.
+        return
 
 
 async def _run_node(name: str, state: ChatGraphState, fn: NodeFn) -> ChatGraphState:

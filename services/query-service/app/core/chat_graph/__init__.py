@@ -78,6 +78,15 @@ from app.core.chat_graph.reason_taxonomy import (
     record_reason_code_event,
 )
 import app.core.chat_graph.reason_taxonomy as reason_taxonomy
+from app.core.chat_graph.langsmith_trace import (
+    TraceDecision,
+    TraceEmitResult,
+    emit_trace_event,
+    load_trace_audit,
+    redact_payload,
+    resolve_trace_decision,
+)
+import app.core.chat_graph.langsmith_trace as langsmith_trace
 
 __all__ = [
     "CHAT_GRAPH_INITIAL_STATE_VERSION",
@@ -142,4 +151,11 @@ __all__ = [
     "normalize_reason_code",
     "record_reason_code_event",
     "reason_taxonomy",
+    "TraceDecision",
+    "TraceEmitResult",
+    "emit_trace_event",
+    "load_trace_audit",
+    "redact_payload",
+    "resolve_trace_decision",
+    "langsmith_trace",
 ]

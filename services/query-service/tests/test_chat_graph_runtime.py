@@ -1,7 +1,7 @@
 import asyncio
 
 from app.core.cache import CacheClient
-from app.core.chat_graph import authz_gate, confirm_fsm
+from app.core.chat_graph import authz_gate, confirm_fsm, langsmith_trace
 from app.core.chat_graph.runtime import run_chat_graph
 
 
@@ -126,6 +126,42 @@ def test_run_chat_graph_sanitizes_forbidden_reason_code():
 
     assert result.response["reason_code"] == "CHAT_REASON_CODE_INVALID"
     assert result.state["reason_code"] == "CHAT_REASON_CODE_INVALID"
+
+
+def test_run_chat_graph_emits_langsmith_audit_events_even_when_disabled(monkeypatch):
+    langsmith_trace._CACHE = CacheClient(None)
+    monkeypatch.delenv("QS_CHAT_LANGSMITH_ENABLED", raising=False)
+
+    async def fake_legacy_executor(request, trace_id, request_id):
+        return {
+            "version": "v1",
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "status": "ok",
+            "reason_code": "OK",
+            "recoverable": False,
+            "next_action": "NONE",
+            "retry_after_ms": None,
+            "answer": {"role": "assistant", "content": "정상 응답"},
+            "sources": [],
+            "citations": [],
+            "fallback_count": 0,
+            "escalated": False,
+        }
+
+    _run(
+        run_chat_graph(
+            {"session_id": "u:105:default", "message": {"role": "user", "content": "배송 상태 알려줘"}},
+            "trace_105",
+            "req_105",
+            legacy_executor=fake_legacy_executor,
+        )
+    )
+
+    rows = langsmith_trace.load_trace_audit("u:105:default")
+    assert len(rows) >= 3
+    assert rows[0]["event_type"] == "run_start"
+    assert rows[-1]["event_type"] in {"run_end", "run_error"}
 
 
 def test_run_chat_graph_denies_sensitive_action_without_auth_context():

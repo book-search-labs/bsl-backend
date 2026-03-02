@@ -741,6 +741,26 @@ python scripts/eval/chat_contract_compat_eval.py \
 python scripts/eval/chat_graph_replay.py --run-id <run_id>
 ```
 
+## LangSmith trace integration (PII-safe, B-0711)
+- adapter module: `services/query-service/app/core/chat_graph/langsmith_trace.py`
+- runtime hooks:
+  - `run_start` / `node` / `run_end` / `run_error`
+  - metadata: `trace_id`, `request_id`, `session_id`, `route`, `reason_code`, `state_version`
+- control flags:
+  - `QS_CHAT_LANGSMITH_ENABLED=1`
+  - `QS_CHAT_LANGSMITH_KILL_SWITCH=1` (즉시 차단)
+  - `QS_CHAT_LANGSMITH_SAMPLE_RATE=0.1`
+  - `QS_CHAT_LANGSMITH_SAMPLE_OVERRIDES_JSON='{\"tenants\":{\"tenant-a\":1.0},\"channels\":{\"web\":0.2}}'`
+  - `QS_CHAT_LANGSMITH_REDACTION_MODE=masked_raw|hash_summary` (기본 `hash_summary`)
+- export target:
+  - `QS_CHAT_LANGSMITH_ENDPOINT` (default `https://api.smith.langchain.com/runs`)
+  - `QS_CHAT_LANGSMITH_API_KEY`
+  - `QS_CHAT_LANGSMITH_PROJECT`
+- audit summary:
+```bash
+python scripts/eval/chat_langsmith_trace_summary.py --limit 200
+```
+
 ## Chat OpenFeature-style routing (B-0712)
 - router module: `services/query-service/app/core/chat_graph/feature_router.py`
 - flags:
