@@ -35,3 +35,11 @@ Operationalize chat reliability with gamedays:
 - Create drillpacks for major failure classes and automate evidence capture.
 - Compute a production readiness score and gate releases by threshold.
 - Tie real incidents back into the next drill cycle.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Production readiness score 스크립트 추가
+  - `scripts/eval/chat_readiness_score.py`
+  - launch/liveops/incident/drill/capacity 신호를 가중합해 `READY|WATCH|HOLD` tier 및 `promote|hold` 권장 액션 산출
+  - gate 모드에서 min_score 미달, blocker 존재, require_promote 위반 시 실패 처리
+- [x] CI 진입점 추가
+  - `RUN_CHAT_READINESS_SCORE=1 ./scripts/test.sh`

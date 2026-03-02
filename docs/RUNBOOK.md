@@ -1072,6 +1072,27 @@ python scripts/eval/chat_dr_drill_report.py \
 - CI 옵션:
   - `RUN_CHAT_DR_DRILL_REPORT=1 ./scripts/test.sh`
 
+## Production readiness score (I-0361, Bundle 1)
+- launch/liveops/incident/drill/capacity 신호를 종합해 readiness 점수 계산:
+```bash
+python scripts/eval/chat_readiness_score.py \
+  --reports-dir data/eval/reports \
+  --launch-prefix chat_production_launch_gate \
+  --cycle-prefix chat_liveops_cycle \
+  --cycle-limit 20 \
+  --llm-audit-log var/llm_gateway/audit.log \
+  --min-score 80 \
+  --capacity-max-mode DEGRADE_LEVEL_1 \
+  --out data/eval/reports \
+  --gate
+```
+- 산출물:
+  - score/tier(`READY|WATCH|HOLD`)
+  - recommended_action(`promote|hold`)
+  - blocker/warning 목록
+- CI 옵션:
+  - `RUN_CHAT_READINESS_SCORE=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
