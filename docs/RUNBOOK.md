@@ -1107,6 +1107,25 @@ python scripts/eval/chat_gameday_drillpack.py \
 - CI 옵션:
   - `RUN_CHAT_GAMEDAY_DRILLPACK=1 ./scripts/test.sh`
 
+## Incident feedback binding (I-0361, Bundle 3)
+- 실제 incident와 triage reason을 drill taxonomy로 자동 매핑:
+```bash
+python scripts/eval/chat_incident_feedback_binding.py \
+  --reports-dir data/eval/reports \
+  --cycle-prefix chat_liveops_cycle \
+  --cycle-limit 40 \
+  --triage-file var/chat_graph/triage/chat_launch_failure_cases.jsonl \
+  --top-n 5 \
+  --out data/eval/reports \
+  --min-bound-categories 1 \
+  --gate
+```
+- 산출물:
+  - bound category 집계(incident/triage split)
+  - 다음 drillpack 반영 권고안
+- CI 옵션:
+  - `RUN_CHAT_INCIDENT_FEEDBACK_BINDING=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

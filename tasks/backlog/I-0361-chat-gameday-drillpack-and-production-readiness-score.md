@@ -51,3 +51,11 @@ Operationalize chat reliability with gamedays:
   - triage top reasons를 reason_hints에 반영
 - [x] CI 진입점 추가
   - `RUN_CHAT_GAMEDAY_DRILLPACK=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Incident feedback binding 스크립트 추가
+  - `scripts/eval/chat_incident_feedback_binding.py`
+  - liveops incident reason + triage reason을 공통 taxonomy(LLM_TIMEOUT/TOOL_OUTAGE/EVIDENCE_GAP/COST_BURST/...)로 매핑
+  - bound category 집계와 drillpack 반영 권고안을 markdown/json으로 자동 생성
+- [x] CI 진입점 추가
+  - `RUN_CHAT_INCIDENT_FEEDBACK_BINDING=1 ./scripts/test.sh`
