@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 from pathlib import Path
 
 
@@ -124,3 +125,65 @@ def test_evaluate_gate_passes_with_healthy_inputs():
         max_insufficient_evidence_ratio=0.3,
     )
     assert failures == []
+
+
+def test_build_release_profile_uses_env_fallbacks():
+    module = _load_module()
+    prev_model = os.environ.get("QS_LLM_MODEL")
+    prev_prompt = os.environ.get("QS_CHAT_PROMPT_VERSION")
+    prev_policy = os.environ.get("QS_CHAT_POLICY_VERSION")
+    try:
+        os.environ["QS_LLM_MODEL"] = "model-a"
+        os.environ["QS_CHAT_PROMPT_VERSION"] = "prompt-v2"
+        os.environ["QS_CHAT_POLICY_VERSION"] = "policy-v3"
+        profile = module.build_release_profile(model_version="", prompt_version="", policy_version="")
+        assert profile["model_version"] == "model-a"
+        assert profile["prompt_version"] == "prompt-v2"
+        assert profile["policy_version"] == "policy-v3"
+        assert len(profile["release_signature"]) == 16
+    finally:
+        if prev_model is None:
+            os.environ.pop("QS_LLM_MODEL", None)
+        else:
+            os.environ["QS_LLM_MODEL"] = prev_model
+        if prev_prompt is None:
+            os.environ.pop("QS_CHAT_PROMPT_VERSION", None)
+        else:
+            os.environ["QS_CHAT_PROMPT_VERSION"] = prev_prompt
+        if prev_policy is None:
+            os.environ.pop("QS_CHAT_POLICY_VERSION", None)
+        else:
+            os.environ["QS_CHAT_POLICY_VERSION"] = prev_policy
+
+
+def test_compare_with_baseline_detects_completion_regression():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "parity": {"mismatch_ratio": 0.01, "blocker_ratio": 0.0},
+            "reason": {"invalid_ratio": 0.0, "unknown_ratio": 0.01},
+            "legacy": {"legacy_ratio": 0.0},
+            "completion": {"insufficient_evidence_ratio": 0.10, "commerce_completion_rate": 0.95},
+        }
+    }
+    current = {
+        "derived": {
+            "parity": {"mismatch_ratio": 0.01, "blocker_ratio": 0.0},
+            "reason": {"invalid_ratio": 0.0, "unknown_ratio": 0.01},
+            "legacy": {"legacy_ratio": 0.0},
+            "completion": {"insufficient_evidence_ratio": 0.10, "commerce_completion_rate": 0.80},
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_mismatch_ratio_increase=0.01,
+        max_blocker_ratio_increase=0.01,
+        max_reason_invalid_ratio_increase=0.0,
+        max_reason_unknown_ratio_increase=0.02,
+        max_legacy_ratio_increase=0.0,
+        max_insufficient_evidence_ratio_increase=0.05,
+        max_completion_rate_drop=0.03,
+    )
+    assert len(failures) == 1
+    assert "commerce completion rate regression" in failures[0]

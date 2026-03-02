@@ -308,29 +308,56 @@ if [ "${RUN_CHAT_PROD_LAUNCH_GATE:-0}" = "1" ]; then
     CHAT_PROD_LAUNCH_MAX_LEGACY_COUNT="${CHAT_PROD_LAUNCH_MAX_LEGACY_COUNT:-0}"
     CHAT_PROD_LAUNCH_MIN_COMPLETION_RATE="${CHAT_PROD_LAUNCH_MIN_COMPLETION_RATE:-0.90}"
     CHAT_PROD_LAUNCH_MAX_INSUFFICIENT_RATIO="${CHAT_PROD_LAUNCH_MAX_INSUFFICIENT_RATIO:-0.30}"
+    CHAT_PROD_LAUNCH_MODEL_VERSION="${CHAT_PROD_LAUNCH_MODEL_VERSION:-${QS_LLM_MODEL:-}}"
+    CHAT_PROD_LAUNCH_PROMPT_VERSION="${CHAT_PROD_LAUNCH_PROMPT_VERSION:-${QS_CHAT_PROMPT_VERSION:-}}"
+    CHAT_PROD_LAUNCH_POLICY_VERSION="${CHAT_PROD_LAUNCH_POLICY_VERSION:-${QS_CHAT_POLICY_VERSION:-}}"
+    CHAT_PROD_LAUNCH_BASELINE_PATH="${CHAT_PROD_LAUNCH_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/chat_production_launch_gate_baseline.json}"
+    CHAT_PROD_LAUNCH_MAX_MISMATCH_INCREASE="${CHAT_PROD_LAUNCH_MAX_MISMATCH_INCREASE:-0.01}"
+    CHAT_PROD_LAUNCH_MAX_BLOCKER_INCREASE="${CHAT_PROD_LAUNCH_MAX_BLOCKER_INCREASE:-0.005}"
+    CHAT_PROD_LAUNCH_MAX_REASON_INVALID_INCREASE="${CHAT_PROD_LAUNCH_MAX_REASON_INVALID_INCREASE:-0.0}"
+    CHAT_PROD_LAUNCH_MAX_REASON_UNKNOWN_INCREASE="${CHAT_PROD_LAUNCH_MAX_REASON_UNKNOWN_INCREASE:-0.01}"
+    CHAT_PROD_LAUNCH_MAX_LEGACY_INCREASE="${CHAT_PROD_LAUNCH_MAX_LEGACY_INCREASE:-0.0}"
+    CHAT_PROD_LAUNCH_MAX_INSUFFICIENT_INCREASE="${CHAT_PROD_LAUNCH_MAX_INSUFFICIENT_INCREASE:-0.05}"
+    CHAT_PROD_LAUNCH_MAX_COMPLETION_DROP="${CHAT_PROD_LAUNCH_MAX_COMPLETION_DROP:-0.03}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_production_launch_gate.py" \
-      --out "$CHAT_PROD_LAUNCH_OUT_DIR" \
-      --replay-dir "$CHAT_PROD_LAUNCH_REPLAY_DIR" \
-      --completion-source "$CHAT_PROD_LAUNCH_COMPLETION_SOURCE" \
-      --parity-limit "$CHAT_PROD_LAUNCH_PARITY_LIMIT" \
-      --perf-limit "$CHAT_PROD_LAUNCH_PERF_LIMIT" \
-      --reason-limit "$CHAT_PROD_LAUNCH_REASON_LIMIT" \
-      --legacy-limit "$CHAT_PROD_LAUNCH_LEGACY_LIMIT" \
-      --run-limit "$CHAT_PROD_LAUNCH_RUN_LIMIT" \
-      --min-reason-window "$CHAT_PROD_LAUNCH_MIN_REASON_WINDOW" \
-      --min-legacy-window "$CHAT_PROD_LAUNCH_MIN_LEGACY_WINDOW" \
-      --min-run-window "$CHAT_PROD_LAUNCH_MIN_RUN_WINDOW" \
-      --min-commerce-samples "$CHAT_PROD_LAUNCH_MIN_COMMERCE_SAMPLES" \
-      --max-mismatch-ratio "$CHAT_PROD_LAUNCH_MAX_MISMATCH_RATIO" \
-      --max-blocker-ratio "$CHAT_PROD_LAUNCH_MAX_BLOCKER_RATIO" \
-      --max-reason-invalid-ratio "$CHAT_PROD_LAUNCH_MAX_REASON_INVALID_RATIO" \
-      --max-reason-unknown-ratio "$CHAT_PROD_LAUNCH_MAX_REASON_UNKNOWN_RATIO" \
-      --max-legacy-ratio "$CHAT_PROD_LAUNCH_MAX_LEGACY_RATIO" \
-      --max-legacy-count "$CHAT_PROD_LAUNCH_MAX_LEGACY_COUNT" \
-      --min-commerce-completion-rate "$CHAT_PROD_LAUNCH_MIN_COMPLETION_RATE" \
-      --max-insufficient-evidence-ratio "$CHAT_PROD_LAUNCH_MAX_INSUFFICIENT_RATIO" \
-      --gate || exit 1
+    CHAT_PROD_LAUNCH_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_production_launch_gate.py"
+      --out "$CHAT_PROD_LAUNCH_OUT_DIR"
+      --replay-dir "$CHAT_PROD_LAUNCH_REPLAY_DIR"
+      --completion-source "$CHAT_PROD_LAUNCH_COMPLETION_SOURCE"
+      --parity-limit "$CHAT_PROD_LAUNCH_PARITY_LIMIT"
+      --perf-limit "$CHAT_PROD_LAUNCH_PERF_LIMIT"
+      --reason-limit "$CHAT_PROD_LAUNCH_REASON_LIMIT"
+      --legacy-limit "$CHAT_PROD_LAUNCH_LEGACY_LIMIT"
+      --run-limit "$CHAT_PROD_LAUNCH_RUN_LIMIT"
+      --min-reason-window "$CHAT_PROD_LAUNCH_MIN_REASON_WINDOW"
+      --min-legacy-window "$CHAT_PROD_LAUNCH_MIN_LEGACY_WINDOW"
+      --min-run-window "$CHAT_PROD_LAUNCH_MIN_RUN_WINDOW"
+      --min-commerce-samples "$CHAT_PROD_LAUNCH_MIN_COMMERCE_SAMPLES"
+      --max-mismatch-ratio "$CHAT_PROD_LAUNCH_MAX_MISMATCH_RATIO"
+      --max-blocker-ratio "$CHAT_PROD_LAUNCH_MAX_BLOCKER_RATIO"
+      --max-reason-invalid-ratio "$CHAT_PROD_LAUNCH_MAX_REASON_INVALID_RATIO"
+      --max-reason-unknown-ratio "$CHAT_PROD_LAUNCH_MAX_REASON_UNKNOWN_RATIO"
+      --max-legacy-ratio "$CHAT_PROD_LAUNCH_MAX_LEGACY_RATIO"
+      --max-legacy-count "$CHAT_PROD_LAUNCH_MAX_LEGACY_COUNT"
+      --min-commerce-completion-rate "$CHAT_PROD_LAUNCH_MIN_COMPLETION_RATE"
+      --max-insufficient-evidence-ratio "$CHAT_PROD_LAUNCH_MAX_INSUFFICIENT_RATIO"
+      --model-version "$CHAT_PROD_LAUNCH_MODEL_VERSION"
+      --prompt-version "$CHAT_PROD_LAUNCH_PROMPT_VERSION"
+      --policy-version "$CHAT_PROD_LAUNCH_POLICY_VERSION"
+      --max-mismatch-ratio-increase "$CHAT_PROD_LAUNCH_MAX_MISMATCH_INCREASE"
+      --max-blocker-ratio-increase "$CHAT_PROD_LAUNCH_MAX_BLOCKER_INCREASE"
+      --max-reason-invalid-ratio-increase "$CHAT_PROD_LAUNCH_MAX_REASON_INVALID_INCREASE"
+      --max-reason-unknown-ratio-increase "$CHAT_PROD_LAUNCH_MAX_REASON_UNKNOWN_INCREASE"
+      --max-legacy-ratio-increase "$CHAT_PROD_LAUNCH_MAX_LEGACY_INCREASE"
+      --max-insufficient-evidence-ratio-increase "$CHAT_PROD_LAUNCH_MAX_INSUFFICIENT_INCREASE"
+      --max-completion-rate-drop "$CHAT_PROD_LAUNCH_MAX_COMPLETION_DROP"
+      --gate
+    )
+    if [ -f "$CHAT_PROD_LAUNCH_BASELINE_PATH" ]; then
+      CHAT_PROD_LAUNCH_ARGS+=(--baseline-report "$CHAT_PROD_LAUNCH_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_PROD_LAUNCH_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat production launch gate"
   fi

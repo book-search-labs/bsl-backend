@@ -93,3 +93,6 @@ Implement production launch gates for chat:
 - [x] 출시 게이트 completion 소스 자동화
   - `scripts/eval/chat_production_launch_gate.py --completion-source auto|launch_metrics|replay`
   - 기본 `auto`: launch_metrics 우선, 샘플 부족 시 replay 기반으로 fallback
+- [x] baseline 회귀 비교 + 릴리스 서명 추가
+  - baseline 비교: `--baseline-report` + 증가/하락 임계치(`--max-*-increase`, `--max-completion-rate-drop`)
+  - 릴리스 메타: `model_version/prompt_version/policy_version/release_signature`

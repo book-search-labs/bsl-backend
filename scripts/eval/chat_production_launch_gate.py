@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -42,6 +44,14 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
         return float(value)
     except Exception:
         return default
+
+
+def load_json(path: Path) -> dict[str, Any]:
+    with path.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"expected JSON object from {path}")
+    return payload
 
 
 def _normalize_intent(value: Any) -> str:
@@ -163,6 +173,33 @@ def completion_summary_from_launch_metrics(payload: Mapping[str, Any]) -> dict[s
     }
 
 
+def build_release_profile(
+    *,
+    model_version: str | None,
+    prompt_version: str | None,
+    policy_version: str | None,
+) -> dict[str, str]:
+    model = str(model_version or "").strip() or str(os.getenv("QS_LLM_MODEL", "")).strip() or "unknown"
+    prompt = str(prompt_version or "").strip() or str(os.getenv("QS_CHAT_PROMPT_VERSION", "")).strip() or "unknown"
+    policy = str(policy_version or "").strip() or str(os.getenv("QS_CHAT_POLICY_VERSION", "")).strip() or "unknown"
+    raw = json.dumps(
+        {
+            "model_version": model,
+            "prompt_version": prompt,
+            "policy_version": policy,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+    ).encode("utf-8")
+    signature = hashlib.sha256(raw).hexdigest()[:16]
+    return {
+        "model_version": model,
+        "prompt_version": prompt,
+        "policy_version": policy,
+        "release_signature": signature,
+    }
+
+
 def evaluate_gate(
     *,
     parity_payload: Mapping[str, Any],
@@ -249,6 +286,76 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_report: Mapping[str, Any],
+    *,
+    max_mismatch_ratio_increase: float,
+    max_blocker_ratio_increase: float,
+    max_reason_invalid_ratio_increase: float,
+    max_reason_unknown_ratio_increase: float,
+    max_legacy_ratio_increase: float,
+    max_insufficient_evidence_ratio_increase: float,
+    max_completion_rate_drop: float,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    cur_derived = current_report.get("derived") if isinstance(current_report.get("derived"), Mapping) else {}
+
+    base_parity = base_derived.get("parity") if isinstance(base_derived.get("parity"), Mapping) else {}
+    cur_parity = cur_derived.get("parity") if isinstance(cur_derived.get("parity"), Mapping) else {}
+    base_reason = base_derived.get("reason") if isinstance(base_derived.get("reason"), Mapping) else {}
+    cur_reason = cur_derived.get("reason") if isinstance(cur_derived.get("reason"), Mapping) else {}
+    base_legacy = base_derived.get("legacy") if isinstance(base_derived.get("legacy"), Mapping) else {}
+    cur_legacy = cur_derived.get("legacy") if isinstance(cur_derived.get("legacy"), Mapping) else {}
+    base_completion = base_derived.get("completion") if isinstance(base_derived.get("completion"), Mapping) else {}
+    cur_completion = cur_derived.get("completion") if isinstance(cur_derived.get("completion"), Mapping) else {}
+
+    mismatch_increase = _safe_float(cur_parity.get("mismatch_ratio"), 0.0) - _safe_float(base_parity.get("mismatch_ratio"), 0.0)
+    if mismatch_increase > max(0.0, float(max_mismatch_ratio_increase)):
+        failures.append(
+            f"mismatch ratio regression: baseline={_safe_float(base_parity.get('mismatch_ratio'), 0.0):.4f}, current={_safe_float(cur_parity.get('mismatch_ratio'), 0.0):.4f}, allowed_increase={float(max_mismatch_ratio_increase):.4f}"
+        )
+
+    blocker_increase = _safe_float(cur_parity.get("blocker_ratio"), 0.0) - _safe_float(base_parity.get("blocker_ratio"), 0.0)
+    if blocker_increase > max(0.0, float(max_blocker_ratio_increase)):
+        failures.append(
+            f"blocker ratio regression: baseline={_safe_float(base_parity.get('blocker_ratio'), 0.0):.4f}, current={_safe_float(cur_parity.get('blocker_ratio'), 0.0):.4f}, allowed_increase={float(max_blocker_ratio_increase):.4f}"
+        )
+
+    invalid_increase = _safe_float(cur_reason.get("invalid_ratio"), 0.0) - _safe_float(base_reason.get("invalid_ratio"), 0.0)
+    if invalid_increase > max(0.0, float(max_reason_invalid_ratio_increase)):
+        failures.append(
+            f"reason invalid ratio regression: baseline={_safe_float(base_reason.get('invalid_ratio'), 0.0):.4f}, current={_safe_float(cur_reason.get('invalid_ratio'), 0.0):.4f}, allowed_increase={float(max_reason_invalid_ratio_increase):.4f}"
+        )
+
+    unknown_increase = _safe_float(cur_reason.get("unknown_ratio"), 0.0) - _safe_float(base_reason.get("unknown_ratio"), 0.0)
+    if unknown_increase > max(0.0, float(max_reason_unknown_ratio_increase)):
+        failures.append(
+            f"reason unknown ratio regression: baseline={_safe_float(base_reason.get('unknown_ratio'), 0.0):.4f}, current={_safe_float(cur_reason.get('unknown_ratio'), 0.0):.4f}, allowed_increase={float(max_reason_unknown_ratio_increase):.4f}"
+        )
+
+    legacy_increase = _safe_float(cur_legacy.get("legacy_ratio"), 0.0) - _safe_float(base_legacy.get("legacy_ratio"), 0.0)
+    if legacy_increase > max(0.0, float(max_legacy_ratio_increase)):
+        failures.append(
+            f"legacy ratio regression: baseline={_safe_float(base_legacy.get('legacy_ratio'), 0.0):.4f}, current={_safe_float(cur_legacy.get('legacy_ratio'), 0.0):.4f}, allowed_increase={float(max_legacy_ratio_increase):.4f}"
+        )
+
+    insufficient_increase = _safe_float(cur_completion.get("insufficient_evidence_ratio"), 0.0) - _safe_float(base_completion.get("insufficient_evidence_ratio"), 0.0)
+    if insufficient_increase > max(0.0, float(max_insufficient_evidence_ratio_increase)):
+        failures.append(
+            f"insufficient_evidence ratio regression: baseline={_safe_float(base_completion.get('insufficient_evidence_ratio'), 0.0):.4f}, current={_safe_float(cur_completion.get('insufficient_evidence_ratio'), 0.0):.4f}, allowed_increase={float(max_insufficient_evidence_ratio_increase):.4f}"
+        )
+
+    completion_drop = _safe_float(base_completion.get("commerce_completion_rate"), 0.0) - _safe_float(cur_completion.get("commerce_completion_rate"), 0.0)
+    if completion_drop > max(0.0, float(max_completion_rate_drop)):
+        failures.append(
+            f"commerce completion rate regression: baseline={_safe_float(base_completion.get('commerce_completion_rate'), 0.0):.4f}, current={_safe_float(cur_completion.get('commerce_completion_rate'), 0.0):.4f}, allowed_drop={float(max_completion_rate_drop):.4f}"
+        )
+
+    return failures
+
+
 def render_markdown(report: Mapping[str, Any]) -> str:
     gate = report.get("gate") if isinstance(report.get("gate"), Mapping) else {}
     derived = report.get("derived") if isinstance(report.get("derived"), Mapping) else {}
@@ -257,6 +364,10 @@ def render_markdown(report: Mapping[str, Any]) -> str:
     lines.append("# Chat Production Launch Gate Report")
     lines.append("")
     lines.append(f"- generated_at: {report.get('generated_at')}")
+    release = report.get("release_profile") if isinstance(report.get("release_profile"), Mapping) else {}
+    lines.append(
+        f"- release: model={release.get('model_version')} prompt={release.get('prompt_version')} policy={release.get('policy_version')} signature={release.get('release_signature')}"
+    )
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     lines.append(f"- failure_count: {len(gate.get('failures') or [])}")
     lines.append("")
@@ -302,6 +413,17 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-legacy-count", type=int, default=0)
     parser.add_argument("--min-commerce-completion-rate", type=float, default=0.90)
     parser.add_argument("--max-insufficient-evidence-ratio", type=float, default=0.30)
+    parser.add_argument("--model-version", default="")
+    parser.add_argument("--prompt-version", default="")
+    parser.add_argument("--policy-version", default="")
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-mismatch-ratio-increase", type=float, default=0.01)
+    parser.add_argument("--max-blocker-ratio-increase", type=float, default=0.005)
+    parser.add_argument("--max-reason-invalid-ratio-increase", type=float, default=0.0)
+    parser.add_argument("--max-reason-unknown-ratio-increase", type=float, default=0.01)
+    parser.add_argument("--max-legacy-ratio-increase", type=float, default=0.0)
+    parser.add_argument("--max-insufficient-evidence-ratio-increase", type=float, default=0.05)
+    parser.add_argument("--max-completion-rate-drop", type=float, default=0.03)
     parser.add_argument("--write-baseline", default="")
     return parser.parse_args()
 
@@ -366,13 +488,20 @@ def main() -> int:
         min_commerce_completion_rate=max(0.0, float(args.min_commerce_completion_rate)),
         max_insufficient_evidence_ratio=max(0.0, float(args.max_insufficient_evidence_ratio)),
     )
+    release_profile = build_release_profile(
+        model_version=args.model_version,
+        prompt_version=args.prompt_version,
+        policy_version=args.policy_version,
+    )
 
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "release_profile": release_profile,
         "source": {
             "replay_dir": str(args.replay_dir),
             "completion_source": str(args.completion_source),
             "completion_source_used": completion_source_used,
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
             "limits": {
                 "parity_limit": int(args.parity_limit),
                 "perf_limit": int(args.perf_limit),
@@ -417,6 +546,34 @@ def main() -> int:
         },
     }
 
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_report = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_report,
+            report,
+            max_mismatch_ratio_increase=max(0.0, float(args.max_mismatch_ratio_increase)),
+            max_blocker_ratio_increase=max(0.0, float(args.max_blocker_ratio_increase)),
+            max_reason_invalid_ratio_increase=max(0.0, float(args.max_reason_invalid_ratio_increase)),
+            max_reason_unknown_ratio_increase=max(0.0, float(args.max_reason_unknown_ratio_increase)),
+            max_legacy_ratio_increase=max(0.0, float(args.max_legacy_ratio_increase)),
+            max_insufficient_evidence_ratio_increase=max(0.0, float(args.max_insufficient_evidence_ratio_increase)),
+            max_completion_rate_drop=max(0.0, float(args.max_completion_rate_drop)),
+        )
+
+    gate = report.get("gate") if isinstance(report.get("gate"), dict) else {}
+    gate["baseline_failures"] = baseline_failures
+    gate["pass"] = len(failures) == 0 and len(baseline_failures) == 0
+    gate["thresholds"] = dict(gate.get("thresholds") or {})
+    gate["thresholds"]["max_mismatch_ratio_increase"] = float(args.max_mismatch_ratio_increase)
+    gate["thresholds"]["max_blocker_ratio_increase"] = float(args.max_blocker_ratio_increase)
+    gate["thresholds"]["max_reason_invalid_ratio_increase"] = float(args.max_reason_invalid_ratio_increase)
+    gate["thresholds"]["max_reason_unknown_ratio_increase"] = float(args.max_reason_unknown_ratio_increase)
+    gate["thresholds"]["max_legacy_ratio_increase"] = float(args.max_legacy_ratio_increase)
+    gate["thresholds"]["max_insufficient_evidence_ratio_increase"] = float(args.max_insufficient_evidence_ratio_increase)
+    gate["thresholds"]["max_completion_rate_drop"] = float(args.max_completion_rate_drop)
+    report["gate"] = gate
+
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -432,9 +589,11 @@ def main() -> int:
     print(f"report_md={md_path}")
     print(f"gate_pass={str(report['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and not bool(report["gate"]["pass"]):
         for item in failures:
             print(f"[gate-failure] {item}")
+        for item in baseline_failures:
+            print(f"[baseline-failure] {item}")
         return 2
     return 0
 

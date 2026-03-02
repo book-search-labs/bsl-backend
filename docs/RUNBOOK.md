@@ -897,6 +897,10 @@ python scripts/eval/chat_legacy_decommission_check.py \
 python scripts/eval/chat_production_launch_gate.py \
   --replay-dir var/chat_graph/replay \
   --completion-source auto \
+  --model-version "$QS_LLM_MODEL" \
+  --prompt-version "$QS_CHAT_PROMPT_VERSION" \
+  --policy-version "$QS_CHAT_POLICY_VERSION" \
+  --baseline-report data/eval/reports/chat_production_launch_gate_baseline.json \
   --parity-limit 200 \
   --perf-limit 500 \
   --reason-limit 500 \
@@ -930,6 +934,7 @@ python scripts/eval/chat_production_launch_gate.py \
   - `insufficient_evidence` 경로는 reason_code별 한국어 안내 + 기본 `next_action`/`retry_after_ms`를 강제
 - CI 옵션:
   - `RUN_CHAT_PROD_LAUNCH_GATE=1 ./scripts/test.sh`
+  - baseline 파일이 있을 때만 자동 비교 (`CHAT_PROD_LAUNCH_BASELINE_PATH`)
 
 ---
 
