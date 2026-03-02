@@ -36,3 +36,14 @@ Operationalize chat capacity forecasting:
 - Build load profiles by intent/time/tool usage.
 - Forecast demand and resource needs with budget linkage.
 - Calibrate autoscaling policies using prediction and canary validation.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Load profile model 게이트 추가
+  - `scripts/eval/chat_load_profile_model.py`
+  - 트래픽 이벤트(JSONL)를 기준으로 `NORMAL|PROMOTION|INCIDENT` 시나리오별 request/error/tool usage/p95 latency/p95 queue depth를 집계
+  - 시간대(hour UTC) 분포와 상위 intent 분포를 함께 리포팅해 운영 부하 모델 기준선 생성
+  - gate 모드에서 NORMAL 구간의 error/latency/queue 임계치 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_load_profile_model.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_LOAD_PROFILE_MODEL=1 ./scripts/test.sh`

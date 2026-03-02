@@ -1230,6 +1230,26 @@ python scripts/eval/chat_data_governance_evidence.py \
 - CI 옵션:
   - `RUN_CHAT_DATA_GOV_EVIDENCE_GATE=1 ./scripts/test.sh`
 
+## Load profile model gate (I-0363, Bundle 1)
+- 트래픽 이벤트에서 시간대/의도/툴사용/지연/오류를 시나리오별(`NORMAL|PROMOTION|INCIDENT`) 프로파일로 집계:
+```bash
+python scripts/eval/chat_load_profile_model.py \
+  --traffic-jsonl var/chat_governance/load_events.jsonl \
+  --window-hours 168 \
+  --out data/eval/reports \
+  --min-window 1 \
+  --max-normal-error-ratio 0.05 \
+  --max-normal-p95-latency-ms 3000 \
+  --max-normal-p95-queue-depth 50 \
+  --gate
+```
+- 산출물:
+  - 시나리오별 request/error/tool usage/latency(queue p95) 프로파일
+  - 시간대(hour UTC)별 부하 분포와 상위 intent 분포
+  - 정상 구간(`NORMAL`) 기준 임계치 위반 여부
+- CI 옵션:
+  - `RUN_CHAT_LOAD_PROFILE_MODEL=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
