@@ -921,6 +921,9 @@ python scripts/eval/chat_production_launch_gate.py \
   - reason taxonomy: `reason_taxonomy`
   - legacy decommission: `feature_router` global routing audit
   - completion: `var/chat_graph/replay/runs/*.json`
+- fallback 템플릿 표준화:
+  - 구현 위치: `services/query-service/app/core/chat_graph/runtime.py::_fallback_template`
+  - `insufficient_evidence` 경로는 reason_code별 한국어 안내 + 기본 `next_action`/`retry_after_ms`를 강제
 - CI 옵션:
   - `RUN_CHAT_PROD_LAUNCH_GATE=1 ./scripts/test.sh`
 

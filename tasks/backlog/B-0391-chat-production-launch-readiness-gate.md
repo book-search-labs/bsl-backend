@@ -84,3 +84,6 @@ Implement production launch gates for chat:
   - `RUN_CHAT_PROD_LAUNCH_GATE=1 ./scripts/test.sh`
 - [x] 단위 테스트 추가
   - `scripts/eval/test_chat_production_launch_gate.py`
+- [x] `insufficient_evidence` 한국어 fallback 템플릿 표준화
+  - 구현: `services/query-service/app/core/chat_graph/runtime.py::_fallback_template`
+  - reason_code 기반 기본 `next_action`/`retry_after_ms` 일관화

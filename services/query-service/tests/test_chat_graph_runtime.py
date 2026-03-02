@@ -77,6 +77,7 @@ def test_run_chat_graph_routes_empty_query_to_ask_without_executor_call():
     assert result.response["status"] == "insufficient_evidence"
     assert result.response["reason_code"] == "NO_MESSAGES"
     assert result.response["next_action"] == "PROVIDE_REQUIRED_INFO"
+    assert "다시 입력" in str(result.response["answer"]["content"])
 
 
 def test_run_chat_graph_fallbacks_when_legacy_response_is_not_object():
@@ -95,6 +96,25 @@ def test_run_chat_graph_fallbacks_when_legacy_response_is_not_object():
     assert result.response["status"] == "insufficient_evidence"
     assert result.response["reason_code"] == "CHAT_GRAPH_EXECUTION_ERROR"
     assert result.state["tool_result"]["source"] == "legacy_executor"
+
+
+def test_run_chat_graph_maps_timeout_to_korean_retry_template():
+    async def fake_legacy_executor(request, trace_id, request_id):
+        raise TimeoutError("timeout")
+
+    result = _run(
+        run_chat_graph(
+            {"session_id": "u:103b:default", "message": {"role": "user", "content": "주문 상태"}},
+            "trace_3b",
+            "req_3b",
+            legacy_executor=fake_legacy_executor,
+        )
+    )
+
+    assert result.response["status"] == "insufficient_evidence"
+    assert result.response["reason_code"] == "PROVIDER_TIMEOUT"
+    assert result.response["next_action"] == "RETRY"
+    assert "응답 시간이 지연" in str(result.response["answer"]["content"])
 
 
 def test_run_chat_graph_sanitizes_forbidden_reason_code():

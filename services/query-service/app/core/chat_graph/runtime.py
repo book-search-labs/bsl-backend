@@ -1386,7 +1386,64 @@ def _deny_response(
     }
 
 
-def _fallback_response(trace_id: str, request_id: str, *, reason_code: str, next_action: str) -> dict[str, Any]:
+def _fallback_template(reason_code: str) -> dict[str, Any]:
+    code = str(reason_code or "").strip().upper()
+    templates = {
+        "NO_MESSAGES": {
+            "message": "질문 내용을 확인하지 못했습니다. 주문번호/도서명/문의 내용을 포함해 다시 입력해 주세요.",
+            "next_action": "PROVIDE_REQUIRED_INFO",
+            "retry_after_ms": None,
+        },
+        "ROUTE_OPTIONS_SELECTION_REQUIRED": {
+            "message": "대상 선택이 필요합니다. 제시된 후보 번호(예: 1번)를 입력해 주세요.",
+            "next_action": "PROVIDE_REQUIRED_INFO",
+            "retry_after_ms": None,
+        },
+        "PROVIDER_TIMEOUT": {
+            "message": "응답 시간이 지연되어 처리를 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+            "next_action": "RETRY",
+            "retry_after_ms": 3000,
+        },
+        "CHAT_GRAPH_EXECUTION_ERROR": {
+            "message": "요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+            "next_action": "RETRY",
+            "retry_after_ms": 3000,
+        },
+        "CHAT_GRAPH_RESPONSE_MISSING": {
+            "message": "응답 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+            "next_action": "RETRY",
+            "retry_after_ms": 2000,
+        },
+        "OUTPUT_GUARD_EMPTY_ANSWER": {
+            "message": "응답 품질 검증에서 문제가 확인되어 답변을 보류했습니다. 다시 시도해 주세요.",
+            "next_action": "RETRY",
+            "retry_after_ms": 2000,
+        },
+        "OUTPUT_GUARD_FORBIDDEN_CLAIM": {
+            "message": "실행/조회 완료를 확인할 근거가 부족해 확정 안내를 보류했습니다. 다시 시도해 주세요.",
+            "next_action": "RETRY",
+            "retry_after_ms": 1000,
+        },
+        "INVALID_WORKFLOW_STATE": {
+            "message": "요청 상태가 일시적으로 불안정합니다. 잠시 후 다시 시도하거나 상담으로 전환해 주세요.",
+            "next_action": "OPEN_SUPPORT_TICKET",
+            "retry_after_ms": None,
+        },
+    }
+    return templates.get(
+        code,
+        {
+            "message": "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+            "next_action": "RETRY",
+            "retry_after_ms": 3000,
+        },
+    )
+
+
+def _fallback_response(trace_id: str, request_id: str, *, reason_code: str, next_action: str | None = None) -> dict[str, Any]:
+    template = _fallback_template(reason_code)
+    resolved_next_action = str(next_action or template.get("next_action") or "RETRY")
+    retry_after_ms = template.get("retry_after_ms")
     return {
         "version": "v1",
         "trace_id": trace_id,
@@ -1394,11 +1451,11 @@ def _fallback_response(trace_id: str, request_id: str, *, reason_code: str, next
         "status": "insufficient_evidence",
         "reason_code": reason_code,
         "recoverable": True,
-        "next_action": next_action,
-        "retry_after_ms": 3000,
+        "next_action": resolved_next_action,
+        "retry_after_ms": retry_after_ms,
         "answer": {
             "role": "assistant",
-            "content": "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+            "content": str(template.get("message") or "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."),
         },
         "sources": [],
         "citations": [],
