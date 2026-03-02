@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[1/10] Contract validation (optional)"
+echo "[1/11] Contract validation (optional)"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN=""
 if command -v python >/dev/null 2>&1; then
@@ -20,9 +20,9 @@ else
   echo "  - python not found; skipping contract validation"
 fi
 
-echo "[2/10] Contract compatibility gate (optional)"
+echo "[2/11] Contract compatibility gate (optional)"
 
-echo "[3/10] Event schema compatibility check (optional)"
+echo "[3/11] Event schema compatibility check (optional)"
 if [ "${RUN_SCHEMA_CHECK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/kafka/schema_compat_check.py" || exit 1
@@ -38,7 +38,7 @@ else
   echo "  - python not found; skipping contract compatibility check"
 fi
 
-echo "[4/10] Feature spec validation (optional)"
+echo "[4/11] Feature spec validation (optional)"
 if [ -n "$PYTHON_BIN" ]; then
   if $PYTHON_BIN -c "import yaml" >/dev/null 2>&1; then
     $PYTHON_BIN "$ROOT_DIR/scripts/validate_feature_spec.py" || exit 1
@@ -49,7 +49,7 @@ else
   echo "  - python not found; skipping feature spec validation"
 fi
 
-echo "[5/10] Offline eval gate (optional)"
+echo "[5/11] Offline eval gate (optional)"
 if [ "${RUN_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     EVAL_RUN_PATH="${EVAL_RUN_PATH:-$ROOT_DIR/evaluation/runs/sample_run.jsonl}"
@@ -62,7 +62,7 @@ else
   echo "  - set RUN_EVAL=1 to enable"
 fi
 
-echo "[6/10] Rerank eval gate (optional)"
+echo "[6/11] Rerank eval gate (optional)"
 if [ "${RUN_RERANK_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     RERANK_BASELINE_PATH="${RERANK_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/rerank_eval_sample.json}"
@@ -127,7 +127,7 @@ else
   echo "  - set RUN_RERANK_EVAL=1 to enable"
 fi
 
-echo "[7/10] Chat contract compatibility gate (optional)"
+echo "[7/11] Chat contract compatibility gate (optional)"
 if [ "${RUN_CHAT_CONTRACT_COMPAT_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CONTRACT_CASES_PATH="${CHAT_CONTRACT_CASES_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_contract_compat_v1.json}"
@@ -162,7 +162,45 @@ else
   echo "  - set RUN_CHAT_CONTRACT_COMPAT_EVAL=1 to enable"
 fi
 
-echo "[8/10] Canonical quality checks (optional)"
+echo "[8/11] Chat reason taxonomy gate (optional)"
+if [ "${RUN_CHAT_REASON_TAXONOMY_EVAL:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_REASON_CASES_PATH="${CHAT_REASON_CASES_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_reason_taxonomy_cases_v1.json}"
+    CHAT_REASON_RESPONSES_PATH="${CHAT_REASON_RESPONSES_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_reason_taxonomy_responses_v1.json}"
+    CHAT_REASON_OUT_DIR="${CHAT_REASON_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_REASON_MIN_CASES="${CHAT_REASON_MIN_CASES:-5}"
+    CHAT_REASON_MIN_RESPONSE_TOTAL="${CHAT_REASON_MIN_RESPONSE_TOTAL:-1}"
+    CHAT_REASON_MAX_INVALID_RATIO="${CHAT_REASON_MAX_INVALID_RATIO:-0.0}"
+    CHAT_REASON_MAX_UNKNOWN_RATIO="${CHAT_REASON_MAX_UNKNOWN_RATIO:-0.05}"
+    CHAT_REASON_BASELINE_PATH="${CHAT_REASON_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/chat_reason_taxonomy_eval_baseline.json}"
+    CHAT_REASON_MAX_INVALID_RATIO_INCREASE="${CHAT_REASON_MAX_INVALID_RATIO_INCREASE:-0.0}"
+    CHAT_REASON_MAX_UNKNOWN_RATIO_INCREASE="${CHAT_REASON_MAX_UNKNOWN_RATIO_INCREASE:-0.01}"
+
+    CHAT_REASON_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_reason_taxonomy_eval.py"
+      --cases-json "$CHAT_REASON_CASES_PATH"
+      --responses-json "$CHAT_REASON_RESPONSES_PATH"
+      --out "$CHAT_REASON_OUT_DIR"
+      --min-cases "$CHAT_REASON_MIN_CASES"
+      --min-response-total "$CHAT_REASON_MIN_RESPONSE_TOTAL"
+      --max-invalid-ratio "$CHAT_REASON_MAX_INVALID_RATIO"
+      --max-unknown-ratio "$CHAT_REASON_MAX_UNKNOWN_RATIO"
+      --max-invalid-ratio-increase "$CHAT_REASON_MAX_INVALID_RATIO_INCREASE"
+      --max-unknown-ratio-increase "$CHAT_REASON_MAX_UNKNOWN_RATIO_INCREASE"
+      --gate
+    )
+    if [ -f "$CHAT_REASON_BASELINE_PATH" ]; then
+      CHAT_REASON_ARGS+=(--baseline-report "$CHAT_REASON_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_REASON_ARGS[@]}" || exit 1
+  else
+    echo "  - python not found; skipping chat reason taxonomy eval gate"
+  fi
+else
+  echo "  - set RUN_CHAT_REASON_TAXONOMY_EVAL=1 to enable"
+fi
+
+echo "[9/11] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -173,7 +211,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[9/10] E2E tests (optional)"
+echo "[10/11] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -184,4 +222,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[10/10] Done"
+echo "[11/11] Done"

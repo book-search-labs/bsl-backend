@@ -1,0 +1,47 @@
+{
+  "version": "v1",
+  "cases": [
+    {
+      "id": "ok_response",
+      "source": "response",
+      "reason_code": "OK",
+      "expect": "valid"
+    },
+    {
+      "id": "confirm_policy",
+      "source": "policy_decide",
+      "reason_code": "CONFIRMATION_REQUIRED",
+      "expect": "valid"
+    },
+    {
+      "id": "auth_forbidden",
+      "source": "authz_gate",
+      "reason_code": "AUTH_FORBIDDEN",
+      "expect": "valid"
+    },
+    {
+      "id": "provider_timeout_execute",
+      "source": "execute",
+      "reason_code": "PROVIDER_TIMEOUT",
+      "expect": "valid"
+    },
+    {
+      "id": "forbidden_unknown",
+      "source": "response",
+      "reason_code": "UNKNOWN",
+      "expect": "invalid"
+    },
+    {
+      "id": "bad_format",
+      "source": "response",
+      "reason_code": "bad_reason",
+      "expect": "invalid"
+    },
+    {
+      "id": "source_violation",
+      "source": "policy_decide",
+      "reason_code": "PROVIDER_TIMEOUT",
+      "expect": "unknown"
+    }
+  ]
+}

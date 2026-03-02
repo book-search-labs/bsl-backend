@@ -765,6 +765,24 @@ python scripts/eval/chat_canary_gate.py --limit 200 --apply
   - `shadow(0%) -> canary(5%) -> 10% -> 25% -> 50% -> 100%`
   - 단계별 dwell: 최소 30분, `BLOCKER` 비율 임계치 초과 시 즉시 force-legacy
 
+## Chat reason-code taxonomy governance gate (B-0715)
+- taxonomy module: `services/query-service/app/core/chat_graph/reason_taxonomy.py`
+- runtime metrics:
+  - `chat_reason_code_total{source,reason_code}`
+  - `chat_reason_code_invalid_total{source}`
+  - `chat_reason_code_unknown_total{source}`
+  - `chat_reason_code_invalid_ratio{source}`
+  - `chat_reason_code_unknown_ratio{source}`
+- eval script:
+```bash
+python scripts/eval/chat_reason_taxonomy_eval.py \
+  --cases-json services/query-service/tests/fixtures/chat_reason_taxonomy_cases_v1.json \
+  --responses-json services/query-service/tests/fixtures/chat_reason_taxonomy_responses_v1.json \
+  --gate
+```
+- CI 옵션:
+  - `RUN_CHAT_REASON_TAXONOMY_EVAL=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

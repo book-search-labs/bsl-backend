@@ -29,6 +29,11 @@ from app.core.chat_graph.replay_store import (
     finish_run,
     start_run_record,
 )
+from app.core.chat_graph.reason_taxonomy import (
+    DEFAULT_UNSPECIFIED_REASON_CODE,
+    normalize_reason_code,
+    record_reason_code_event,
+)
 
 
 LegacyExecutor = Callable[[dict[str, Any], str, str], Awaitable[dict[str, Any]]]
@@ -134,27 +139,35 @@ async def run_chat_graph(
 
     try:
         state = await _run_node("load_state", state, _load_state_node)
+        _record_state_reason_code(state, source="load_state")
         if record_run:
             append_checkpoint(resolved_run_id, "load_state", state)
         state = await _run_node("understand", state, _understand_node)
+        _record_state_reason_code(state, source="understand")
         if record_run:
             append_checkpoint(resolved_run_id, "understand", state)
         state = await _run_node("policy_decide", state, _policy_decide_node)
+        _record_state_reason_code(state, source="policy_decide")
         if record_run:
             append_checkpoint(resolved_run_id, "policy_decide", state)
         state = await _run_node("authz_gate", state, _authz_gate_node_factory(request, trace_id, request_id))
+        _record_state_reason_code(state, source="authz_gate")
         if record_run:
             append_checkpoint(resolved_run_id, "authz_gate", state)
         state = await _run_node("execute", state, _execute_node_factory(request, trace_id, request_id, legacy_executor))
+        _record_state_reason_code(state, source="execute")
         if record_run:
             append_checkpoint(resolved_run_id, "execute", state)
         state = await _run_node("compose", state, _compose_node)
+        _record_state_reason_code(state, source="compose")
         if record_run:
             append_checkpoint(resolved_run_id, "compose", state)
         state = await _run_node("verify", state, _verify_node)
+        _record_state_reason_code(state, source="verify")
         if record_run:
             append_checkpoint(resolved_run_id, "verify", state)
         state = await _run_node("persist", state, _persist_node)
+        _record_state_reason_code(state, source="persist")
         if record_run:
             append_checkpoint(resolved_run_id, "persist", state)
     except ChatGraphStateValidationError as exc:
@@ -165,6 +178,7 @@ async def run_chat_graph(
             stage=exc.stage,
             reason_code=exc.reason_code,
         )
+        _record_state_reason_code(handled, source="error_handler")
         error_response = _state_response(handled)
         if record_run:
             finish_run(
@@ -182,6 +196,7 @@ async def run_chat_graph(
             stage="runtime",
             reason_code="CHAT_GRAPH_RUNTIME_ERROR",
         )
+        _record_state_reason_code(handled, source="error_handler")
         error_response = _state_response(handled)
         if record_run:
             finish_run(
@@ -193,6 +208,11 @@ async def run_chat_graph(
         return ChatGraphRuntimeResult(state=handled, response=error_response, stage="error_handler", run_id=resolved_run_id)
 
     final_response = _state_response(state)
+    _record_response_reason_code(
+        state,
+        response=final_response,
+        source="response",
+    )
     if record_run:
         tool_result = state.get("tool_result") if isinstance(state.get("tool_result"), dict) else {}
         data = tool_result.get("data") if isinstance(tool_result.get("data"), dict) else {}
@@ -204,6 +224,40 @@ async def run_chat_graph(
             stub_response=stub_response,
         )
     return ChatGraphRuntimeResult(state=state, response=final_response, stage="persist", run_id=resolved_run_id)
+
+
+def _record_state_reason_code(state: ChatGraphState, *, source: str) -> None:
+    reason_code = state.get("reason_code")
+    if not isinstance(reason_code, str) or not reason_code.strip():
+        return
+    normalized = normalize_reason_code(reason_code, source=source)
+    state["reason_code"] = normalized
+    record_reason_code_event(
+        session_id=str(state.get("session_id") or "anon:default"),
+        trace_id=str(state.get("trace_id") or ""),
+        request_id=str(state.get("request_id") or ""),
+        source=source,
+        reason_code=reason_code,
+    )
+
+
+def _record_response_reason_code(
+    state: ChatGraphState,
+    *,
+    response: dict[str, Any],
+    source: str,
+) -> None:
+    reason_code = str(response.get("reason_code") or state.get("reason_code") or DEFAULT_UNSPECIFIED_REASON_CODE)
+    normalized = normalize_reason_code(reason_code, source=source)
+    response["reason_code"] = normalized
+    state["reason_code"] = normalized
+    record_reason_code_event(
+        session_id=str(state.get("session_id") or "anon:default"),
+        trace_id=str(state.get("trace_id") or ""),
+        request_id=str(state.get("request_id") or ""),
+        source=source,
+        reason_code=reason_code,
+    )
 
 
 async def _run_node(name: str, state: ChatGraphState, fn: NodeFn) -> ChatGraphState:
@@ -546,9 +600,10 @@ def _execute_node_factory(
         }
         status = str(response.get("status") or "ok")
         state["route"] = "ANSWER" if status == "ok" else "FALLBACK"
-        state["reason_code"] = str(response.get("reason_code") or ("OK" if status == "ok" else "UNKNOWN"))
+        default_reason = "OK" if status == "ok" else DEFAULT_UNSPECIFIED_REASON_CODE
+        state["reason_code"] = str(response.get("reason_code") or default_reason)
         if isinstance(state.get("pending_action"), dict):
-            reason_code = str(response.get("reason_code") or ("OK" if status == "ok" else "UNKNOWN"))
+            reason_code = str(response.get("reason_code") or default_reason)
             recoverable = bool(response.get("recoverable", True))
             updated = mark_execution_result(
                 state["session_id"],
@@ -664,9 +719,15 @@ def _error_handler_state(
 
 
 def _state_response_payload(response: dict[str, Any]) -> dict[str, Any]:
+    status = str(response.get("status") or "insufficient_evidence")
+    reason_default = "OK" if status == "ok" else DEFAULT_UNSPECIFIED_REASON_CODE
+    reason_code = normalize_reason_code(
+        response.get("reason_code") or reason_default,
+        source="response",
+    )
     payload: dict[str, Any] = {
-        "status": str(response.get("status") or "insufficient_evidence"),
-        "reason_code": str(response.get("reason_code") or "UNKNOWN"),
+        "status": status,
+        "reason_code": reason_code,
         "recoverable": bool(response.get("recoverable", True)),
         "next_action": str(response.get("next_action") or "RETRY"),
         "retry_after_ms": response.get("retry_after_ms"),
@@ -681,12 +742,18 @@ def _state_response_payload(response: dict[str, Any]) -> dict[str, Any]:
 
 def _state_response(state: ChatGraphState) -> dict[str, Any]:
     response = dict(state.get("response") or {})
+    status = str(response.get("status") or "insufficient_evidence")
+    reason_default = "OK" if status == "ok" else DEFAULT_UNSPECIFIED_REASON_CODE
+    reason_code = normalize_reason_code(
+        response.get("reason_code") or state.get("reason_code") or reason_default,
+        source="response",
+    )
     return {
         "version": "v1",
         "trace_id": state.get("trace_id"),
         "request_id": state.get("request_id"),
-        "status": str(response.get("status") or "insufficient_evidence"),
-        "reason_code": str(response.get("reason_code") or state.get("reason_code") or "UNKNOWN"),
+        "status": status,
+        "reason_code": reason_code,
         "recoverable": bool(response.get("recoverable", True)),
         "next_action": str(response.get("next_action") or "RETRY"),
         "retry_after_ms": response.get("retry_after_ms"),

@@ -97,6 +97,37 @@ def test_run_chat_graph_fallbacks_when_legacy_response_is_not_object():
     assert result.state["tool_result"]["source"] == "legacy_executor"
 
 
+def test_run_chat_graph_sanitizes_forbidden_reason_code():
+    async def fake_legacy_executor(request, trace_id, request_id):
+        return {
+            "version": "v1",
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "status": "insufficient_evidence",
+            "reason_code": "UNKNOWN",
+            "recoverable": True,
+            "next_action": "RETRY",
+            "retry_after_ms": 1000,
+            "answer": {"role": "assistant", "content": "재시도해 주세요."},
+            "sources": [],
+            "citations": [],
+            "fallback_count": 0,
+            "escalated": False,
+        }
+
+    result = _run(
+        run_chat_graph(
+            {"session_id": "u:104:default", "message": {"role": "user", "content": "상태 알려줘"}},
+            "trace_104",
+            "req_104",
+            legacy_executor=fake_legacy_executor,
+        )
+    )
+
+    assert result.response["reason_code"] == "CHAT_REASON_CODE_INVALID"
+    assert result.state["reason_code"] == "CHAT_REASON_CODE_INVALID"
+
+
 def test_run_chat_graph_denies_sensitive_action_without_auth_context():
     confirm_fsm._CACHE = CacheClient(None)
     authz_gate._CACHE = CacheClient(None)

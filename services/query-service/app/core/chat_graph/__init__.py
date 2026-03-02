@@ -67,6 +67,17 @@ from app.core.chat_graph.canary_controller import (
     load_rollback_audit,
 )
 import app.core.chat_graph.canary_controller as canary_controller
+from app.core.chat_graph.reason_taxonomy import (
+    DEFAULT_INVALID_REASON_CODE,
+    DEFAULT_UNSPECIFIED_REASON_CODE,
+    ReasonCodeAssessment,
+    assess_reason_code,
+    build_reason_code_summary,
+    load_reason_code_audit,
+    normalize_reason_code,
+    record_reason_code_event,
+)
+import app.core.chat_graph.reason_taxonomy as reason_taxonomy
 
 __all__ = [
     "CHAT_GRAPH_INITIAL_STATE_VERSION",
@@ -122,4 +133,13 @@ __all__ = [
     "evaluate_canary_gate",
     "load_rollback_audit",
     "canary_controller",
+    "DEFAULT_INVALID_REASON_CODE",
+    "DEFAULT_UNSPECIFIED_REASON_CODE",
+    "ReasonCodeAssessment",
+    "assess_reason_code",
+    "build_reason_code_summary",
+    "load_reason_code_audit",
+    "normalize_reason_code",
+    "record_reason_code_event",
+    "reason_taxonomy",
 ]

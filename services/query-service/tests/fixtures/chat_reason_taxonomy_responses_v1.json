@@ -1,0 +1,37 @@
+{
+  "version": "v1",
+  "responses": [
+    {
+      "id": "resp_ok",
+      "source": "response",
+      "response": {
+        "status": "ok",
+        "reason_code": "OK"
+      }
+    },
+    {
+      "id": "resp_fallback_provider_timeout",
+      "source": "response",
+      "response": {
+        "status": "insufficient_evidence",
+        "reason_code": "PROVIDER_TIMEOUT"
+      }
+    },
+    {
+      "id": "resp_confirm_required",
+      "source": "response",
+      "response": {
+        "status": "pending_confirmation",
+        "reason_code": "CONFIRMATION_REQUIRED"
+      }
+    },
+    {
+      "id": "resp_auth_forbidden",
+      "source": "response",
+      "response": {
+        "status": "insufficient_evidence",
+        "reason_code": "AUTH_FORBIDDEN"
+      }
+    }
+  ]
+}
