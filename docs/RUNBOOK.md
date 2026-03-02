@@ -940,6 +940,25 @@ python scripts/eval/chat_production_launch_gate.py \
   - `RUN_CHAT_PROD_LAUNCH_GATE=1 ./scripts/test.sh`
   - baseline 파일이 있을 때만 자동 비교 (`CHAT_PROD_LAUNCH_BASELINE_PATH`)
 
+## Release train decision gate (I-0360-lite)
+- launch gate 리포트 + cutover 정책을 결합해 `promote/hold/rollback` 결정:
+```bash
+python scripts/eval/chat_release_train_gate.py \
+  --reports-dir data/eval/reports \
+  --report-prefix chat_production_launch_gate \
+  --current-stage 25 \
+  --dwell-minutes 45
+```
+- 자동 rollback 적용(옵션):
+```bash
+python scripts/eval/chat_release_train_gate.py \
+  --current-stage 25 \
+  --dwell-minutes 45 \
+  --apply-rollback
+```
+- CI 옵션:
+  - `RUN_CHAT_RELEASE_TRAIN_GATE=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

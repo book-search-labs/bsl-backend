@@ -43,3 +43,13 @@ Harden chat live operations for production:
 - Build on-call automation from alert to runbook to validation.
 - Add capacity/cost guardrails with priority-based degradation.
 - Validate recovery integrity and immutable config bundle discipline.
+
+## Implementation Update (2026-03-02, Bundle 1)
+- [x] release train decision 스크립트 추가
+  - `scripts/eval/chat_release_train_gate.py`
+  - 입력: launch gate report + 현재 stage/dwell
+  - 출력: `promote|hold|rollback` 및 next_stage/reason
+- [x] auto rollback 연동 옵션
+  - `--apply-rollback` 사용 시 canary controller override(`force legacy`) 적용
+- [x] CI 진입점 추가
+  - `RUN_CHAT_RELEASE_TRAIN_GATE=1 ./scripts/test.sh`
