@@ -60,3 +60,10 @@ Harden chat live operations for production:
   - launch gate 실행(또는 기존 리포트 입력) → release train decision → (옵션) rollback 적용을 단일 실행으로 제공
 - [x] CI 진입점 추가
   - `RUN_CHAT_LIVEOPS_CYCLE=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-02, Bundle 3)
+- [x] LiveOps summary gate 추가
+  - `scripts/eval/chat_liveops_summary.py`
+  - 최근 cycle window에서 pass ratio/action 분포를 집계하고 gate fail 조건을 평가
+- [x] CI 진입점 추가
+  - `RUN_CHAT_LIVEOPS_SUMMARY_GATE=1 ./scripts/test.sh`

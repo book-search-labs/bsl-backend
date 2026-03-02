@@ -976,6 +976,20 @@ python scripts/eval/chat_liveops_cycle.py \
 - CI 옵션:
   - `RUN_CHAT_LIVEOPS_CYCLE=1 ./scripts/test.sh`
 
+## LiveOps summary gate (I-0360, Bundle 3)
+- 최근 liveops cycle 리포트 집계:
+```bash
+python scripts/eval/chat_liveops_summary.py \
+  --reports-dir data/eval/reports \
+  --limit 20 \
+  --min-window 3 \
+  --min-pass-ratio 0.8 \
+  --deny-actions rollback \
+  --gate
+```
+- CI 옵션:
+  - `RUN_CHAT_LIVEOPS_SUMMARY_GATE=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
