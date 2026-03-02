@@ -1250,6 +1250,32 @@ python scripts/eval/chat_load_profile_model.py \
 - CI 옵션:
   - `RUN_CHAT_LOAD_PROFILE_MODEL=1 ./scripts/test.sh`
 
+## Capacity forecast gate (I-0363, Bundle 2)
+- load profile 리포트를 입력으로 주/월 수요/토큰/툴콜과 리소스(CPU/GPU/메모리)·비용을 예측:
+```bash
+python scripts/eval/chat_capacity_forecast.py \
+  --reports-dir data/eval/reports \
+  --load-prefix chat_load_profile_model \
+  --baseline-window-hours 168 \
+  --weekly-growth-factor 1.08 \
+  --monthly-growth-factor 1.35 \
+  --promo-surge-factor 1.6 \
+  --cpu-rps-per-core 3.0 \
+  --gpu-tokens-per-sec 800 \
+  --cost-per-1k-tokens 0.002 \
+  --max-peak-rps 50 \
+  --max-monthly-cost-usd 15000 \
+  --max-cpu-cores 64 \
+  --max-gpu-required 8 \
+  --gate
+```
+- 산출물:
+  - week/month requests, tokens, tool_calls forecast
+  - peak_rps 및 필요 CPU/GPU/메모리 추정
+  - 월 비용 추정치와 임계치 위반 여부
+- CI 옵션:
+  - `RUN_CHAT_CAPACITY_FORECAST=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

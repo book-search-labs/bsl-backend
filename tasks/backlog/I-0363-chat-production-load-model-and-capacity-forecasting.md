@@ -47,3 +47,14 @@ Operationalize chat capacity forecasting:
   - `scripts/eval/test_chat_load_profile_model.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_LOAD_PROFILE_MODEL=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Capacity forecast 게이트 추가
+  - `scripts/eval/chat_capacity_forecast.py`
+  - load profile 리포트를 입력으로 주/월 요청량·토큰·툴콜과 peak_rps를 예측하고 필요 CPU/GPU/메모리를 산출
+  - 월 비용 예측(`cost_per_1k_tokens`)을 포함해 budget linkage를 리포트에 반영
+  - gate 모드에서 peak_rps/월비용/CPU/GPU 상한 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_capacity_forecast.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_CAPACITY_FORECAST=1 ./scripts/test.sh`
