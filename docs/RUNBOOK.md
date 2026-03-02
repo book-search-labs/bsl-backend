@@ -721,6 +721,12 @@ python scripts/eval/chat_contract_compat_eval.py \
   - `QS_CHAT_ENGINE_MODE=legacy` (default)
   - `QS_CHAT_ENGINE_MODE=shadow|canary|agent`
 
+## Chat confirm interrupt/resume FSM (B-0704)
+- FSM module: `services/query-service/app/core/chat_graph/confirm_fsm.py`
+- states: `INIT -> AWAITING_CONFIRMATION -> CONFIRMED -> EXECUTING -> EXECUTED`
+- exceptional states: `EXPIRED`, `ABORTED`, `FAILED_RETRYABLE`, `FAILED_FINAL`
+- audit store: cache key `chat:graph:action-audit:{session_id}`
+
 ---
 
 ## Search Service (Local)

@@ -9,6 +9,13 @@ from app.core.chat_graph.state import (
     build_chat_graph_state,
     validate_chat_graph_state,
 )
+from app.core.chat_graph.confirm_fsm import (
+    evaluate_confirmation,
+    init_pending_action,
+    load_pending_action,
+    mark_execution_result,
+    mark_execution_start,
+)
 
 
 LegacyExecutor = Callable[[dict[str, Any], str, str], Awaitable[dict[str, Any]]]
@@ -139,6 +146,9 @@ def _assert_contract_fields(state: ChatGraphState, fields: tuple[str, ...], *, s
 
 async def _load_state_node(state: ChatGraphState) -> ChatGraphState:
     state["session"]["recommended_message"] = state["session"].get("recommended_message") or "현재 챗봇 세션 상태는 정상입니다."
+    pending_action = load_pending_action(state["session_id"])
+    if isinstance(pending_action, dict):
+        state["pending_action"] = pending_action
     return state
 
 
@@ -173,10 +183,55 @@ async def _policy_decide_node(state: ChatGraphState) -> ChatGraphState:
             state["reason_code"] = "CONFIRMATION_REQUIRED"
             return state
 
+    if pending_action is not None:
+        state["route"] = "CONFIRM"
+        state["reason_code"] = "CONFIRMATION_REQUIRED"
+        return state
+
+    if _requires_confirmation(state.get("intent"), query):
+        pending = init_pending_action(
+            state["session_id"],
+            action_type=_derive_action_type(state.get("intent"), query),
+            query=query,
+            trace_id=state["trace_id"],
+            request_id=state["request_id"],
+        )
+        state["pending_action"] = pending
+        state["route"] = "CONFIRM"
+        state["reason_code"] = "CONFIRMATION_REQUIRED"
+        return state
+
     state["route"] = "EXECUTE"
     if not state.get("reason_code"):
         state["reason_code"] = "OK"
     return state
+
+
+def _requires_confirmation(intent: str | None, query: str) -> bool:
+    normalized = (query or "").lower()
+    if not normalized:
+        return False
+    if any(keyword in normalized for keyword in ("중단", "abort")):
+        return False
+    if any(keyword in normalized for keyword in ("확인", "confirm")):
+        return False
+    write_keywords = ("취소", "환불", "refund", "cancel", "주소 변경", "address change")
+    if any(keyword in normalized for keyword in write_keywords):
+        return True
+    return intent in {"REFUND", "ORDER"} and any(keyword in normalized for keyword in ("요청", "처리", "진행"))
+
+
+def _derive_action_type(intent: str | None, query: str) -> str:
+    normalized = (query or "").lower()
+    if any(keyword in normalized for keyword in ("환불", "refund")):
+        return "REFUND_REQUEST"
+    if any(keyword in normalized for keyword in ("취소", "cancel")):
+        return "ORDER_CANCEL"
+    if any(keyword in normalized for keyword in ("주소 변경", "address change")):
+        return "ADDRESS_CHANGE"
+    if intent == "ORDER":
+        return "ORDER_UPDATE"
+    return "SENSITIVE_ACTION"
 
 
 def _execute_node_factory(
@@ -194,6 +249,54 @@ def _execute_node_factory(
             state["reason_code"] = "NO_MESSAGES"
             return state
 
+        pending_action = state.get("pending_action") if isinstance(state.get("pending_action"), dict) else None
+        if route == "CONFIRM":
+            if pending_action is None:
+                fallback = _fallback_response(
+                    trace_id,
+                    request_id,
+                    reason_code="INVALID_WORKFLOW_STATE",
+                    next_action="OPEN_SUPPORT_TICKET",
+                )
+                state["response"] = _state_response_payload(fallback)
+                state["route"] = "FALLBACK"
+                state["reason_code"] = "INVALID_WORKFLOW_STATE"
+                return state
+
+            decision = evaluate_confirmation(
+                state["session_id"],
+                pending_action,
+                query=state.get("query") or "",
+                trace_id=trace_id,
+                request_id=request_id,
+            )
+            state["pending_action"] = decision.pending_action
+            state["reason_code"] = decision.reason_code
+            if not decision.allow_execute:
+                state["response"] = _state_response_payload(
+                    _confirmation_response(
+                        trace_id,
+                        request_id,
+                        reason_code=decision.reason_code,
+                        message=decision.user_message,
+                        next_action=decision.next_action,
+                        retry_after_ms=decision.retry_after_ms,
+                    )
+                )
+                if decision.reason_code in {"CONFIRMATION_REQUIRED", "CONFIRMATION_TOKEN_MISMATCH"}:
+                    state["route"] = "CONFIRM"
+                else:
+                    state["route"] = "FALLBACK"
+                return state
+
+            if isinstance(state.get("pending_action"), dict):
+                state["pending_action"] = mark_execution_start(
+                    state["session_id"],
+                    state["pending_action"],
+                    trace_id=trace_id,
+                    request_id=request_id,
+                )
+
         try:
             response = await legacy_executor(request, trace_id, request_id)
         except Exception:
@@ -207,6 +310,17 @@ def _execute_node_factory(
             }
             state["route"] = "FALLBACK"
             state["reason_code"] = "PROVIDER_TIMEOUT"
+            if isinstance(state.get("pending_action"), dict):
+                updated = mark_execution_result(
+                    state["session_id"],
+                    state["pending_action"],
+                    trace_id=trace_id,
+                    request_id=request_id,
+                    success=False,
+                    final_reason_code="PROVIDER_TIMEOUT",
+                    final_retryable=True,
+                )
+                state["pending_action"] = updated
             return state
 
         if not isinstance(response, dict):
@@ -220,6 +334,17 @@ def _execute_node_factory(
             }
             state["route"] = "FALLBACK"
             state["reason_code"] = "CHAT_GRAPH_EXECUTION_ERROR"
+            if isinstance(state.get("pending_action"), dict):
+                updated = mark_execution_result(
+                    state["session_id"],
+                    state["pending_action"],
+                    trace_id=trace_id,
+                    request_id=request_id,
+                    success=False,
+                    final_reason_code="CHAT_GRAPH_EXECUTION_ERROR",
+                    final_retryable=True,
+                )
+                state["pending_action"] = updated
             return state
 
         state["response"] = _state_response_payload(response)
@@ -232,6 +357,22 @@ def _execute_node_factory(
         status = str(response.get("status") or "ok")
         state["route"] = "ANSWER" if status == "ok" else "FALLBACK"
         state["reason_code"] = str(response.get("reason_code") or ("OK" if status == "ok" else "UNKNOWN"))
+        if isinstance(state.get("pending_action"), dict):
+            reason_code = str(response.get("reason_code") or ("OK" if status == "ok" else "UNKNOWN"))
+            recoverable = bool(response.get("recoverable", True))
+            updated = mark_execution_result(
+                state["session_id"],
+                state["pending_action"],
+                trace_id=trace_id,
+                request_id=request_id,
+                success=status == "ok",
+                final_reason_code=reason_code,
+                final_retryable=recoverable,
+            )
+            if str(updated.get("state") or "") == "EXECUTED":
+                state["pending_action"] = None
+            else:
+                state["pending_action"] = updated
         return state
 
     return _execute_node
@@ -364,6 +505,32 @@ def _state_response(state: ChatGraphState) -> dict[str, Any]:
         "citations": list(response.get("citations") or []),
         "fallback_count": int(response.get("fallback_count") or 0),
         "escalated": bool(response.get("escalated", False)),
+    }
+
+
+def _confirmation_response(
+    trace_id: str,
+    request_id: str,
+    *,
+    reason_code: str,
+    message: str,
+    next_action: str,
+    retry_after_ms: int | None,
+) -> dict[str, Any]:
+    return {
+        "version": "v1",
+        "trace_id": trace_id,
+        "request_id": request_id,
+        "status": "pending_confirmation" if reason_code in {"CONFIRMATION_REQUIRED", "CONFIRMATION_TOKEN_MISMATCH"} else "insufficient_evidence",
+        "reason_code": reason_code,
+        "recoverable": True,
+        "next_action": next_action,
+        "retry_after_ms": retry_after_ms,
+        "answer": {"role": "assistant", "content": message},
+        "sources": [],
+        "citations": [],
+        "fallback_count": 0,
+        "escalated": False,
     }
 
 

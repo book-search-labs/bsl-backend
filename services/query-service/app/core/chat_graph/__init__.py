@@ -14,6 +14,16 @@ from app.core.chat_graph.runtime import (
     ChatGraphRuntimeResult,
     run_chat_graph,
 )
+from app.core.chat_graph.confirm_fsm import (
+    ConfirmDecision,
+    clear_pending_action,
+    evaluate_confirmation,
+    init_pending_action,
+    load_action_audit,
+    load_pending_action,
+    mark_execution_result,
+    mark_execution_start,
+)
 
 __all__ = [
     "CHAT_GRAPH_INITIAL_STATE_VERSION",
@@ -28,4 +38,12 @@ __all__ = [
     "ChatGraphNodeContract",
     "ChatGraphRuntimeResult",
     "run_chat_graph",
+    "ConfirmDecision",
+    "clear_pending_action",
+    "evaluate_confirmation",
+    "init_pending_action",
+    "load_action_audit",
+    "load_pending_action",
+    "mark_execution_result",
+    "mark_execution_start",
 ]
