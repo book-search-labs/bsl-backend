@@ -81,3 +81,11 @@ Harden chat live operations for production:
   - triage queue의 상위 reason/source를 요약해 즉시 조치 항목을 markdown/json으로 생성
 - [x] CI 진입점 추가
   - `RUN_CHAT_ONCALL_ACTION_PLAN=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-02, Bundle 6)
+- [x] Capacity/Cost guard gate 추가
+  - `scripts/eval/chat_capacity_cost_guard.py`
+  - launch gate 성능 지표 + LLM audit 로그(error ratio/tokens/cost)로 `NORMAL|DEGRADE_LEVEL_1|DEGRADE_LEVEL_2|FAIL_CLOSED` 결정을 산출
+  - 장애 상황에서도 커머스 핵심 intent 보존 우선순위를 출력
+- [x] CI 진입점 추가
+  - `RUN_CHAT_CAPACITY_COST_GUARD=1 ./scripts/test.sh`

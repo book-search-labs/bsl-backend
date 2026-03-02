@@ -1016,6 +1016,22 @@ python scripts/eval/chat_oncall_action_plan.py \
 - CI 옵션:
   - `RUN_CHAT_ONCALL_ACTION_PLAN=1 ./scripts/test.sh`
 
+## Capacity/Cost guard gate (I-0360, Bundle 6)
+- launch gate 성능 + LLM audit 로그를 결합해 load shedding 단계를 결정:
+```bash
+python scripts/eval/chat_capacity_cost_guard.py \
+  --reports-dir data/eval/reports \
+  --report-prefix chat_production_launch_gate \
+  --llm-audit-log var/llm_gateway/audit.log \
+  --audit-window-minutes 60 \
+  --max-mode DEGRADE_LEVEL_1 \
+  --gate
+```
+- 출력 mode:
+  - `NORMAL`, `DEGRADE_LEVEL_1`, `DEGRADE_LEVEL_2`, `FAIL_CLOSED`
+- CI 옵션:
+  - `RUN_CHAT_CAPACITY_COST_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

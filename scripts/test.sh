@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[1/20] Contract validation (optional)"
+echo "[1/21] Contract validation (optional)"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN=""
 if command -v python >/dev/null 2>&1; then
@@ -20,9 +20,9 @@ else
   echo "  - python not found; skipping contract validation"
 fi
 
-echo "[2/20] Contract compatibility gate (optional)"
+echo "[2/21] Contract compatibility gate (optional)"
 
-echo "[3/20] Event schema compatibility check (optional)"
+echo "[3/21] Event schema compatibility check (optional)"
 if [ "${RUN_SCHEMA_CHECK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/kafka/schema_compat_check.py" || exit 1
@@ -38,7 +38,7 @@ else
   echo "  - python not found; skipping contract compatibility check"
 fi
 
-echo "[4/20] Feature spec validation (optional)"
+echo "[4/21] Feature spec validation (optional)"
 if [ -n "$PYTHON_BIN" ]; then
   if $PYTHON_BIN -c "import yaml" >/dev/null 2>&1; then
     $PYTHON_BIN "$ROOT_DIR/scripts/validate_feature_spec.py" || exit 1
@@ -49,7 +49,7 @@ else
   echo "  - python not found; skipping feature spec validation"
 fi
 
-echo "[5/20] Offline eval gate (optional)"
+echo "[5/21] Offline eval gate (optional)"
 if [ "${RUN_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     EVAL_RUN_PATH="${EVAL_RUN_PATH:-$ROOT_DIR/evaluation/runs/sample_run.jsonl}"
@@ -62,7 +62,7 @@ else
   echo "  - set RUN_EVAL=1 to enable"
 fi
 
-echo "[6/20] Rerank eval gate (optional)"
+echo "[6/21] Rerank eval gate (optional)"
 if [ "${RUN_RERANK_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     RERANK_BASELINE_PATH="${RERANK_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/rerank_eval_sample.json}"
@@ -127,7 +127,7 @@ else
   echo "  - set RUN_RERANK_EVAL=1 to enable"
 fi
 
-echo "[7/20] Chat contract compatibility gate (optional)"
+echo "[7/21] Chat contract compatibility gate (optional)"
 if [ "${RUN_CHAT_CONTRACT_COMPAT_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CONTRACT_CASES_PATH="${CHAT_CONTRACT_CASES_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_contract_compat_v1.json}"
@@ -162,7 +162,7 @@ else
   echo "  - set RUN_CHAT_CONTRACT_COMPAT_EVAL=1 to enable"
 fi
 
-echo "[8/20] Chat reason taxonomy gate (optional)"
+echo "[8/21] Chat reason taxonomy gate (optional)"
 if [ "${RUN_CHAT_REASON_TAXONOMY_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_REASON_CASES_PATH="${CHAT_REASON_CASES_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_reason_taxonomy_cases_v1.json}"
@@ -200,7 +200,7 @@ else
   echo "  - set RUN_CHAT_REASON_TAXONOMY_EVAL=1 to enable"
 fi
 
-echo "[9/20] Chat full eval matrix (optional)"
+echo "[9/21] Chat full eval matrix (optional)"
 if [ "${RUN_CHAT_ALL_EVALS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_PARITY_OUT_DIR="${CHAT_PARITY_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -242,7 +242,7 @@ else
   echo "  - set RUN_CHAT_ALL_EVALS=1 to enable"
 fi
 
-echo "[10/20] Chat cutover gate (optional)"
+echo "[10/21] Chat cutover gate (optional)"
 if [ "${RUN_CHAT_CUTOVER_GATE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CUTOVER_CURRENT_STAGE="${CHAT_CUTOVER_CURRENT_STAGE:-10}"
@@ -262,7 +262,7 @@ else
   echo "  - set RUN_CHAT_CUTOVER_GATE=1 to enable"
 fi
 
-echo "[11/20] Chat legacy decommission gate (optional)"
+echo "[11/21] Chat legacy decommission gate (optional)"
 if [ "${RUN_CHAT_LEGACY_DECOMMISSION_CHECK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_LEGACY_DECOMMISSION_LIMIT="${CHAT_LEGACY_DECOMMISSION_LIMIT:-500}"
@@ -285,7 +285,7 @@ else
   echo "  - set RUN_CHAT_LEGACY_DECOMMISSION_CHECK=1 to enable"
 fi
 
-echo "[12/20] Chat production launch gate (optional)"
+echo "[12/21] Chat production launch gate (optional)"
 if [ "${RUN_CHAT_PROD_LAUNCH_GATE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_PROD_LAUNCH_OUT_DIR="${CHAT_PROD_LAUNCH_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -369,7 +369,7 @@ else
   echo "  - set RUN_CHAT_PROD_LAUNCH_GATE=1 to enable"
 fi
 
-echo "[13/20] Chat release train gate (optional)"
+echo "[13/21] Chat release train gate (optional)"
 if [ "${RUN_CHAT_RELEASE_TRAIN_GATE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_RELEASE_TRAIN_REPORT_PATH="${CHAT_RELEASE_TRAIN_REPORT_PATH:-}"
@@ -400,7 +400,7 @@ else
   echo "  - set RUN_CHAT_RELEASE_TRAIN_GATE=1 to enable"
 fi
 
-echo "[14/20] Chat liveops cycle (optional)"
+echo "[14/21] Chat liveops cycle (optional)"
 if [ "${RUN_CHAT_LIVEOPS_CYCLE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_LIVEOPS_OUT_DIR="${CHAT_LIVEOPS_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -437,7 +437,7 @@ else
   echo "  - set RUN_CHAT_LIVEOPS_CYCLE=1 to enable"
 fi
 
-echo "[15/20] Chat liveops summary gate (optional)"
+echo "[15/21] Chat liveops summary gate (optional)"
 if [ "${RUN_CHAT_LIVEOPS_SUMMARY_GATE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_LIVEOPS_SUMMARY_REPORTS_DIR="${CHAT_LIVEOPS_SUMMARY_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -460,7 +460,7 @@ else
   echo "  - set RUN_CHAT_LIVEOPS_SUMMARY_GATE=1 to enable"
 fi
 
-echo "[16/20] Chat liveops incident gate (optional)"
+echo "[16/21] Chat liveops incident gate (optional)"
 if [ "${RUN_CHAT_LIVEOPS_INCIDENT_GATE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_LIVEOPS_INCIDENT_REPORTS_DIR="${CHAT_LIVEOPS_INCIDENT_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -485,7 +485,7 @@ else
   echo "  - set RUN_CHAT_LIVEOPS_INCIDENT_GATE=1 to enable"
 fi
 
-echo "[17/20] Chat oncall action plan (optional)"
+echo "[17/21] Chat oncall action plan (optional)"
 if [ "${RUN_CHAT_ONCALL_ACTION_PLAN:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_ONCALL_TRIAGE_FILE="${CHAT_ONCALL_TRIAGE_FILE:-$ROOT_DIR/var/chat_graph/triage/chat_launch_failure_cases.jsonl}"
@@ -510,7 +510,51 @@ else
   echo "  - set RUN_CHAT_ONCALL_ACTION_PLAN=1 to enable"
 fi
 
-echo "[18/20] Canonical quality checks (optional)"
+echo "[18/21] Chat capacity/cost guard (optional)"
+if [ "${RUN_CHAT_CAPACITY_COST_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_CAPACITY_LAUNCH_REPORT="${CHAT_CAPACITY_LAUNCH_REPORT:-}"
+    CHAT_CAPACITY_REPORTS_DIR="${CHAT_CAPACITY_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_CAPACITY_REPORT_PREFIX="${CHAT_CAPACITY_REPORT_PREFIX:-chat_production_launch_gate}"
+    CHAT_CAPACITY_AUDIT_LOG="${CHAT_CAPACITY_AUDIT_LOG:-$ROOT_DIR/var/llm_gateway/audit.log}"
+    CHAT_CAPACITY_AUDIT_WINDOW_MIN="${CHAT_CAPACITY_AUDIT_WINDOW_MIN:-60}"
+    CHAT_CAPACITY_AUDIT_LIMIT="${CHAT_CAPACITY_AUDIT_LIMIT:-5000}"
+    CHAT_CAPACITY_MAX_AUDIT_ERROR_RATIO="${CHAT_CAPACITY_MAX_AUDIT_ERROR_RATIO:-0.08}"
+    CHAT_CAPACITY_MAX_COST_USD_PER_HOUR="${CHAT_CAPACITY_MAX_COST_USD_PER_HOUR:-5.0}"
+    CHAT_CAPACITY_MAX_TOKENS_PER_HOUR="${CHAT_CAPACITY_MAX_TOKENS_PER_HOUR:-300000}"
+    CHAT_CAPACITY_MAX_LLM_P95_MS="${CHAT_CAPACITY_MAX_LLM_P95_MS:-4000}"
+    CHAT_CAPACITY_MAX_FALLBACK_RATIO="${CHAT_CAPACITY_MAX_FALLBACK_RATIO:-0.15}"
+    CHAT_CAPACITY_MAX_INSUFFICIENT_RATIO="${CHAT_CAPACITY_MAX_INSUFFICIENT_RATIO:-0.30}"
+    CHAT_CAPACITY_MAX_MODE="${CHAT_CAPACITY_MAX_MODE:-DEGRADE_LEVEL_1}"
+
+    CHAT_CAPACITY_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_capacity_cost_guard.py"
+      --reports-dir "$CHAT_CAPACITY_REPORTS_DIR"
+      --report-prefix "$CHAT_CAPACITY_REPORT_PREFIX"
+      --llm-audit-log "$CHAT_CAPACITY_AUDIT_LOG"
+      --audit-window-minutes "$CHAT_CAPACITY_AUDIT_WINDOW_MIN"
+      --audit-limit "$CHAT_CAPACITY_AUDIT_LIMIT"
+      --max-audit-error-ratio "$CHAT_CAPACITY_MAX_AUDIT_ERROR_RATIO"
+      --max-cost-usd-per-hour "$CHAT_CAPACITY_MAX_COST_USD_PER_HOUR"
+      --max-tokens-per-hour "$CHAT_CAPACITY_MAX_TOKENS_PER_HOUR"
+      --max-llm-p95-ms "$CHAT_CAPACITY_MAX_LLM_P95_MS"
+      --max-fallback-ratio "$CHAT_CAPACITY_MAX_FALLBACK_RATIO"
+      --max-insufficient-evidence-ratio "$CHAT_CAPACITY_MAX_INSUFFICIENT_RATIO"
+      --max-mode "$CHAT_CAPACITY_MAX_MODE"
+      --gate
+    )
+    if [ -n "$CHAT_CAPACITY_LAUNCH_REPORT" ]; then
+      CHAT_CAPACITY_ARGS+=(--launch-gate-report "$CHAT_CAPACITY_LAUNCH_REPORT")
+    fi
+    $PYTHON_BIN "${CHAT_CAPACITY_ARGS[@]}" || exit 1
+  else
+    echo "  - python not found; skipping chat capacity/cost guard"
+  fi
+else
+  echo "  - set RUN_CHAT_CAPACITY_COST_GUARD=1 to enable"
+fi
+
+echo "[19/21] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -521,7 +565,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[19/20] E2E tests (optional)"
+echo "[20/21] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -532,4 +576,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[20/20] Done"
+echo "[21/21] Done"
