@@ -1345,6 +1345,28 @@ python scripts/eval/chat_event_delivery_guarantee.py \
 - CI 옵션:
   - `RUN_CHAT_EVENT_DELIVERY_GUARANTEE=1 ./scripts/test.sh`
 
+## Backpressure admission guard (I-0364, Bundle 3)
+- backpressure 이벤트에서 우선순위별 drop/큐 지표/핵심 인텐트 보호율/사용자 안내 누락을 검증:
+```bash
+python scripts/eval/chat_backpressure_admission_guard.py \
+  --events-jsonl var/chat_governance/backpressure_events.jsonl \
+  --window-hours 24 \
+  --max-drop-ratio 0.20 \
+  --max-critical-drop-total 0 \
+  --min-core-protected-ratio 0.98 \
+  --max-p95-queue-depth 80 \
+  --max-p95-queue-latency-ms 3000 \
+  --max-guidance-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - priority별 admitted/dropped 분포
+  - core intent protected ratio
+  - queue p95(depth/latency) 및 circuit-open 안내 누락
+- CI 옵션:
+  - `RUN_CHAT_BACKPRESSURE_ADMISSION_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

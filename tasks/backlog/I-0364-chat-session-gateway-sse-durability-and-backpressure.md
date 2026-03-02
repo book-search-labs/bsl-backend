@@ -67,3 +67,13 @@ Harden chat realtime session infrastructure:
   - `scripts/eval/test_chat_event_delivery_guarantee.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_EVENT_DELIVERY_GUARANTEE=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Backpressure admission guard 추가
+  - `scripts/eval/chat_backpressure_admission_guard.py`
+  - backpressure 이벤트(`priority/admitted/dropped/queue_depth/queue_latency_ms/circuit_open/user_guidance_sent`)를 집계해 drop ratio, core intent 보호율, queue p95, 안내 누락을 검증
+  - gate 모드에서 critical drop 발생, core intent 보호율 저하, queue p95 초과, circuit-open 안내 누락 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_backpressure_admission_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_BACKPRESSURE_ADMISSION_GUARD=1 ./scripts/test.sh`
