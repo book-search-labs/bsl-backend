@@ -990,6 +990,21 @@ python scripts/eval/chat_liveops_summary.py \
 - CI 옵션:
   - `RUN_CHAT_LIVEOPS_SUMMARY_GATE=1 ./scripts/test.sh`
 
+## LiveOps incident MTTA/MTTR gate (I-0360, Bundle 4)
+- 최근 cycle 리포트 기반 incident 지표 집계:
+```bash
+python scripts/eval/chat_liveops_incident_summary.py \
+  --reports-dir data/eval/reports \
+  --limit 20 \
+  --min-window 3 \
+  --max-mtta-sec 600 \
+  --max-mttr-sec 7200 \
+  --max-open-incidents 0 \
+  --gate
+```
+- CI 옵션:
+  - `RUN_CHAT_LIVEOPS_INCIDENT_GATE=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

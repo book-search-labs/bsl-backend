@@ -312,6 +312,7 @@ def main() -> int:
         "release_profile": launch_report.get("release_profile"),
         "launch_gate_report_path": str(launch_report_path),
         "launch_gate": {
+            "generated_at": str(launch_report.get("generated_at") or ""),
             "pass": bool(gate.get("pass")),
             "failures": list(gate.get("failures") or []),
             "baseline_failures": list(gate.get("baseline_failures") or []),

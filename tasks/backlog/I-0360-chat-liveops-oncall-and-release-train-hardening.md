@@ -67,3 +67,10 @@ Harden chat live operations for production:
   - 최근 cycle window에서 pass ratio/action 분포를 집계하고 gate fail 조건을 평가
 - [x] CI 진입점 추가
   - `RUN_CHAT_LIVEOPS_SUMMARY_GATE=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-02, Bundle 4)
+- [x] LiveOps incident(MTTA/MTTR) gate 추가
+  - `scripts/eval/chat_liveops_incident_summary.py`
+  - cycle 리포트에서 incident open/resolve를 추적해 MTTA/MTTR 및 open incident 수를 게이트로 평가
+- [x] CI 진입점 추가
+  - `RUN_CHAT_LIVEOPS_INCIDENT_GATE=1 ./scripts/test.sh`
