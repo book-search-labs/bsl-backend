@@ -96,3 +96,5 @@ Implement production launch gates for chat:
 - [x] baseline 회귀 비교 + 릴리스 서명 추가
   - baseline 비교: `--baseline-report` + 증가/하락 임계치(`--max-*-increase`, `--max-completion-rate-drop`)
   - 릴리스 메타: `model_version/prompt_version/policy_version/release_signature`
+- [x] 실패 케이스 triage queue 적재
+  - gate 실패 시 샘플을 JSONL로 내보냄(`--triage-out`, 기본 `var/chat_graph/triage/chat_launch_failure_cases.jsonl`)

@@ -187,3 +187,43 @@ def test_compare_with_baseline_detects_completion_regression():
     )
     assert len(failures) == 1
     assert "commerce completion rate regression" in failures[0]
+
+
+def test_build_failure_cases_collects_gate_and_completion_samples():
+    module = _load_module()
+    report = {
+        "generated_at": "2026-03-02T00:00:00+00:00",
+        "release_profile": {"release_signature": "sig123"},
+        "gate": {
+            "failures": ["legacy ratio exceeded: 0.1000 > 0.0000"],
+            "baseline_failures": [],
+            "pass": False,
+        },
+        "derived": {
+            "parity": {"summary": {"samples": []}},
+            "reason": {"samples": []},
+            "legacy": {"samples": []},
+            "completion": {
+                "samples": [
+                    {
+                        "intent": "ORDER_STATUS",
+                        "status": "insufficient_evidence",
+                        "next_action": "RETRY",
+                        "reason_code": "RAG_NO_CHUNKS",
+                    }
+                ]
+            },
+        },
+    }
+    rows = module.build_failure_cases(report, max_samples=10)
+    assert len(rows) >= 2
+    assert any(row.get("source") == "gate_failure" for row in rows)
+    assert any(row.get("source") == "completion" for row in rows)
+
+
+def test_write_failure_cases_jsonl(tmp_path: Path):
+    module = _load_module()
+    out = tmp_path / "triage" / "cases.jsonl"
+    module.write_failure_cases_jsonl(out, [{"case_id": "a1", "source": "gate_failure"}])
+    text = out.read_text(encoding="utf-8")
+    assert "\"case_id\": \"a1\"" in text

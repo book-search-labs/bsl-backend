@@ -918,6 +918,7 @@ python scripts/eval/chat_production_launch_gate.py \
   --max-legacy-count 0 \
   --min-commerce-completion-rate 0.90 \
   --max-insufficient-evidence-ratio 0.30 \
+  --triage-out var/chat_graph/triage/chat_launch_failure_cases.jsonl \
   --gate
 ```
 - 집계 소스:
@@ -926,6 +927,9 @@ python scripts/eval/chat_production_launch_gate.py \
   - reason taxonomy: `reason_taxonomy`
   - legacy decommission: `feature_router` global routing audit
   - completion: `launch_metrics`(우선) 또는 `var/chat_graph/replay/runs/*.json`(fallback)
+- triage queue:
+  - gate 실패 시 샘플 케이스를 JSONL로 적재
+  - 기본 경로: `var/chat_graph/triage/chat_launch_failure_cases.jsonl`
 - 런타임 launch metric 누적:
   - 모듈: `services/query-service/app/core/chat_graph/launch_metrics.py`
   - 메트릭: `chat_completion_total`, `chat_completion_rate{intent}`, `chat_insufficient_evidence_total`, `chat_insufficient_evidence_rate{domain}`

@@ -356,6 +356,149 @@ def compare_with_baseline(
     return failures
 
 
+def _case_id(item: Mapping[str, Any]) -> str:
+    parts = [
+        str(item.get("source") or ""),
+        str(item.get("trace_id") or ""),
+        str(item.get("request_id") or ""),
+        str(item.get("reason_code") or ""),
+        str(item.get("summary") or ""),
+    ]
+    raw = "|".join(parts).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()[:16]
+
+
+def build_failure_cases(
+    report: Mapping[str, Any],
+    *,
+    max_samples: int,
+) -> list[dict[str, Any]]:
+    derived = report.get("derived") if isinstance(report.get("derived"), Mapping) else {}
+    gate = report.get("gate") if isinstance(report.get("gate"), Mapping) else {}
+    release = report.get("release_profile") if isinstance(report.get("release_profile"), Mapping) else {}
+    generated_at = str(report.get("generated_at") or "")
+    samples: list[dict[str, Any]] = []
+
+    for failure in gate.get("failures") if isinstance(gate.get("failures"), list) else []:
+        samples.append(
+            {
+                "source": "gate_failure",
+                "severity": "BLOCKER",
+                "reason_code": "LAUNCH_GATE_FAILURE",
+                "summary": str(failure),
+                "trace_id": "",
+                "request_id": "",
+            }
+        )
+    for failure in gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []:
+        samples.append(
+            {
+                "source": "baseline_regression",
+                "severity": "BLOCKER",
+                "reason_code": "BASELINE_REGRESSION",
+                "summary": str(failure),
+                "trace_id": "",
+                "request_id": "",
+            }
+        )
+
+    parity = derived.get("parity") if isinstance(derived.get("parity"), Mapping) else {}
+    parity_summary = parity.get("summary") if isinstance(parity.get("summary"), Mapping) else {}
+    for row in parity_summary.get("samples") if isinstance(parity_summary.get("samples"), list) else []:
+        if not isinstance(row, Mapping):
+            continue
+        if str(row.get("severity") or "INFO").upper() == "INFO":
+            continue
+        samples.append(
+            {
+                "source": "shadow_parity",
+                "severity": str(row.get("severity") or "WARN"),
+                "reason_code": "SHADOW_DIFF",
+                "summary": f"diff_types={','.join(str(x) for x in (row.get('diff_types') or []))}",
+                "trace_id": str(row.get("trace_id") or ""),
+                "request_id": str(row.get("request_id") or ""),
+                "intent": str(row.get("intent") or ""),
+            }
+        )
+
+    reason = derived.get("reason") if isinstance(derived.get("reason"), Mapping) else {}
+    for row in reason.get("samples") if isinstance(reason.get("samples"), list) else []:
+        if not isinstance(row, Mapping):
+            continue
+        if not bool(row.get("invalid")) and not bool(row.get("unknown")):
+            continue
+        samples.append(
+            {
+                "source": "reason_taxonomy",
+                "severity": "WARN" if bool(row.get("unknown")) else "BLOCKER",
+                "reason_code": str(row.get("reason_code") or row.get("raw_reason_code") or "CHAT_REASON_UNSPECIFIED"),
+                "summary": "invalid_reason_code" if bool(row.get("invalid")) else "unknown_reason_code",
+                "trace_id": str(row.get("trace_id") or ""),
+                "request_id": str(row.get("request_id") or ""),
+                "intent": "",
+            }
+        )
+
+    legacy = derived.get("legacy") if isinstance(derived.get("legacy"), Mapping) else {}
+    for row in legacy.get("samples") if isinstance(legacy.get("samples"), list) else []:
+        if not isinstance(row, Mapping):
+            continue
+        if str(row.get("mode") or "").lower() != "legacy":
+            continue
+        samples.append(
+            {
+                "source": "legacy_routing",
+                "severity": "WARN",
+                "reason_code": str(row.get("reason") or "legacy"),
+                "summary": "legacy route observed during launch gate window",
+                "trace_id": str(row.get("trace_id") or ""),
+                "request_id": str(row.get("request_id") or ""),
+                "intent": "",
+            }
+        )
+
+    completion = derived.get("completion") if isinstance(derived.get("completion"), Mapping) else {}
+    for row in completion.get("samples") if isinstance(completion.get("samples"), list) else []:
+        if not isinstance(row, Mapping):
+            continue
+        status = str(row.get("status") or "").lower()
+        next_action = str(row.get("next_action") or "").upper()
+        if status == "ok" and next_action in {"", "NONE"}:
+            continue
+        samples.append(
+            {
+                "source": "completion",
+                "severity": "WARN",
+                "reason_code": str(row.get("reason_code") or "UNRESOLVED"),
+                "summary": f"status={status},next_action={next_action}",
+                "trace_id": str(row.get("trace_id") or ""),
+                "request_id": str(row.get("request_id") or ""),
+                "intent": str(row.get("intent") or ""),
+            }
+        )
+
+    dedup: dict[str, dict[str, Any]] = {}
+    for item in samples:
+        if not isinstance(item, Mapping):
+            continue
+        payload = dict(item)
+        payload["case_id"] = _case_id(payload)
+        payload["generated_at"] = generated_at
+        payload["release_signature"] = str(release.get("release_signature") or "")
+        dedup[str(payload["case_id"])] = payload
+    rows = list(dedup.values())
+    rows.sort(key=lambda item: (str(item.get("severity") or ""), str(item.get("source") or "")), reverse=True)
+    return rows[: max(1, int(max_samples))]
+
+
+def write_failure_cases_jsonl(path: Path, rows: list[Mapping[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = "\n".join(json.dumps(dict(row), ensure_ascii=False) for row in rows)
+    if text:
+        text += "\n"
+    path.write_text(text, encoding="utf-8")
+
+
 def render_markdown(report: Mapping[str, Any]) -> str:
     gate = report.get("gate") if isinstance(report.get("gate"), Mapping) else {}
     derived = report.get("derived") if isinstance(report.get("derived"), Mapping) else {}
@@ -424,6 +567,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-legacy-ratio-increase", type=float, default=0.0)
     parser.add_argument("--max-insufficient-evidence-ratio-increase", type=float, default=0.05)
     parser.add_argument("--max-completion-rate-drop", type=float, default=0.03)
+    parser.add_argument("--triage-out", default="var/chat_graph/triage/chat_launch_failure_cases.jsonl")
+    parser.add_argument("--triage-max-samples", type=int, default=50)
     parser.add_argument("--write-baseline", default="")
     return parser.parse_args()
 
@@ -574,6 +719,14 @@ def main() -> int:
     gate["thresholds"]["max_completion_rate_drop"] = float(args.max_completion_rate_drop)
     report["gate"] = gate
 
+    triage_cases = build_failure_cases(report, max_samples=max(1, int(args.triage_max_samples)))
+    report["triage"] = {
+        "case_count": len(triage_cases),
+        "path": str(args.triage_out),
+    }
+    if triage_cases and not bool(report["gate"]["pass"]):
+        write_failure_cases_jsonl(Path(args.triage_out), triage_cases)
+
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -588,6 +741,9 @@ def main() -> int:
     print(f"report_json={json_path}")
     print(f"report_md={md_path}")
     print(f"gate_pass={str(report['gate']['pass']).lower()}")
+    print(f"triage_case_count={len(triage_cases)}")
+    if triage_cases and not bool(report["gate"]["pass"]):
+        print(f"triage_path={args.triage_out}")
 
     if args.gate and not bool(report["gate"]["pass"]):
         for item in failures:
