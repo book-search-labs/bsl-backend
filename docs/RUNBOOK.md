@@ -741,6 +741,13 @@ python scripts/eval/chat_contract_compat_eval.py \
 python scripts/eval/chat_graph_replay.py --run-id <run_id>
 ```
 
+## Chat OpenFeature-style routing (B-0712)
+- router module: `services/query-service/app/core/chat_graph/feature_router.py`
+- flags:
+  - `QS_CHAT_FORCE_LEGACY`
+  - `QS_CHAT_LANGGRAPH_ENABLED`
+  - `QS_CHAT_OPENFEATURE_FLAGS_JSON` (`chat.engine.mode`, `chat.force_legacy`, `chat.langgraph.enabled`)
+
 ---
 
 ## Search Service (Local)

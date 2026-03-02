@@ -256,7 +256,7 @@ def test_run_chat_uses_graph_runtime_when_engine_mode_agent(monkeypatch):
             },
         )
 
-    monkeypatch.setattr(chat, "_chat_engine_mode", lambda: "agent")
+    monkeypatch.setattr(chat, "_resolve_chat_engine_mode", lambda request, trace_id, request_id: "agent")
     monkeypatch.setattr(chat, "run_chat_graph", fake_run_chat_graph)
 
     result = asyncio.run(
@@ -322,7 +322,7 @@ def test_run_chat_shadow_mode_returns_legacy_response(monkeypatch):
             response=shadow_resp,
         )
 
-    monkeypatch.setattr(chat, "_chat_engine_mode", lambda: "shadow")
+    monkeypatch.setattr(chat, "_resolve_chat_engine_mode", lambda request, trace_id, request_id: "shadow")
     monkeypatch.setattr(chat, "_run_chat_legacy", fake_legacy)
     monkeypatch.setattr(chat, "run_chat_graph", fake_graph)
 

@@ -42,6 +42,13 @@ from app.core.chat_graph.replay_store import (
     save_replay,
     start_run_record,
 )
+from app.core.chat_graph.feature_router import (
+    EngineRouteDecision,
+    append_routing_audit,
+    load_routing_audit,
+    resolve_engine_mode,
+)
+import app.core.chat_graph.feature_router as feature_router
 
 __all__ = [
     "CHAT_GRAPH_INITIAL_STATE_VERSION",
@@ -78,4 +85,9 @@ __all__ = [
     "response_diff",
     "save_replay",
     "start_run_record",
+    "EngineRouteDecision",
+    "append_routing_audit",
+    "load_routing_audit",
+    "resolve_engine_mode",
+    "feature_router",
 ]

@@ -11,8 +11,10 @@ from app.core.analyzer import analyze_query
 from app.core.cache import get_cache
 from app.core.chat_graph import (
     ChatGraphStateValidationError,
+    append_routing_audit,
     graph_state_to_legacy_session_snapshot,
     legacy_session_snapshot_to_graph_state,
+    resolve_engine_mode,
     run_chat_graph,
 )
 from app.core.metrics import metrics
@@ -505,6 +507,49 @@ def _chat_engine_mode() -> str:
     if mode in {"legacy", "shadow", "canary", "agent"}:
         return mode
     return "legacy"
+
+
+def _resolve_chat_engine_mode(request: Dict[str, Any], trace_id: str, request_id: str) -> str:
+    default_mode = _chat_engine_mode()
+    user_id = _extract_user_id(request) or ""
+    session_id = _resolve_session_id(request, user_id or None)
+    client = request.get("client") if isinstance(request.get("client"), dict) else {}
+    tenant_id = str(client.get("tenant_id") or "")
+    channel = str(client.get("channel") or "web")
+    query = _extract_query_text(request)
+    risk_band = "high" if _is_high_risk_query(query) else "normal"
+    context = {
+        "tenant_id": tenant_id,
+        "user_id": user_id,
+        "session_id": session_id,
+        "channel": channel,
+        "risk_band": risk_band,
+    }
+
+    try:
+        decision = resolve_engine_mode(default_mode=default_mode, context=context)
+    except Exception:
+        return default_mode
+
+    append_routing_audit(
+        session_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        context=context,
+        decision=decision,
+    )
+    metrics.inc(
+        "chat_engine_mode_resolution_total",
+        {
+            "mode": decision.mode,
+            "reason": decision.reason,
+            "source": decision.source,
+            "force_legacy": "true" if decision.force_legacy else "false",
+        },
+    )
+    if decision.force_legacy:
+        metrics.inc("chat_engine_kill_switch_total", {"mode": decision.mode})
+    return decision.mode
 
 
 def _is_failover_status(status_code: int) -> bool:
@@ -1666,7 +1711,7 @@ def _shadow_compare_responses(legacy: Dict[str, Any], graph: Dict[str, Any]) -> 
 
 
 async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
-    mode = _chat_engine_mode()
+    mode = _resolve_chat_engine_mode(request, trace_id, request_id)
     if mode == "legacy":
         return await _run_chat_legacy(request, trace_id, request_id)
 
