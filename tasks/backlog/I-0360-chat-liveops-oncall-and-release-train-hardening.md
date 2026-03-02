@@ -74,3 +74,10 @@ Harden chat live operations for production:
   - cycle 리포트에서 incident open/resolve를 추적해 MTTA/MTTR 및 open incident 수를 게이트로 평가
 - [x] CI 진입점 추가
   - `RUN_CHAT_LIVEOPS_INCIDENT_GATE=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-02, Bundle 5)
+- [x] On-call action plan 생성기 추가
+  - `scripts/eval/chat_oncall_action_plan.py`
+  - triage queue의 상위 reason/source를 요약해 즉시 조치 항목을 markdown/json으로 생성
+- [x] CI 진입점 추가
+  - `RUN_CHAT_ONCALL_ACTION_PLAN=1 ./scripts/test.sh`

@@ -1005,6 +1005,17 @@ python scripts/eval/chat_liveops_incident_summary.py \
 - CI 옵션:
   - `RUN_CHAT_LIVEOPS_INCIDENT_GATE=1 ./scripts/test.sh`
 
+## On-call action plan generator (I-0360, Bundle 5)
+- triage queue를 기반으로 우선순위 조치안 자동 생성:
+```bash
+python scripts/eval/chat_oncall_action_plan.py \
+  --triage-file var/chat_graph/triage/chat_launch_failure_cases.jsonl \
+  --out data/eval/reports \
+  --top-n 5
+```
+- CI 옵션:
+  - `RUN_CHAT_ONCALL_ACTION_PLAN=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
