@@ -1302,6 +1302,27 @@ python scripts/eval/chat_autoscaling_calibration.py \
 - CI 옵션:
   - `RUN_CHAT_AUTOSCALING_CALIBRATION=1 ./scripts/test.sh`
 
+## Session gateway durability gate (I-0364, Bundle 1)
+- 세션 연결/재연결/resume/heartbeat 이벤트를 분석해 SSE 세션 복구 안정성을 게이트로 검증:
+```bash
+python scripts/eval/chat_session_gateway_durability.py \
+  --events-jsonl var/chat_governance/session_gateway_events.jsonl \
+  --window-hours 24 \
+  --heartbeat-lag-threshold-ms 30000 \
+  --min-reconnect-success-rate 0.95 \
+  --min-resume-success-rate 0.98 \
+  --max-heartbeat-miss-ratio 0.05 \
+  --max-affinity-miss-ratio 0.02 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - reconnect/resume 성공률
+  - heartbeat miss ratio 및 affinity miss ratio
+  - active connection/세션 규모와 stale window
+- CI 옵션:
+  - `RUN_CHAT_SESSION_DURABILITY_GATE=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

@@ -47,3 +47,13 @@ Harden chat realtime session infrastructure:
 - Build durable SSE/WebSocket session gateway with resume tokens.
 - Guarantee ordered event delivery with bounded redelivery.
 - Apply adaptive backpressure/admission control under load.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Session gateway durability gate 추가
+  - `scripts/eval/chat_session_gateway_durability.py`
+  - 세션 이벤트(`connect/disconnect/heartbeat/reconnect/resume/failover`)를 집계해 reconnect/resume 성공률, heartbeat miss ratio, affinity miss ratio를 계산
+  - gate 모드에서 resume/reconnect 성공률 하락, heartbeat miss 증가, affinity miss 증가, stale window 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_session_gateway_durability.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_SESSION_DURABILITY_GATE=1 ./scripts/test.sh`
