@@ -53,3 +53,10 @@ Harden chat live operations for production:
   - `--apply-rollback` 사용 시 canary controller override(`force legacy`) 적용
 - [x] CI 진입점 추가
   - `RUN_CHAT_RELEASE_TRAIN_GATE=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-02, Bundle 2)
+- [x] LiveOps cycle 오케스트레이터 추가
+  - `scripts/eval/chat_liveops_cycle.py`
+  - launch gate 실행(또는 기존 리포트 입력) → release train decision → (옵션) rollback 적용을 단일 실행으로 제공
+- [x] CI 진입점 추가
+  - `RUN_CHAT_LIVEOPS_CYCLE=1 ./scripts/test.sh`

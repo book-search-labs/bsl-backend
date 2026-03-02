@@ -959,6 +959,23 @@ python scripts/eval/chat_release_train_gate.py \
 - CI 옵션:
   - `RUN_CHAT_RELEASE_TRAIN_GATE=1 ./scripts/test.sh`
 
+## LiveOps cycle orchestrator (I-0360, Bundle 2)
+- launch gate + release train 결정을 한 번에 실행:
+```bash
+python scripts/eval/chat_liveops_cycle.py \
+  --out data/eval/reports \
+  --replay-dir var/chat_graph/replay \
+  --completion-source auto \
+  --current-stage 25 \
+  --dwell-minutes 45
+```
+- 옵션:
+  - `--baseline-report ...` : launch gate baseline 회귀 비교 포함
+  - `--apply-rollback` : rollback 결정 시 force-legacy override 즉시 적용
+  - `--require-promote` : 결과가 promote가 아니면 실패 처리
+- CI 옵션:
+  - `RUN_CHAT_LIVEOPS_CYCLE=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

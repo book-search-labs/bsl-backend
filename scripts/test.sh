@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[1/16] Contract validation (optional)"
+echo "[1/17] Contract validation (optional)"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN=""
 if command -v python >/dev/null 2>&1; then
@@ -20,9 +20,9 @@ else
   echo "  - python not found; skipping contract validation"
 fi
 
-echo "[2/16] Contract compatibility gate (optional)"
+echo "[2/17] Contract compatibility gate (optional)"
 
-echo "[3/16] Event schema compatibility check (optional)"
+echo "[3/17] Event schema compatibility check (optional)"
 if [ "${RUN_SCHEMA_CHECK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/kafka/schema_compat_check.py" || exit 1
@@ -38,7 +38,7 @@ else
   echo "  - python not found; skipping contract compatibility check"
 fi
 
-echo "[4/16] Feature spec validation (optional)"
+echo "[4/17] Feature spec validation (optional)"
 if [ -n "$PYTHON_BIN" ]; then
   if $PYTHON_BIN -c "import yaml" >/dev/null 2>&1; then
     $PYTHON_BIN "$ROOT_DIR/scripts/validate_feature_spec.py" || exit 1
@@ -49,7 +49,7 @@ else
   echo "  - python not found; skipping feature spec validation"
 fi
 
-echo "[5/16] Offline eval gate (optional)"
+echo "[5/17] Offline eval gate (optional)"
 if [ "${RUN_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     EVAL_RUN_PATH="${EVAL_RUN_PATH:-$ROOT_DIR/evaluation/runs/sample_run.jsonl}"
@@ -62,7 +62,7 @@ else
   echo "  - set RUN_EVAL=1 to enable"
 fi
 
-echo "[6/16] Rerank eval gate (optional)"
+echo "[6/17] Rerank eval gate (optional)"
 if [ "${RUN_RERANK_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     RERANK_BASELINE_PATH="${RERANK_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/rerank_eval_sample.json}"
@@ -127,7 +127,7 @@ else
   echo "  - set RUN_RERANK_EVAL=1 to enable"
 fi
 
-echo "[7/16] Chat contract compatibility gate (optional)"
+echo "[7/17] Chat contract compatibility gate (optional)"
 if [ "${RUN_CHAT_CONTRACT_COMPAT_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CONTRACT_CASES_PATH="${CHAT_CONTRACT_CASES_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_contract_compat_v1.json}"
@@ -162,7 +162,7 @@ else
   echo "  - set RUN_CHAT_CONTRACT_COMPAT_EVAL=1 to enable"
 fi
 
-echo "[8/16] Chat reason taxonomy gate (optional)"
+echo "[8/17] Chat reason taxonomy gate (optional)"
 if [ "${RUN_CHAT_REASON_TAXONOMY_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_REASON_CASES_PATH="${CHAT_REASON_CASES_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_reason_taxonomy_cases_v1.json}"
@@ -200,7 +200,7 @@ else
   echo "  - set RUN_CHAT_REASON_TAXONOMY_EVAL=1 to enable"
 fi
 
-echo "[9/16] Chat full eval matrix (optional)"
+echo "[9/17] Chat full eval matrix (optional)"
 if [ "${RUN_CHAT_ALL_EVALS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_PARITY_OUT_DIR="${CHAT_PARITY_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -242,7 +242,7 @@ else
   echo "  - set RUN_CHAT_ALL_EVALS=1 to enable"
 fi
 
-echo "[10/16] Chat cutover gate (optional)"
+echo "[10/17] Chat cutover gate (optional)"
 if [ "${RUN_CHAT_CUTOVER_GATE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CUTOVER_CURRENT_STAGE="${CHAT_CUTOVER_CURRENT_STAGE:-10}"
@@ -262,7 +262,7 @@ else
   echo "  - set RUN_CHAT_CUTOVER_GATE=1 to enable"
 fi
 
-echo "[11/16] Chat legacy decommission gate (optional)"
+echo "[11/17] Chat legacy decommission gate (optional)"
 if [ "${RUN_CHAT_LEGACY_DECOMMISSION_CHECK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_LEGACY_DECOMMISSION_LIMIT="${CHAT_LEGACY_DECOMMISSION_LIMIT:-500}"
@@ -285,7 +285,7 @@ else
   echo "  - set RUN_CHAT_LEGACY_DECOMMISSION_CHECK=1 to enable"
 fi
 
-echo "[12/16] Chat production launch gate (optional)"
+echo "[12/17] Chat production launch gate (optional)"
 if [ "${RUN_CHAT_PROD_LAUNCH_GATE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_PROD_LAUNCH_OUT_DIR="${CHAT_PROD_LAUNCH_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -369,7 +369,7 @@ else
   echo "  - set RUN_CHAT_PROD_LAUNCH_GATE=1 to enable"
 fi
 
-echo "[13/16] Chat release train gate (optional)"
+echo "[13/17] Chat release train gate (optional)"
 if [ "${RUN_CHAT_RELEASE_TRAIN_GATE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_RELEASE_TRAIN_REPORT_PATH="${CHAT_RELEASE_TRAIN_REPORT_PATH:-}"
@@ -400,7 +400,44 @@ else
   echo "  - set RUN_CHAT_RELEASE_TRAIN_GATE=1 to enable"
 fi
 
-echo "[14/16] Canonical quality checks (optional)"
+echo "[14/17] Chat liveops cycle (optional)"
+if [ "${RUN_CHAT_LIVEOPS_CYCLE:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_LIVEOPS_OUT_DIR="${CHAT_LIVEOPS_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_LIVEOPS_REPLAY_DIR="${CHAT_LIVEOPS_REPLAY_DIR:-$ROOT_DIR/var/chat_graph/replay}"
+    CHAT_LIVEOPS_COMPLETION_SOURCE="${CHAT_LIVEOPS_COMPLETION_SOURCE:-auto}"
+    CHAT_LIVEOPS_CURRENT_STAGE="${CHAT_LIVEOPS_CURRENT_STAGE:-10}"
+    CHAT_LIVEOPS_DWELL_MINUTES="${CHAT_LIVEOPS_DWELL_MINUTES:-0}"
+    CHAT_LIVEOPS_APPLY_ROLLBACK="${CHAT_LIVEOPS_APPLY_ROLLBACK:-0}"
+    CHAT_LIVEOPS_REQUIRE_PROMOTE="${CHAT_LIVEOPS_REQUIRE_PROMOTE:-0}"
+    CHAT_LIVEOPS_BASELINE_PATH="${CHAT_LIVEOPS_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/chat_production_launch_gate_baseline.json}"
+
+    CHAT_LIVEOPS_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_liveops_cycle.py"
+      --out "$CHAT_LIVEOPS_OUT_DIR"
+      --replay-dir "$CHAT_LIVEOPS_REPLAY_DIR"
+      --completion-source "$CHAT_LIVEOPS_COMPLETION_SOURCE"
+      --current-stage "$CHAT_LIVEOPS_CURRENT_STAGE"
+      --dwell-minutes "$CHAT_LIVEOPS_DWELL_MINUTES"
+    )
+    if [ -f "$CHAT_LIVEOPS_BASELINE_PATH" ]; then
+      CHAT_LIVEOPS_ARGS+=(--baseline-report "$CHAT_LIVEOPS_BASELINE_PATH")
+    fi
+    if [ "$CHAT_LIVEOPS_APPLY_ROLLBACK" = "1" ]; then
+      CHAT_LIVEOPS_ARGS+=(--apply-rollback)
+    fi
+    if [ "$CHAT_LIVEOPS_REQUIRE_PROMOTE" = "1" ]; then
+      CHAT_LIVEOPS_ARGS+=(--require-promote)
+    fi
+    $PYTHON_BIN "${CHAT_LIVEOPS_ARGS[@]}" || exit 1
+  else
+    echo "  - python not found; skipping chat liveops cycle"
+  fi
+else
+  echo "  - set RUN_CHAT_LIVEOPS_CYCLE=1 to enable"
+fi
+
+echo "[15/17] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -411,7 +448,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[15/16] E2E tests (optional)"
+echo "[16/17] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -422,4 +459,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[16/16] Done"
+echo "[17/17] Done"
