@@ -1,8 +1,9 @@
 from app.core.cache import CacheClient
-from app.core.chat_graph import feature_router
+from app.core.chat_graph import canary_controller, feature_router
 
 
 def test_resolve_engine_mode_defaults_to_input_mode(monkeypatch):
+    canary_controller._CACHE = CacheClient(None)
     monkeypatch.delenv("QS_CHAT_FORCE_LEGACY", raising=False)
     monkeypatch.delenv("QS_CHAT_OPENFEATURE_FLAGS_JSON", raising=False)
 
@@ -22,6 +23,7 @@ def test_resolve_engine_mode_defaults_to_input_mode(monkeypatch):
 
 
 def test_resolve_engine_mode_honors_force_legacy(monkeypatch):
+    canary_controller._CACHE = CacheClient(None)
     monkeypatch.setenv("QS_CHAT_FORCE_LEGACY", "1")
 
     decision = feature_router.resolve_engine_mode(
@@ -41,6 +43,7 @@ def test_resolve_engine_mode_honors_force_legacy(monkeypatch):
 
 
 def test_resolve_engine_mode_applies_context_overrides(monkeypatch):
+    canary_controller._CACHE = CacheClient(None)
     monkeypatch.delenv("QS_CHAT_FORCE_LEGACY", raising=False)
     monkeypatch.setenv(
         "QS_CHAT_OPENFEATURE_FLAGS_JSON",
@@ -62,6 +65,7 @@ def test_resolve_engine_mode_applies_context_overrides(monkeypatch):
 
 
 def test_resolve_engine_mode_falls_back_to_legacy_on_high_risk(monkeypatch):
+    canary_controller._CACHE = CacheClient(None)
     monkeypatch.delenv("QS_CHAT_FORCE_LEGACY", raising=False)
     monkeypatch.setenv("QS_CHAT_OPENFEATURE_FLAGS_JSON", '{"defaults":{"chat.engine.mode":"agent"}}')
 
@@ -81,6 +85,7 @@ def test_resolve_engine_mode_falls_back_to_legacy_on_high_risk(monkeypatch):
 
 
 def test_routing_audit_append_and_load():
+    canary_controller._CACHE = CacheClient(None)
     feature_router._CACHE = CacheClient(None)
     decision = feature_router.EngineRouteDecision(
         mode="legacy",

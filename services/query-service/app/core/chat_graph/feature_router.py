@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.core.cache import get_cache
+from app.core.chat_graph.canary_controller import current_force_legacy_override
 
 _CACHE = get_cache()
 _ALLOWED_MODES = {"legacy", "shadow", "canary", "agent"}
@@ -88,6 +89,10 @@ def resolve_engine_mode(
     default_mode: str,
     context: dict[str, str],
 ) -> EngineRouteDecision:
+    override = current_force_legacy_override()
+    if isinstance(override, dict):
+        return EngineRouteDecision(mode="legacy", reason="auto_rollback_override", source="canary", force_legacy=True)
+
     payload = _load_flag_payload()
 
     force_legacy = _bool_from_env("QS_CHAT_FORCE_LEGACY", False)

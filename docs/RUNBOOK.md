@@ -755,6 +755,16 @@ python scripts/eval/chat_graph_replay.py --run-id <run_id>
 python scripts/eval/chat_shadow_summary.py --limit 200
 ```
 
+## Chat canary gate + auto rollback (B-0714)
+- controller module: `services/query-service/app/core/chat_graph/canary_controller.py`
+- apply script:
+```bash
+python scripts/eval/chat_canary_gate.py --limit 200 --apply
+```
+- rollout stage guideline:
+  - `shadow(0%) -> canary(5%) -> 10% -> 25% -> 50% -> 100%`
+  - 단계별 dwell: 최소 30분, `BLOCKER` 비율 임계치 초과 시 즉시 force-legacy
+
 ---
 
 ## Search Service (Local)

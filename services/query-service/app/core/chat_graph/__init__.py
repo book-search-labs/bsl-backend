@@ -58,6 +58,15 @@ from app.core.chat_graph.shadow_comparator import (
 )
 import app.core.chat_graph.feature_router as feature_router
 import app.core.chat_graph.shadow_comparator as shadow_comparator
+from app.core.chat_graph.canary_controller import (
+    CanaryGateDecision,
+    RollbackResult,
+    apply_auto_rollback,
+    current_force_legacy_override,
+    evaluate_canary_gate,
+    load_rollback_audit,
+)
+import app.core.chat_graph.canary_controller as canary_controller
 
 __all__ = [
     "CHAT_GRAPH_INITIAL_STATE_VERSION",
@@ -106,4 +115,11 @@ __all__ = [
     "compare_shadow_response",
     "load_shadow_diffs",
     "shadow_comparator",
+    "CanaryGateDecision",
+    "RollbackResult",
+    "apply_auto_rollback",
+    "current_force_legacy_override",
+    "evaluate_canary_gate",
+    "load_rollback_audit",
+    "canary_controller",
 ]
