@@ -57,3 +57,14 @@ Add FinOps-grade control for production chat:
   - `scripts/eval/test_chat_unit_economics_slo.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_UNIT_ECONOMICS_SLO=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Cost optimizer policy gate 추가
+  - `scripts/eval/chat_cost_optimizer_policy.py`
+  - 세션 비용 이벤트를 기반으로 budget utilization(`soft/hard`)을 해석해 `NORMAL/SOFT_CLAMP/HARD_CLAMP` 모드 결정
+  - intent별 risk/resolution/cost를 반영해 route policy(`TRUSTED/BALANCED/LIGHT`)와 action reason을 계산
+  - 고위험 intent light 강등/저품질 intent light 라우팅/하드클램프 미적용 같은 운영 사고를 gate에서 차단
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_cost_optimizer_policy.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_COST_OPTIMIZER_POLICY=1 ./scripts/test.sh`

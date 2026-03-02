@@ -1408,6 +1408,26 @@ python scripts/eval/chat_unit_economics_slo.py \
 - CI 옵션:
   - `RUN_CHAT_UNIT_ECONOMICS_SLO=1 ./scripts/test.sh`
 
+## Cost optimizer policy gate (I-0365, Bundle 2)
+- 예산 압력과 품질 제약을 함께 고려해 intent별 라우팅 정책(`NORMAL/SOFT_CLAMP/HARD_CLAMP`)을 계산:
+```bash
+python scripts/eval/chat_cost_optimizer_policy.py \
+  --events-jsonl var/chat_finops/session_cost_events.jsonl \
+  --window-days 7 \
+  --soft-budget-utilization 0.75 \
+  --hard-budget-utilization 0.90 \
+  --min-resolution-rate 0.80 \
+  --max-cost-per-resolved-session 2.5 \
+  --high-risk-intents CANCEL_ORDER,REFUND_REQUEST,ADDRESS_CHANGE,PAYMENT_CHANGE \
+  --gate
+```
+- 산출물:
+  - clamp mode 결정(`NORMAL/SOFT_CLAMP/HARD_CLAMP`)
+  - intent별 route policy(`TRUSTED/BALANCED/LIGHT`)와 적용 사유
+  - budget 압력 기반 예상 절감 비용(`estimated_savings_total_usd`)
+- CI 옵션:
+  - `RUN_CHAT_COST_OPTIMIZER_POLICY=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
