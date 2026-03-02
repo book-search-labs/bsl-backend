@@ -52,6 +52,7 @@ from app.core.chat_graph.langsmith_trace import (
     resolve_trace_decision,
 )
 from app.core.chat_graph.perf_budget import append_perf_sample
+from app.core.chat_graph.launch_metrics import record_launch_metrics
 from app.core.metrics import metrics
 
 
@@ -288,6 +289,7 @@ async def run_chat_graph(
                 response=error_response,
                 stub_response=None,
             )
+        _record_launch_readiness_metrics(handled, error_response)
         _record_perf_budget_sample(handled, error_response, started_at=started_at, engine_mode=engine_mode)
         return ChatGraphRuntimeResult(state=handled, response=error_response, stage="error_handler", run_id=resolved_run_id)
     except Exception:
@@ -318,6 +320,7 @@ async def run_chat_graph(
                 response=error_response,
                 stub_response=None,
             )
+        _record_launch_readiness_metrics(handled, error_response)
         _record_perf_budget_sample(handled, error_response, started_at=started_at, engine_mode=engine_mode)
         return ChatGraphRuntimeResult(state=handled, response=error_response, stage="error_handler", run_id=resolved_run_id)
 
@@ -355,6 +358,7 @@ async def run_chat_graph(
             response=final_response,
             stub_response=stub_response,
         )
+    _record_launch_readiness_metrics(state, final_response)
     _record_perf_budget_sample(state, final_response, started_at=started_at, engine_mode=engine_mode)
     return ChatGraphRuntimeResult(state=state, response=final_response, stage="persist", run_id=resolved_run_id)
 
@@ -417,6 +421,15 @@ def _record_perf_budget_sample(
         runtime_ms=runtime_ms,
         llm_path=llm_path,
         tool_calls=tool_calls,
+    )
+
+
+def _record_launch_readiness_metrics(state: ChatGraphState, response: Mapping[str, Any]) -> None:
+    record_launch_metrics(
+        intent=state.get("intent"),
+        status=response.get("status"),
+        next_action=response.get("next_action"),
+        reason_code=response.get("reason_code") or state.get("reason_code"),
     )
 
 

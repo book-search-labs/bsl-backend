@@ -110,6 +110,11 @@ from app.core.chat_graph.perf_budget import (
     evaluate_cutover_decision,
 )
 import app.core.chat_graph.perf_budget as perf_budget
+from app.core.chat_graph.launch_metrics import (
+    load_launch_metrics_summary,
+    record_launch_metrics,
+)
+import app.core.chat_graph.launch_metrics as launch_metrics
 
 __all__ = [
     "CHAT_GRAPH_INITIAL_STATE_VERSION",
@@ -200,4 +205,7 @@ __all__ = [
     "evaluate_budget_gate",
     "evaluate_cutover_decision",
     "perf_budget",
+    "load_launch_metrics_summary",
+    "record_launch_metrics",
+    "launch_metrics",
 ]

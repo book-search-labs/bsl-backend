@@ -1,7 +1,7 @@
 import asyncio
 
 from app.core.cache import CacheClient
-from app.core.chat_graph import authz_gate, confirm_fsm, domain_nodes, langsmith_trace, perf_budget
+from app.core.chat_graph import authz_gate, confirm_fsm, domain_nodes, langsmith_trace, launch_metrics, perf_budget
 from app.core.chat_graph.runtime import run_chat_graph
 
 
@@ -370,6 +370,40 @@ def test_run_chat_graph_records_perf_budget_sample():
 
     summary = perf_budget.build_perf_summary(limit=10)
     assert summary["window_size"] >= 1
+
+
+def test_run_chat_graph_records_launch_readiness_metrics():
+    launch_metrics._CACHE = CacheClient(None)
+
+    async def fake_legacy_executor(request, trace_id, request_id):
+        return {
+            "version": "v1",
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "status": "ok",
+            "reason_code": "OK",
+            "recoverable": False,
+            "next_action": "NONE",
+            "retry_after_ms": None,
+            "answer": {"role": "assistant", "content": "정상 응답"},
+            "sources": [],
+            "citations": [],
+            "fallback_count": 0,
+            "escalated": False,
+        }
+
+    _run(
+        run_chat_graph(
+            {"session_id": "u:112:default", "message": {"role": "user", "content": "주문 상태 알려줘"}},
+            "trace_112",
+            "req_112",
+            legacy_executor=fake_legacy_executor,
+        )
+    )
+
+    summary = launch_metrics.load_launch_metrics_summary()
+    assert summary["total"] >= 1
+    assert isinstance(summary.get("by_intent"), dict)
 
 
 def test_run_chat_graph_denies_sensitive_action_without_auth_context():
