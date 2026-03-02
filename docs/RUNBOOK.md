@@ -1093,6 +1093,20 @@ python scripts/eval/chat_readiness_score.py \
 - CI 옵션:
   - `RUN_CHAT_READINESS_SCORE=1 ./scripts/test.sh`
 
+## Gameday drillpack template (I-0361, Bundle 2)
+- triage reason 분포를 반영해 장애 훈련 체크리스트 자동 생성:
+```bash
+python scripts/eval/chat_gameday_drillpack.py \
+  --triage-file var/chat_graph/triage/chat_launch_failure_cases.jsonl \
+  --top-reasons 5 \
+  --out data/eval/reports \
+  --gate
+```
+- 필요 시 triage 데이터 강제:
+  - `--require-triage`
+- CI 옵션:
+  - `RUN_CHAT_GAMEDAY_DRILLPACK=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

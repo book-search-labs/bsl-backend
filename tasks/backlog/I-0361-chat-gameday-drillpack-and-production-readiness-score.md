@@ -43,3 +43,11 @@ Operationalize chat reliability with gamedays:
   - gate 모드에서 min_score 미달, blocker 존재, require_promote 위반 시 실패 처리
 - [x] CI 진입점 추가
   - `RUN_CHAT_READINESS_SCORE=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Gameday drillpack 생성기 추가
+  - `scripts/eval/chat_gameday_drillpack.py`
+  - LLM timeout/tool outage/근거부족/비용폭주 시나리오별 Detection→Mitigation→Validation→Evidence 체크리스트를 markdown/json으로 자동 생성
+  - triage top reasons를 reason_hints에 반영
+- [x] CI 진입점 추가
+  - `RUN_CHAT_GAMEDAY_DRILLPACK=1 ./scripts/test.sh`
