@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[1/9] Contract validation (optional)"
+echo "[1/10] Contract validation (optional)"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN=""
 if command -v python >/dev/null 2>&1; then
@@ -20,9 +20,9 @@ else
   echo "  - python not found; skipping contract validation"
 fi
 
-echo "[2/9] Contract compatibility gate (optional)"
+echo "[2/10] Contract compatibility gate (optional)"
 
-echo "[3/9] Event schema compatibility check (optional)"
+echo "[3/10] Event schema compatibility check (optional)"
 if [ "${RUN_SCHEMA_CHECK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/kafka/schema_compat_check.py" || exit 1
@@ -38,7 +38,7 @@ else
   echo "  - python not found; skipping contract compatibility check"
 fi
 
-echo "[4/9] Feature spec validation (optional)"
+echo "[4/10] Feature spec validation (optional)"
 if [ -n "$PYTHON_BIN" ]; then
   if $PYTHON_BIN -c "import yaml" >/dev/null 2>&1; then
     $PYTHON_BIN "$ROOT_DIR/scripts/validate_feature_spec.py" || exit 1
@@ -49,7 +49,7 @@ else
   echo "  - python not found; skipping feature spec validation"
 fi
 
-echo "[5/9] Offline eval gate (optional)"
+echo "[5/10] Offline eval gate (optional)"
 if [ "${RUN_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     EVAL_RUN_PATH="${EVAL_RUN_PATH:-$ROOT_DIR/evaluation/runs/sample_run.jsonl}"
@@ -62,7 +62,7 @@ else
   echo "  - set RUN_EVAL=1 to enable"
 fi
 
-echo "[6/9] Rerank eval gate (optional)"
+echo "[6/10] Rerank eval gate (optional)"
 if [ "${RUN_RERANK_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     RERANK_BASELINE_PATH="${RERANK_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/rerank_eval_sample.json}"
@@ -127,7 +127,42 @@ else
   echo "  - set RUN_RERANK_EVAL=1 to enable"
 fi
 
-echo "[7/9] Canonical quality checks (optional)"
+echo "[7/10] Chat contract compatibility gate (optional)"
+if [ "${RUN_CHAT_CONTRACT_COMPAT_EVAL:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_CONTRACT_CASES_PATH="${CHAT_CONTRACT_CASES_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_contract_compat_v1.json}"
+    CHAT_CONTRACT_OUT_DIR="${CHAT_CONTRACT_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_CONTRACT_MIN_CASES="${CHAT_CONTRACT_MIN_CASES:-3}"
+    CHAT_CONTRACT_REQUIRE_ALL="${CHAT_CONTRACT_REQUIRE_ALL:-1}"
+    CHAT_CONTRACT_BASELINE_PATH="${CHAT_CONTRACT_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/chat_contract_compat_eval_baseline.json}"
+    CHAT_CONTRACT_MAX_CASE_DROP="${CHAT_CONTRACT_MAX_CASE_DROP:-0}"
+    CHAT_CONTRACT_MAX_FAILURE_INCREASE="${CHAT_CONTRACT_MAX_FAILURE_INCREASE:-0}"
+
+    CHAT_CONTRACT_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_contract_compat_eval.py"
+      --cases-json "$CHAT_CONTRACT_CASES_PATH"
+      --contracts-root "$ROOT_DIR"
+      --out "$CHAT_CONTRACT_OUT_DIR"
+      --min-cases "$CHAT_CONTRACT_MIN_CASES"
+      --max-case-drop "$CHAT_CONTRACT_MAX_CASE_DROP"
+      --max-failure-increase "$CHAT_CONTRACT_MAX_FAILURE_INCREASE"
+      --gate
+    )
+    if [ "$CHAT_CONTRACT_REQUIRE_ALL" = "1" ]; then
+      CHAT_CONTRACT_ARGS+=(--require-all)
+    fi
+    if [ -f "$CHAT_CONTRACT_BASELINE_PATH" ]; then
+      CHAT_CONTRACT_ARGS+=(--baseline-report "$CHAT_CONTRACT_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_CONTRACT_ARGS[@]}" || exit 1
+  else
+    echo "  - python not found; skipping chat contract compatibility eval gate"
+  fi
+else
+  echo "  - set RUN_CHAT_CONTRACT_COMPAT_EVAL=1 to enable"
+fi
+
+echo "[8/10] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -138,7 +173,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[8/9] E2E tests (optional)"
+echo "[9/10] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -149,4 +184,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[9/9] Done"
+echo "[10/10] Done"

@@ -1,0 +1,104 @@
+{
+  "version": "v1",
+  "cases": [
+    {
+      "id": "chat_response_ok",
+      "schema": "contracts/chat-response.schema.json",
+      "check_reason_code": true,
+      "required_paths": ["version", "trace_id", "request_id", "status", "reason_code", "recoverable", "next_action", "answer.content"],
+      "response": {
+        "version": "v1",
+        "trace_id": "trace_demo",
+        "request_id": "req_demo",
+        "status": "ok",
+        "reason_code": "OK",
+        "recoverable": false,
+        "next_action": "NONE",
+        "retry_after_ms": null,
+        "fallback_count": 0,
+        "escalated": false,
+        "answer": {"role": "assistant", "content": "Returns are accepted within 30 days. [policy#0]"},
+        "sources": [
+          {
+            "citation_key": "policy#0",
+            "doc_id": "policy",
+            "chunk_id": "policy::chunk_0",
+            "title": "Return Policy",
+            "url": "https://example.com/policy",
+            "snippet": "Returns are accepted within 30 days of purchase."
+          }
+        ],
+        "citations": ["policy#0"]
+      }
+    },
+    {
+      "id": "chat_response_fallback",
+      "schema": "contracts/chat-response.schema.json",
+      "check_reason_code": true,
+      "required_paths": ["status", "reason_code", "recoverable", "next_action", "answer.content"],
+      "response": {
+        "version": "v1",
+        "trace_id": "trace_fallback",
+        "request_id": "req_fallback",
+        "status": "insufficient_evidence",
+        "reason_code": "PROVIDER_TIMEOUT",
+        "recoverable": true,
+        "next_action": "RETRY",
+        "retry_after_ms": 3000,
+        "fallback_count": 1,
+        "escalated": false,
+        "answer": {"role": "assistant", "content": "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."},
+        "sources": [],
+        "citations": []
+      }
+    },
+    {
+      "id": "chat_session_state_response",
+      "schema": "contracts/chat-session-state-response.schema.json",
+      "check_reason_code": false,
+      "required_paths": ["version", "trace_id", "request_id", "status", "session.session_id", "session.unresolved_context.reason_code"],
+      "response": {
+        "version": "v1",
+        "trace_id": "trace_01",
+        "request_id": "req_01",
+        "status": "ok",
+        "session": {
+          "session_id": "u:101:default",
+          "fallback_count": 2,
+          "fallback_escalation_threshold": 3,
+          "escalation_ready": false,
+          "recommended_action": "RETRY",
+          "recommended_message": "생성된 답변과 근거 문서가 일치하지 않아 답변을 보류했습니다. 잠시 후 다시 시도해 주세요.",
+          "unresolved_context": {
+            "reason_code": "LLM_NO_CITATIONS",
+            "reason_message": "생성된 답변과 근거 문서가 일치하지 않아 답변을 보류했습니다. 잠시 후 다시 시도해 주세요.",
+            "next_action": "RETRY",
+            "trace_id": "trace_prev",
+            "request_id": "req_prev",
+            "updated_at": 1760000000,
+            "query_preview": "환불 조건을 정리해줘. 주문번호는 1234입니다."
+          }
+        }
+      }
+    },
+    {
+      "id": "chat_session_reset_response",
+      "schema": "contracts/chat-session-reset-response.schema.json",
+      "check_reason_code": false,
+      "required_paths": ["version", "trace_id", "request_id", "status", "session.session_id", "session.reset_applied"],
+      "response": {
+        "version": "v1",
+        "trace_id": "trace_01",
+        "request_id": "req_01",
+        "status": "ok",
+        "session": {
+          "session_id": "u:101:default",
+          "reset_applied": true,
+          "previous_fallback_count": 3,
+          "previous_unresolved_context": true,
+          "reset_at_ms": 1760000100000
+        }
+      }
+    }
+  ]
+}

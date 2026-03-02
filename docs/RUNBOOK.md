@@ -697,6 +697,16 @@ export QS_LLM_MODEL=llama3.1:8b-instruct
 ./scripts/smoke_chat.sh
 ```
 
+## Chat contract compatibility gate (B-0701)
+```bash
+python scripts/eval/chat_contract_compat_eval.py \
+  --cases-json services/query-service/tests/fixtures/chat_contract_compat_v1.json \
+  --contracts-root . \
+  --require-all \
+  --gate
+```
+`RUN_CHAT_CONTRACT_COMPAT_EVAL=1 ./scripts/test.sh`로 옵션 게이트를 활성화할 수 있다.
+
 ---
 
 ## Search Service (Local)
