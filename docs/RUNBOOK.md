@@ -849,6 +849,24 @@ python scripts/eval/chat_eval_matrix.py \
     - `data/eval/reports/chat_graph_parity_eval_baseline.json`
     - `data/eval/reports/chat_eval_matrix_baseline.json`
 
+## Performance budget + cutover gate (B-0724, in-progress)
+- perf budget module: `services/query-service/app/core/chat_graph/perf_budget.py`
+  - `chat_graph_perf_sample_total`
+  - `chat_graph_runtime_latency_ms`
+- 주요 예산 env:
+  - `QS_CHAT_BUDGET_NON_LLM_P95_MS` (default `600`)
+  - `QS_CHAT_BUDGET_LLM_P95_MS` (default `4000`)
+  - `QS_CHAT_BUDGET_MAX_AVG_TOOL_CALLS` (default `1.5`)
+  - `QS_CHAT_BUDGET_MAX_FALLBACK_RATIO` (default `0.15`)
+- cutover gate:
+```bash
+python scripts/eval/chat_cutover_gate.py \
+  --current-stage 25 \
+  --dwell-minutes 45
+```
+- CI 옵션:
+  - `RUN_CHAT_CUTOVER_GATE=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

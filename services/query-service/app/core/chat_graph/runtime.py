@@ -51,6 +51,7 @@ from app.core.chat_graph.langsmith_trace import (
     emit_trace_event,
     resolve_trace_decision,
 )
+from app.core.chat_graph.perf_budget import append_perf_sample
 from app.core.metrics import metrics
 
 
@@ -125,7 +126,9 @@ async def run_chat_graph(
     legacy_executor: LegacyExecutor,
     run_id: str | None = None,
     record_run: bool = False,
+    engine_mode: str = "agent",
 ) -> ChatGraphRuntimeResult:
+    started_at = time.time()
     session_id = _resolve_session_id(request)
     query = _extract_query(request)
     user_id = _extract_user_id(request)
@@ -285,6 +288,7 @@ async def run_chat_graph(
                 response=error_response,
                 stub_response=None,
             )
+        _record_perf_budget_sample(handled, error_response, started_at=started_at, engine_mode=engine_mode)
         return ChatGraphRuntimeResult(state=handled, response=error_response, stage="error_handler", run_id=resolved_run_id)
     except Exception:
         handled = _error_handler_state(
@@ -314,6 +318,7 @@ async def run_chat_graph(
                 response=error_response,
                 stub_response=None,
             )
+        _record_perf_budget_sample(handled, error_response, started_at=started_at, engine_mode=engine_mode)
         return ChatGraphRuntimeResult(state=handled, response=error_response, stage="error_handler", run_id=resolved_run_id)
 
     final_response = _state_response(state)
@@ -350,6 +355,7 @@ async def run_chat_graph(
             response=final_response,
             stub_response=stub_response,
         )
+    _record_perf_budget_sample(state, final_response, started_at=started_at, engine_mode=engine_mode)
     return ChatGraphRuntimeResult(state=state, response=final_response, stage="persist", run_id=resolved_run_id)
 
 
@@ -384,6 +390,33 @@ def _record_response_reason_code(
         request_id=str(state.get("request_id") or ""),
         source=source,
         reason_code=reason_code,
+    )
+
+
+def _record_perf_budget_sample(
+    state: ChatGraphState,
+    response: Mapping[str, Any],
+    *,
+    started_at: float,
+    engine_mode: str,
+) -> None:
+    runtime_ms = max(0, int((time.time() - started_at) * 1000))
+    status = str(response.get("status") or "")
+    route = str(state.get("route") or "")
+    citations = response.get("citations")
+    llm_path = isinstance(citations, list) and len(citations) > 0
+    tool_result = state.get("tool_result")
+    tool_calls = 1 if isinstance(tool_result, Mapping) else 0
+    append_perf_sample(
+        trace_id=str(state.get("trace_id") or ""),
+        request_id=str(state.get("request_id") or ""),
+        session_id=str(state.get("session_id") or "anon:default"),
+        engine_mode=str(engine_mode or "agent"),
+        route=route or "NONE",
+        status=status or "unknown",
+        runtime_ms=runtime_ms,
+        llm_path=llm_path,
+        tool_calls=tool_calls,
     )
 
 

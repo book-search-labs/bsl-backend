@@ -99,6 +99,15 @@ from app.core.chat_graph.domain_nodes import (
     save_selection_memory,
 )
 import app.core.chat_graph.domain_nodes as domain_nodes
+from app.core.chat_graph.perf_budget import (
+    BudgetGateDecision,
+    CutoverDecision,
+    append_perf_sample,
+    build_perf_summary,
+    evaluate_budget_gate,
+    evaluate_cutover_decision,
+)
+import app.core.chat_graph.perf_budget as perf_budget
 
 __all__ = [
     "CHAT_GRAPH_INITIAL_STATE_VERSION",
@@ -180,4 +189,11 @@ __all__ = [
     "save_policy_topic_cache",
     "save_selection_memory",
     "domain_nodes",
+    "BudgetGateDecision",
+    "CutoverDecision",
+    "append_perf_sample",
+    "build_perf_summary",
+    "evaluate_budget_gate",
+    "evaluate_cutover_decision",
+    "perf_budget",
 ]
