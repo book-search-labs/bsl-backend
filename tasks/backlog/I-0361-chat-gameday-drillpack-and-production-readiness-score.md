@@ -67,3 +67,11 @@ Operationalize chat reliability with gamedays:
   - gate 모드에서 min_reports/min_week_avg/min_month_avg 임계치 검증
 - [x] CI 진입점 추가
   - `RUN_CHAT_READINESS_TREND=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 5)
+- [x] Gameday readiness packet 스크립트 추가
+  - `scripts/eval/chat_gameday_readiness_packet.py`
+  - readiness/trend/drillpack/feedback/DR 리포트를 결합해 최종 상태(`READY|WATCH|HOLD`)와 권장 액션(`promote|hold`)을 산출
+  - require-all 옵션으로 필수 증거 리포트 누락 차단
+- [x] CI 진입점 추가
+  - `RUN_CHAT_GAMEDAY_PACKET=1 ./scripts/test.sh`

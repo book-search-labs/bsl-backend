@@ -1145,6 +1145,21 @@ python scripts/eval/chat_incident_feedback_binding.py \
 - CI 옵션:
   - `RUN_CHAT_INCIDENT_FEEDBACK_BINDING=1 ./scripts/test.sh`
 
+## Gameday readiness packet (I-0361, Bundle 5)
+- readiness/trend/drill/feedback 산출물을 하나의 배포 판단 패킷으로 결합:
+```bash
+python scripts/eval/chat_gameday_readiness_packet.py \
+  --reports-dir data/eval/reports \
+  --min-readiness-score 80 \
+  --min-week-avg 80 \
+  --out data/eval/reports \
+  --gate
+```
+- 옵션:
+  - `--require-all` (필수 리포트 누락 시 실패)
+- CI 옵션:
+  - `RUN_CHAT_GAMEDAY_PACKET=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
