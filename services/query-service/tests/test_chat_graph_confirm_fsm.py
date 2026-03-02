@@ -3,6 +3,7 @@ import time
 
 from app.core.cache import CacheClient
 from app.core.chat_graph import confirm_fsm
+from app.core.chat_graph import authz_gate
 from app.core.chat_graph.runtime import run_chat_graph
 
 
@@ -114,6 +115,7 @@ def test_confirm_fsm_expires_pending_action():
 
 def test_runtime_confirm_interrupt_resume_flow():
     confirm_fsm._CACHE = CacheClient(None)
+    authz_gate._CACHE = CacheClient(None)
     called = {"count": 0}
 
     async def fake_legacy_executor(request, trace_id, request_id):
@@ -123,7 +125,15 @@ def test_runtime_confirm_interrupt_resume_flow():
     session_id = "u:601:default"
     first = _run(
         run_chat_graph(
-            {"session_id": session_id, "message": {"role": "user", "content": "주문 취소해줘"}},
+            {
+                "session_id": session_id,
+                "message": {"role": "user", "content": "주문 취소해줘"},
+                "client": {
+                    "user_id": "601",
+                    "tenant_id": "tenant-a",
+                    "auth_context": {"scopes": ["chat:write"]},
+                },
+            },
             "trace_a",
             "req_a",
             legacy_executor=fake_legacy_executor,
@@ -140,7 +150,15 @@ def test_runtime_confirm_interrupt_resume_flow():
 
     second = _run(
         run_chat_graph(
-            {"session_id": session_id, "message": {"role": "user", "content": f"확인 {token}"}},
+            {
+                "session_id": session_id,
+                "message": {"role": "user", "content": f"확인 {token}"},
+                "client": {
+                    "user_id": "601",
+                    "tenant_id": "tenant-a",
+                    "auth_context": {"scopes": ["chat:write"]},
+                },
+            },
             "trace_b",
             "req_b",
             legacy_executor=fake_legacy_executor,

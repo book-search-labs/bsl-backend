@@ -727,6 +727,12 @@ python scripts/eval/chat_contract_compat_eval.py \
 - exceptional states: `EXPIRED`, `ABORTED`, `FAILED_RETRYABLE`, `FAILED_FINAL`
 - audit store: cache key `chat:graph:action-audit:{session_id}`
 
+## Chat pre-node AuthZ/Action fence (B-0705)
+- AuthZ gate module: `services/query-service/app/core/chat_graph/authz_gate.py`
+- runtime node: `authz_gate` (`policy_decide` 직후 실행)
+- required client fields for sensitive path: `user_id`, `tenant_id`, `auth_context.scopes` (`chat:write`)
+- authz audit store: cache key `chat:graph:authz-audit:{session_id}`
+
 ---
 
 ## Search Service (Local)

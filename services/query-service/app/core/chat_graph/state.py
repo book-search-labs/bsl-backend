@@ -20,6 +20,7 @@ class ChatGraphPendingAction(TypedDict, total=False):
     action_type: str
     state: str
     payload: dict[str, Any]
+    action_protocol: dict[str, Any]
     requires_confirmation: bool
     risk_level: str
     confirmation_token: str
@@ -351,6 +352,13 @@ def _normalize_pending_action(raw: Any, issues: list[str]) -> ChatGraphPendingAc
         "state": state or "",
         "payload": payload,
     }
+
+    action_protocol_raw = raw.get("action_protocol")
+    if action_protocol_raw is not None:
+        if isinstance(action_protocol_raw, Mapping):
+            pending["action_protocol"] = dict(action_protocol_raw)
+        else:
+            issues.append("pending_action.action_protocol must be an object")
 
     requires_confirmation = raw.get("requires_confirmation")
     if isinstance(requires_confirmation, bool):

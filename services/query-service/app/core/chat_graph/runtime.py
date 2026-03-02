@@ -15,6 +15,12 @@ from app.core.chat_graph.confirm_fsm import (
     load_pending_action,
     mark_execution_result,
     mark_execution_start,
+    save_pending_action,
+)
+from app.core.chat_graph.authz_gate import (
+    append_authz_audit,
+    authorize_request,
+    build_action_protocol,
 )
 
 
@@ -51,6 +57,11 @@ CHAT_GRAPH_NODE_CONTRACTS: dict[str, ChatGraphNodeContract] = {
         name="policy_decide",
         required_inputs=("intent", "query"),
         required_outputs=("route",),
+    ),
+    "authz_gate": ChatGraphNodeContract(
+        name="authz_gate",
+        required_inputs=("route", "session_id"),
+        required_outputs=("route", "reason_code"),
     ),
     "execute": ChatGraphNodeContract(
         name="execute",
@@ -98,6 +109,7 @@ async def run_chat_graph(
         state = await _run_node("load_state", state, _load_state_node)
         state = await _run_node("understand", state, _understand_node)
         state = await _run_node("policy_decide", state, _policy_decide_node)
+        state = await _run_node("authz_gate", state, _authz_gate_node_factory(request, trace_id, request_id))
         state = await _run_node("execute", state, _execute_node_factory(request, trace_id, request_id, legacy_executor))
         state = await _run_node("compose", state, _compose_node)
         state = await _run_node("verify", state, _verify_node)
@@ -189,13 +201,22 @@ async def _policy_decide_node(state: ChatGraphState) -> ChatGraphState:
         return state
 
     if _requires_confirmation(state.get("intent"), query):
+        action_type = _derive_action_type(state.get("intent"), query)
         pending = init_pending_action(
             state["session_id"],
-            action_type=_derive_action_type(state.get("intent"), query),
+            action_type=action_type,
             query=query,
             trace_id=state["trace_id"],
             request_id=state["request_id"],
         )
+        pending["action_protocol"] = build_action_protocol(
+            action_type=action_type,
+            args=dict(pending.get("payload") or {}),
+            idempotency_key=str(pending.get("idempotency_key") or ""),
+            risk_level="WRITE_SENSITIVE",
+            requires_confirmation=True,
+        )
+        save_pending_action(state["session_id"], pending)
         state["pending_action"] = pending
         state["route"] = "CONFIRM"
         state["reason_code"] = "CONFIRMATION_REQUIRED"
@@ -234,6 +255,86 @@ def _derive_action_type(intent: str | None, query: str) -> str:
     return "SENSITIVE_ACTION"
 
 
+def _authz_gate_node_factory(request: dict[str, Any], trace_id: str, request_id: str) -> NodeFn:
+    async def _authz_gate_node(state: ChatGraphState) -> ChatGraphState:
+        route = str(state.get("route") or "")
+        if route not in {"CONFIRM", "EXECUTE"}:
+            if not state.get("reason_code"):
+                state["reason_code"] = "OK"
+            return state
+
+        pending_action = state.get("pending_action")
+        if route == "EXECUTE" and not isinstance(pending_action, dict):
+            if not state.get("reason_code"):
+                state["reason_code"] = "OK"
+            return state
+
+        if not isinstance(pending_action, dict):
+            state["route"] = "FALLBACK"
+            state["reason_code"] = "INVALID_WORKFLOW_STATE"
+            state["response"] = _state_response_payload(
+                _deny_response(
+                    trace_id,
+                    request_id,
+                    reason_code="INVALID_WORKFLOW_STATE",
+                    next_action="OPEN_SUPPORT_TICKET",
+                    message="민감 액션 상태가 유효하지 않습니다.",
+                )
+            )
+            return state
+
+        action_protocol = pending_action.get("action_protocol")
+        if not isinstance(action_protocol, dict):
+            action_protocol = build_action_protocol(
+                action_type=str(pending_action.get("action_type") or "SENSITIVE_ACTION"),
+                args=dict(pending_action.get("payload") or {}),
+                idempotency_key=str(pending_action.get("idempotency_key") or ""),
+                risk_level="WRITE_SENSITIVE",
+                requires_confirmation=bool(pending_action.get("requires_confirmation", True)),
+            )
+            pending_action["action_protocol"] = action_protocol
+            state["pending_action"] = pending_action
+            save_pending_action(state["session_id"], pending_action)
+
+        decision = authorize_request(request, action_protocol)
+        actor, target = _authz_actor_target(request, action_protocol)
+        append_authz_audit(
+            state["session_id"],
+            trace_id=trace_id,
+            request_id=request_id,
+            actor=actor,
+            target=target,
+            decision=decision,
+        )
+        if not decision.allowed:
+            state["route"] = "FALLBACK"
+            state["reason_code"] = decision.reason_code
+            state["response"] = _state_response_payload(
+                _deny_response(
+                    trace_id,
+                    request_id,
+                    reason_code=decision.reason_code,
+                    next_action=decision.next_action,
+                    message=decision.message,
+                )
+            )
+            return state
+
+        if not state.get("reason_code"):
+            state["reason_code"] = "OK"
+        return state
+
+    return _authz_gate_node
+
+
+def _authz_actor_target(request: dict[str, Any], action_protocol: dict[str, Any]) -> tuple[str, str]:
+    client = request.get("client") if isinstance(request.get("client"), dict) else {}
+    actor = str(client.get("user_id") or "-")
+    args = action_protocol.get("args") if isinstance(action_protocol.get("args"), dict) else {}
+    target = str(args.get("target_user_id") or actor or "-")
+    return actor, target
+
+
 def _execute_node_factory(
     request: dict[str, Any],
     trace_id: str,
@@ -247,6 +348,19 @@ def _execute_node_factory(
             state["response"] = _state_response_payload(fallback)
             state["route"] = "FALLBACK"
             state["reason_code"] = "NO_MESSAGES"
+            return state
+        if route == "FALLBACK":
+            if isinstance(state.get("response"), dict):
+                return state
+            fallback = _fallback_response(
+                trace_id,
+                request_id,
+                reason_code=str(state.get("reason_code") or "CHAT_GRAPH_EXECUTION_BLOCKED"),
+                next_action="RETRY",
+            )
+            state["response"] = _state_response_payload(fallback)
+            state["route"] = "FALLBACK"
+            state["reason_code"] = str(state.get("reason_code") or "CHAT_GRAPH_EXECUTION_BLOCKED")
             return state
 
         pending_action = state.get("pending_action") if isinstance(state.get("pending_action"), dict) else None
@@ -526,6 +640,31 @@ def _confirmation_response(
         "recoverable": True,
         "next_action": next_action,
         "retry_after_ms": retry_after_ms,
+        "answer": {"role": "assistant", "content": message},
+        "sources": [],
+        "citations": [],
+        "fallback_count": 0,
+        "escalated": False,
+    }
+
+
+def _deny_response(
+    trace_id: str,
+    request_id: str,
+    *,
+    reason_code: str,
+    next_action: str,
+    message: str,
+) -> dict[str, Any]:
+    return {
+        "version": "v1",
+        "trace_id": trace_id,
+        "request_id": request_id,
+        "status": "insufficient_evidence",
+        "reason_code": reason_code,
+        "recoverable": True,
+        "next_action": next_action,
+        "retry_after_ms": None,
         "answer": {"role": "assistant", "content": message},
         "sources": [],
         "citations": [],

@@ -24,6 +24,14 @@ from app.core.chat_graph.confirm_fsm import (
     mark_execution_result,
     mark_execution_start,
 )
+from app.core.chat_graph.authz_gate import (
+    AuthzDecision,
+    append_authz_audit,
+    authorize_request,
+    build_action_protocol,
+    load_authz_audit,
+    validate_action_protocol,
+)
 
 __all__ = [
     "CHAT_GRAPH_INITIAL_STATE_VERSION",
@@ -46,4 +54,10 @@ __all__ = [
     "load_pending_action",
     "mark_execution_result",
     "mark_execution_start",
+    "AuthzDecision",
+    "append_authz_audit",
+    "authorize_request",
+    "build_action_protocol",
+    "load_authz_audit",
+    "validate_action_protocol",
 ]
