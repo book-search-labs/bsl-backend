@@ -47,3 +47,13 @@ Add FinOps-grade control for production chat:
 - Define unit-economics SLOs tied to resolved outcomes.
 - Optimize routing/policy by risk and cost under quality constraints.
 - Connect forecasting and budget guardrails to release decisions.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Unit economics SLO gate 추가
+  - `scripts/eval/chat_unit_economics_slo.py`
+  - 세션 비용 이벤트(`resolved/session_cost_usd/tool_cost_usd/token_cost_usd/intent`)를 집계해 `cost_per_resolved_session`, `unresolved_cost_burn_total`, tool/token mix, resolution rate를 계산
+  - gate 모드에서 resolution rate 하락, cost-per-resolve 초과, unresolved burn 초과, tool mix 과다, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_unit_economics_slo.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_UNIT_ECONOMICS_SLO=1 ./scripts/test.sh`

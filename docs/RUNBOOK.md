@@ -1388,6 +1388,26 @@ python scripts/eval/chat_session_resilience_drill_report.py \
 - CI 옵션:
   - `RUN_CHAT_SESSION_RESILIENCE_DRILL_REPORT=1 ./scripts/test.sh`
 
+## Unit economics SLO gate (I-0365, Bundle 1)
+- 세션 비용 이벤트에서 cost-to-resolve와 unresolved burn을 계산해 FinOps SLO를 게이트로 검증:
+```bash
+python scripts/eval/chat_unit_economics_slo.py \
+  --events-jsonl var/chat_finops/session_cost_events.jsonl \
+  --window-days 7 \
+  --min-resolution-rate 0.80 \
+  --max-cost-per-resolved-session 2.0 \
+  --max-unresolved-cost-burn-total 200 \
+  --max-tool-cost-mix-ratio 0.80 \
+  --max-stale-days 8 \
+  --gate
+```
+- 산출물:
+  - cost_per_resolved_session, unresolved_cost_burn_total
+  - tool/token cost mix ratio
+  - resolution rate 기반 품질 제약 여부
+- CI 옵션:
+  - `RUN_CHAT_UNIT_ECONOMICS_SLO=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
