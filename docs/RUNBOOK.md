@@ -803,6 +803,18 @@ python scripts/eval/chat_reason_taxonomy_eval.py \
 - CI 옵션:
   - `RUN_CHAT_REASON_TAXONOMY_EVAL=1 ./scripts/test.sh`
 
+## Chat domain node migration (B-0721, in-progress)
+- domain module: `services/query-service/app/core/chat_graph/domain_nodes.py`
+- 적용 범위:
+  - Book query 정규화(`ISBN/권차/시리즈`)
+  - selection memory cache (`chat:graph:selection:{session_id}`)
+  - 참조 해소 (`2번째`, `그거`, `아까 추천`)
+  - policy topic cache (`RefundPolicy`, `ShippingPolicy`, `OrderCancelPolicy`, `EbookRefundPolicy`)
+- 정책 캐시 제어:
+  - `QS_CHAT_POLICY_TOPIC_VERSION` (버전 변경 시 cache key 자동 분리)
+  - `QS_CHAT_POLICY_CACHE_TTL_SEC`
+  - `QS_CHAT_SELECTION_TTL_SEC`
+
 ---
 
 ## Search Service (Local)

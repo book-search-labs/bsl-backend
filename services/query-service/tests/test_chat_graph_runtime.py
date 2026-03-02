@@ -1,7 +1,7 @@
 import asyncio
 
 from app.core.cache import CacheClient
-from app.core.chat_graph import authz_gate, confirm_fsm, langsmith_trace
+from app.core.chat_graph import authz_gate, confirm_fsm, domain_nodes, langsmith_trace
 from app.core.chat_graph.runtime import run_chat_graph
 
 
@@ -162,6 +162,95 @@ def test_run_chat_graph_emits_langsmith_audit_events_even_when_disabled(monkeypa
     assert len(rows) >= 3
     assert rows[0]["event_type"] == "run_start"
     assert rows[-1]["event_type"] in {"run_end", "run_error"}
+
+
+def test_run_chat_graph_routes_selection_reference_to_options():
+    domain_nodes._CACHE = CacheClient(None)
+    called = {"count": 0}
+
+    async def fake_legacy_executor(request, trace_id, request_id):
+        called["count"] += 1
+        return {"status": "ok", "reason_code": "OK", "answer": {"role": "assistant", "content": "응답"}, "sources": [], "citations": []}
+
+    result = _run(
+        run_chat_graph(
+            {"session_id": "u:106:default", "message": {"role": "user", "content": "그거 자세히 알려줘"}},
+            "trace_106",
+            "req_106",
+            legacy_executor=fake_legacy_executor,
+        )
+    )
+
+    assert called["count"] == 0
+    assert result.response["reason_code"] == "ROUTE_OPTIONS_SELECTION_REQUIRED"
+    assert result.response["status"] == "insufficient_evidence"
+
+
+def test_run_chat_graph_policy_topic_cache_hit_skips_executor(monkeypatch):
+    domain_nodes._CACHE = CacheClient(None)
+    called = {"count": 0}
+
+    async def fake_legacy_executor(request, trace_id, request_id):
+        called["count"] += 1
+        return {
+            "version": "v1",
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "status": "ok",
+            "reason_code": "OK",
+            "recoverable": False,
+            "next_action": "NONE",
+            "retry_after_ms": None,
+            "answer": {"role": "assistant", "content": "환불 정책 안내"},
+            "sources": [],
+            "citations": [],
+            "fallback_count": 0,
+            "escalated": False,
+        }
+
+    request = {"session_id": "u:107:default", "message": {"role": "user", "content": "환불 정책 안내해줘"}}
+    _run(run_chat_graph(request, "trace_107a", "req_107a", legacy_executor=fake_legacy_executor))
+    second = _run(run_chat_graph(request, "trace_107b", "req_107b", legacy_executor=fake_legacy_executor))
+
+    assert called["count"] == 1
+    assert second.response["status"] == "ok"
+    assert second.state["tool_result"]["source"] == "policy_topic_cache"
+
+
+def test_run_chat_graph_selection_memory_rewrites_second_turn_query():
+    domain_nodes._CACHE = CacheClient(None)
+    captured_queries: list[str] = []
+
+    async def fake_legacy_executor(request, trace_id, request_id):
+        message = request.get("message") if isinstance(request.get("message"), dict) else {}
+        captured_queries.append(str(message.get("content") or ""))
+        return {
+            "version": "v1",
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "status": "ok",
+            "reason_code": "OK",
+            "recoverable": False,
+            "next_action": "NONE",
+            "retry_after_ms": None,
+            "answer": {"role": "assistant", "content": "추천 결과"},
+            "sources": [
+                {"title": "A Book", "doc_id": "a1"},
+                {"title": "B Book", "doc_id": "b1"},
+            ],
+            "citations": [],
+            "fallback_count": 0,
+            "escalated": False,
+        }
+
+    first = {"session_id": "u:108:default", "message": {"role": "user", "content": "책 추천해줘"}}
+    second = {"session_id": "u:108:default", "message": {"role": "user", "content": "2번째 자세히 알려줘"}}
+
+    _run(run_chat_graph(first, "trace_108a", "req_108a", legacy_executor=fake_legacy_executor))
+    _run(run_chat_graph(second, "trace_108b", "req_108b", legacy_executor=fake_legacy_executor))
+
+    assert len(captured_queries) == 2
+    assert captured_queries[1].startswith("B Book")
 
 
 def test_run_chat_graph_denies_sensitive_action_without_auth_context():

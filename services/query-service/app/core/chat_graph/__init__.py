@@ -87,6 +87,18 @@ from app.core.chat_graph.langsmith_trace import (
     resolve_trace_decision,
 )
 import app.core.chat_graph.langsmith_trace as langsmith_trace
+from app.core.chat_graph.domain_nodes import (
+    classify_policy_topic,
+    derive_candidates_from_response,
+    is_policy_read_lane,
+    load_policy_topic_cache,
+    load_selection_memory,
+    normalize_book_query,
+    resolve_selection_reference,
+    save_policy_topic_cache,
+    save_selection_memory,
+)
+import app.core.chat_graph.domain_nodes as domain_nodes
 
 __all__ = [
     "CHAT_GRAPH_INITIAL_STATE_VERSION",
@@ -158,4 +170,14 @@ __all__ = [
     "redact_payload",
     "resolve_trace_decision",
     "langsmith_trace",
+    "classify_policy_topic",
+    "derive_candidates_from_response",
+    "is_policy_read_lane",
+    "load_policy_topic_cache",
+    "load_selection_memory",
+    "normalize_book_query",
+    "resolve_selection_reference",
+    "save_policy_topic_cache",
+    "save_selection_memory",
+    "domain_nodes",
 ]

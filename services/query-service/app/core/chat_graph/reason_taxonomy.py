@@ -19,6 +19,7 @@ DEFAULT_UNSPECIFIED_REASON_CODE = "CHAT_REASON_UNSPECIFIED"
 _GLOBAL_KNOWN_FAMILIES = {
     "ACTION",
     "AUTH",
+    "CACHE",
     "CHAT",
     "CONFIRMATION",
     "CONFIRMED",
@@ -63,11 +64,13 @@ _SOURCE_ALLOWED_FAMILIES: dict[str, set[str]] = {
         "AUTH",
         "CHAT",
         "CONFIRMATION",
+        "CACHE",
         "IN",
         "INVALID",
         "LLM",
         "MISSING",
         "OUTPUT",
+        "POLICY",
         "PROVIDER",
         "RAG",
         "RATE",
@@ -136,6 +139,8 @@ def _extract_family(code: str) -> str:
 
 def _resolve_lane(family: str) -> str:
     if family in {"NO", "CONFIRMATION", "ROUTE"}:
+        return "ROUTE"
+    if family in {"POLICY", "CACHE"}:
         return "ROUTE"
     if family in {"PROVIDER", "TOOL"}:
         return "TOOL_FAIL"

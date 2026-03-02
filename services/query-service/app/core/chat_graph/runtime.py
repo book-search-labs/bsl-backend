@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Mapping
 import hashlib
+import os
 import time
 
 from app.core.chat_graph.state import (
@@ -33,6 +34,17 @@ from app.core.chat_graph.reason_taxonomy import (
     DEFAULT_UNSPECIFIED_REASON_CODE,
     normalize_reason_code,
     record_reason_code_event,
+)
+from app.core.chat_graph.domain_nodes import (
+    classify_policy_topic,
+    derive_candidates_from_response,
+    is_policy_read_lane,
+    load_policy_topic_cache,
+    load_selection_memory,
+    normalize_book_query,
+    resolve_selection_reference,
+    save_policy_topic_cache,
+    save_selection_memory,
 )
 from app.core.chat_graph.langsmith_trace import (
     TraceDecision,
@@ -491,11 +503,39 @@ async def _load_state_node(state: ChatGraphState) -> ChatGraphState:
     pending_action = load_pending_action(state["session_id"])
     if isinstance(pending_action, dict):
         state["pending_action"] = pending_action
+    selection = load_selection_memory(state["session_id"])
+    if isinstance(selection, dict):
+        state["selection"] = {
+            "last_candidates": [dict(item) for item in selection.get("last_candidates", []) if isinstance(item, Mapping)],
+            "selected_index": selection.get("selected_index")
+            if isinstance(selection.get("selected_index"), int)
+            else None,
+            "selected_book": dict(selection.get("selected_book"))
+            if isinstance(selection.get("selected_book"), Mapping)
+            else None,
+        }
     return state
 
 
 async def _understand_node(state: ChatGraphState) -> ChatGraphState:
-    q = (state.get("query") or "").lower()
+    query = str(state.get("query") or "")
+    normalized = normalize_book_query(query)
+    rewritten_query, resolved_selection, unresolved_reference = resolve_selection_reference(query, state.get("selection") or {})
+    state["query"] = rewritten_query
+    state["selection"] = resolved_selection
+
+    if unresolved_reference:
+        state["session"]["unresolved_context"] = {
+            "reason_code": "SELECTION_REFERENCE_MISSING",
+            "reason_message": "선택할 도서를 먼저 지정해 주세요.",
+            "query_preview": rewritten_query[:80],
+        }
+    elif isinstance(state["session"].get("unresolved_context"), Mapping):
+        unresolved = dict(state["session"]["unresolved_context"])
+        if str(unresolved.get("reason_code") or "") == "SELECTION_REFERENCE_MISSING":
+            state["session"]["unresolved_context"] = None
+
+    q = rewritten_query.lower()
     intent = "GENERAL"
     if any(keyword in q for keyword in ("환불", "취소", "refund", "cancel")):
         intent = "REFUND"
@@ -505,6 +545,8 @@ async def _understand_node(state: ChatGraphState) -> ChatGraphState:
         intent = "ORDER"
     elif any(keyword in q for keyword in ("추천", "recommend", "similar")):
         intent = "RECOMMEND"
+    elif normalized.get("isbn"):
+        intent = "BOOK_LOOKUP"
     state["intent"] = intent
     return state
 
@@ -512,10 +554,24 @@ async def _understand_node(state: ChatGraphState) -> ChatGraphState:
 async def _policy_decide_node(state: ChatGraphState) -> ChatGraphState:
     query = (state.get("query") or "").strip()
     pending_action = state.get("pending_action")
+    unresolved_ctx = state["session"].get("unresolved_context") if isinstance(state.get("session"), Mapping) else None
+    unresolved_reason = (
+        str(unresolved_ctx.get("reason_code") or "") if isinstance(unresolved_ctx, Mapping) else ""
+    )
+
+    if unresolved_reason == "SELECTION_REFERENCE_MISSING":
+        state["route"] = "OPTIONS"
+        state["reason_code"] = "ROUTE_OPTIONS_SELECTION_REQUIRED"
+        return state
 
     if not query:
         state["route"] = "ASK"
         state["reason_code"] = "NO_MESSAGES"
+        return state
+
+    if is_policy_read_lane(query, state.get("intent")):
+        state["route"] = "EXECUTE"
+        state["reason_code"] = "OK"
         return state
 
     if isinstance(pending_action, dict):
@@ -671,6 +727,8 @@ def _execute_node_factory(
     request_id: str,
     legacy_executor: LegacyExecutor,
 ) -> NodeFn:
+    locale = _resolve_locale(request)
+
     async def _execute_node(state: ChatGraphState) -> ChatGraphState:
         route = state.get("route")
         if route == "ASK":
@@ -678,6 +736,16 @@ def _execute_node_factory(
             state["response"] = _state_response_payload(fallback)
             state["route"] = "FALLBACK"
             state["reason_code"] = "NO_MESSAGES"
+            return state
+        if route == "OPTIONS":
+            options = _selection_options_response(
+                trace_id=trace_id,
+                request_id=request_id,
+                selection=state.get("selection") if isinstance(state.get("selection"), Mapping) else {},
+            )
+            state["response"] = _state_response_payload(options)
+            state["route"] = "OPTIONS"
+            state["reason_code"] = "ROUTE_OPTIONS_SELECTION_REQUIRED"
             return state
         if route == "FALLBACK":
             if isinstance(state.get("response"), dict):
@@ -692,6 +760,27 @@ def _execute_node_factory(
             state["route"] = "FALLBACK"
             state["reason_code"] = str(state.get("reason_code") or "CHAT_GRAPH_EXECUTION_BLOCKED")
             return state
+
+        topic = classify_policy_topic(str(state.get("query") or ""))
+        if route == "EXECUTE" and topic and is_policy_read_lane(str(state.get("query") or ""), state.get("intent")):
+            cached = load_policy_topic_cache(topic, locale=locale)
+            if isinstance(cached, Mapping):
+                cached_response = dict(cached)
+                cached_response["version"] = "v1"
+                cached_response["trace_id"] = trace_id
+                cached_response["request_id"] = request_id
+                if not str(cached_response.get("reason_code") or "").strip():
+                    cached_response["reason_code"] = "POLICY_CACHE_HIT"
+                state["response"] = _state_response_payload(cached_response)
+                state["tool_result"] = {
+                    "status": "ok",
+                    "reason_code": str(cached_response.get("reason_code") or "POLICY_CACHE_HIT"),
+                    "source": "policy_topic_cache",
+                    "data": {"topic": topic, "status": cached_response.get("status")},
+                }
+                state["route"] = "ANSWER"
+                state["reason_code"] = str(cached_response.get("reason_code") or "POLICY_CACHE_HIT")
+                return state
 
         pending_action = state.get("pending_action") if isinstance(state.get("pending_action"), dict) else None
         if route == "CONFIRM":
@@ -742,7 +831,11 @@ def _execute_node_factory(
                 )
 
         try:
-            response = await legacy_executor(request, trace_id, request_id)
+            response = await legacy_executor(
+                _request_with_query(request, str(state.get("query") or "")),
+                trace_id,
+                request_id,
+            )
         except Exception:
             fallback = _fallback_response(trace_id, request_id, reason_code="PROVIDER_TIMEOUT", next_action="RETRY")
             state["response"] = _state_response_payload(fallback)
@@ -791,7 +884,16 @@ def _execute_node_factory(
                 state["pending_action"] = updated
             return state
 
+        if topic and is_policy_read_lane(str(state.get("query") or ""), state.get("intent")) and str(response.get("status") or "") == "ok":
+            save_policy_topic_cache(topic, response, locale=locale)
+
         state["response"] = _state_response_payload(response)
+        candidates = derive_candidates_from_response(response, limit=5)
+        if candidates:
+            state["selection"]["last_candidates"] = candidates
+            if state["selection"].get("selected_book") is None:
+                state["selection"]["selected_index"] = 0
+                state["selection"]["selected_book"] = dict(candidates[0])
         state["tool_result"] = {
             "status": "ok",
             "reason_code": str(response.get("reason_code") or "OK"),
@@ -877,6 +979,7 @@ async def _verify_node(state: ChatGraphState) -> ChatGraphState:
 
 async def _persist_node(state: ChatGraphState) -> ChatGraphState:
     state["state_version"] = int(state.get("state_version") or 1) + 1
+    save_selection_memory(state["session_id"], state.get("selection") if isinstance(state.get("selection"), Mapping) else {})
     response = state.get("response")
     if isinstance(response, dict):
         fallback_count = response.get("fallback_count")
@@ -963,6 +1066,58 @@ def _state_response(state: ChatGraphState) -> dict[str, Any]:
         "fallback_count": int(response.get("fallback_count") or 0),
         "escalated": bool(response.get("escalated", False)),
     }
+
+
+def _selection_options_response(
+    *,
+    trace_id: str,
+    request_id: str,
+    selection: Mapping[str, Any],
+) -> dict[str, Any]:
+    candidates = selection.get("last_candidates") if isinstance(selection.get("last_candidates"), list) else []
+    lines: list[str] = []
+    if candidates:
+        for idx, item in enumerate(candidates[:5], start=1):
+            if not isinstance(item, Mapping):
+                continue
+            title = str(item.get("title") or item.get("doc_id") or f"후보 {idx}")
+            lines.append(f"{idx}. {title}")
+    if lines:
+        content = "어떤 도서를 의미하는지 번호로 선택해 주세요.\n" + "\n".join(lines)
+    else:
+        content = "선택할 도서가 없습니다. 제목/저자/ISBN을 포함해 다시 요청해 주세요."
+    return {
+        "version": "v1",
+        "trace_id": trace_id,
+        "request_id": request_id,
+        "status": "insufficient_evidence",
+        "reason_code": "ROUTE_OPTIONS_SELECTION_REQUIRED",
+        "recoverable": True,
+        "next_action": "PROVIDE_REQUIRED_INFO",
+        "retry_after_ms": None,
+        "answer": {"role": "assistant", "content": content},
+        "sources": [],
+        "citations": [],
+        "fallback_count": 0,
+        "escalated": False,
+    }
+
+
+def _request_with_query(request: dict[str, Any], query: str) -> dict[str, Any]:
+    patched = dict(request)
+    message = request.get("message") if isinstance(request.get("message"), Mapping) else {}
+    patched_message = dict(message)
+    patched_message["content"] = query
+    patched["message"] = patched_message
+    return patched
+
+
+def _resolve_locale(request: dict[str, Any]) -> str:
+    client = request.get("client") if isinstance(request.get("client"), Mapping) else {}
+    locale = str(client.get("locale") or "").strip()
+    if locale:
+        return locale
+    return os.getenv("BSL_LOCALE", "ko-KR")
 
 
 def _confirmation_response(
