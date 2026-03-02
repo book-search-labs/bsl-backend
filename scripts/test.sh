@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[1/14] Contract validation (optional)"
+echo "[1/15] Contract validation (optional)"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN=""
 if command -v python >/dev/null 2>&1; then
@@ -20,9 +20,9 @@ else
   echo "  - python not found; skipping contract validation"
 fi
 
-echo "[2/14] Contract compatibility gate (optional)"
+echo "[2/15] Contract compatibility gate (optional)"
 
-echo "[3/14] Event schema compatibility check (optional)"
+echo "[3/15] Event schema compatibility check (optional)"
 if [ "${RUN_SCHEMA_CHECK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/kafka/schema_compat_check.py" || exit 1
@@ -38,7 +38,7 @@ else
   echo "  - python not found; skipping contract compatibility check"
 fi
 
-echo "[4/14] Feature spec validation (optional)"
+echo "[4/15] Feature spec validation (optional)"
 if [ -n "$PYTHON_BIN" ]; then
   if $PYTHON_BIN -c "import yaml" >/dev/null 2>&1; then
     $PYTHON_BIN "$ROOT_DIR/scripts/validate_feature_spec.py" || exit 1
@@ -49,7 +49,7 @@ else
   echo "  - python not found; skipping feature spec validation"
 fi
 
-echo "[5/14] Offline eval gate (optional)"
+echo "[5/15] Offline eval gate (optional)"
 if [ "${RUN_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     EVAL_RUN_PATH="${EVAL_RUN_PATH:-$ROOT_DIR/evaluation/runs/sample_run.jsonl}"
@@ -62,7 +62,7 @@ else
   echo "  - set RUN_EVAL=1 to enable"
 fi
 
-echo "[6/14] Rerank eval gate (optional)"
+echo "[6/15] Rerank eval gate (optional)"
 if [ "${RUN_RERANK_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     RERANK_BASELINE_PATH="${RERANK_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/rerank_eval_sample.json}"
@@ -127,7 +127,7 @@ else
   echo "  - set RUN_RERANK_EVAL=1 to enable"
 fi
 
-echo "[7/14] Chat contract compatibility gate (optional)"
+echo "[7/15] Chat contract compatibility gate (optional)"
 if [ "${RUN_CHAT_CONTRACT_COMPAT_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CONTRACT_CASES_PATH="${CHAT_CONTRACT_CASES_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_contract_compat_v1.json}"
@@ -162,7 +162,7 @@ else
   echo "  - set RUN_CHAT_CONTRACT_COMPAT_EVAL=1 to enable"
 fi
 
-echo "[8/14] Chat reason taxonomy gate (optional)"
+echo "[8/15] Chat reason taxonomy gate (optional)"
 if [ "${RUN_CHAT_REASON_TAXONOMY_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_REASON_CASES_PATH="${CHAT_REASON_CASES_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_reason_taxonomy_cases_v1.json}"
@@ -200,7 +200,7 @@ else
   echo "  - set RUN_CHAT_REASON_TAXONOMY_EVAL=1 to enable"
 fi
 
-echo "[9/14] Chat full eval matrix (optional)"
+echo "[9/15] Chat full eval matrix (optional)"
 if [ "${RUN_CHAT_ALL_EVALS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_PARITY_OUT_DIR="${CHAT_PARITY_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -242,7 +242,7 @@ else
   echo "  - set RUN_CHAT_ALL_EVALS=1 to enable"
 fi
 
-echo "[10/14] Chat cutover gate (optional)"
+echo "[10/15] Chat cutover gate (optional)"
 if [ "${RUN_CHAT_CUTOVER_GATE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CUTOVER_CURRENT_STAGE="${CHAT_CUTOVER_CURRENT_STAGE:-10}"
@@ -262,7 +262,7 @@ else
   echo "  - set RUN_CHAT_CUTOVER_GATE=1 to enable"
 fi
 
-echo "[11/14] Chat legacy decommission gate (optional)"
+echo "[11/15] Chat legacy decommission gate (optional)"
 if [ "${RUN_CHAT_LEGACY_DECOMMISSION_CHECK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_LEGACY_DECOMMISSION_LIMIT="${CHAT_LEGACY_DECOMMISSION_LIMIT:-500}"
@@ -285,7 +285,58 @@ else
   echo "  - set RUN_CHAT_LEGACY_DECOMMISSION_CHECK=1 to enable"
 fi
 
-echo "[12/14] Canonical quality checks (optional)"
+echo "[12/15] Chat production launch gate (optional)"
+if [ "${RUN_CHAT_PROD_LAUNCH_GATE:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_PROD_LAUNCH_OUT_DIR="${CHAT_PROD_LAUNCH_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_PROD_LAUNCH_REPLAY_DIR="${CHAT_PROD_LAUNCH_REPLAY_DIR:-$ROOT_DIR/var/chat_graph/replay}"
+    CHAT_PROD_LAUNCH_PARITY_LIMIT="${CHAT_PROD_LAUNCH_PARITY_LIMIT:-200}"
+    CHAT_PROD_LAUNCH_PERF_LIMIT="${CHAT_PROD_LAUNCH_PERF_LIMIT:-500}"
+    CHAT_PROD_LAUNCH_REASON_LIMIT="${CHAT_PROD_LAUNCH_REASON_LIMIT:-500}"
+    CHAT_PROD_LAUNCH_LEGACY_LIMIT="${CHAT_PROD_LAUNCH_LEGACY_LIMIT:-500}"
+    CHAT_PROD_LAUNCH_RUN_LIMIT="${CHAT_PROD_LAUNCH_RUN_LIMIT:-300}"
+    CHAT_PROD_LAUNCH_MIN_REASON_WINDOW="${CHAT_PROD_LAUNCH_MIN_REASON_WINDOW:-20}"
+    CHAT_PROD_LAUNCH_MIN_LEGACY_WINDOW="${CHAT_PROD_LAUNCH_MIN_LEGACY_WINDOW:-20}"
+    CHAT_PROD_LAUNCH_MIN_RUN_WINDOW="${CHAT_PROD_LAUNCH_MIN_RUN_WINDOW:-20}"
+    CHAT_PROD_LAUNCH_MIN_COMMERCE_SAMPLES="${CHAT_PROD_LAUNCH_MIN_COMMERCE_SAMPLES:-10}"
+    CHAT_PROD_LAUNCH_MAX_MISMATCH_RATIO="${CHAT_PROD_LAUNCH_MAX_MISMATCH_RATIO:-0.10}"
+    CHAT_PROD_LAUNCH_MAX_BLOCKER_RATIO="${CHAT_PROD_LAUNCH_MAX_BLOCKER_RATIO:-0.02}"
+    CHAT_PROD_LAUNCH_MAX_REASON_INVALID_RATIO="${CHAT_PROD_LAUNCH_MAX_REASON_INVALID_RATIO:-0.0}"
+    CHAT_PROD_LAUNCH_MAX_REASON_UNKNOWN_RATIO="${CHAT_PROD_LAUNCH_MAX_REASON_UNKNOWN_RATIO:-0.05}"
+    CHAT_PROD_LAUNCH_MAX_LEGACY_RATIO="${CHAT_PROD_LAUNCH_MAX_LEGACY_RATIO:-0.0}"
+    CHAT_PROD_LAUNCH_MAX_LEGACY_COUNT="${CHAT_PROD_LAUNCH_MAX_LEGACY_COUNT:-0}"
+    CHAT_PROD_LAUNCH_MIN_COMPLETION_RATE="${CHAT_PROD_LAUNCH_MIN_COMPLETION_RATE:-0.90}"
+    CHAT_PROD_LAUNCH_MAX_INSUFFICIENT_RATIO="${CHAT_PROD_LAUNCH_MAX_INSUFFICIENT_RATIO:-0.30}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_production_launch_gate.py" \
+      --out "$CHAT_PROD_LAUNCH_OUT_DIR" \
+      --replay-dir "$CHAT_PROD_LAUNCH_REPLAY_DIR" \
+      --parity-limit "$CHAT_PROD_LAUNCH_PARITY_LIMIT" \
+      --perf-limit "$CHAT_PROD_LAUNCH_PERF_LIMIT" \
+      --reason-limit "$CHAT_PROD_LAUNCH_REASON_LIMIT" \
+      --legacy-limit "$CHAT_PROD_LAUNCH_LEGACY_LIMIT" \
+      --run-limit "$CHAT_PROD_LAUNCH_RUN_LIMIT" \
+      --min-reason-window "$CHAT_PROD_LAUNCH_MIN_REASON_WINDOW" \
+      --min-legacy-window "$CHAT_PROD_LAUNCH_MIN_LEGACY_WINDOW" \
+      --min-run-window "$CHAT_PROD_LAUNCH_MIN_RUN_WINDOW" \
+      --min-commerce-samples "$CHAT_PROD_LAUNCH_MIN_COMMERCE_SAMPLES" \
+      --max-mismatch-ratio "$CHAT_PROD_LAUNCH_MAX_MISMATCH_RATIO" \
+      --max-blocker-ratio "$CHAT_PROD_LAUNCH_MAX_BLOCKER_RATIO" \
+      --max-reason-invalid-ratio "$CHAT_PROD_LAUNCH_MAX_REASON_INVALID_RATIO" \
+      --max-reason-unknown-ratio "$CHAT_PROD_LAUNCH_MAX_REASON_UNKNOWN_RATIO" \
+      --max-legacy-ratio "$CHAT_PROD_LAUNCH_MAX_LEGACY_RATIO" \
+      --max-legacy-count "$CHAT_PROD_LAUNCH_MAX_LEGACY_COUNT" \
+      --min-commerce-completion-rate "$CHAT_PROD_LAUNCH_MIN_COMPLETION_RATE" \
+      --max-insufficient-evidence-ratio "$CHAT_PROD_LAUNCH_MAX_INSUFFICIENT_RATIO" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat production launch gate"
+  fi
+else
+  echo "  - set RUN_CHAT_PROD_LAUNCH_GATE=1 to enable"
+fi
+
+echo "[13/15] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -296,7 +347,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[13/14] E2E tests (optional)"
+echo "[14/15] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -307,4 +358,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[14/14] Done"
+echo "[15/15] Done"

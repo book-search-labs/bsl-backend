@@ -891,6 +891,39 @@ python scripts/eval/chat_legacy_decommission_check.py \
 - CI 옵션:
   - `RUN_CHAT_LEGACY_DECOMMISSION_CHECK=1 ./scripts/test.sh`
 
+## Production launch readiness gate (B-0391-lite)
+- 통합 gate 스크립트:
+```bash
+python scripts/eval/chat_production_launch_gate.py \
+  --replay-dir var/chat_graph/replay \
+  --parity-limit 200 \
+  --perf-limit 500 \
+  --reason-limit 500 \
+  --legacy-limit 500 \
+  --run-limit 300 \
+  --min-reason-window 20 \
+  --min-legacy-window 20 \
+  --min-run-window 20 \
+  --min-commerce-samples 10 \
+  --max-mismatch-ratio 0.10 \
+  --max-blocker-ratio 0.02 \
+  --max-reason-invalid-ratio 0.0 \
+  --max-reason-unknown-ratio 0.05 \
+  --max-legacy-ratio 0.0 \
+  --max-legacy-count 0 \
+  --min-commerce-completion-rate 0.90 \
+  --max-insufficient-evidence-ratio 0.30 \
+  --gate
+```
+- 집계 소스:
+  - parity/canary: `shadow_comparator`, `canary_controller`
+  - perf budget: `perf_budget`
+  - reason taxonomy: `reason_taxonomy`
+  - legacy decommission: `feature_router` global routing audit
+  - completion: `var/chat_graph/replay/runs/*.json`
+- CI 옵션:
+  - `RUN_CHAT_PROD_LAUNCH_GATE=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

@@ -73,3 +73,14 @@ Implement production launch gates for chat:
 - Enforce Korean fallback templates with explicit reason codes.
 - Track true task completion for commerce intents and fail unresolved runs.
 - Generate reproducible release reports per model/prompt/policy version.
+
+## Implementation Update (2026-03-02, Bundle 1)
+- [x] 통합 출시 게이트 스크립트 추가
+  - `scripts/eval/chat_production_launch_gate.py`
+  - parity/canary + perf budget + reason taxonomy + legacy decommission + replay completion을 단일 pass/fail로 평가
+- [x] 게이트 리포트 자동 생성
+  - JSON/Markdown 보고서(`data/eval/reports/chat_production_launch_gate_*.{json,md}`)
+- [x] CI 실행 경로 연결
+  - `RUN_CHAT_PROD_LAUNCH_GATE=1 ./scripts/test.sh`
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_production_launch_gate.py`
