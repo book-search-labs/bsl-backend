@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[1/11] Contract validation (optional)"
+echo "[1/12] Contract validation (optional)"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN=""
 if command -v python >/dev/null 2>&1; then
@@ -20,9 +20,9 @@ else
   echo "  - python not found; skipping contract validation"
 fi
 
-echo "[2/11] Contract compatibility gate (optional)"
+echo "[2/12] Contract compatibility gate (optional)"
 
-echo "[3/11] Event schema compatibility check (optional)"
+echo "[3/12] Event schema compatibility check (optional)"
 if [ "${RUN_SCHEMA_CHECK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/kafka/schema_compat_check.py" || exit 1
@@ -38,7 +38,7 @@ else
   echo "  - python not found; skipping contract compatibility check"
 fi
 
-echo "[4/11] Feature spec validation (optional)"
+echo "[4/12] Feature spec validation (optional)"
 if [ -n "$PYTHON_BIN" ]; then
   if $PYTHON_BIN -c "import yaml" >/dev/null 2>&1; then
     $PYTHON_BIN "$ROOT_DIR/scripts/validate_feature_spec.py" || exit 1
@@ -49,7 +49,7 @@ else
   echo "  - python not found; skipping feature spec validation"
 fi
 
-echo "[5/11] Offline eval gate (optional)"
+echo "[5/12] Offline eval gate (optional)"
 if [ "${RUN_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     EVAL_RUN_PATH="${EVAL_RUN_PATH:-$ROOT_DIR/evaluation/runs/sample_run.jsonl}"
@@ -62,7 +62,7 @@ else
   echo "  - set RUN_EVAL=1 to enable"
 fi
 
-echo "[6/11] Rerank eval gate (optional)"
+echo "[6/12] Rerank eval gate (optional)"
 if [ "${RUN_RERANK_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     RERANK_BASELINE_PATH="${RERANK_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/rerank_eval_sample.json}"
@@ -127,7 +127,7 @@ else
   echo "  - set RUN_RERANK_EVAL=1 to enable"
 fi
 
-echo "[7/11] Chat contract compatibility gate (optional)"
+echo "[7/12] Chat contract compatibility gate (optional)"
 if [ "${RUN_CHAT_CONTRACT_COMPAT_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CONTRACT_CASES_PATH="${CHAT_CONTRACT_CASES_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_contract_compat_v1.json}"
@@ -162,7 +162,7 @@ else
   echo "  - set RUN_CHAT_CONTRACT_COMPAT_EVAL=1 to enable"
 fi
 
-echo "[8/11] Chat reason taxonomy gate (optional)"
+echo "[8/12] Chat reason taxonomy gate (optional)"
 if [ "${RUN_CHAT_REASON_TAXONOMY_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_REASON_CASES_PATH="${CHAT_REASON_CASES_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_reason_taxonomy_cases_v1.json}"
@@ -200,7 +200,49 @@ else
   echo "  - set RUN_CHAT_REASON_TAXONOMY_EVAL=1 to enable"
 fi
 
-echo "[9/11] Canonical quality checks (optional)"
+echo "[9/12] Chat full eval matrix (optional)"
+if [ "${RUN_CHAT_ALL_EVALS:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_PARITY_OUT_DIR="${CHAT_PARITY_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_PARITY_REPLAY_DIR="${CHAT_PARITY_REPLAY_DIR:-$ROOT_DIR/var/chat_graph/replay}"
+    CHAT_PARITY_SHADOW_LIMIT="${CHAT_PARITY_SHADOW_LIMIT:-200}"
+    CHAT_PARITY_RUN_SAMPLE_LIMIT="${CHAT_PARITY_RUN_SAMPLE_LIMIT:-50}"
+    CHAT_PARITY_MAX_MISMATCH_RATIO="${CHAT_PARITY_MAX_MISMATCH_RATIO:-0.10}"
+    CHAT_PARITY_MAX_BLOCKER_RATIO="${CHAT_PARITY_MAX_BLOCKER_RATIO:-0.02}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_graph_parity_eval.py" \
+      --shadow-limit "$CHAT_PARITY_SHADOW_LIMIT" \
+      --replay-dir "$CHAT_PARITY_REPLAY_DIR" \
+      --run-sample-limit "$CHAT_PARITY_RUN_SAMPLE_LIMIT" \
+      --max-mismatch-ratio "$CHAT_PARITY_MAX_MISMATCH_RATIO" \
+      --max-blocker-ratio "$CHAT_PARITY_MAX_BLOCKER_RATIO" \
+      --out "$CHAT_PARITY_OUT_DIR" \
+      --gate || exit 1
+
+    CHAT_MATRIX_BASELINE_PATH="${CHAT_MATRIX_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/chat_eval_matrix_baseline.json}"
+    CHAT_MATRIX_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_eval_matrix.py"
+      --cases-json "${CHAT_CONTRACT_CASES_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_contract_compat_v1.json}"
+      --responses-json "${CHAT_REASON_RESPONSES_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_reason_taxonomy_responses_v1.json}"
+      --contracts-root "$ROOT_DIR"
+      --replay-dir "$CHAT_PARITY_REPLAY_DIR"
+      --shadow-limit "$CHAT_PARITY_SHADOW_LIMIT"
+      --parity-run-sample-limit "$CHAT_PARITY_RUN_SAMPLE_LIMIT"
+      --out "$CHAT_PARITY_OUT_DIR"
+      --gate
+    )
+    if [ -f "$CHAT_MATRIX_BASELINE_PATH" ]; then
+      CHAT_MATRIX_ARGS+=(--baseline-report "$CHAT_MATRIX_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_MATRIX_ARGS[@]}" || exit 1
+  else
+    echo "  - python not found; skipping chat full eval matrix"
+  fi
+else
+  echo "  - set RUN_CHAT_ALL_EVALS=1 to enable"
+fi
+
+echo "[10/12] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -211,7 +253,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[10/11] E2E tests (optional)"
+echo "[11/12] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -222,4 +264,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[11/11] Done"
+echo "[12/12] Done"

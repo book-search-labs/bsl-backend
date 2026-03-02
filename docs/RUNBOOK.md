@@ -826,6 +826,29 @@ python scripts/eval/chat_reason_taxonomy_eval.py \
   - `chat_graph_ui_hint_render_total{route,type}`
   - `chat_graph_claim_verifier_total{result,reason}`
 
+## Eval harness migration (B-0723, in-progress)
+- parity eval:
+```bash
+python scripts/eval/chat_graph_parity_eval.py \
+  --shadow-limit 200 \
+  --replay-dir var/chat_graph/replay \
+  --gate
+```
+- unified matrix:
+```bash
+python scripts/eval/chat_eval_matrix.py \
+  --cases-json services/query-service/tests/fixtures/chat_contract_compat_v1.json \
+  --responses-json services/query-service/tests/fixtures/chat_reason_taxonomy_responses_v1.json \
+  --contracts-root . \
+  --replay-dir var/chat_graph/replay \
+  --gate
+```
+- CI 옵션:
+  - `RUN_CHAT_ALL_EVALS=1 ./scripts/test.sh`
+  - baseline 파일:
+    - `data/eval/reports/chat_graph_parity_eval_baseline.json`
+    - `data/eval/reports/chat_eval_matrix_baseline.json`
+
 ---
 
 ## Search Service (Local)
