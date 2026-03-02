@@ -77,3 +77,14 @@ Harden chat realtime session infrastructure:
   - `scripts/eval/test_chat_backpressure_admission_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_BACKPRESSURE_ADMISSION_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Session resilience drill report gate 추가
+  - `scripts/eval/chat_session_resilience_drill_report.py`
+  - drill 이벤트(`scenario/completed/passed/rto_sec/message_loss_total/sent_total`)를 집계해 scenario별 성공률, open drill, RTO, 메시지 손실률을 계산
+  - 필수 시나리오(`CONNECTION_STORM/PARTIAL_REGION_FAIL/BROKER_DELAY`) 커버리지 누락을 감지
+  - gate 모드에서 open drill, 평균 RTO, 손실률, 시나리오 누락, stale evidence 임계치 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_session_resilience_drill_report.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_SESSION_RESILIENCE_DRILL_REPORT=1 ./scripts/test.sh`

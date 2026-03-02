@@ -1367,6 +1367,27 @@ python scripts/eval/chat_backpressure_admission_guard.py \
 - CI 옵션:
   - `RUN_CHAT_BACKPRESSURE_ADMISSION_GUARD=1 ./scripts/test.sh`
 
+## Session resilience drill report gate (I-0364, Bundle 4)
+- connection storm/partial region fail/broker delay 게임데이 결과를 집계해 RTO/손실률/커버리지를 검증:
+```bash
+python scripts/eval/chat_session_resilience_drill_report.py \
+  --events-jsonl var/chat_governance/session_resilience_drills.jsonl \
+  --window-days 30 \
+  --required-scenarios CONNECTION_STORM,PARTIAL_REGION_FAIL,BROKER_DELAY \
+  --max-open-drill-total 0 \
+  --max-avg-rto-sec 900 \
+  --max-message-loss-ratio 0.001 \
+  --max-stale-days 35 \
+  --require-scenarios \
+  --gate
+```
+- 산출물:
+  - scenario별 run/success/failure/open drill 집계
+  - avg/max RTO 및 message loss ratio
+  - 필수 시나리오 누락 여부
+- CI 옵션:
+  - `RUN_CHAT_SESSION_RESILIENCE_DRILL_REPORT=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
