@@ -1276,6 +1276,32 @@ python scripts/eval/chat_capacity_forecast.py \
 - CI 옵션:
   - `RUN_CHAT_CAPACITY_FORECAST=1 ./scripts/test.sh`
 
+## Autoscaling calibration gate (I-0363, Bundle 3)
+- forecast 결과와 autoscaling 실측 이벤트를 비교해 과소/과잉 할당 비율 및 보정 계수를 계산:
+```bash
+python scripts/eval/chat_autoscaling_calibration.py \
+  --events-jsonl var/chat_governance/autoscaling_events.jsonl \
+  --reports-dir data/eval/reports \
+  --capacity-forecast-prefix chat_capacity_forecast \
+  --window-hours 168 \
+  --under-tolerance-ratio 0.05 \
+  --over-tolerance-ratio 0.10 \
+  --base-prescale-factor 1.20 \
+  --calibration-step 0.05 \
+  --max-under-ratio 0.10 \
+  --max-over-ratio 0.35 \
+  --max-prediction-mape 0.40 \
+  --max-canary-failure-total 0 \
+  --require-release-canary \
+  --gate
+```
+- 산출물:
+  - under/over provisioning ratio, prediction MAPE
+  - release canary 실패 집계
+  - target prescale factor 및 recommended peak rps
+- CI 옵션:
+  - `RUN_CHAT_AUTOSCALING_CALIBRATION=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

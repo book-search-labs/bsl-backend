@@ -58,3 +58,14 @@ Operationalize chat capacity forecasting:
   - `scripts/eval/test_chat_capacity_forecast.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_CAPACITY_FORECAST=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Autoscaling calibration 게이트 추가
+  - `scripts/eval/chat_autoscaling_calibration.py`
+  - autoscaling 실측 이벤트(`actual_rps/allocated_rps/predicted_rps/release_event/canary_pass`)를 바탕으로 under/over provisioning ratio와 prediction MAPE를 계산
+  - forecast peak_rps를 기준으로 target prescale factor 및 recommended peak rps를 산출해 사전 스케일업 보정값 제공
+  - gate 모드에서 under/over ratio, MAPE, canary failure 임계치 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_autoscaling_calibration.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_AUTOSCALING_CALIBRATION=1 ./scripts/test.sh`
