@@ -1184,6 +1184,31 @@ python scripts/eval/chat_data_retention_guard.py \
 - CI 옵션:
   - `RUN_CHAT_DATA_RETENTION_GUARD=1 ./scripts/test.sh`
 
+## Egress guardrails gate (I-0362, Bundle 2)
+- outbound 전송 이벤트를 기준으로 allowlist 위반/민감필드 비마스킹/trace 누락을 게이트로 차단:
+```bash
+python scripts/eval/chat_egress_guardrails_gate.py \
+  --events-jsonl var/chat_governance/egress_events.jsonl \
+  --allow-destinations llm_provider,langsmith,support_api \
+  --window-hours 24 \
+  --out data/eval/reports \
+  --min-window 1 \
+  --max-violation-total 0 \
+  --max-unmasked-sensitive-total 0 \
+  --max-unknown-destination-total 0 \
+  --max-error-ratio 0.05 \
+  --max-missing-trace-total 0 \
+  --min-alert-coverage-ratio 1.0 \
+  --max-stale-minutes 180 \
+  --gate
+```
+- 산출물:
+  - destination별 total/violation/blocked 분포
+  - unmasked sensitive egress / unknown destination 탐지
+  - violation 대비 alert coverage 비율
+- CI 옵션:
+  - `RUN_CHAT_EGRESS_GUARDRAILS_GATE=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

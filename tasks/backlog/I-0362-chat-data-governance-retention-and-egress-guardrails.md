@@ -46,3 +46,13 @@ Harden chat data governance for production:
   - `scripts/eval/test_chat_data_retention_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_DATA_RETENTION_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Egress guardrails gate 추가
+  - `scripts/eval/chat_egress_guardrails_gate.py`
+  - outbound 이벤트(`destination`, `status`, `sensitive_field_total`, `masked`, `trace_id/request_id`)를 분석해 allowlist 위반/민감필드 비마스킹/trace 누락을 검증
+  - violation 발생 시 alert coverage 비율까지 함께 체크해 실시간 경보 연계 누락을 탐지
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_egress_guardrails_gate.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_EGRESS_GUARDRAILS_GATE=1 ./scripts/test.sh`
