@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.core import chat
 from app.core.cache import CacheClient
+from app.core.chat_graph.runtime import ChatGraphRuntimeResult
 
 
 def _collect_stream_events(payload):
@@ -206,6 +207,135 @@ def test_get_chat_session_state_recommends_ticket_when_escalation_ready(monkeypa
     assert state["escalation_ready"] is True
     assert state["recommended_action"] == "OPEN_SUPPORT_TICKET"
     assert "상담 티켓" in state["recommended_message"]
+
+
+def test_run_chat_uses_graph_runtime_when_engine_mode_agent(monkeypatch):
+    chat._CACHE = CacheClient(None)
+
+    async def fake_run_chat_graph(request, trace_id, request_id, legacy_executor):
+        return ChatGraphRuntimeResult(
+            stage="persist",
+            state={
+                "schema_version": "v1",
+                "state_version": 2,
+                "trace_id": trace_id,
+                "request_id": request_id,
+                "session_id": "u:101:default",
+                "query": "배송 상태 알려줘",
+                "user_id": "101",
+                "intent": "SHIPPING",
+                "route": "ANSWER",
+                "reason_code": "OK",
+                "selection": {"last_candidates": [], "selected_index": None, "selected_book": None},
+                "pending_action": None,
+                "tool_result": None,
+                "response": None,
+                "session": {
+                    "fallback_count": 0,
+                    "fallback_escalation_threshold": 3,
+                    "escalation_ready": False,
+                    "recommended_action": "NONE",
+                    "recommended_message": "",
+                    "unresolved_context": None,
+                },
+            },
+            response={
+                "version": "v1",
+                "trace_id": trace_id,
+                "request_id": request_id,
+                "status": "ok",
+                "reason_code": "OK",
+                "recoverable": False,
+                "next_action": "NONE",
+                "retry_after_ms": None,
+                "answer": {"role": "assistant", "content": "graph ok"},
+                "sources": [],
+                "citations": [],
+                "fallback_count": 0,
+                "escalated": False,
+            },
+        )
+
+    monkeypatch.setattr(chat, "_chat_engine_mode", lambda: "agent")
+    monkeypatch.setattr(chat, "run_chat_graph", fake_run_chat_graph)
+
+    result = asyncio.run(
+        chat.run_chat(
+            {"session_id": "u:101:default", "message": {"role": "user", "content": "배송 상태 알려줘"}},
+            "trace_now",
+            "req_now",
+        )
+    )
+
+    assert result["status"] == "ok"
+    assert result["answer"]["content"] == "graph ok"
+
+
+def test_run_chat_shadow_mode_returns_legacy_response(monkeypatch):
+    chat._CACHE = CacheClient(None)
+
+    async def fake_legacy(request, trace_id, request_id):
+        return {
+            "version": "v1",
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "status": "ok",
+            "reason_code": "OK",
+            "recoverable": False,
+            "next_action": "NONE",
+            "retry_after_ms": None,
+            "answer": {"role": "assistant", "content": "legacy ok"},
+            "sources": [],
+            "citations": [],
+            "fallback_count": 0,
+            "escalated": False,
+        }
+
+    async def fake_graph(request, trace_id, request_id, legacy_executor):
+        shadow_resp = await legacy_executor(request, trace_id, request_id)
+        return ChatGraphRuntimeResult(
+            stage="persist",
+            state={
+                "schema_version": "v1",
+                "state_version": 2,
+                "trace_id": trace_id,
+                "request_id": request_id,
+                "session_id": "u:202:default",
+                "query": "환불",
+                "user_id": "202",
+                "intent": "REFUND",
+                "route": "ANSWER",
+                "reason_code": "OK",
+                "selection": {"last_candidates": [], "selected_index": None, "selected_book": None},
+                "pending_action": None,
+                "tool_result": None,
+                "response": None,
+                "session": {
+                    "fallback_count": 0,
+                    "fallback_escalation_threshold": 3,
+                    "escalation_ready": False,
+                    "recommended_action": "NONE",
+                    "recommended_message": "",
+                    "unresolved_context": None,
+                },
+            },
+            response=shadow_resp,
+        )
+
+    monkeypatch.setattr(chat, "_chat_engine_mode", lambda: "shadow")
+    monkeypatch.setattr(chat, "_run_chat_legacy", fake_legacy)
+    monkeypatch.setattr(chat, "run_chat_graph", fake_graph)
+
+    result = asyncio.run(
+        chat.run_chat(
+            {"session_id": "u:202:default", "message": {"role": "user", "content": "환불"}},
+            "trace_now",
+            "req_now",
+        )
+    )
+
+    assert result["status"] == "ok"
+    assert result["answer"]["content"] == "legacy ok"
 
 
 def test_run_chat_stream_emits_done_with_validated_citations(monkeypatch):

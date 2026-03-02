@@ -714,6 +714,13 @@ python scripts/eval/chat_contract_compat_eval.py \
   - `legacy_session_snapshot_to_graph_state(...)`
   - `graph_state_to_legacy_session_snapshot(...)`
 
+## Chat graph runtime skeleton (B-0703)
+- runtime entrypoint: `services/query-service/app/core/chat_graph/runtime.py`
+- node flow: `load_state -> understand -> policy_decide -> execute -> compose -> verify -> persist`
+- engine switch:
+  - `QS_CHAT_ENGINE_MODE=legacy` (default)
+  - `QS_CHAT_ENGINE_MODE=shadow|canary|agent`
+
 ---
 
 ## Search Service (Local)

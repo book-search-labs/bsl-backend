@@ -13,6 +13,7 @@ from app.core.chat_graph import (
     ChatGraphStateValidationError,
     graph_state_to_legacy_session_snapshot,
     legacy_session_snapshot_to_graph_state,
+    run_chat_graph,
 )
 from app.core.metrics import metrics
 from app.core.chat_tools import reset_ticket_session_context, run_tool_chat
@@ -497,6 +498,13 @@ def _llm_timeout_sec() -> float:
 
 def _llm_stream_enabled() -> bool:
     return str(os.getenv("QS_LLM_STREAM_ENABLED", "1")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _chat_engine_mode() -> str:
+    mode = str(os.getenv("QS_CHAT_ENGINE_MODE", "legacy")).strip().lower()
+    if mode in {"legacy", "shadow", "canary", "agent"}:
+        return mode
+    return "legacy"
 
 
 def _is_failover_status(status_code: int) -> bool:
@@ -1515,7 +1523,7 @@ async def _prepare_chat(
     }
 
 
-async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
+async def _run_chat_legacy(request: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
     user_id = _extract_user_id(request)
     session_id = _resolve_session_id(request, user_id)
     query_text = _extract_query_text(request)
@@ -1642,6 +1650,57 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
     _clear_unresolved_context(session_id)
     metrics.inc("chat_requests_total", {"decision": "ok"})
     return response
+
+
+def _shadow_compare_responses(legacy: Dict[str, Any], graph: Dict[str, Any]) -> None:
+    legacy_status = str(legacy.get("status") or "")
+    graph_status = str(graph.get("status") or "")
+    legacy_reason = str(legacy.get("reason_code") or "")
+    graph_reason = str(graph.get("reason_code") or "")
+    status_match = "true" if legacy_status == graph_status else "false"
+    reason_match = "true" if legacy_reason == graph_reason else "false"
+    metrics.inc(
+        "chat_graph_shadow_compare_total",
+        {"status_match": status_match, "reason_match": reason_match},
+    )
+
+
+async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
+    mode = _chat_engine_mode()
+    if mode == "legacy":
+        return await _run_chat_legacy(request, trace_id, request_id)
+
+    if mode == "shadow":
+        legacy_response = await _run_chat_legacy(request, trace_id, request_id)
+
+        async def _shadow_executor(_: dict[str, Any], __: str, ___: str) -> dict[str, Any]:
+            return legacy_response
+
+        graph_result = await run_chat_graph(
+            request,
+            trace_id,
+            request_id,
+            legacy_executor=_shadow_executor,
+        )
+        _shadow_compare_responses(legacy_response, graph_result.response)
+        metrics.inc("chat_graph_runtime_total", {"mode": mode, "result": graph_result.stage})
+        return legacy_response
+
+    graph_result = await run_chat_graph(
+        request,
+        trace_id,
+        request_id,
+        legacy_executor=_run_chat_legacy,
+    )
+    metrics.inc(
+        "chat_graph_runtime_total",
+        {
+            "mode": mode,
+            "result": graph_result.stage,
+            "route": str(graph_result.state.get("route") or "NONE"),
+        },
+    )
+    return graph_result.response
 
 
 async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: str) -> AsyncIterator[str]:

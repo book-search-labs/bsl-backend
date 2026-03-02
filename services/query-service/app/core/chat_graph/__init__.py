@@ -8,6 +8,12 @@ from app.core.chat_graph.state import (
     legacy_session_snapshot_to_graph_state,
     validate_chat_graph_state,
 )
+from app.core.chat_graph.runtime import (
+    CHAT_GRAPH_NODE_CONTRACTS,
+    ChatGraphNodeContract,
+    ChatGraphRuntimeResult,
+    run_chat_graph,
+)
 
 __all__ = [
     "CHAT_GRAPH_INITIAL_STATE_VERSION",
@@ -18,4 +24,8 @@ __all__ = [
     "graph_state_to_legacy_session_snapshot",
     "legacy_session_snapshot_to_graph_state",
     "validate_chat_graph_state",
+    "CHAT_GRAPH_NODE_CONTRACTS",
+    "ChatGraphNodeContract",
+    "ChatGraphRuntimeResult",
+    "run_chat_graph",
 ]
