@@ -9,6 +9,11 @@ import httpx
 
 from app.core.analyzer import analyze_query
 from app.core.cache import get_cache
+from app.core.chat_graph import (
+    ChatGraphStateValidationError,
+    graph_state_to_legacy_session_snapshot,
+    legacy_session_snapshot_to_graph_state,
+)
 from app.core.metrics import metrics
 from app.core.chat_tools import reset_ticket_session_context, run_tool_chat
 from app.core.rag import retrieve_chunks_with_trace
@@ -2393,7 +2398,7 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
     if escalation_ready:
         recommended_action = "OPEN_SUPPORT_TICKET"
         recommended_message = "반복 실패가 임계치를 초과했습니다. 상담 티켓 접수를 권장합니다."
-    return {
+    legacy_snapshot = {
         "session_id": session_id,
         "fallback_count": fallback_count,
         "fallback_escalation_threshold": threshold,
@@ -2404,6 +2409,31 @@ def get_chat_session_state(session_id: str, trace_id: str, request_id: str) -> D
         "trace_id": trace_id,
         "request_id": request_id,
     }
+    try:
+        graph_state = legacy_session_snapshot_to_graph_state(
+            legacy_snapshot,
+            trace_id=trace_id,
+            request_id=request_id,
+            query=str(unresolved.get("query") or "") if isinstance(unresolved, dict) else "",
+        )
+        return graph_state_to_legacy_session_snapshot(graph_state)
+    except ChatGraphStateValidationError as exc:
+        metrics.inc("chat_graph_state_invalid_total", {"stage": "session_state_read", "reason_code": exc.reason_code})
+        fallback_unresolved = legacy_snapshot.get("unresolved_context")
+        if not isinstance(fallback_unresolved, dict):
+            fallback_unresolved = {
+                "reason_code": exc.reason_code,
+                "reason_message": "세션 상태 검증에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+                "next_action": "OPEN_SUPPORT_TICKET",
+                "trace_id": trace_id,
+                "request_id": request_id,
+                "updated_at": int(time.time()),
+                "query_preview": "",
+            }
+        legacy_snapshot["state_version"] = 1
+        legacy_snapshot["schema_version"] = "v1"
+        legacy_snapshot["unresolved_context"] = fallback_unresolved
+        return legacy_snapshot
 
 
 def reset_chat_session_state(session_id: str, trace_id: str, request_id: str) -> Dict[str, Any]:
@@ -2416,6 +2446,8 @@ def reset_chat_session_state(session_id: str, trace_id: str, request_id: str) ->
     reset_ticket_session_context(session_id)
     return {
         "session_id": session_id,
+        "schema_version": "v1",
+        "state_version": 1,
         "reset_applied": True,
         "previous_fallback_count": previous_fallback_count,
         "previous_unresolved_context": previous_unresolved_context,

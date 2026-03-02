@@ -707,6 +707,13 @@ python scripts/eval/chat_contract_compat_eval.py \
 ```
 `RUN_CHAT_CONTRACT_COMPAT_EVAL=1 ./scripts/test.sh`로 옵션 게이트를 활성화할 수 있다.
 
+## Chat graph state schema v1 (B-0702)
+- state contract: `services/query-service/app/core/chat_graph/state.py`
+- validator entrypoint: `validate_chat_graph_state(..., stage=\"...\")`
+- legacy adapter:
+  - `legacy_session_snapshot_to_graph_state(...)`
+  - `graph_state_to_legacy_session_snapshot(...)`
+
 ---
 
 ## Search Service (Local)

@@ -378,6 +378,10 @@ async def chat_session_state(request: Request):
             "recommended_action": snapshot["recommended_action"],
             "recommended_message": snapshot["recommended_message"],
             "unresolved_context": snapshot["unresolved_context"],
+            "schema_version": snapshot.get("schema_version"),
+            "state_version": snapshot.get("state_version"),
+            "selection": snapshot.get("selection"),
+            "pending_action": snapshot.get("pending_action"),
         },
     }
     return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
@@ -447,6 +451,8 @@ async def chat_session_reset(request: Request):
             "previous_fallback_count": snapshot["previous_fallback_count"],
             "previous_unresolved_context": snapshot["previous_unresolved_context"],
             "reset_at_ms": snapshot["reset_at_ms"],
+            "schema_version": snapshot.get("schema_version"),
+            "state_version": snapshot.get("state_version"),
         },
     }
     return JSONResponse(content=payload, headers=_response_headers(trace_id, request_id, traceparent))
