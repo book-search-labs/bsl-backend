@@ -45,6 +45,8 @@ from app.core.chat_graph.replay_store import (
 from app.core.chat_graph.feature_router import (
     EngineRouteDecision,
     append_routing_audit,
+    build_legacy_mode_summary,
+    load_global_routing_audit,
     load_routing_audit,
     resolve_engine_mode,
 )
@@ -146,6 +148,8 @@ __all__ = [
     "start_run_record",
     "EngineRouteDecision",
     "append_routing_audit",
+    "build_legacy_mode_summary",
+    "load_global_routing_audit",
     "load_routing_audit",
     "resolve_engine_mode",
     "feature_router",

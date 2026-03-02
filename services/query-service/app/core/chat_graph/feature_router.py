@@ -25,12 +25,20 @@ def _audit_key(session_id: str) -> str:
     return f"chat:graph:routing-audit:{session_id}"
 
 
+def _global_audit_key() -> str:
+    return "chat:graph:routing-audit:global"
+
+
 def _audit_ttl_sec() -> int:
     return 86400
 
 
 def _audit_max_entries() -> int:
     return 200
+
+
+def _global_audit_max_entries() -> int:
+    return 1000
 
 
 def _bool_from_env(key: str, default: bool = False) -> bool:
@@ -84,6 +92,16 @@ def _flag_mode(payload: dict[str, Any], key: str, context: dict[str, str], fallb
     return fallback
 
 
+def _legacy_decommission_enabled(payload: dict[str, Any], context: dict[str, str]) -> bool:
+    enabled = _bool_from_env("QS_CHAT_LEGACY_DECOMMISSION_ENABLED", False)
+    return _flag_bool(payload, "chat.legacy.decommission.enabled", context, enabled)
+
+
+def _legacy_emergency_recovery(payload: dict[str, Any], context: dict[str, str]) -> bool:
+    enabled = _bool_from_env("QS_CHAT_LEGACY_EMERGENCY_RECOVERY", False)
+    return _flag_bool(payload, "chat.legacy.emergency_recovery", context, enabled)
+
+
 def resolve_engine_mode(
     *,
     default_mode: str,
@@ -113,9 +131,16 @@ def resolve_engine_mode(
     high_risk = context.get("risk_band") == "high"
     allow_high_risk = _flag_bool(payload, "chat.agent.high_risk.enabled", context, False)
     if high_risk and mode in {"agent", "canary"} and not allow_high_risk:
-        return EngineRouteDecision(mode="legacy", reason="high_risk_fallback", source="policy", force_legacy=False)
+        decision = EngineRouteDecision(mode="legacy", reason="high_risk_fallback", source="policy", force_legacy=False)
+    else:
+        decision = EngineRouteDecision(mode=mode, reason="ok", source="flag", force_legacy=False)
 
-    return EngineRouteDecision(mode=mode, reason="ok", source="flag", force_legacy=False)
+    if decision.mode == "legacy" and _legacy_decommission_enabled(payload, context):
+        if _legacy_emergency_recovery(payload, context):
+            return EngineRouteDecision(mode="legacy", reason="legacy_emergency_recovery", source="policy", force_legacy=True)
+        return EngineRouteDecision(mode="agent", reason="legacy_decommissioned", source="policy", force_legacy=False)
+
+    return decision
 
 
 def append_routing_audit(
@@ -147,9 +172,56 @@ def append_routing_audit(
         events = events[-_audit_max_entries():]
     _CACHE.set_json(_audit_key(session_id), {"events": events}, ttl=_audit_ttl_sec())
 
+    global_cached = _CACHE.get_json(_global_audit_key())
+    global_events: list[dict[str, Any]] = []
+    if isinstance(global_cached, dict) and isinstance(global_cached.get("events"), list):
+        global_events = [event for event in global_cached.get("events", []) if isinstance(event, dict)]
+    global_events.append(
+        {
+            "ts": int(time.time()),
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "session_id": session_id,
+            "context": context,
+            "mode": decision.mode,
+            "reason": decision.reason,
+            "source": decision.source,
+            "force_legacy": decision.force_legacy,
+        }
+    )
+    if len(global_events) > _global_audit_max_entries():
+        global_events = global_events[-_global_audit_max_entries():]
+    _CACHE.set_json(_global_audit_key(), {"events": global_events}, ttl=_audit_ttl_sec())
+
 
 def load_routing_audit(session_id: str) -> list[dict[str, Any]]:
     cached = _CACHE.get_json(_audit_key(session_id))
     if isinstance(cached, dict) and isinstance(cached.get("events"), list):
         return [event for event in cached.get("events", []) if isinstance(event, dict)]
     return []
+
+
+def load_global_routing_audit(*, limit: int = 200) -> list[dict[str, Any]]:
+    cached = _CACHE.get_json(_global_audit_key())
+    if isinstance(cached, dict) and isinstance(cached.get("events"), list):
+        rows = [event for event in cached.get("events", []) if isinstance(event, dict)]
+        return rows[-max(1, int(limit)) :]
+    return []
+
+
+def build_legacy_mode_summary(*, limit: int = 500) -> dict[str, Any]:
+    rows = load_global_routing_audit(limit=max(1, int(limit)))
+    total = len(rows)
+    legacy_rows = [row for row in rows if str(row.get("mode") or "") == "legacy"]
+    legacy_count = len(legacy_rows)
+    reason_counts: dict[str, int] = {}
+    for row in legacy_rows:
+        reason = str(row.get("reason") or "unknown")
+        reason_counts[reason] = reason_counts.get(reason, 0) + 1
+    return {
+        "window_size": total,
+        "legacy_count": legacy_count,
+        "legacy_ratio": 0.0 if total == 0 else float(legacy_count) / float(total),
+        "legacy_reason_counts": reason_counts,
+        "samples": rows[-20:],
+    }

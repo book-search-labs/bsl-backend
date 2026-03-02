@@ -867,6 +867,30 @@ python scripts/eval/chat_cutover_gate.py \
 - CI 옵션:
   - `RUN_CHAT_CUTOVER_GATE=1 ./scripts/test.sh`
 
+## Legacy decommission enforcement (B-0724 follow-up)
+- routing audit 집계:
+  - session별: `chat:graph:routing-audit:{session_id}`
+  - global window: `chat:graph:routing-audit:global`
+- feature router summary API:
+  - `load_global_routing_audit(limit)`
+  - `build_legacy_mode_summary(limit)`
+- decommission 제어 플래그:
+  - `QS_CHAT_LEGACY_DECOMMISSION_ENABLED=1` (legacy 경로 기본 차단)
+  - `QS_CHAT_LEGACY_EMERGENCY_RECOVERY=1` (긴급 복구 시 legacy 임시 허용)
+  - OpenFeature 키: `chat.legacy.decommission.enabled`, `chat.legacy.emergency_recovery`
+- gate script:
+```bash
+python scripts/eval/chat_legacy_decommission_check.py \
+  --limit 500 \
+  --min-window 20 \
+  --max-legacy-count 0 \
+  --max-legacy-ratio 0.0 \
+  --allow-legacy-reasons legacy_emergency_recovery,auto_rollback_override \
+  --gate
+```
+- CI 옵션:
+  - `RUN_CHAT_LEGACY_DECOMMISSION_CHECK=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
