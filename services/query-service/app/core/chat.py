@@ -12,6 +12,8 @@ from app.core.cache import get_cache
 from app.core.chat_graph import (
     ChatGraphStateValidationError,
     append_routing_audit,
+    append_shadow_diff,
+    compare_shadow_response,
     graph_state_to_legacy_session_snapshot,
     legacy_session_snapshot_to_graph_state,
     resolve_engine_mode,
@@ -1697,17 +1699,40 @@ async def _run_chat_legacy(request: Dict[str, Any], trace_id: str, request_id: s
     return response
 
 
-def _shadow_compare_responses(legacy: Dict[str, Any], graph: Dict[str, Any]) -> None:
-    legacy_status = str(legacy.get("status") or "")
-    graph_status = str(graph.get("status") or "")
-    legacy_reason = str(legacy.get("reason_code") or "")
-    graph_reason = str(graph.get("reason_code") or "")
-    status_match = "true" if legacy_status == graph_status else "false"
-    reason_match = "true" if legacy_reason == graph_reason else "false"
+def _shadow_compare_responses(
+    request: Dict[str, Any],
+    trace_id: str,
+    request_id: str,
+    legacy: Dict[str, Any],
+    graph: Dict[str, Any],
+) -> None:
+    user_id = _extract_user_id(request)
+    session_id = _resolve_session_id(request, user_id)
+    query = _extract_query_text(request)
+    intent = _query_intent(query)
+    topic = _query_preview(query, max_len=48)
+
+    diff = compare_shadow_response(legacy, graph)
+    append_shadow_diff(
+        session_id=session_id,
+        trace_id=trace_id,
+        request_id=request_id,
+        intent=intent,
+        topic=topic,
+        result=diff,
+    )
     metrics.inc(
         "chat_graph_shadow_compare_total",
-        {"status_match": status_match, "reason_match": reason_match},
+        {
+            "matched": "true" if diff.matched else "false",
+            "severity": diff.severity,
+        },
     )
+    for diff_type in diff.diff_types:
+        metrics.inc(
+            "chat_graph_shadow_diff_type_total",
+            {"type": diff_type, "severity": diff.severity},
+        )
 
 
 async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
@@ -1728,7 +1753,7 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
             legacy_executor=_shadow_executor,
             record_run=True,
         )
-        _shadow_compare_responses(legacy_response, graph_result.response)
+        _shadow_compare_responses(request, trace_id, request_id, legacy_response, graph_result.response)
         metrics.inc("chat_graph_runtime_total", {"mode": mode, "result": graph_result.stage})
         return legacy_response
 

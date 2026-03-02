@@ -748,6 +748,13 @@ python scripts/eval/chat_graph_replay.py --run-id <run_id>
   - `QS_CHAT_LANGGRAPH_ENABLED`
   - `QS_CHAT_OPENFEATURE_FLAGS_JSON` (`chat.engine.mode`, `chat.force_legacy`, `chat.langgraph.enabled`)
 
+## Chat shadow comparator (B-0713)
+- comparator module: `services/query-service/app/core/chat_graph/shadow_comparator.py`
+- summary script:
+```bash
+python scripts/eval/chat_shadow_summary.py --limit 200
+```
+
 ---
 
 ## Search Service (Local)

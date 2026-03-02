@@ -48,7 +48,16 @@ from app.core.chat_graph.feature_router import (
     load_routing_audit,
     resolve_engine_mode,
 )
+from app.core.chat_graph.shadow_comparator import (
+    ShadowDiffResult,
+    append_shadow_diff,
+    build_gate_payload,
+    build_shadow_summary,
+    compare_shadow_response,
+    load_shadow_diffs,
+)
 import app.core.chat_graph.feature_router as feature_router
+import app.core.chat_graph.shadow_comparator as shadow_comparator
 
 __all__ = [
     "CHAT_GRAPH_INITIAL_STATE_VERSION",
@@ -90,4 +99,11 @@ __all__ = [
     "load_routing_audit",
     "resolve_engine_mode",
     "feature_router",
+    "ShadowDiffResult",
+    "append_shadow_diff",
+    "build_gate_payload",
+    "build_shadow_summary",
+    "compare_shadow_response",
+    "load_shadow_diffs",
+    "shadow_comparator",
 ]
