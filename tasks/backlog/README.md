@@ -112,3 +112,25 @@
 - U-0156 chat omnichannel handoff + notification UX
 - A-0156 chat supervisor copilot + coaching loop console
 - I-0366 chat policy distribution + realtime config control plane
+
+## Chatbot 전면 리라이트 (Phase 18, LangGraph/LangSmith/OpenFeature)
+### P0 (코어 교체 + 안전성)
+- B-0701 chat contract freeze + compatibility harness
+- B-0702 LangGraph state schema v1
+- B-0703 LangGraph runtime skeleton + node contract
+- B-0704 LangGraph confirm interrupt/resume FSM
+- B-0705 AuthZ gate + action protocol fence (pre-node)
+- B-0706 durable checkpoint + deterministic replay kit
+
+### P1 (운영 게이트 + 배포 제어)
+- B-0711 LangSmith trace integration (PII-safe)
+- B-0712 OpenFeature engine routing + kill switch
+- B-0713 shadow comparator v1 (legacy vs agent)
+- B-0714 canary gate + auto rollback controller
+- B-0715 reason_code taxonomy governance gate
+
+### P2 (도메인 이식 + 완전 전환)
+- B-0721 domain node migration (book/selection/policy cache)
+- B-0722 compose + claim verifier node
+- B-0723 eval harness migration (legacy vs graph parity)
+- B-0724 performance budget cutover + legacy decommission
