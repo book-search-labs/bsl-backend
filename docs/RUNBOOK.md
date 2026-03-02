@@ -1160,6 +1160,30 @@ python scripts/eval/chat_gameday_readiness_packet.py \
 - CI 옵션:
   - `RUN_CHAT_GAMEDAY_PACKET=1 ./scripts/test.sh`
 
+## Data retention guard (I-0362, Bundle 1)
+- retention lifecycle 이벤트를 기준으로 TTL 만료/삭제/예외 승인 준수 여부를 게이트로 평가:
+```bash
+python scripts/eval/chat_data_retention_guard.py \
+  --events-jsonl var/chat_governance/retention_events.jsonl \
+  --window-hours 72 \
+  --out data/eval/reports \
+  --min-window 1 \
+  --max-overdue-total 0 \
+  --max-overdue-ratio 0.0 \
+  --min-purge-coverage-ratio 1.0 \
+  --max-unapproved-exception-total 0 \
+  --max-stale-minutes 180 \
+  --min-trace-coverage-ratio 1.0 \
+  --max-missing-trace-total 0 \
+  --gate
+```
+- 산출물:
+  - 데이터 클래스별 만료/삭제/미처리(overdue) 집계
+  - 승인 없는 보관 예외(unapproved exception) 탐지
+  - trace/request 연결 커버리지 및 stale window
+- CI 옵션:
+  - `RUN_CHAT_DATA_RETENTION_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

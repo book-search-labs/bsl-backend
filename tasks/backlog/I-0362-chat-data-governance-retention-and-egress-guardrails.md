@@ -36,3 +36,13 @@ Harden chat data governance for production:
 - Enforce retention TTLs per data class with deletion/anonymization jobs.
 - Add strict egress allowlists and sensitive-field blocking.
 - Produce audit evidence for data lifecycle and outbound transfers.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Retention enforcement gate 추가
+  - `scripts/eval/chat_data_retention_guard.py`
+  - retention lifecycle 이벤트(`data_class`, `expires_at`, `action`, `approval_id`, `trace_id/request_id`)를 분석해 overdue/삭제 커버리지/예외 승인 누락을 자동 검증
+  - gate 모드에서 TTL 만료 미처리, 승인 없는 예외, trace 누락, stale window 임계치 초과 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_data_retention_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_DATA_RETENTION_GUARD=1 ./scripts/test.sh`
