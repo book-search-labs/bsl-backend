@@ -815,6 +815,17 @@ python scripts/eval/chat_reason_taxonomy_eval.py \
   - `QS_CHAT_POLICY_CACHE_TTL_SEC`
   - `QS_CHAT_SELECTION_TTL_SEC`
 
+## Compose + claim verifier node (B-0722, in-progress)
+- compose node:
+  - route별 UI hint 생성(`options/cards/forms/buttons`)
+  - 공개 응답 계약(`chat-response.schema.json`)을 유지하기 위해 현재는 `tool_result.data.ui_hints`에 내부 저장
+- claim verifier node:
+  - 완료 claim 문구(조회/실행/취소/환불 완료) 검증
+  - 근거 부족 또는 confirmation 미완료 상태에서 `OUTPUT_GUARD_FORBIDDEN_CLAIM`으로 자동 차단/복구
+- metrics:
+  - `chat_graph_ui_hint_render_total{route,type}`
+  - `chat_graph_claim_verifier_total{result,reason}`
+
 ---
 
 ## Search Service (Local)

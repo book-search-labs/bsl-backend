@@ -51,6 +51,7 @@ from app.core.chat_graph.langsmith_trace import (
     emit_trace_event,
     resolve_trace_decision,
 )
+from app.core.metrics import metrics
 
 
 LegacyExecutor = Callable[[dict[str, Any], str, str], Awaitable[dict[str, Any]]]
@@ -938,6 +939,23 @@ async def _compose_node(state: ChatGraphState) -> ChatGraphState:
             "role": str(answer.get("role") or "assistant"),
             "content": str(answer.get("content") or ""),
         }
+
+    ui_hints = _build_ui_hints(state, response)
+    tool_result = state.get("tool_result")
+    if not isinstance(tool_result, dict):
+        tool_result = {"status": "ok", "reason_code": str(state.get("reason_code") or "OK"), "source": "compose", "data": {}}
+    data = tool_result.get("data")
+    if not isinstance(data, dict):
+        data = {}
+    data["ui_hints"] = ui_hints
+    tool_result["data"] = data
+    state["tool_result"] = tool_result
+
+    route = str(state.get("route") or "UNKNOWN")
+    for hint_type in ("options", "cards", "forms", "buttons"):
+        value = ui_hints.get(hint_type)
+        if isinstance(value, list) and value:
+            metrics.inc("chat_graph_ui_hint_render_total", {"route": route, "type": hint_type})
     state["response"] = response
     return state
 
@@ -970,11 +988,175 @@ async def _verify_node(state: ChatGraphState) -> ChatGraphState:
         )
         state["route"] = "FALLBACK"
         state["reason_code"] = "OUTPUT_GUARD_EMPTY_ANSWER"
+        metrics.inc("chat_graph_claim_verifier_total", {"result": "blocked", "reason": "empty_answer"})
         return state
+
+    if status == "ok":
+        content = ""
+        if isinstance(answer, dict):
+            content = str(answer.get("content") or "")
+        if _contains_success_claim(content):
+            if _pending_action_not_executed(state):
+                state["response"] = _state_response_payload(
+                    _claim_repair_response(
+                        state["trace_id"],
+                        state["request_id"],
+                        reason_code="OUTPUT_GUARD_FORBIDDEN_CLAIM",
+                        message="확인 절차가 완료되기 전에는 실행 완료로 안내할 수 없습니다. 확인 후 다시 진행해 주세요.",
+                    )
+                )
+                state["route"] = "FALLBACK"
+                state["reason_code"] = "OUTPUT_GUARD_FORBIDDEN_CLAIM"
+                metrics.inc("chat_graph_claim_verifier_total", {"result": "blocked", "reason": "pending_confirmation"})
+                return state
+            if not _has_claim_evidence(state, response):
+                state["response"] = _state_response_payload(
+                    _claim_repair_response(
+                        state["trace_id"],
+                        state["request_id"],
+                        reason_code="OUTPUT_GUARD_FORBIDDEN_CLAIM",
+                        message="실행/조회 완료를 확인할 근거가 부족해 확정 안내를 보류했습니다. 다시 시도해 주세요.",
+                    )
+                )
+                state["route"] = "FALLBACK"
+                state["reason_code"] = "OUTPUT_GUARD_FORBIDDEN_CLAIM"
+                metrics.inc("chat_graph_claim_verifier_total", {"result": "blocked", "reason": "missing_evidence"})
+                return state
+            metrics.inc("chat_graph_claim_verifier_total", {"result": "pass", "reason": "evidence_present"})
+        else:
+            metrics.inc("chat_graph_claim_verifier_total", {"result": "pass", "reason": "no_success_claim"})
 
     if not state.get("reason_code"):
         state["reason_code"] = str(response.get("reason_code") or "OK")
     return state
+
+
+def _build_ui_hints(state: ChatGraphState, response: Mapping[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    route = str(state.get("route") or "")
+    selection = state.get("selection") if isinstance(state.get("selection"), Mapping) else {}
+    pending_action = state.get("pending_action") if isinstance(state.get("pending_action"), Mapping) else {}
+    hints: dict[str, list[dict[str, Any]]] = {
+        "options": [],
+        "cards": [],
+        "forms": [],
+        "buttons": [],
+    }
+
+    if route == "OPTIONS":
+        candidates = selection.get("last_candidates") if isinstance(selection.get("last_candidates"), list) else []
+        for idx, item in enumerate(candidates[:5], start=1):
+            if not isinstance(item, Mapping):
+                continue
+            hints["options"].append(
+                {
+                    "id": str(idx),
+                    "label": str(item.get("title") or item.get("doc_id") or f"후보 {idx}"),
+                    "value": str(idx),
+                }
+            )
+
+    if route == "CONFIRM":
+        token = str(pending_action.get("confirmation_token") or "").strip()
+        hints["buttons"] = [
+            {"id": "confirm", "label": "확인", "value": f"확인 {token}".strip()},
+            {"id": "abort", "label": "취소", "value": "중단"},
+        ]
+
+    if route == "ANSWER":
+        candidates = selection.get("last_candidates") if isinstance(selection.get("last_candidates"), list) else []
+        for item in candidates[:3]:
+            if not isinstance(item, Mapping):
+                continue
+            hints["cards"].append(
+                {
+                    "title": str(item.get("title") or item.get("doc_id") or ""),
+                    "subtitle": str(item.get("author") or ""),
+                    "id": str(item.get("doc_id") or item.get("isbn") or ""),
+                }
+            )
+
+    if not hints["cards"]:
+        sources = response.get("sources")
+        if isinstance(sources, list):
+            for source in sources[:3]:
+                if not isinstance(source, Mapping):
+                    continue
+                hints["cards"].append(
+                    {
+                        "title": str(source.get("title") or source.get("doc_id") or ""),
+                        "subtitle": str(source.get("snippet") or "")[:72],
+                        "id": str(source.get("doc_id") or source.get("chunk_id") or ""),
+                    }
+                )
+    return hints
+
+
+def _contains_success_claim(text: str) -> bool:
+    q = str(text or "").lower()
+    claim_tokens = (
+        "조회 완료",
+        "조회했습니다",
+        "확인했습니다",
+        "실행 완료",
+        "처리 완료",
+        "취소 완료",
+        "환불 완료",
+        "done",
+        "completed",
+        "executed",
+    )
+    return any(token in q for token in claim_tokens)
+
+
+def _has_claim_evidence(state: ChatGraphState, response: Mapping[str, Any]) -> bool:
+    citations = response.get("citations")
+    if isinstance(citations, list) and len(citations) > 0:
+        return True
+    sources = response.get("sources")
+    if isinstance(sources, list) and len(sources) > 0:
+        return True
+    pending_action = state.get("pending_action")
+    if isinstance(pending_action, Mapping):
+        if str(pending_action.get("state") or "").upper() == "EXECUTED":
+            return True
+    tool_result = state.get("tool_result")
+    if isinstance(tool_result, Mapping):
+        source = str(tool_result.get("source") or "")
+        if source == "policy_topic_cache" and str(tool_result.get("status") or "") == "ok":
+            return True
+    return False
+
+
+def _pending_action_not_executed(state: ChatGraphState) -> bool:
+    pending_action = state.get("pending_action")
+    if not isinstance(pending_action, Mapping):
+        return False
+    pending_state = str(pending_action.get("state") or "").upper()
+    return pending_state not in {"EXECUTED", "FAILED_FINAL", "ABORTED", "EXPIRED"}
+
+
+def _claim_repair_response(
+    trace_id: str,
+    request_id: str,
+    *,
+    reason_code: str,
+    message: str,
+) -> dict[str, Any]:
+    return {
+        "version": "v1",
+        "trace_id": trace_id,
+        "request_id": request_id,
+        "status": "insufficient_evidence",
+        "reason_code": reason_code,
+        "recoverable": True,
+        "next_action": "RETRY",
+        "retry_after_ms": 1000,
+        "answer": {"role": "assistant", "content": message},
+        "sources": [],
+        "citations": [],
+        "fallback_count": 0,
+        "escalated": False,
+    }
 
 
 async def _persist_node(state: ChatGraphState) -> ChatGraphState:

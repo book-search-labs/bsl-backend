@@ -253,6 +253,72 @@ def test_run_chat_graph_selection_memory_rewrites_second_turn_query():
     assert captured_queries[1].startswith("B Book")
 
 
+def test_run_chat_graph_claim_verifier_blocks_unbacked_success_claim():
+    async def fake_legacy_executor(request, trace_id, request_id):
+        return {
+            "version": "v1",
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "status": "ok",
+            "reason_code": "OK",
+            "recoverable": False,
+            "next_action": "NONE",
+            "retry_after_ms": None,
+            "answer": {"role": "assistant", "content": "주문 취소 완료했습니다."},
+            "sources": [],
+            "citations": [],
+            "fallback_count": 0,
+            "escalated": False,
+        }
+
+    result = _run(
+        run_chat_graph(
+            {"session_id": "u:109:default", "message": {"role": "user", "content": "안내해줘"}},
+            "trace_109",
+            "req_109",
+            legacy_executor=fake_legacy_executor,
+        )
+    )
+
+    assert result.response["status"] == "insufficient_evidence"
+    assert result.response["reason_code"] == "OUTPUT_GUARD_FORBIDDEN_CLAIM"
+
+
+def test_run_chat_graph_compose_sets_ui_hints_for_options():
+    domain_nodes._CACHE = CacheClient(None)
+    domain_nodes.save_selection_memory(
+        "u:110:default",
+        {
+            "last_candidates": [
+                {"title": "A Book", "doc_id": "a1"},
+                {"title": "B Book", "doc_id": "b1"},
+            ],
+            "selected_index": None,
+            "selected_book": None,
+        },
+    )
+
+    async def fake_legacy_executor(request, trace_id, request_id):
+        return {"status": "ok", "reason_code": "OK", "answer": {"role": "assistant", "content": "unused"}, "sources": [], "citations": []}
+
+    result = _run(
+        run_chat_graph(
+            {"session_id": "u:110:default", "message": {"role": "user", "content": "3번째 알려줘"}},
+            "trace_110",
+            "req_110",
+            legacy_executor=fake_legacy_executor,
+        )
+    )
+
+    tool_result = result.state.get("tool_result")
+    assert isinstance(tool_result, dict)
+    data = tool_result.get("data")
+    assert isinstance(data, dict)
+    ui_hints = data.get("ui_hints")
+    assert isinstance(ui_hints, dict)
+    assert len(ui_hints.get("options") or []) >= 1
+
+
 def test_run_chat_graph_denies_sensitive_action_without_auth_context():
     confirm_fsm._CACHE = CacheClient(None)
     authz_gate._CACHE = CacheClient(None)
