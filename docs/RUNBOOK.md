@@ -1209,6 +1209,27 @@ python scripts/eval/chat_egress_guardrails_gate.py \
 - CI 옵션:
   - `RUN_CHAT_EGRESS_GUARDRAILS_GATE=1 ./scripts/test.sh`
 
+## Data governance evidence packet (I-0362, Bundle 3)
+- retention/egress 게이트 결과를 묶어 감사 대응용 증적 리포트와 최종 상태를 생성:
+```bash
+python scripts/eval/chat_data_governance_evidence.py \
+  --reports-dir data/eval/reports \
+  --retention-prefix chat_data_retention_guard \
+  --egress-prefix chat_egress_guardrails_gate \
+  --min-trace-coverage-ratio 1.0 \
+  --min-lifecycle-score 80 \
+  --require-reports \
+  --require-events \
+  --out data/eval/reports \
+  --gate
+```
+- 산출물:
+  - 최종 상태(`READY|WATCH|HOLD`) 및 권장 액션(`promote|hold`)
+  - lifecycle score + trace coverage
+  - retention/egress 근거 리포트 경로 및 blocker/warning 목록
+- CI 옵션:
+  - `RUN_CHAT_DATA_GOV_EVIDENCE_GATE=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

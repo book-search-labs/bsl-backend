@@ -56,3 +56,13 @@ Harden chat data governance for production:
   - `scripts/eval/test_chat_egress_guardrails_gate.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_EGRESS_GUARDRAILS_GATE=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Data governance evidence packet 추가
+  - `scripts/eval/chat_data_governance_evidence.py`
+  - 최신 retention/egress 게이트 리포트를 결합해 최종 상태(`READY|WATCH|HOLD`)와 권장 액션을 산출
+  - lifecycle score + trace coverage를 이용해 감사 증적 품질을 계량화하고 blocker/warning을 자동 생성
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_data_governance_evidence.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_DATA_GOV_EVIDENCE_GATE=1 ./scripts/test.sh`
