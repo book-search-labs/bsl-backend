@@ -1323,6 +1323,28 @@ python scripts/eval/chat_session_gateway_durability.py \
 - CI 옵션:
   - `RUN_CHAT_SESSION_DURABILITY_GATE=1 ./scripts/test.sh`
 
+## Event delivery guarantee gate (I-0364, Bundle 2)
+- turn/event 전달 로그를 기반으로 ordered delivery, duplicate, ACK 누락, redelivery TTL 드롭을 검증:
+```bash
+python scripts/eval/chat_event_delivery_guarantee.py \
+  --events-jsonl var/chat_governance/event_delivery_events.jsonl \
+  --window-hours 24 \
+  --min-delivery-success-ratio 0.99 \
+  --max-order-violation-total 0 \
+  --max-duplicate-ratio 0.01 \
+  --max-ack-missing-ratio 0.02 \
+  --max-sync-gap 5 \
+  --max-ttl-drop-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - delivery success ratio, ordered violation total
+  - duplicate/ack-missing ratio, redelivery/TTL drop 집계
+  - reconnect 이후 sync gap 최대치
+- CI 옵션:
+  - `RUN_CHAT_EVENT_DELIVERY_GUARANTEE=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

@@ -57,3 +57,13 @@ Harden chat realtime session infrastructure:
   - `scripts/eval/test_chat_session_gateway_durability.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_SESSION_DURABILITY_GATE=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Event delivery guarantee gate 추가
+  - `scripts/eval/chat_event_delivery_guarantee.py`
+  - 전달 이벤트(`event_seq/expected_seq/duplicate/acked/redelivery_count/sync_gap_events`)를 집계해 ordered delivery 위반, 중복, ACK 누락, TTL 드롭을 검증
+  - gate 모드에서 delivery success ratio 하락, ordered violation 증가, duplicate/ack missing 비율 증가, sync gap/TTL 드롭 임계치 초과 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_event_delivery_guarantee.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_EVENT_DELIVERY_GUARANTEE=1 ./scripts/test.sh`
