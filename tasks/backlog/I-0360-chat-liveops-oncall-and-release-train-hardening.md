@@ -96,3 +96,10 @@ Harden chat live operations for production:
   - liveops cycle 리포트에서 release_signature 변경 추이를 분석해 누락/과도 변경/비허용 action 변경을 게이트로 차단
 - [x] CI 진입점 추가
   - `RUN_CHAT_IMMUTABLE_BUNDLE_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-02, Bundle 8)
+- [x] DR drill report 생성기 추가
+  - `scripts/eval/chat_dr_drill_report.py`
+  - liveops cycle에서 rollback drill/recovery/open drill/MTTR을 집계하고 json+markdown 리포트를 자동 저장
+- [x] CI 진입점 추가
+  - `RUN_CHAT_DR_DRILL_REPORT=1 ./scripts/test.sh`

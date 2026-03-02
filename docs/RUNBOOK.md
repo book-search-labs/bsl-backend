@@ -1053,6 +1053,25 @@ python scripts/eval/chat_immutable_bundle_guard.py \
 - CI 옵션:
   - `RUN_CHAT_IMMUTABLE_BUNDLE_GUARD=1 ./scripts/test.sh`
 
+## DR drill report (I-0360, Bundle 8)
+- liveops cycle에서 rollback drill 복구 무결성을 월간/주간 리포트로 저장:
+```bash
+python scripts/eval/chat_dr_drill_report.py \
+  --reports-dir data/eval/reports \
+  --prefix chat_liveops_cycle \
+  --limit 40 \
+  --out data/eval/reports \
+  --min-window 1 \
+  --min-recovery-ratio 1.0 \
+  --max-open-drill-total 0 \
+  --max-avg-mttr-sec 7200 \
+  --gate
+```
+- 필요 시 실제 drill 강제:
+  - `--require-drill`
+- CI 옵션:
+  - `RUN_CHAT_DR_DRILL_REPORT=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
