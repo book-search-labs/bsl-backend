@@ -89,3 +89,10 @@ Harden chat live operations for production:
   - 장애 상황에서도 커머스 핵심 intent 보존 우선순위를 출력
 - [x] CI 진입점 추가
   - `RUN_CHAT_CAPACITY_COST_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-02, Bundle 7)
+- [x] Immutable bundle drift guard 추가
+  - `scripts/eval/chat_immutable_bundle_guard.py`
+  - liveops cycle 리포트에서 release_signature 변경 추이를 분석해 누락/과도 변경/비허용 action 변경을 게이트로 차단
+- [x] CI 진입점 추가
+  - `RUN_CHAT_IMMUTABLE_BUNDLE_GUARD=1 ./scripts/test.sh`

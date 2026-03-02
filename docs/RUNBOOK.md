@@ -1032,6 +1032,27 @@ python scripts/eval/chat_capacity_cost_guard.py \
 - CI 옵션:
   - `RUN_CHAT_CAPACITY_COST_GUARD=1 ./scripts/test.sh`
 
+## Immutable bundle guard (I-0360, Bundle 7)
+- liveops cycle 리포트에서 release_signature 변경 드리프트를 감시:
+```bash
+python scripts/eval/chat_immutable_bundle_guard.py \
+  --reports-dir data/eval/reports \
+  --prefix chat_liveops_cycle \
+  --limit 20 \
+  --min-window 3 \
+  --max-unique-signatures 2 \
+  --max-signature-changes 2 \
+  --allowed-change-actions promote,rollback \
+  --require-signature \
+  --gate
+```
+- 검증 항목:
+  - signature 누락 여부
+  - 허용되지 않은 action에서의 signature 변경 여부
+  - window 내 signature 변화량 상한
+- CI 옵션:
+  - `RUN_CHAT_IMMUTABLE_BUNDLE_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
