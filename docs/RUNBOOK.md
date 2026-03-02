@@ -1093,6 +1093,25 @@ python scripts/eval/chat_readiness_score.py \
 - CI 옵션:
   - `RUN_CHAT_READINESS_SCORE=1 ./scripts/test.sh`
 
+## Readiness trend gate (I-0361, Bundle 4)
+- readiness 점수 리포트의 주/월 평균 추세와 다음 목표 점수를 자동 계산:
+```bash
+python scripts/eval/chat_readiness_trend.py \
+  --reports-dir data/eval/reports \
+  --prefix chat_readiness_score \
+  --limit 200 \
+  --out data/eval/reports \
+  --min-reports 1 \
+  --min-week-avg 80 \
+  --min-month-avg 80 \
+  --gate
+```
+- 산출물:
+  - current/previous week, month 평균 및 delta
+  - target_next_week / target_next_month
+- CI 옵션:
+  - `RUN_CHAT_READINESS_TREND=1 ./scripts/test.sh`
+
 ## Gameday drillpack template (I-0361, Bundle 2)
 - triage reason 분포를 반영해 장애 훈련 체크리스트 자동 생성:
 ```bash

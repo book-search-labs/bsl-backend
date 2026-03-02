@@ -59,3 +59,11 @@ Operationalize chat reliability with gamedays:
   - bound category 집계와 drillpack 반영 권고안을 markdown/json으로 자동 생성
 - [x] CI 진입점 추가
   - `RUN_CHAT_INCIDENT_FEEDBACK_BINDING=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Readiness trend gate 추가
+  - `scripts/eval/chat_readiness_trend.py`
+  - readiness score 리포트의 주/월 평균과 delta를 계산하고 다음 주/월 목표 점수를 자동 산출
+  - gate 모드에서 min_reports/min_week_avg/min_month_avg 임계치 검증
+- [x] CI 진입점 추가
+  - `RUN_CHAT_READINESS_TREND=1 ./scripts/test.sh`
