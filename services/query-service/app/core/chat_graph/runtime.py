@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
+import hashlib
+import time
 
 from app.core.chat_graph.state import (
     ChatGraphState,
@@ -22,6 +24,11 @@ from app.core.chat_graph.authz_gate import (
     authorize_request,
     build_action_protocol,
 )
+from app.core.chat_graph.replay_store import (
+    append_checkpoint,
+    finish_run,
+    start_run_record,
+)
 
 
 LegacyExecutor = Callable[[dict[str, Any], str, str], Awaitable[dict[str, Any]]]
@@ -40,6 +47,7 @@ class ChatGraphRuntimeResult:
     state: ChatGraphState
     response: dict[str, Any]
     stage: str
+    run_id: str = ""
 
 
 CHAT_GRAPH_NODE_CONTRACTS: dict[str, ChatGraphNodeContract] = {
@@ -92,10 +100,13 @@ async def run_chat_graph(
     request_id: str,
     *,
     legacy_executor: LegacyExecutor,
+    run_id: str | None = None,
+    record_run: bool = False,
 ) -> ChatGraphRuntimeResult:
     session_id = _resolve_session_id(request)
     query = _extract_query(request)
     user_id = _extract_user_id(request)
+    resolved_run_id = run_id or _build_run_id(trace_id, request_id, session_id)
 
     state = build_chat_graph_state(
         trace_id=trace_id,
@@ -104,16 +115,48 @@ async def run_chat_graph(
         query=query,
         user_id=user_id,
     )
+    if record_run:
+        start_run_record(
+            run_id=resolved_run_id,
+            trace_id=trace_id,
+            request_id=request_id,
+            session_id=session_id,
+            request_payload=request,
+            replay_payload={
+                "trace_id": trace_id,
+                "request_id": request_id,
+                "session_id": session_id,
+                "input": request,
+                "policy_decision": {},
+                "tool_stub_seed": None,
+            },
+        )
 
     try:
         state = await _run_node("load_state", state, _load_state_node)
+        if record_run:
+            append_checkpoint(resolved_run_id, "load_state", state)
         state = await _run_node("understand", state, _understand_node)
+        if record_run:
+            append_checkpoint(resolved_run_id, "understand", state)
         state = await _run_node("policy_decide", state, _policy_decide_node)
+        if record_run:
+            append_checkpoint(resolved_run_id, "policy_decide", state)
         state = await _run_node("authz_gate", state, _authz_gate_node_factory(request, trace_id, request_id))
+        if record_run:
+            append_checkpoint(resolved_run_id, "authz_gate", state)
         state = await _run_node("execute", state, _execute_node_factory(request, trace_id, request_id, legacy_executor))
+        if record_run:
+            append_checkpoint(resolved_run_id, "execute", state)
         state = await _run_node("compose", state, _compose_node)
+        if record_run:
+            append_checkpoint(resolved_run_id, "compose", state)
         state = await _run_node("verify", state, _verify_node)
+        if record_run:
+            append_checkpoint(resolved_run_id, "verify", state)
         state = await _run_node("persist", state, _persist_node)
+        if record_run:
+            append_checkpoint(resolved_run_id, "persist", state)
     except ChatGraphStateValidationError as exc:
         handled = _error_handler_state(
             state,
@@ -122,7 +165,15 @@ async def run_chat_graph(
             stage=exc.stage,
             reason_code=exc.reason_code,
         )
-        return ChatGraphRuntimeResult(state=handled, response=_state_response(handled), stage="error_handler")
+        error_response = _state_response(handled)
+        if record_run:
+            finish_run(
+                resolved_run_id,
+                stage="error_handler",
+                response=error_response,
+                stub_response=None,
+            )
+        return ChatGraphRuntimeResult(state=handled, response=error_response, stage="error_handler", run_id=resolved_run_id)
     except Exception:
         handled = _error_handler_state(
             state,
@@ -131,9 +182,28 @@ async def run_chat_graph(
             stage="runtime",
             reason_code="CHAT_GRAPH_RUNTIME_ERROR",
         )
-        return ChatGraphRuntimeResult(state=handled, response=_state_response(handled), stage="error_handler")
+        error_response = _state_response(handled)
+        if record_run:
+            finish_run(
+                resolved_run_id,
+                stage="error_handler",
+                response=error_response,
+                stub_response=None,
+            )
+        return ChatGraphRuntimeResult(state=handled, response=error_response, stage="error_handler", run_id=resolved_run_id)
 
-    return ChatGraphRuntimeResult(state=state, response=_state_response(state), stage="persist")
+    final_response = _state_response(state)
+    if record_run:
+        tool_result = state.get("tool_result") if isinstance(state.get("tool_result"), dict) else {}
+        data = tool_result.get("data") if isinstance(tool_result.get("data"), dict) else {}
+        stub_response = data.get("stub_response") if isinstance(data.get("stub_response"), dict) else final_response
+        finish_run(
+            resolved_run_id,
+            stage="persist",
+            response=final_response,
+            stub_response=stub_response,
+        )
+    return ChatGraphRuntimeResult(state=state, response=final_response, stage="persist", run_id=resolved_run_id)
 
 
 async def _run_node(name: str, state: ChatGraphState, fn: NodeFn) -> ChatGraphState:
@@ -154,6 +224,12 @@ def _assert_contract_fields(state: ChatGraphState, fields: tuple[str, ...], *, s
             issues.append(f"missing required contract field: {field}")
     if issues:
         raise ChatGraphStateValidationError(stage, issues)
+
+
+def _build_run_id(trace_id: str, request_id: str, session_id: str) -> str:
+    seed = f"{trace_id}:{request_id}:{session_id}:{int(time.time() * 1000)}"
+    digest = hashlib.sha256(seed.encode("utf-8")).hexdigest()[:12]
+    return f"run_{digest}"
 
 
 async def _load_state_node(state: ChatGraphState) -> ChatGraphState:
@@ -466,7 +542,7 @@ def _execute_node_factory(
             "status": "ok",
             "reason_code": str(response.get("reason_code") or "OK"),
             "source": "legacy_executor",
-            "data": {"status": response.get("status")},
+            "data": {"status": response.get("status"), "stub_response": response},
         }
         status = str(response.get("status") or "ok")
         state["route"] = "ANSWER" if status == "ok" else "FALLBACK"

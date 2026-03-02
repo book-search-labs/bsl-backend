@@ -733,6 +733,14 @@ python scripts/eval/chat_contract_compat_eval.py \
 - required client fields for sensitive path: `user_id`, `tenant_id`, `auth_context.scopes` (`chat:write`)
 - authz audit store: cache key `chat:graph:authz-audit:{session_id}`
 
+## Chat checkpoint/replay kit (B-0706)
+- replay store: `services/query-service/app/core/chat_graph/replay_store.py`
+- run dir env: `QS_CHAT_GRAPH_REPLAY_DIR` (default `var/chat_graph/replay`)
+- replay script:
+```bash
+python scripts/eval/chat_graph_replay.py --run-id <run_id>
+```
+
 ---
 
 ## Search Service (Local)

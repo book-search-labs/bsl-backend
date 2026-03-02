@@ -32,6 +32,16 @@ from app.core.chat_graph.authz_gate import (
     load_authz_audit,
     validate_action_protocol,
 )
+from app.core.chat_graph.replay_store import (
+    append_checkpoint,
+    finish_run,
+    load_replay,
+    load_run,
+    resolve_run_id,
+    response_diff,
+    save_replay,
+    start_run_record,
+)
 
 __all__ = [
     "CHAT_GRAPH_INITIAL_STATE_VERSION",
@@ -60,4 +70,12 @@ __all__ = [
     "build_action_protocol",
     "load_authz_audit",
     "validate_action_protocol",
+    "append_checkpoint",
+    "finish_run",
+    "load_replay",
+    "load_run",
+    "resolve_run_id",
+    "response_diff",
+    "save_replay",
+    "start_run_record",
 ]

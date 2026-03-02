@@ -1681,6 +1681,7 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
             trace_id,
             request_id,
             legacy_executor=_shadow_executor,
+            record_run=True,
         )
         _shadow_compare_responses(legacy_response, graph_result.response)
         metrics.inc("chat_graph_runtime_total", {"mode": mode, "result": graph_result.stage})
@@ -1691,6 +1692,7 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
         trace_id,
         request_id,
         legacy_executor=_run_chat_legacy,
+        record_run=True,
     )
     metrics.inc(
         "chat_graph_runtime_total",

@@ -212,7 +212,7 @@ def test_get_chat_session_state_recommends_ticket_when_escalation_ready(monkeypa
 def test_run_chat_uses_graph_runtime_when_engine_mode_agent(monkeypatch):
     chat._CACHE = CacheClient(None)
 
-    async def fake_run_chat_graph(request, trace_id, request_id, legacy_executor):
+    async def fake_run_chat_graph(request, trace_id, request_id, legacy_executor, **kwargs):
         return ChatGraphRuntimeResult(
             stage="persist",
             state={
@@ -291,7 +291,7 @@ def test_run_chat_shadow_mode_returns_legacy_response(monkeypatch):
             "escalated": False,
         }
 
-    async def fake_graph(request, trace_id, request_id, legacy_executor):
+    async def fake_graph(request, trace_id, request_id, legacy_executor, **kwargs):
         shadow_resp = await legacy_executor(request, trace_id, request_id)
         return ChatGraphRuntimeResult(
             stage="persist",
