@@ -896,6 +896,7 @@ python scripts/eval/chat_legacy_decommission_check.py \
 ```bash
 python scripts/eval/chat_production_launch_gate.py \
   --replay-dir var/chat_graph/replay \
+  --completion-source auto \
   --parity-limit 200 \
   --perf-limit 500 \
   --reason-limit 500 \
@@ -920,7 +921,7 @@ python scripts/eval/chat_production_launch_gate.py \
   - perf budget: `perf_budget`
   - reason taxonomy: `reason_taxonomy`
   - legacy decommission: `feature_router` global routing audit
-  - completion: `var/chat_graph/replay/runs/*.json`
+  - completion: `launch_metrics`(우선) 또는 `var/chat_graph/replay/runs/*.json`(fallback)
 - 런타임 launch metric 누적:
   - 모듈: `services/query-service/app/core/chat_graph/launch_metrics.py`
   - 메트릭: `chat_completion_total`, `chat_completion_rate{intent}`, `chat_insufficient_evidence_total`, `chat_insufficient_evidence_rate{domain}`

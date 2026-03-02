@@ -142,6 +142,27 @@ def build_completion_summary(rows: list[Mapping[str, Any]]) -> dict[str, Any]:
     }
 
 
+def completion_summary_from_launch_metrics(payload: Mapping[str, Any]) -> dict[str, Any]:
+    by_intent = payload.get("by_intent") if isinstance(payload.get("by_intent"), Mapping) else {}
+    by_domain = payload.get("by_domain") if isinstance(payload.get("by_domain"), Mapping) else {}
+    commerce = by_domain.get("commerce") if isinstance(by_domain.get("commerce"), Mapping) else {}
+    return {
+        "run_total": _safe_int(payload.get("total"), 0),
+        "insufficient_evidence_total": _safe_int(payload.get("insufficient_total"), 0),
+        "insufficient_evidence_ratio": _safe_float(payload.get("insufficient_ratio"), 0.0),
+        "commerce_total": _safe_int(commerce.get("total"), 0),
+        "commerce_completed_total": _safe_int(commerce.get("completed_total"), 0),
+        "commerce_unresolved_total": max(
+            0,
+            _safe_int(commerce.get("total"), 0) - _safe_int(commerce.get("completed_total"), 0),
+        ),
+        "commerce_completion_rate": _safe_float(commerce.get("completion_rate"), 0.0),
+        "by_intent": dict(by_intent),
+        "by_domain": dict(by_domain),
+        "samples": [],
+    }
+
+
 def evaluate_gate(
     *,
     parity_payload: Mapping[str, Any],
@@ -263,6 +284,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--prefix", default="chat_production_launch_gate")
     parser.add_argument("--gate", action="store_true")
     parser.add_argument("--replay-dir", default="var/chat_graph/replay")
+    parser.add_argument("--completion-source", choices=["auto", "launch_metrics", "replay"], default="auto")
     parser.add_argument("--parity-limit", type=int, default=200)
     parser.add_argument("--perf-limit", type=int, default=500)
     parser.add_argument("--reason-limit", type=int, default=500)
@@ -290,6 +312,7 @@ def main() -> int:
 
     from app.core.chat_graph.canary_controller import evaluate_canary_gate
     from app.core.chat_graph.feature_router import build_legacy_mode_summary
+    from app.core.chat_graph.launch_metrics import load_launch_metrics_summary
     from app.core.chat_graph.perf_budget import build_perf_summary, evaluate_budget_gate
     from app.core.chat_graph.reason_taxonomy import build_reason_code_summary
     from app.core.chat_graph.shadow_comparator import build_gate_payload
@@ -301,8 +324,21 @@ def main() -> int:
     reason_summary = build_reason_code_summary(limit=max(1, int(args.reason_limit)))
     legacy_summary = build_legacy_mode_summary(limit=max(1, int(args.legacy_limit)))
 
-    run_rows = load_recent_runs(Path(args.replay_dir), limit=max(1, int(args.run_limit)))
-    completion_summary = build_completion_summary(run_rows)
+    completion_source_used = str(args.completion_source)
+    launch_completion_summary = completion_summary_from_launch_metrics(load_launch_metrics_summary())
+    if args.completion_source == "launch_metrics":
+        completion_summary = launch_completion_summary
+    elif args.completion_source == "replay":
+        run_rows = load_recent_runs(Path(args.replay_dir), limit=max(1, int(args.run_limit)))
+        completion_summary = build_completion_summary(run_rows)
+    else:
+        if _safe_int(launch_completion_summary.get("run_total"), 0) > 0:
+            completion_summary = launch_completion_summary
+            completion_source_used = "launch_metrics"
+        else:
+            run_rows = load_recent_runs(Path(args.replay_dir), limit=max(1, int(args.run_limit)))
+            completion_summary = build_completion_summary(run_rows)
+            completion_source_used = "replay"
 
     failures = evaluate_gate(
         parity_payload=parity_payload,
@@ -335,6 +371,8 @@ def main() -> int:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "source": {
             "replay_dir": str(args.replay_dir),
+            "completion_source": str(args.completion_source),
+            "completion_source_used": completion_source_used,
             "limits": {
                 "parity_limit": int(args.parity_limit),
                 "perf_limit": int(args.perf_limit),

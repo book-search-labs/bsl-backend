@@ -27,6 +27,25 @@ def test_build_completion_summary_counts_commerce_completion():
     assert summary["insufficient_evidence_ratio"] > 0.0
 
 
+def test_completion_summary_from_launch_metrics_payload():
+    module = _load_module()
+    summary = module.completion_summary_from_launch_metrics(
+        {
+            "total": 10,
+            "insufficient_total": 2,
+            "insufficient_ratio": 0.2,
+            "by_intent": {"ORDER_STATUS": {"total": 6, "completed_total": 5}},
+            "by_domain": {"commerce": {"total": 6, "completed_total": 5, "completion_rate": 0.8333}},
+        }
+    )
+    assert summary["run_total"] == 10
+    assert summary["insufficient_evidence_total"] == 2
+    assert summary["commerce_total"] == 6
+    assert summary["commerce_completed_total"] == 5
+    assert summary["commerce_unresolved_total"] == 1
+    assert summary["commerce_completion_rate"] > 0.8
+
+
 def test_load_recent_runs_reads_intent_from_checkpoint(tmp_path: Path):
     module = _load_module()
     runs_dir = tmp_path / "runs"
