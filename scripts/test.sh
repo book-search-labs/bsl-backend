@@ -5528,7 +5528,7 @@ else
   echo "  - set RUN_CHAT_INTERVENTION_RECOVERY_FEEDBACK_GUARD=1 to enable"
 fi
 
-echo "[148/158] Chat resolution plan compiler guard gate (optional)"
+echo "[148/159] Chat resolution plan compiler guard gate (optional)"
 if [ "${RUN_CHAT_RESOLUTION_PLAN_COMPILER_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_RESOLUTION_PLAN_EVENTS_JSONL="${CHAT_RESOLUTION_PLAN_EVENTS_JSONL:-$ROOT_DIR/var/resolution_plan/plan_events.jsonl}"
@@ -5563,7 +5563,7 @@ else
   echo "  - set RUN_CHAT_RESOLUTION_PLAN_COMPILER_GUARD=1 to enable"
 fi
 
-echo "[149/158] Chat action simulation guard gate (optional)"
+echo "[149/159] Chat action simulation guard gate (optional)"
 if [ "${RUN_CHAT_ACTION_SIMULATION_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_ACTION_SIM_EVENTS_JSONL="${CHAT_ACTION_SIM_EVENTS_JSONL:-$ROOT_DIR/var/resolution_plan/simulation_events.jsonl}"
@@ -5600,7 +5600,7 @@ else
   echo "  - set RUN_CHAT_ACTION_SIMULATION_GUARD=1 to enable"
 fi
 
-echo "[150/158] Chat execution safety contract guard gate (optional)"
+echo "[150/159] Chat execution safety contract guard gate (optional)"
 if [ "${RUN_CHAT_EXECUTION_SAFETY_CONTRACT_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_EXEC_SAFETY_EVENTS_JSONL="${CHAT_EXEC_SAFETY_EVENTS_JSONL:-$ROOT_DIR/var/resolution_plan/execution_safety_events.jsonl}"
@@ -5641,7 +5641,7 @@ else
   echo "  - set RUN_CHAT_EXECUTION_SAFETY_CONTRACT_GUARD=1 to enable"
 fi
 
-echo "[151/158] Chat plan persistence resume guard gate (optional)"
+echo "[151/159] Chat plan persistence resume guard gate (optional)"
 if [ "${RUN_CHAT_PLAN_PERSISTENCE_RESUME_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_PLAN_PERSISTENCE_EVENTS_JSONL="${CHAT_PLAN_PERSISTENCE_EVENTS_JSONL:-$ROOT_DIR/var/resolution_plan/plan_persistence_events.jsonl}"
@@ -5678,7 +5678,7 @@ else
   echo "  - set RUN_CHAT_PLAN_PERSISTENCE_RESUME_GUARD=1 to enable"
 fi
 
-echo "[152/158] Chat actionability scorer guard gate (optional)"
+echo "[152/159] Chat actionability scorer guard gate (optional)"
 if [ "${RUN_CHAT_ACTIONABILITY_SCORER_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_ACTIONABILITY_SCORER_EVENTS_JSONL="${CHAT_ACTIONABILITY_SCORER_EVENTS_JSONL:-$ROOT_DIR/var/actionability/scorer_events.jsonl}"
@@ -5719,7 +5719,7 @@ else
   echo "  - set RUN_CHAT_ACTIONABILITY_SCORER_GUARD=1 to enable"
 fi
 
-echo "[153/158] Chat actionability repair loop guard gate (optional)"
+echo "[153/159] Chat actionability repair loop guard gate (optional)"
 if [ "${RUN_CHAT_ACTIONABILITY_REPAIR_LOOP_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_ACTIONABILITY_REPAIR_EVENTS_JSONL="${CHAT_ACTIONABILITY_REPAIR_EVENTS_JSONL:-$ROOT_DIR/var/actionability/repair_loop_events.jsonl}"
@@ -5762,7 +5762,7 @@ else
   echo "  - set RUN_CHAT_ACTIONABILITY_REPAIR_LOOP_GUARD=1 to enable"
 fi
 
-echo "[154/158] Chat claim-action consistency guard gate (optional)"
+echo "[154/159] Chat claim-action consistency guard gate (optional)"
 if [ "${RUN_CHAT_CLAIM_ACTION_CONSISTENCY_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CLAIM_ACTION_EVENTS_JSONL="${CHAT_CLAIM_ACTION_EVENTS_JSONL:-$ROOT_DIR/var/actionability/claim_action_events.jsonl}"
@@ -5801,7 +5801,7 @@ else
   echo "  - set RUN_CHAT_CLAIM_ACTION_CONSISTENCY_GUARD=1 to enable"
 fi
 
-echo "[155/158] Chat actionability release gate guard (optional)"
+echo "[155/159] Chat actionability release gate guard (optional)"
 if [ "${RUN_CHAT_ACTIONABILITY_RELEASE_GATE_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_ACTIONABILITY_RELEASE_EVENTS_JSONL="${CHAT_ACTIONABILITY_RELEASE_EVENTS_JSONL:-$ROOT_DIR/var/actionability/release_gate_events.jsonl}"
@@ -5840,7 +5840,46 @@ else
   echo "  - set RUN_CHAT_ACTIONABILITY_RELEASE_GATE_GUARD=1 to enable"
 fi
 
-echo "[156/158] Canonical quality checks (optional)"
+echo "[156/159] Chat dialog planner core guard gate (optional)"
+if [ "${RUN_CHAT_DIALOG_PLANNER_CORE_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_DIALOG_PLANNER_EVENTS_JSONL="${CHAT_DIALOG_PLANNER_EVENTS_JSONL:-$ROOT_DIR/var/dialog_planner/transition_events.jsonl}"
+    CHAT_DIALOG_PLANNER_WINDOW_HOURS="${CHAT_DIALOG_PLANNER_WINDOW_HOURS:-24}"
+    CHAT_DIALOG_PLANNER_LIMIT="${CHAT_DIALOG_PLANNER_LIMIT:-100000}"
+    CHAT_DIALOG_PLANNER_OUT_DIR="${CHAT_DIALOG_PLANNER_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_DIALOG_PLANNER_MIN_WINDOW="${CHAT_DIALOG_PLANNER_MIN_WINDOW:-0}"
+    CHAT_DIALOG_PLANNER_MIN_EVENT_TOTAL="${CHAT_DIALOG_PLANNER_MIN_EVENT_TOTAL:-0}"
+    CHAT_DIALOG_PLANNER_MIN_VALID_TRANSITION_RATIO="${CHAT_DIALOG_PLANNER_MIN_VALID_TRANSITION_RATIO:-0.0}"
+    CHAT_DIALOG_PLANNER_MIN_SLOT_QUESTION_COVERAGE_RATIO="${CHAT_DIALOG_PLANNER_MIN_SLOT_QUESTION_COVERAGE_RATIO:-0.0}"
+    CHAT_DIALOG_PLANNER_MAX_INVALID_TRANSITION_TOTAL="${CHAT_DIALOG_PLANNER_MAX_INVALID_TRANSITION_TOTAL:-1000000}"
+    CHAT_DIALOG_PLANNER_MAX_POLICY_BLOCK_VIOLATION_TOTAL="${CHAT_DIALOG_PLANNER_MAX_POLICY_BLOCK_VIOLATION_TOTAL:-1000000}"
+    CHAT_DIALOG_PLANNER_MAX_SLOT_QUESTION_MISSING_TOTAL="${CHAT_DIALOG_PLANNER_MAX_SLOT_QUESTION_MISSING_TOTAL:-1000000}"
+    CHAT_DIALOG_PLANNER_MAX_PATH_DEVIATION_TOTAL="${CHAT_DIALOG_PLANNER_MAX_PATH_DEVIATION_TOTAL:-1000000}"
+    CHAT_DIALOG_PLANNER_MAX_STALE_MINUTES="${CHAT_DIALOG_PLANNER_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_dialog_planner_core_guard.py" \
+      --events-jsonl "$CHAT_DIALOG_PLANNER_EVENTS_JSONL" \
+      --window-hours "$CHAT_DIALOG_PLANNER_WINDOW_HOURS" \
+      --limit "$CHAT_DIALOG_PLANNER_LIMIT" \
+      --out "$CHAT_DIALOG_PLANNER_OUT_DIR" \
+      --min-window "$CHAT_DIALOG_PLANNER_MIN_WINDOW" \
+      --min-event-total "$CHAT_DIALOG_PLANNER_MIN_EVENT_TOTAL" \
+      --min-valid-transition-ratio "$CHAT_DIALOG_PLANNER_MIN_VALID_TRANSITION_RATIO" \
+      --min-missing-slot-question-coverage-ratio "$CHAT_DIALOG_PLANNER_MIN_SLOT_QUESTION_COVERAGE_RATIO" \
+      --max-invalid-transition-total "$CHAT_DIALOG_PLANNER_MAX_INVALID_TRANSITION_TOTAL" \
+      --max-policy-block-violation-total "$CHAT_DIALOG_PLANNER_MAX_POLICY_BLOCK_VIOLATION_TOTAL" \
+      --max-missing-slot-question-missing-total "$CHAT_DIALOG_PLANNER_MAX_SLOT_QUESTION_MISSING_TOTAL" \
+      --max-planner-path-deviation-total "$CHAT_DIALOG_PLANNER_MAX_PATH_DEVIATION_TOTAL" \
+      --max-stale-minutes "$CHAT_DIALOG_PLANNER_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat dialog planner core guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_DIALOG_PLANNER_CORE_GUARD=1 to enable"
+fi
+
+echo "[157/159] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -5851,7 +5890,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[157/158] E2E tests (optional)"
+echo "[158/159] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -5862,4 +5901,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[158/158] Done"
+echo "[159/159] Done"

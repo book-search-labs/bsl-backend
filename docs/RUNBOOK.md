@@ -4204,6 +4204,31 @@ python scripts/eval/chat_actionability_release_gate_guard.py \
 - CI 옵션:
   - `RUN_CHAT_ACTIONABILITY_RELEASE_GATE_GUARD=1 ./scripts/test.sh`
 
+## Chat dialog planner core guard gate (B-0397, Bundle 1)
+- 정책 인지 상태전이(확인→판단→실행→검증)와 슬롯 질문 전략 적용을 검증:
+```bash
+python scripts/eval/chat_dialog_planner_core_guard.py \
+  --events-jsonl var/dialog_planner/transition_events.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-valid-transition-ratio 0.95 \
+  --min-missing-slot-question-coverage-ratio 0.95 \
+  --max-invalid-transition-total 0 \
+  --max-policy-block-violation-total 0 \
+  --max-missing-slot-question-missing-total 0 \
+  --max-planner-path-deviation-total 5 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - valid transition ratio
+  - policy block violation 건수
+  - missing-slot question coverage ratio
+  - planner path deviation 건수
+- CI 옵션:
+  - `RUN_CHAT_DIALOG_PLANNER_CORE_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

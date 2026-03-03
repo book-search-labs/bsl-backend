@@ -51,3 +51,14 @@ Implement a policy-aware dialog planner for production chat:
 - Drive conversations through explicit state transitions with policy guards.
 - Trigger escalation on repeated failure and risk patterns.
 - Package complete handover payloads and gate releases on planner reliability.
+
+## Implementation Update (2026-03-04, Bundle 1)
+- [x] Dialog planner core guard gate 추가
+  - `scripts/eval/chat_dialog_planner_core_guard.py`
+  - 상태전이 유효성(확인→판단→실행→검증) 및 path deviation 검증
+  - 정책 차단 상태에서 전이 성공(policy block violation) 검증
+  - 필수 슬롯 미충족 시 질문 전략 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_dialog_planner_core_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_DIALOG_PLANNER_CORE_GUARD=1 ./scripts/test.sh`
