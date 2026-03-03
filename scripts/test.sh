@@ -3577,7 +3577,7 @@ else
   echo "  - set RUN_CHAT_TEMPORAL_ANSWER_RENDERING=1 to enable"
 fi
 
-echo "[99/106] Chat temporal conflict fallback gate (optional)"
+echo "[99/107] Chat temporal conflict fallback gate (optional)"
 if [ "${RUN_CHAT_TEMPORAL_CONFLICT_FALLBACK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TEMPORAL_CONFLICT_EVENTS_JSONL="${CHAT_TEMPORAL_CONFLICT_EVENTS_JSONL:-$ROOT_DIR/var/chat_policy/temporal_conflict_events.jsonl}"
@@ -3616,7 +3616,7 @@ else
   echo "  - set RUN_CHAT_TEMPORAL_CONFLICT_FALLBACK=1 to enable"
 fi
 
-echo "[100/106] Chat correction memory schema gate (optional)"
+echo "[100/107] Chat correction memory schema gate (optional)"
 if [ "${RUN_CHAT_CORRECTION_MEMORY_SCHEMA:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CORRECTION_MEMORY_SCHEMA_JSONL="${CHAT_CORRECTION_MEMORY_SCHEMA_JSONL:-$ROOT_DIR/var/chat_correction/correction_memory_records.jsonl}"
@@ -3655,7 +3655,7 @@ else
   echo "  - set RUN_CHAT_CORRECTION_MEMORY_SCHEMA=1 to enable"
 fi
 
-echo "[101/106] Chat correction approval workflow gate (optional)"
+echo "[101/107] Chat correction approval workflow gate (optional)"
 if [ "${RUN_CHAT_CORRECTION_APPROVAL_WORKFLOW:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CORRECTION_APPROVAL_EVENTS_JSONL="${CHAT_CORRECTION_APPROVAL_EVENTS_JSONL:-$ROOT_DIR/var/chat_correction/correction_approval_events.jsonl}"
@@ -3696,7 +3696,7 @@ else
   echo "  - set RUN_CHAT_CORRECTION_APPROVAL_WORKFLOW=1 to enable"
 fi
 
-echo "[102/106] Chat correction retrieval integration gate (optional)"
+echo "[102/107] Chat correction retrieval integration gate (optional)"
 if [ "${RUN_CHAT_CORRECTION_RETRIEVAL_INTEGRATION:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CORRECTION_RETRIEVAL_EVENTS_JSONL="${CHAT_CORRECTION_RETRIEVAL_EVENTS_JSONL:-$ROOT_DIR/var/chat_correction/correction_retrieval_events.jsonl}"
@@ -3735,7 +3735,7 @@ else
   echo "  - set RUN_CHAT_CORRECTION_RETRIEVAL_INTEGRATION=1 to enable"
 fi
 
-echo "[103/106] Chat correction quality safeguards gate (optional)"
+echo "[103/107] Chat correction quality safeguards gate (optional)"
 if [ "${RUN_CHAT_CORRECTION_QUALITY_SAFEGUARDS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CORRECTION_QUALITY_EVENTS_JSONL="${CHAT_CORRECTION_QUALITY_EVENTS_JSONL:-$ROOT_DIR/var/chat_correction/correction_quality_events.jsonl}"
@@ -3774,7 +3774,46 @@ else
   echo "  - set RUN_CHAT_CORRECTION_QUALITY_SAFEGUARDS=1 to enable"
 fi
 
-echo "[104/106] Canonical quality checks (optional)"
+echo "[104/107] Chat tool transaction fence model gate (optional)"
+if [ "${RUN_CHAT_TOOL_TX_FENCE_MODEL:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TOOL_TX_FENCE_EVENTS_JSONL="${CHAT_TOOL_TX_FENCE_EVENTS_JSONL:-$ROOT_DIR/var/chat_tool_tx/tx_events.jsonl}"
+    CHAT_TOOL_TX_FENCE_WINDOW_HOURS="${CHAT_TOOL_TX_FENCE_WINDOW_HOURS:-24}"
+    CHAT_TOOL_TX_FENCE_LIMIT="${CHAT_TOOL_TX_FENCE_LIMIT:-50000}"
+    CHAT_TOOL_TX_FENCE_OUT_DIR="${CHAT_TOOL_TX_FENCE_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TOOL_TX_FENCE_MIN_WINDOW="${CHAT_TOOL_TX_FENCE_MIN_WINDOW:-0}"
+    CHAT_TOOL_TX_FENCE_MIN_TX_TOTAL="${CHAT_TOOL_TX_FENCE_MIN_TX_TOTAL:-0}"
+    CHAT_TOOL_TX_FENCE_MIN_COMMIT_AFTER_VALIDATE_RATIO="${CHAT_TOOL_TX_FENCE_MIN_COMMIT_AFTER_VALIDATE_RATIO:-0.0}"
+    CHAT_TOOL_TX_FENCE_MAX_SEQUENCE_VIOLATION_TOTAL="${CHAT_TOOL_TX_FENCE_MAX_SEQUENCE_VIOLATION_TOTAL:-1000000}"
+    CHAT_TOOL_TX_FENCE_MAX_OPTIMISTIC_CHECK_MISSING_TOTAL="${CHAT_TOOL_TX_FENCE_MAX_OPTIMISTIC_CHECK_MISSING_TOTAL:-1000000}"
+    CHAT_TOOL_TX_FENCE_MAX_OPTIMISTIC_MISMATCH_COMMIT_TOTAL="${CHAT_TOOL_TX_FENCE_MAX_OPTIMISTIC_MISMATCH_COMMIT_TOTAL:-1000000}"
+    CHAT_TOOL_TX_FENCE_MAX_INCONSISTENT_STATE_TOTAL="${CHAT_TOOL_TX_FENCE_MAX_INCONSISTENT_STATE_TOTAL:-1000000}"
+    CHAT_TOOL_TX_FENCE_MAX_P95_PREPARE_TO_COMMIT_LATENCY_MS="${CHAT_TOOL_TX_FENCE_MAX_P95_PREPARE_TO_COMMIT_LATENCY_MS:-1000000}"
+    CHAT_TOOL_TX_FENCE_MAX_STALE_MINUTES="${CHAT_TOOL_TX_FENCE_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_tool_tx_fence_model.py" \
+      --events-jsonl "$CHAT_TOOL_TX_FENCE_EVENTS_JSONL" \
+      --window-hours "$CHAT_TOOL_TX_FENCE_WINDOW_HOURS" \
+      --limit "$CHAT_TOOL_TX_FENCE_LIMIT" \
+      --out "$CHAT_TOOL_TX_FENCE_OUT_DIR" \
+      --min-window "$CHAT_TOOL_TX_FENCE_MIN_WINDOW" \
+      --min-tx-total "$CHAT_TOOL_TX_FENCE_MIN_TX_TOTAL" \
+      --min-commit-after-validate-ratio "$CHAT_TOOL_TX_FENCE_MIN_COMMIT_AFTER_VALIDATE_RATIO" \
+      --max-sequence-violation-total "$CHAT_TOOL_TX_FENCE_MAX_SEQUENCE_VIOLATION_TOTAL" \
+      --max-optimistic-check-missing-total "$CHAT_TOOL_TX_FENCE_MAX_OPTIMISTIC_CHECK_MISSING_TOTAL" \
+      --max-optimistic-mismatch-commit-total "$CHAT_TOOL_TX_FENCE_MAX_OPTIMISTIC_MISMATCH_COMMIT_TOTAL" \
+      --max-inconsistent-state-total "$CHAT_TOOL_TX_FENCE_MAX_INCONSISTENT_STATE_TOTAL" \
+      --max-p95-prepare-to-commit-latency-ms "$CHAT_TOOL_TX_FENCE_MAX_P95_PREPARE_TO_COMMIT_LATENCY_MS" \
+      --max-stale-minutes "$CHAT_TOOL_TX_FENCE_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat tool transaction fence model gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TOOL_TX_FENCE_MODEL=1 to enable"
+fi
+
+echo "[105/107] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -3785,7 +3824,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[105/106] E2E tests (optional)"
+echo "[106/107] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -3796,4 +3835,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[106/106] Done"
+echo "[107/107] Done"

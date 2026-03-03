@@ -2944,6 +2944,30 @@ python scripts/eval/chat_correction_quality_safeguards.py \
 - CI 옵션:
   - `RUN_CHAT_CORRECTION_QUALITY_SAFEGUARDS=1 ./scripts/test.sh`
 
+## Chat tool transaction fence model gate (B-0382, Bundle 1)
+- 다단계 tool 실행의 `prepare→validate→commit` 경계와 optimistic check 정합성을 검증:
+```bash
+python scripts/eval/chat_tool_tx_fence_model.py \
+  --events-jsonl var/chat_tool_tx/tx_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-tx-total 20 \
+  --min-commit-after-validate-ratio 0.99 \
+  --max-sequence-violation-total 0 \
+  --max-optimistic-check-missing-total 0 \
+  --max-optimistic-mismatch-commit-total 0 \
+  --max-inconsistent-state-total 0 \
+  --max-p95-prepare-to-commit-latency-ms 800 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - tx 시작/커밋/중단 집계
+  - sequence violation, optimistic check 누락/불일치 커밋 건수
+  - inconsistent state 건수 및 prepare→commit p95 latency
+- CI 옵션:
+  - `RUN_CHAT_TOOL_TX_FENCE_MODEL=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

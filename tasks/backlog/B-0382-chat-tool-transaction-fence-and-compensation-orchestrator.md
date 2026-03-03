@@ -47,3 +47,14 @@ Add transactional safety for multi-tool chat actions:
 - Introduce prepare/commit fences with optimistic checks.
 - Enforce idempotency keys and dedup on retries.
 - Execute compensation on partial failures with full audit trails.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Tool transaction fence model gate 추가
+  - `scripts/eval/chat_tool_tx_fence_model.py`
+  - prepare→validate→commit 순서 위반 검증
+  - optimistic check 누락/불일치 commit 검증
+  - inconsistent state 이벤트 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_tool_tx_fence_model.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TOOL_TX_FENCE_MODEL=1 ./scripts/test.sh`
