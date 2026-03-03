@@ -107,3 +107,34 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         require_templates=False,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_workflow_state_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "missing_state_fields_total": 0,
+                "unsupported_type_total": 0,
+                "checkpoint_ratio": 1.0,
+                "stale_minutes": 5.0,
+                "missing_templates": [],
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "missing_state_fields_total": 1,
+            "unsupported_type_total": 1,
+            "checkpoint_ratio": 0.70,
+            "stale_minutes": 50.0,
+            "missing_templates": ["REFUND_REQUEST"],
+        },
+        max_missing_state_fields_total_increase=0,
+        max_unsupported_type_total_increase=0,
+        max_checkpoint_ratio_drop=0.05,
+        max_stale_minutes_increase=10.0,
+        max_missing_template_increase=0,
+    )
+    assert len(failures) == 5

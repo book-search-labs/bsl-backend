@@ -1,0 +1,63 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "events_jsonl": "var/chat_workflow/workflow_events.jsonl",
+  "source": {
+    "events_jsonl": "var/chat_workflow/workflow_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": null
+  },
+  "summary": {
+    "window_size": 0,
+    "workflow_total": 0,
+    "sequence_valid_total": 0,
+    "sequence_valid_ratio": 1.0,
+    "execute_workflow_total": 0,
+    "validation_before_execute_total": 0,
+    "validation_before_execute_ratio": 1.0,
+    "step_error_total": 0,
+    "reentry_attempt_total": 0,
+    "reentry_success_total": 0,
+    "reentry_success_ratio": 1.0,
+    "step_errors": [],
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "workflow_total": 0,
+      "sequence_valid_total": 0,
+      "sequence_valid_ratio": 1.0,
+      "execute_workflow_total": 0,
+      "validation_before_execute_total": 0,
+      "validation_before_execute_ratio": 1.0,
+      "step_error_total": 0,
+      "reentry_attempt_total": 0,
+      "reentry_success_total": 0,
+      "reentry_success_ratio": 1.0,
+      "step_errors": [],
+      "latest_event_time": null,
+      "stale_minutes": 0.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 1,
+      "min_sequence_valid_ratio": 0.95,
+      "min_validation_before_execute_ratio": 0.99,
+      "max_step_error_total": 0,
+      "min_reentry_success_ratio": 0.8,
+      "max_stale_minutes": 60.0,
+      "max_sequence_valid_ratio_drop": 0.05,
+      "max_validation_before_execute_ratio_drop": 0.05,
+      "max_step_error_total_increase": 0,
+      "max_reentry_success_ratio_drop": 0.1,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

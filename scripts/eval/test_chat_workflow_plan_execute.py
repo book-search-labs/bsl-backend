@@ -95,3 +95,34 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_plan_execute_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "sequence_valid_ratio": 1.0,
+                "validation_before_execute_ratio": 1.0,
+                "step_error_total": 0,
+                "reentry_success_ratio": 1.0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "sequence_valid_ratio": 0.9,
+            "validation_before_execute_ratio": 0.8,
+            "step_error_total": 2,
+            "reentry_success_ratio": 0.7,
+            "stale_minutes": 50.0,
+        },
+        max_sequence_valid_ratio_drop=0.05,
+        max_validation_before_execute_ratio_drop=0.05,
+        max_step_error_total_increase=0,
+        max_reentry_success_ratio_drop=0.10,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 5

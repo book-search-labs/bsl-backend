@@ -117,6 +117,13 @@ def read_events(path: Path, *, window_hours: int, limit: int, now: datetime | No
     return filtered
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"expected JSON object from {path}")
+    return payload
+
+
 def summarize_plan_execute(events: list[Mapping[str, Any]], *, now: datetime | None = None) -> dict[str, Any]:
     now_dt = now or datetime.now(timezone.utc)
     latest_ts: datetime | None = None
@@ -271,6 +278,74 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_sequence_valid_ratio_drop: float,
+    max_validation_before_execute_ratio_drop: float,
+    max_step_error_total_increase: int,
+    max_reentry_success_ratio_drop: float,
+    max_stale_minutes_increase: float,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_sequence_valid_ratio = _safe_float(base_summary.get("sequence_valid_ratio"), 1.0)
+    cur_sequence_valid_ratio = _safe_float(current_summary.get("sequence_valid_ratio"), 1.0)
+    sequence_valid_ratio_drop = max(0.0, base_sequence_valid_ratio - cur_sequence_valid_ratio)
+    if sequence_valid_ratio_drop > max(0.0, float(max_sequence_valid_ratio_drop)):
+        failures.append(
+            "sequence valid ratio regression: "
+            f"baseline={base_sequence_valid_ratio:.6f}, current={cur_sequence_valid_ratio:.6f}, "
+            f"allowed_drop={float(max_sequence_valid_ratio_drop):.6f}"
+        )
+
+    base_validation_before_execute_ratio = _safe_float(base_summary.get("validation_before_execute_ratio"), 1.0)
+    cur_validation_before_execute_ratio = _safe_float(current_summary.get("validation_before_execute_ratio"), 1.0)
+    validation_before_execute_ratio_drop = max(0.0, base_validation_before_execute_ratio - cur_validation_before_execute_ratio)
+    if validation_before_execute_ratio_drop > max(0.0, float(max_validation_before_execute_ratio_drop)):
+        failures.append(
+            "validation-before-execute ratio regression: "
+            f"baseline={base_validation_before_execute_ratio:.6f}, current={cur_validation_before_execute_ratio:.6f}, "
+            f"allowed_drop={float(max_validation_before_execute_ratio_drop):.6f}"
+        )
+
+    base_step_error_total = _safe_int(base_summary.get("step_error_total"), 0)
+    cur_step_error_total = _safe_int(current_summary.get("step_error_total"), 0)
+    step_error_total_increase = max(0, cur_step_error_total - base_step_error_total)
+    if step_error_total_increase > max(0, int(max_step_error_total_increase)):
+        failures.append(
+            "step error total regression: "
+            f"baseline={base_step_error_total}, current={cur_step_error_total}, "
+            f"allowed_increase={max(0, int(max_step_error_total_increase))}"
+        )
+
+    base_reentry_success_ratio = _safe_float(base_summary.get("reentry_success_ratio"), 1.0)
+    cur_reentry_success_ratio = _safe_float(current_summary.get("reentry_success_ratio"), 1.0)
+    reentry_success_ratio_drop = max(0.0, base_reentry_success_ratio - cur_reentry_success_ratio)
+    if reentry_success_ratio_drop > max(0.0, float(max_reentry_success_ratio_drop)):
+        failures.append(
+            "reentry success ratio regression: "
+            f"baseline={base_reentry_success_ratio:.6f}, current={cur_reentry_success_ratio:.6f}, "
+            f"allowed_drop={float(max_reentry_success_ratio_drop):.6f}"
+        )
+
+    base_stale_minutes = _safe_float(base_summary.get("stale_minutes"), 0.0)
+    cur_stale_minutes = _safe_float(current_summary.get("stale_minutes"), 0.0)
+    stale_minutes_increase = max(0.0, cur_stale_minutes - base_stale_minutes)
+    if stale_minutes_increase > max(0.0, float(max_stale_minutes_increase)):
+        failures.append(
+            "stale minutes regression: "
+            f"baseline={base_stale_minutes:.6f}, current={cur_stale_minutes:.6f}, "
+            f"allowed_increase={float(max_stale_minutes_increase):.6f}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -293,11 +368,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -314,6 +394,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-step-error-total", type=int, default=0)
     parser.add_argument("--min-reentry-success-ratio", type=float, default=0.80)
     parser.add_argument("--max-stale-minutes", type=float, default=60.0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-sequence-valid-ratio-drop", type=float, default=0.05)
+    parser.add_argument("--max-validation-before-execute-ratio-drop", type=float, default=0.05)
+    parser.add_argument("--max-step-error-total-increase", type=int, default=0)
+    parser.add_argument("--max-reentry-success-ratio-drop", type=float, default=0.10)
+    parser.add_argument("--max-stale-minutes-increase", type=float, default=30.0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -336,15 +422,37 @@ def main() -> int:
         min_reentry_success_ratio=max(0.0, float(args.min_reentry_success_ratio)),
         max_stale_minutes=max(0.0, float(args.max_stale_minutes)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            summary,
+            max_sequence_valid_ratio_drop=max(0.0, float(args.max_sequence_valid_ratio_drop)),
+            max_validation_before_execute_ratio_drop=max(0.0, float(args.max_validation_before_execute_ratio_drop)),
+            max_step_error_total_increase=max(0, int(args.max_step_error_total_increase)),
+            max_reentry_success_ratio_drop=max(0.0, float(args.max_reentry_success_ratio_drop)),
+            max_stale_minutes_increase=max(0.0, float(args.max_stale_minutes_increase)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "events_jsonl": str(events_path),
+        "source": {
+            "events_jsonl": str(events_path),
+            "window_hours": max(1, int(args.window_hours)),
+            "limit": max(1, int(args.limit)),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "min_sequence_valid_ratio": float(args.min_sequence_valid_ratio),
@@ -352,6 +460,11 @@ def main() -> int:
                 "max_step_error_total": int(args.max_step_error_total),
                 "min_reentry_success_ratio": float(args.min_reentry_success_ratio),
                 "max_stale_minutes": float(args.max_stale_minutes),
+                "max_sequence_valid_ratio_drop": float(args.max_sequence_valid_ratio_drop),
+                "max_validation_before_execute_ratio_drop": float(args.max_validation_before_execute_ratio_drop),
+                "max_step_error_total_increase": int(args.max_step_error_total_increase),
+                "max_reentry_success_ratio_drop": float(args.max_reentry_success_ratio_drop),
+                "max_stale_minutes_increase": float(args.max_stale_minutes_increase),
             },
         },
     }
@@ -368,8 +481,9 @@ def main() -> int:
     print(f"report_md={md_path}")
     print(f"workflow_total={_safe_int(summary.get('workflow_total'), 0)}")
     print(f"sequence_valid_ratio={_safe_float(summary.get('sequence_valid_ratio'), 0.0):.4f}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and (failures or baseline_failures):
         return 2
     return 0
 

@@ -110,3 +110,34 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_recovery_audit_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "recovery_success_ratio": 1.0,
+                "recovery_latency_p95_sec": 30.0,
+                "audit_missing_fields_total": 0,
+                "audit_write_without_idempotency_total": 0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "recovery_success_ratio": 0.7,
+            "recovery_latency_p95_sec": 180.0,
+            "audit_missing_fields_total": 2,
+            "audit_write_without_idempotency_total": 1,
+            "stale_minutes": 50.0,
+        },
+        max_recovery_success_ratio_drop=0.05,
+        max_recovery_latency_p95_sec_increase=30.0,
+        max_audit_missing_fields_total_increase=0,
+        max_write_without_idempotency_total_increase=0,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 5

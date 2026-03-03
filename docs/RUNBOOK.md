@@ -1897,7 +1897,7 @@ python scripts/eval/chat_config_ops_runbook_integration.py \
     - `CHAT_CONFIG_OPS_MAX_MISSING_IMPACTED_SERVICES_INCREASE`
 
 ## Workflow state model gate (B-0367, Bundle 1)
-- 멀티스텝 커머스 워크플로우 상태 모델 필드 완전성과 템플릿 지원 범위를 검증:
+- 멀티스텝 커머스 워크플로우 상태 모델 필드 완전성과 템플릿 지원 범위를 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_workflow_state_model.py \
   --events-jsonl var/chat_workflow/workflow_events.jsonl \
@@ -1906,6 +1906,12 @@ python scripts/eval/chat_workflow_state_model.py \
   --max-unsupported-type-total 0 \
   --min-checkpoint-ratio 0.80 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_workflow_state_model_baseline_v1.json \
+  --max-missing-state-fields-total-increase 0 \
+  --max-unsupported-type-total-increase 0 \
+  --max-checkpoint-ratio-drop 0.05 \
+  --max-stale-minutes-increase 30 \
+  --max-missing-template-increase 0 \
   --gate
 ```
 - 산출물:
@@ -1914,9 +1920,15 @@ python scripts/eval/chat_workflow_state_model.py \
   - checkpoint ratio 및 템플릿 누락 여부
 - CI 옵션:
   - `RUN_CHAT_WORKFLOW_STATE_MODEL=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_WORKFLOW_STATE_MAX_MISSING_FIELDS_INCREASE`
+    - `CHAT_WORKFLOW_STATE_MAX_UNSUPPORTED_TYPE_INCREASE`
+    - `CHAT_WORKFLOW_STATE_MAX_CHECKPOINT_RATIO_DROP`
+    - `CHAT_WORKFLOW_STATE_MAX_STALE_MINUTES_INCREASE`
+    - `CHAT_WORKFLOW_STATE_MAX_MISSING_TEMPLATE_INCREASE`
 
 ## Workflow plan-execute gate (B-0367, Bundle 2)
-- 워크플로우 단계 순서(의도확인→입력수집→검증→실행)와 재진입 성공률을 검증:
+- 워크플로우 단계 순서(의도확인→입력수집→검증→실행)와 재진입 성공률을 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_workflow_plan_execute.py \
   --events-jsonl var/chat_workflow/workflow_events.jsonl \
@@ -1926,6 +1938,12 @@ python scripts/eval/chat_workflow_plan_execute.py \
   --max-step-error-total 0 \
   --min-reentry-success-ratio 0.80 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_workflow_plan_execute_baseline_v1.json \
+  --max-sequence-valid-ratio-drop 0.05 \
+  --max-validation-before-execute-ratio-drop 0.05 \
+  --max-step-error-total-increase 0 \
+  --max-reentry-success-ratio-drop 0.10 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -1934,9 +1952,15 @@ python scripts/eval/chat_workflow_plan_execute.py \
   - step error total / reentry success ratio
 - CI 옵션:
   - `RUN_CHAT_WORKFLOW_PLAN_EXECUTE=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_WORKFLOW_PLAN_MAX_SEQUENCE_VALID_RATIO_DROP`
+    - `CHAT_WORKFLOW_PLAN_MAX_VALIDATION_BEFORE_EXECUTE_DROP`
+    - `CHAT_WORKFLOW_PLAN_MAX_STEP_ERROR_TOTAL_INCREASE`
+    - `CHAT_WORKFLOW_PLAN_MAX_REENTRY_SUCCESS_RATIO_DROP`
+    - `CHAT_WORKFLOW_PLAN_MAX_STALE_MINUTES_INCREASE`
 
 ## Workflow confirmation checkpoint gate (B-0367, Bundle 3)
-- 민감 액션 실행 전 최종 확인 누락과 timeout 자동취소 정책 준수 여부를 검증:
+- 민감 액션 실행 전 최종 확인 누락과 timeout 자동취소 정책 준수 여부를 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_workflow_confirmation_checkpoint.py \
   --events-jsonl var/chat_workflow/workflow_events.jsonl \
@@ -1945,6 +1969,11 @@ python scripts/eval/chat_workflow_confirmation_checkpoint.py \
   --min-timeout-auto-cancel-ratio 1.0 \
   --max-confirmation-latency-p95-sec 300 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_workflow_confirmation_checkpoint_baseline_v1.json \
+  --max-execute-without-confirmation-total-increase 0 \
+  --max-timeout-auto-cancel-ratio-drop 0.05 \
+  --max-confirmation-latency-p95-sec-increase 60 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -1953,9 +1982,14 @@ python scripts/eval/chat_workflow_confirmation_checkpoint.py \
   - confirmation latency p95
 - CI 옵션:
   - `RUN_CHAT_WORKFLOW_CONFIRM_CHECKPOINT=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_WORKFLOW_CONFIRM_MAX_NO_CONFIRM_INCREASE`
+    - `CHAT_WORKFLOW_CONFIRM_MAX_TIMEOUT_CANCEL_RATIO_DROP`
+    - `CHAT_WORKFLOW_CONFIRM_MAX_LATENCY_P95_SEC_INCREASE`
+    - `CHAT_WORKFLOW_CONFIRM_MAX_STALE_MINUTES_INCREASE`
 
 ## Workflow recovery audit gate (B-0367, Bundle 4)
-- 세션 중단 후 복원 성공률과 단계별 감사로그 완전성(멱등성 포함)을 검증:
+- 세션 중단 후 복원 성공률과 단계별 감사로그 완전성(멱등성 포함)을 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_workflow_recovery_audit.py \
   --events-jsonl var/chat_workflow/workflow_events.jsonl \
@@ -1965,6 +1999,12 @@ python scripts/eval/chat_workflow_recovery_audit.py \
   --max-audit-missing-fields-total 0 \
   --max-write-without-idempotency-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_workflow_recovery_audit_baseline_v1.json \
+  --max-recovery-success-ratio-drop 0.05 \
+  --max-recovery-latency-p95-sec-increase 60 \
+  --max-audit-missing-fields-total-increase 0 \
+  --max-write-without-idempotency-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -1973,6 +2013,12 @@ python scripts/eval/chat_workflow_recovery_audit.py \
   - audit missing fields / write without idempotency 건수
 - CI 옵션:
   - `RUN_CHAT_WORKFLOW_RECOVERY_AUDIT=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_WORKFLOW_RECOVERY_MAX_SUCCESS_RATIO_DROP`
+    - `CHAT_WORKFLOW_RECOVERY_MAX_LATENCY_P95_SEC_INCREASE`
+    - `CHAT_WORKFLOW_RECOVERY_MAX_AUDIT_MISSING_FIELDS_INCREASE`
+    - `CHAT_WORKFLOW_RECOVERY_MAX_WRITE_NO_IDEMPOTENCY_INCREASE`
+    - `CHAT_WORKFLOW_RECOVERY_MAX_STALE_MINUTES_INCREASE`
 
 ## Source trust registry gate (B-0368, Bundle 1)
 - 출처 신뢰도 정책 레지스트리의 커버리지/정합성/신선도를 검증:

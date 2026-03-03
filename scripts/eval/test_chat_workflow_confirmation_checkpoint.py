@@ -87,3 +87,31 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_confirmation_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "execute_without_confirmation_total": 0,
+                "timeout_auto_cancel_ratio": 1.0,
+                "confirmation_latency_p95_sec": 30.0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "execute_without_confirmation_total": 2,
+            "timeout_auto_cancel_ratio": 0.8,
+            "confirmation_latency_p95_sec": 120.0,
+            "stale_minutes": 50.0,
+        },
+        max_execute_without_confirmation_total_increase=0,
+        max_timeout_auto_cancel_ratio_drop=0.05,
+        max_confirmation_latency_p95_sec_increase=30.0,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 4

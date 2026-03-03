@@ -100,6 +100,13 @@ def read_events(path: Path, *, window_hours: int, limit: int, now: datetime | No
     return filtered
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"expected JSON object from {path}")
+    return payload
+
+
 def summarize_workflow_state(events: list[Mapping[str, Any]], *, now: datetime | None = None) -> dict[str, Any]:
     now_dt = now or datetime.now(timezone.utc)
     latest_ts: datetime | None = None
@@ -218,6 +225,76 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_missing_state_fields_total_increase: int,
+    max_unsupported_type_total_increase: int,
+    max_checkpoint_ratio_drop: float,
+    max_stale_minutes_increase: float,
+    max_missing_template_increase: int,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_missing_state_fields_total = _safe_int(base_summary.get("missing_state_fields_total"), 0)
+    cur_missing_state_fields_total = _safe_int(current_summary.get("missing_state_fields_total"), 0)
+    missing_state_fields_increase = max(0, cur_missing_state_fields_total - base_missing_state_fields_total)
+    if missing_state_fields_increase > max(0, int(max_missing_state_fields_total_increase)):
+        failures.append(
+            "missing state fields regression: "
+            f"baseline={base_missing_state_fields_total}, current={cur_missing_state_fields_total}, "
+            f"allowed_increase={max(0, int(max_missing_state_fields_total_increase))}"
+        )
+
+    base_unsupported_type_total = _safe_int(base_summary.get("unsupported_type_total"), 0)
+    cur_unsupported_type_total = _safe_int(current_summary.get("unsupported_type_total"), 0)
+    unsupported_type_increase = max(0, cur_unsupported_type_total - base_unsupported_type_total)
+    if unsupported_type_increase > max(0, int(max_unsupported_type_total_increase)):
+        failures.append(
+            "unsupported workflow type regression: "
+            f"baseline={base_unsupported_type_total}, current={cur_unsupported_type_total}, "
+            f"allowed_increase={max(0, int(max_unsupported_type_total_increase))}"
+        )
+
+    base_checkpoint_ratio = _safe_float(base_summary.get("checkpoint_ratio"), 0.0)
+    cur_checkpoint_ratio = _safe_float(current_summary.get("checkpoint_ratio"), 0.0)
+    checkpoint_ratio_drop = max(0.0, base_checkpoint_ratio - cur_checkpoint_ratio)
+    if checkpoint_ratio_drop > max(0.0, float(max_checkpoint_ratio_drop)):
+        failures.append(
+            "checkpoint ratio regression: "
+            f"baseline={base_checkpoint_ratio:.6f}, current={cur_checkpoint_ratio:.6f}, "
+            f"allowed_drop={float(max_checkpoint_ratio_drop):.6f}"
+        )
+
+    base_stale_minutes = _safe_float(base_summary.get("stale_minutes"), 0.0)
+    cur_stale_minutes = _safe_float(current_summary.get("stale_minutes"), 0.0)
+    stale_minutes_increase = max(0.0, cur_stale_minutes - base_stale_minutes)
+    if stale_minutes_increase > max(0.0, float(max_stale_minutes_increase)):
+        failures.append(
+            "stale minutes regression: "
+            f"baseline={base_stale_minutes:.6f}, current={cur_stale_minutes:.6f}, "
+            f"allowed_increase={float(max_stale_minutes_increase):.6f}"
+        )
+
+    base_missing_templates = base_summary.get("missing_templates") if isinstance(base_summary.get("missing_templates"), list) else []
+    cur_missing_templates = (
+        current_summary.get("missing_templates") if isinstance(current_summary.get("missing_templates"), list) else []
+    )
+    missing_template_increase = max(0, len(cur_missing_templates) - len(base_missing_templates))
+    if missing_template_increase > max(0, int(max_missing_template_increase)):
+        failures.append(
+            "missing template regression: "
+            f"baseline={len(base_missing_templates)}, current={len(cur_missing_templates)}, "
+            f"allowed_increase={max(0, int(max_missing_template_increase))}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -238,11 +315,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -259,6 +341,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--min-checkpoint-ratio", type=float, default=0.80)
     parser.add_argument("--max-stale-minutes", type=float, default=60.0)
     parser.add_argument("--require-templates", action="store_true")
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-missing-state-fields-total-increase", type=int, default=0)
+    parser.add_argument("--max-unsupported-type-total-increase", type=int, default=0)
+    parser.add_argument("--max-checkpoint-ratio-drop", type=float, default=0.05)
+    parser.add_argument("--max-stale-minutes-increase", type=float, default=30.0)
+    parser.add_argument("--max-missing-template-increase", type=int, default=0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -281,15 +369,37 @@ def main() -> int:
         max_stale_minutes=max(0.0, float(args.max_stale_minutes)),
         require_templates=bool(args.require_templates),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            summary,
+            max_missing_state_fields_total_increase=max(0, int(args.max_missing_state_fields_total_increase)),
+            max_unsupported_type_total_increase=max(0, int(args.max_unsupported_type_total_increase)),
+            max_checkpoint_ratio_drop=max(0.0, float(args.max_checkpoint_ratio_drop)),
+            max_stale_minutes_increase=max(0.0, float(args.max_stale_minutes_increase)),
+            max_missing_template_increase=max(0, int(args.max_missing_template_increase)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "events_jsonl": str(events_path),
+        "source": {
+            "events_jsonl": str(events_path),
+            "window_hours": max(1, int(args.window_hours)),
+            "limit": max(1, int(args.limit)),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "max_missing_state_fields_total": int(args.max_missing_state_fields_total),
@@ -297,6 +407,11 @@ def main() -> int:
                 "min_checkpoint_ratio": float(args.min_checkpoint_ratio),
                 "max_stale_minutes": float(args.max_stale_minutes),
                 "require_templates": bool(args.require_templates),
+                "max_missing_state_fields_total_increase": int(args.max_missing_state_fields_total_increase),
+                "max_unsupported_type_total_increase": int(args.max_unsupported_type_total_increase),
+                "max_checkpoint_ratio_drop": float(args.max_checkpoint_ratio_drop),
+                "max_stale_minutes_increase": float(args.max_stale_minutes_increase),
+                "max_missing_template_increase": int(args.max_missing_template_increase),
             },
         },
     }
@@ -313,8 +428,9 @@ def main() -> int:
     print(f"report_md={md_path}")
     print(f"window_size={_safe_int(summary.get('window_size'), 0)}")
     print(f"workflow_total={_safe_int(summary.get('workflow_total'), 0)}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and (failures or baseline_failures):
         return 2
     return 0
 

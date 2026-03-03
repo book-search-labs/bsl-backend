@@ -95,3 +95,24 @@ Implement a stateful chat workflow engine for commerce support:
   - `scripts/eval/test_chat_workflow_recovery_audit.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_WORKFLOW_RECOVERY_AUDIT=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Baseline drift governance 추가 (B-0367 전체)
+  - `scripts/eval/chat_workflow_state_model.py`
+  - `scripts/eval/chat_workflow_plan_execute.py`
+  - `scripts/eval/chat_workflow_confirmation_checkpoint.py`
+  - `scripts/eval/chat_workflow_recovery_audit.py`
+  - 공통으로 `--baseline-report` + drift threshold 인자를 지원하고, `gate.pass`를 `failures + baseline_failures` 결합 기준으로 계산
+  - payload에 `source`, `derived.summary`를 추가해 baseline 비교 입력 스키마를 고정
+- [x] Baseline 회귀 단위테스트 추가
+  - `scripts/eval/test_chat_workflow_state_model.py`
+  - `scripts/eval/test_chat_workflow_plan_execute.py`
+  - `scripts/eval/test_chat_workflow_confirmation_checkpoint.py`
+  - `scripts/eval/test_chat_workflow_recovery_audit.py`
+- [x] CI baseline wiring 추가
+  - `scripts/test.sh` 44~47단계에 baseline fixture 자동 연결 + drift env 노출
+- [x] Baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_workflow_state_model_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_workflow_plan_execute_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_workflow_confirmation_checkpoint_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_workflow_recovery_audit_baseline_v1.json`
