@@ -1537,19 +1537,36 @@ if [ "${RUN_CHAT_UNIT_ECONOMICS_SLO:-0}" = "1" ]; then
     CHAT_UNIT_ECON_MAX_UNRESOLVED_BURN="${CHAT_UNIT_ECON_MAX_UNRESOLVED_BURN:-200}"
     CHAT_UNIT_ECON_MAX_TOOL_MIX="${CHAT_UNIT_ECON_MAX_TOOL_MIX:-0.80}"
     CHAT_UNIT_ECON_MAX_STALE_DAYS="${CHAT_UNIT_ECON_MAX_STALE_DAYS:-8}"
+    CHAT_UNIT_ECON_BASELINE_PATH="${CHAT_UNIT_ECON_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_unit_economics_slo_baseline_v1.json}"
+    CHAT_UNIT_ECON_MAX_RESOLUTION_DROP="${CHAT_UNIT_ECON_MAX_RESOLUTION_DROP:-0.05}"
+    CHAT_UNIT_ECON_MAX_COST_INCREASE="${CHAT_UNIT_ECON_MAX_COST_INCREASE:-0.50}"
+    CHAT_UNIT_ECON_MAX_UNRESOLVED_INCREASE="${CHAT_UNIT_ECON_MAX_UNRESOLVED_INCREASE:-50}"
+    CHAT_UNIT_ECON_MAX_TOOL_MIX_INCREASE="${CHAT_UNIT_ECON_MAX_TOOL_MIX_INCREASE:-0.10}"
+    CHAT_UNIT_ECON_MAX_TOKEN_MIX_INCREASE="${CHAT_UNIT_ECON_MAX_TOKEN_MIX_INCREASE:-0.10}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_unit_economics_slo.py" \
-      --events-jsonl "$CHAT_UNIT_ECON_EVENTS_JSONL" \
-      --window-days "$CHAT_UNIT_ECON_WINDOW_DAYS" \
-      --limit "$CHAT_UNIT_ECON_LIMIT" \
-      --out "$CHAT_UNIT_ECON_OUT_DIR" \
-      --min-window "$CHAT_UNIT_ECON_MIN_WINDOW" \
-      --min-resolution-rate "$CHAT_UNIT_ECON_MIN_RESOLUTION_RATE" \
-      --max-cost-per-resolved-session "$CHAT_UNIT_ECON_MAX_COST_PER_RESOLVED" \
-      --max-unresolved-cost-burn-total "$CHAT_UNIT_ECON_MAX_UNRESOLVED_BURN" \
-      --max-tool-cost-mix-ratio "$CHAT_UNIT_ECON_MAX_TOOL_MIX" \
-      --max-stale-days "$CHAT_UNIT_ECON_MAX_STALE_DAYS" \
-      --gate || exit 1
+    CHAT_UNIT_ECON_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_unit_economics_slo.py"
+      --events-jsonl "$CHAT_UNIT_ECON_EVENTS_JSONL"
+      --window-days "$CHAT_UNIT_ECON_WINDOW_DAYS"
+      --limit "$CHAT_UNIT_ECON_LIMIT"
+      --out "$CHAT_UNIT_ECON_OUT_DIR"
+      --min-window "$CHAT_UNIT_ECON_MIN_WINDOW"
+      --min-resolution-rate "$CHAT_UNIT_ECON_MIN_RESOLUTION_RATE"
+      --max-cost-per-resolved-session "$CHAT_UNIT_ECON_MAX_COST_PER_RESOLVED"
+      --max-unresolved-cost-burn-total "$CHAT_UNIT_ECON_MAX_UNRESOLVED_BURN"
+      --max-tool-cost-mix-ratio "$CHAT_UNIT_ECON_MAX_TOOL_MIX"
+      --max-stale-days "$CHAT_UNIT_ECON_MAX_STALE_DAYS"
+      --max-resolution-rate-drop "$CHAT_UNIT_ECON_MAX_RESOLUTION_DROP"
+      --max-cost-per-resolved-session-increase "$CHAT_UNIT_ECON_MAX_COST_INCREASE"
+      --max-unresolved-cost-burn-total-increase "$CHAT_UNIT_ECON_MAX_UNRESOLVED_INCREASE"
+      --max-tool-cost-mix-ratio-increase "$CHAT_UNIT_ECON_MAX_TOOL_MIX_INCREASE"
+      --max-token-cost-mix-ratio-increase "$CHAT_UNIT_ECON_MAX_TOKEN_MIX_INCREASE"
+      --gate
+    )
+    if [ -f "$CHAT_UNIT_ECON_BASELINE_PATH" ]; then
+      CHAT_UNIT_ECON_ARGS+=(--baseline-report "$CHAT_UNIT_ECON_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_UNIT_ECON_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat unit economics SLO gate"
   fi
@@ -1572,6 +1589,12 @@ if [ "${RUN_CHAT_COST_OPTIMIZER_POLICY:-0}" = "1" ]; then
     CHAT_COST_OPT_MAX_COST_PER_RESOLVED="${CHAT_COST_OPT_MAX_COST_PER_RESOLVED:-2.5}"
     CHAT_COST_OPT_HIGH_RISK_INTENTS="${CHAT_COST_OPT_HIGH_RISK_INTENTS:-CANCEL_ORDER,REFUND_REQUEST,ADDRESS_CHANGE,PAYMENT_CHANGE}"
     CHAT_COST_OPT_REQUIRE_CLAMP="${CHAT_COST_OPT_REQUIRE_CLAMP:-0}"
+    CHAT_COST_OPT_BASELINE_PATH="${CHAT_COST_OPT_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_cost_optimizer_policy_baseline_v1.json}"
+    CHAT_COST_OPT_MAX_RESOLUTION_DROP="${CHAT_COST_OPT_MAX_RESOLUTION_DROP:-0.05}"
+    CHAT_COST_OPT_MAX_COST_INCREASE="${CHAT_COST_OPT_MAX_COST_INCREASE:-0.50}"
+    CHAT_COST_OPT_MAX_HEAVY_ROUTE_INCREASE="${CHAT_COST_OPT_MAX_HEAVY_ROUTE_INCREASE:-0.10}"
+    CHAT_COST_OPT_MAX_REWRITE_INCREASE="${CHAT_COST_OPT_MAX_REWRITE_INCREASE:-0.50}"
+    CHAT_COST_OPT_MAX_HIGH_RISK_LIGHT_INCREASE="${CHAT_COST_OPT_MAX_HIGH_RISK_LIGHT_INCREASE:-0}"
 
     CHAT_COST_OPT_ARGS=(
       "$ROOT_DIR/scripts/eval/chat_cost_optimizer_policy.py"
@@ -1586,8 +1609,16 @@ if [ "${RUN_CHAT_COST_OPTIMIZER_POLICY:-0}" = "1" ]; then
       --min-resolution-rate "$CHAT_COST_OPT_MIN_RESOLUTION_RATE"
       --max-cost-per-resolved-session "$CHAT_COST_OPT_MAX_COST_PER_RESOLVED"
       --high-risk-intents "$CHAT_COST_OPT_HIGH_RISK_INTENTS"
+      --max-resolution-rate-drop "$CHAT_COST_OPT_MAX_RESOLUTION_DROP"
+      --max-cost-per-resolved-session-increase "$CHAT_COST_OPT_MAX_COST_INCREASE"
+      --max-heavy-route-ratio-increase "$CHAT_COST_OPT_MAX_HEAVY_ROUTE_INCREASE"
+      --max-avg-rewrite-steps-increase "$CHAT_COST_OPT_MAX_REWRITE_INCREASE"
+      --max-high-risk-light-increase "$CHAT_COST_OPT_MAX_HIGH_RISK_LIGHT_INCREASE"
       --gate
     )
+    if [ -f "$CHAT_COST_OPT_BASELINE_PATH" ]; then
+      CHAT_COST_OPT_ARGS+=(--baseline-report "$CHAT_COST_OPT_BASELINE_PATH")
+    fi
     if [ "$CHAT_COST_OPT_REQUIRE_CLAMP" = "1" ]; then
       CHAT_COST_OPT_ARGS+=(--require-clamp)
     fi
@@ -1618,6 +1649,12 @@ if [ "${RUN_CHAT_BUDGET_RELEASE_GUARD:-0}" = "1" ]; then
     CHAT_BUDGET_GUARD_MAX_UTILIZATION="${CHAT_BUDGET_GUARD_MAX_UTILIZATION:-0.90}"
     CHAT_BUDGET_GUARD_CLAMP_TRIGGER="${CHAT_BUDGET_GUARD_CLAMP_TRIGGER:-0.75}"
     CHAT_BUDGET_GUARD_REQUIRE_CLAMP="${CHAT_BUDGET_GUARD_REQUIRE_CLAMP:-0}"
+    CHAT_BUDGET_GUARD_BASELINE_PATH="${CHAT_BUDGET_GUARD_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_budget_release_guard_baseline_v1.json}"
+    CHAT_BUDGET_GUARD_MAX_RELEASE_STATE_STEP_INCREASE="${CHAT_BUDGET_GUARD_MAX_RELEASE_STATE_STEP_INCREASE:-0}"
+    CHAT_BUDGET_GUARD_MAX_POST_UTILIZATION_INCREASE="${CHAT_BUDGET_GUARD_MAX_POST_UTILIZATION_INCREASE:-0.05}"
+    CHAT_BUDGET_GUARD_MAX_RESOLUTION_DROP="${CHAT_BUDGET_GUARD_MAX_RESOLUTION_DROP:-0.05}"
+    CHAT_BUDGET_GUARD_MAX_COST_INCREASE="${CHAT_BUDGET_GUARD_MAX_COST_INCREASE:-0.50}"
+    CHAT_BUDGET_GUARD_MAX_UNRESOLVED_INCREASE="${CHAT_BUDGET_GUARD_MAX_UNRESOLVED_INCREASE:-50}"
 
     CHAT_BUDGET_GUARD_ARGS=(
       "$ROOT_DIR/scripts/eval/chat_budget_release_guard.py"
@@ -1633,8 +1670,16 @@ if [ "${RUN_CHAT_BUDGET_RELEASE_GUARD:-0}" = "1" ]; then
       --max-unresolved-cost-burn-total "$CHAT_BUDGET_GUARD_MAX_UNRESOLVED_BURN"
       --max-budget-utilization "$CHAT_BUDGET_GUARD_MAX_UTILIZATION"
       --clamp-trigger-utilization "$CHAT_BUDGET_GUARD_CLAMP_TRIGGER"
+      --max-release-state-step-increase "$CHAT_BUDGET_GUARD_MAX_RELEASE_STATE_STEP_INCREASE"
+      --max-post-optimizer-budget-utilization-increase "$CHAT_BUDGET_GUARD_MAX_POST_UTILIZATION_INCREASE"
+      --max-resolution-rate-drop "$CHAT_BUDGET_GUARD_MAX_RESOLUTION_DROP"
+      --max-cost-per-resolved-session-increase "$CHAT_BUDGET_GUARD_MAX_COST_INCREASE"
+      --max-unresolved-cost-burn-total-increase "$CHAT_BUDGET_GUARD_MAX_UNRESOLVED_INCREASE"
       --gate
     )
+    if [ -f "$CHAT_BUDGET_GUARD_BASELINE_PATH" ]; then
+      CHAT_BUDGET_GUARD_ARGS+=(--baseline-report "$CHAT_BUDGET_GUARD_BASELINE_PATH")
+    fi
     if [ -n "$CHAT_BUDGET_GUARD_FORECAST_REPORT" ]; then
       CHAT_BUDGET_GUARD_ARGS+=(--forecast-report "$CHAT_BUDGET_GUARD_FORECAST_REPORT")
     fi
@@ -1670,21 +1715,38 @@ if [ "${RUN_CHAT_FINOPS_TRADEOFF_REPORT:-0}" = "1" ]; then
     CHAT_FINOPS_MIN_TRADEOFF_INDEX="${CHAT_FINOPS_MIN_TRADEOFF_INDEX:-0.00}"
     CHAT_FINOPS_MAX_COST_PER_RESOLVED="${CHAT_FINOPS_MAX_COST_PER_RESOLVED:-2.5}"
     CHAT_FINOPS_MAX_UNRESOLVED_BURN="${CHAT_FINOPS_MAX_UNRESOLVED_BURN:-200}"
+    CHAT_FINOPS_BASELINE_PATH="${CHAT_FINOPS_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_finops_tradeoff_report_baseline_v1.json}"
+    CHAT_FINOPS_MAX_TRADEOFF_INDEX_DROP="${CHAT_FINOPS_MAX_TRADEOFF_INDEX_DROP:-0.05}"
+    CHAT_FINOPS_MAX_COST_INCREASE="${CHAT_FINOPS_MAX_COST_INCREASE:-0.50}"
+    CHAT_FINOPS_MAX_UNRESOLVED_INCREASE="${CHAT_FINOPS_MAX_UNRESOLVED_INCREASE:-50}"
+    CHAT_FINOPS_MAX_BUDGET_UTILIZATION_INCREASE="${CHAT_FINOPS_MAX_BUDGET_UTILIZATION_INCREASE:-0.05}"
+    CHAT_FINOPS_MAX_QUALITY_DROP_INCREASE="${CHAT_FINOPS_MAX_QUALITY_DROP_INCREASE:-0}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_finops_tradeoff_report.py" \
-      --reports-dir "$CHAT_FINOPS_REPORTS_DIR" \
-      --unit-prefix "$CHAT_FINOPS_UNIT_PREFIX" \
-      --budget-prefix "$CHAT_FINOPS_BUDGET_PREFIX" \
-      --report-limit "$CHAT_FINOPS_REPORT_LIMIT" \
-      --llm-audit-log "$CHAT_FINOPS_AUDIT_LOG" \
-      --audit-window-days "$CHAT_FINOPS_AUDIT_WINDOW_DAYS" \
-      --audit-limit "$CHAT_FINOPS_AUDIT_LIMIT" \
-      --out "$CHAT_FINOPS_OUT_DIR" \
-      --min-reports "$CHAT_FINOPS_MIN_REPORTS" \
-      --min-tradeoff-index "$CHAT_FINOPS_MIN_TRADEOFF_INDEX" \
-      --max-avg-cost-per-resolved-session "$CHAT_FINOPS_MAX_COST_PER_RESOLVED" \
-      --max-avg-unresolved-cost-burn-total "$CHAT_FINOPS_MAX_UNRESOLVED_BURN" \
-      --gate || exit 1
+    CHAT_FINOPS_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_finops_tradeoff_report.py"
+      --reports-dir "$CHAT_FINOPS_REPORTS_DIR"
+      --unit-prefix "$CHAT_FINOPS_UNIT_PREFIX"
+      --budget-prefix "$CHAT_FINOPS_BUDGET_PREFIX"
+      --report-limit "$CHAT_FINOPS_REPORT_LIMIT"
+      --llm-audit-log "$CHAT_FINOPS_AUDIT_LOG"
+      --audit-window-days "$CHAT_FINOPS_AUDIT_WINDOW_DAYS"
+      --audit-limit "$CHAT_FINOPS_AUDIT_LIMIT"
+      --out "$CHAT_FINOPS_OUT_DIR"
+      --min-reports "$CHAT_FINOPS_MIN_REPORTS"
+      --min-tradeoff-index "$CHAT_FINOPS_MIN_TRADEOFF_INDEX"
+      --max-avg-cost-per-resolved-session "$CHAT_FINOPS_MAX_COST_PER_RESOLVED"
+      --max-avg-unresolved-cost-burn-total "$CHAT_FINOPS_MAX_UNRESOLVED_BURN"
+      --max-tradeoff-index-drop "$CHAT_FINOPS_MAX_TRADEOFF_INDEX_DROP"
+      --max-avg-cost-per-resolved-session-increase "$CHAT_FINOPS_MAX_COST_INCREASE"
+      --max-avg-unresolved-cost-burn-total-increase "$CHAT_FINOPS_MAX_UNRESOLVED_INCREASE"
+      --max-avg-budget-utilization-increase "$CHAT_FINOPS_MAX_BUDGET_UTILIZATION_INCREASE"
+      --max-quality-drop-with-cost-cut-increase "$CHAT_FINOPS_MAX_QUALITY_DROP_INCREASE"
+      --gate
+    )
+    if [ -f "$CHAT_FINOPS_BASELINE_PATH" ]; then
+      CHAT_FINOPS_ARGS+=(--baseline-report "$CHAT_FINOPS_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_FINOPS_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat finops tradeoff report gate"
   fi

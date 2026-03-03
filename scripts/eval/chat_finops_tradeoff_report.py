@@ -230,6 +230,74 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_tradeoff_index_drop: float,
+    max_avg_cost_per_resolved_session_increase: float,
+    max_avg_unresolved_cost_burn_total_increase: float,
+    max_avg_budget_utilization_increase: float,
+    max_quality_drop_with_cost_cut_increase: int,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_tradeoff_index = _safe_float(base_summary.get("tradeoff_index"), 0.0)
+    cur_tradeoff_index = _safe_float(current_summary.get("tradeoff_index"), 0.0)
+    tradeoff_index_drop = max(0.0, base_tradeoff_index - cur_tradeoff_index)
+    if tradeoff_index_drop > max(0.0, float(max_tradeoff_index_drop)):
+        failures.append(
+            "tradeoff index regression: "
+            f"baseline={base_tradeoff_index:.6f}, current={cur_tradeoff_index:.6f}, "
+            f"allowed_drop={float(max_tradeoff_index_drop):.6f}"
+        )
+
+    base_avg_cost = _safe_float(base_summary.get("avg_cost_per_resolved_session"), 0.0)
+    cur_avg_cost = _safe_float(current_summary.get("avg_cost_per_resolved_session"), 0.0)
+    avg_cost_increase = max(0.0, cur_avg_cost - base_avg_cost)
+    if avg_cost_increase > max(0.0, float(max_avg_cost_per_resolved_session_increase)):
+        failures.append(
+            "avg cost per resolved regression: "
+            f"baseline={base_avg_cost:.6f}, current={cur_avg_cost:.6f}, "
+            f"allowed_increase={float(max_avg_cost_per_resolved_session_increase):.6f}"
+        )
+
+    base_avg_unresolved = _safe_float(base_summary.get("avg_unresolved_cost_burn_total"), 0.0)
+    cur_avg_unresolved = _safe_float(current_summary.get("avg_unresolved_cost_burn_total"), 0.0)
+    avg_unresolved_increase = max(0.0, cur_avg_unresolved - base_avg_unresolved)
+    if avg_unresolved_increase > max(0.0, float(max_avg_unresolved_cost_burn_total_increase)):
+        failures.append(
+            "avg unresolved burn regression: "
+            f"baseline={base_avg_unresolved:.6f}, current={cur_avg_unresolved:.6f}, "
+            f"allowed_increase={float(max_avg_unresolved_cost_burn_total_increase):.6f}"
+        )
+
+    base_avg_budget = _safe_float(base_summary.get("avg_budget_utilization"), 0.0)
+    cur_avg_budget = _safe_float(current_summary.get("avg_budget_utilization"), 0.0)
+    avg_budget_increase = max(0.0, cur_avg_budget - base_avg_budget)
+    if avg_budget_increase > max(0.0, float(max_avg_budget_utilization_increase)):
+        failures.append(
+            "avg budget utilization regression: "
+            f"baseline={base_avg_budget:.6f}, current={cur_avg_budget:.6f}, "
+            f"allowed_increase={float(max_avg_budget_utilization_increase):.6f}"
+        )
+
+    base_quality_drop = 1 if bool(base_summary.get("quality_drop_with_cost_cut")) else 0
+    cur_quality_drop = 1 if bool(current_summary.get("quality_drop_with_cost_cut")) else 0
+    quality_drop_increase = max(0, cur_quality_drop - base_quality_drop)
+    if quality_drop_increase > max(0, int(max_quality_drop_with_cost_cut_increase)):
+        failures.append(
+            "quality-drop-with-cost-cut regression: "
+            f"baseline={base_quality_drop}, current={cur_quality_drop}, "
+            f"allowed_increase={max(0, int(max_quality_drop_with_cost_cut_increase))}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -268,11 +336,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -291,6 +364,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--min-tradeoff-index", type=float, default=0.20)
     parser.add_argument("--max-avg-cost-per-resolved-session", type=float, default=2.5)
     parser.add_argument("--max-avg-unresolved-cost-burn-total", type=float, default=200.0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-tradeoff-index-drop", type=float, default=0.05)
+    parser.add_argument("--max-avg-cost-per-resolved-session-increase", type=float, default=0.50)
+    parser.add_argument("--max-avg-unresolved-cost-burn-total-increase", type=float, default=50.0)
+    parser.add_argument("--max-avg-budget-utilization-increase", type=float, default=0.05)
+    parser.add_argument("--max-quality-drop-with-cost-cut-increase", type=int, default=0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -326,23 +405,59 @@ def main() -> int:
         max_avg_cost_per_resolved_session=max(0.0, float(args.max_avg_cost_per_resolved_session)),
         max_avg_unresolved_cost_burn_total=max(0.0, float(args.max_avg_unresolved_cost_burn_total)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            summary,
+            max_tradeoff_index_drop=max(0.0, float(args.max_tradeoff_index_drop)),
+            max_avg_cost_per_resolved_session_increase=max(
+                0.0, float(args.max_avg_cost_per_resolved_session_increase)
+            ),
+            max_avg_unresolved_cost_burn_total_increase=max(
+                0.0, float(args.max_avg_unresolved_cost_burn_total_increase)
+            ),
+            max_avg_budget_utilization_increase=max(0.0, float(args.max_avg_budget_utilization_increase)),
+            max_quality_drop_with_cost_cut_increase=max(0, int(args.max_quality_drop_with_cost_cut_increase)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "unit_report_count": len(unit_reports),
         "budget_report_count": len(budget_reports),
         "llm_audit_log": str(args.llm_audit_log),
+        "source": {
+            "reports_dir": str(reports_dir),
+            "unit_prefix": str(args.unit_prefix),
+            "budget_prefix": str(args.budget_prefix),
+            "report_limit": max(1, int(args.report_limit)),
+            "llm_audit_log": str(args.llm_audit_log),
+            "audit_window_days": max(1, int(args.audit_window_days)),
+            "audit_limit": max(1, int(args.audit_limit)),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "audit_summary": audit_summary,
         "summary": summary,
+        "derived": {
+            "summary": summary,
+            "audit_summary": audit_summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_reports": int(args.min_reports),
                 "min_tradeoff_index": float(args.min_tradeoff_index),
                 "max_avg_cost_per_resolved_session": float(args.max_avg_cost_per_resolved_session),
                 "max_avg_unresolved_cost_burn_total": float(args.max_avg_unresolved_cost_burn_total),
+                "max_tradeoff_index_drop": float(args.max_tradeoff_index_drop),
+                "max_avg_cost_per_resolved_session_increase": float(args.max_avg_cost_per_resolved_session_increase),
+                "max_avg_unresolved_cost_burn_total_increase": float(args.max_avg_unresolved_cost_burn_total_increase),
+                "max_avg_budget_utilization_increase": float(args.max_avg_budget_utilization_increase),
+                "max_quality_drop_with_cost_cut_increase": int(args.max_quality_drop_with_cost_cut_increase),
             },
         },
     }
@@ -359,8 +474,9 @@ def main() -> int:
     print(f"report_md={md_path}")
     print(f"report_count={_safe_int(summary.get('report_count'), 0)}")
     print(f"tradeoff_index={_safe_float(summary.get('tradeoff_index'), 0.0):.4f}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and (failures or baseline_failures):
         return 2
     return 0
 

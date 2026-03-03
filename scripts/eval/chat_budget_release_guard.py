@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 MODE_ORDER: dict[str, int] = {"NORMAL": 0, "SOFT_CLAMP": 1, "HARD_CLAMP": 2}
+RELEASE_STATE_ORDER: dict[str, int] = {"PROMOTE": 0, "HOLD": 1, "BLOCK": 2}
 
 
 def _safe_float(value: Any, default: float = 0.0) -> float:
@@ -147,6 +148,78 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    current_release_state: str,
+    *,
+    max_release_state_step_increase: int,
+    max_post_optimizer_budget_utilization_increase: float,
+    max_resolution_rate_drop: float,
+    max_cost_per_resolved_session_increase: float,
+    max_unresolved_cost_burn_total_increase: float,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+    base_decision = baseline_report.get("decision") if isinstance(baseline_report.get("decision"), Mapping) else {}
+    base_release_state = str(base_decision.get("release_state") or "PROMOTE").strip().upper() or "PROMOTE"
+    cur_release_state = str(current_release_state or "PROMOTE").strip().upper() or "PROMOTE"
+
+    base_release_rank = RELEASE_STATE_ORDER.get(base_release_state, 0)
+    cur_release_rank = RELEASE_STATE_ORDER.get(cur_release_state, 0)
+    release_state_step_increase = max(0, cur_release_rank - base_release_rank)
+    if release_state_step_increase > max(0, int(max_release_state_step_increase)):
+        failures.append(
+            "release state regression: "
+            f"baseline={base_release_state}, current={cur_release_state}, "
+            f"allowed_step={max(0, int(max_release_state_step_increase))}"
+        )
+
+    base_post_budget = _safe_float(base_summary.get("post_optimizer_budget_utilization"), 0.0)
+    cur_post_budget = _safe_float(current_summary.get("post_optimizer_budget_utilization"), 0.0)
+    post_budget_increase = max(0.0, cur_post_budget - base_post_budget)
+    if post_budget_increase > max(0.0, float(max_post_optimizer_budget_utilization_increase)):
+        failures.append(
+            "post-optimizer budget utilization regression: "
+            f"baseline={base_post_budget:.6f}, current={cur_post_budget:.6f}, "
+            f"allowed_increase={float(max_post_optimizer_budget_utilization_increase):.6f}"
+        )
+
+    base_resolution_rate = _safe_float(base_summary.get("resolution_rate"), 0.0)
+    cur_resolution_rate = _safe_float(current_summary.get("resolution_rate"), 0.0)
+    resolution_rate_drop = max(0.0, base_resolution_rate - cur_resolution_rate)
+    if resolution_rate_drop > max(0.0, float(max_resolution_rate_drop)):
+        failures.append(
+            "resolution rate regression: "
+            f"baseline={base_resolution_rate:.6f}, current={cur_resolution_rate:.6f}, "
+            f"allowed_drop={float(max_resolution_rate_drop):.6f}"
+        )
+
+    base_cost_per_resolved = _safe_float(base_summary.get("cost_per_resolved_session"), 0.0)
+    cur_cost_per_resolved = _safe_float(current_summary.get("cost_per_resolved_session"), 0.0)
+    cost_per_resolved_increase = max(0.0, cur_cost_per_resolved - base_cost_per_resolved)
+    if cost_per_resolved_increase > max(0.0, float(max_cost_per_resolved_session_increase)):
+        failures.append(
+            "cost per resolved regression: "
+            f"baseline={base_cost_per_resolved:.6f}, current={cur_cost_per_resolved:.6f}, "
+            f"allowed_increase={float(max_cost_per_resolved_session_increase):.6f}"
+        )
+
+    base_unresolved_burn = _safe_float(base_summary.get("unresolved_cost_burn_total"), 0.0)
+    cur_unresolved_burn = _safe_float(current_summary.get("unresolved_cost_burn_total"), 0.0)
+    unresolved_burn_increase = max(0.0, cur_unresolved_burn - base_unresolved_burn)
+    if unresolved_burn_increase > max(0.0, float(max_unresolved_cost_burn_total_increase)):
+        failures.append(
+            "unresolved burn regression: "
+            f"baseline={base_unresolved_burn:.6f}, current={cur_unresolved_burn:.6f}, "
+            f"allowed_increase={float(max_unresolved_cost_burn_total_increase):.6f}"
+        )
+    return failures
+
+
 def decide_release_state(failures: list[str]) -> str:
     if not failures:
         return "PROMOTE"
@@ -192,11 +265,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -217,6 +295,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-budget-utilization", type=float, default=0.90)
     parser.add_argument("--clamp-trigger-utilization", type=float, default=0.75)
     parser.add_argument("--require-clamp", action="store_true")
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-release-state-step-increase", type=int, default=0)
+    parser.add_argument("--max-post-optimizer-budget-utilization-increase", type=float, default=0.05)
+    parser.add_argument("--max-resolution-rate-drop", type=float, default=0.05)
+    parser.add_argument("--max-cost-per-resolved-session-increase", type=float, default=0.50)
+    parser.add_argument("--max-unresolved-cost-burn-total-increase", type=float, default=50.0)
     parser.add_argument("--out", default="data/eval/reports")
     parser.add_argument("--prefix", default="chat_budget_release_guard")
     parser.add_argument("--gate", action="store_true")
@@ -260,21 +344,47 @@ def main() -> int:
         require_clamp=bool(args.require_clamp),
     )
     release_state = decide_release_state(failures)
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            summary,
+            release_state,
+            max_release_state_step_increase=max(0, int(args.max_release_state_step_increase)),
+            max_post_optimizer_budget_utilization_increase=max(
+                0.0, float(args.max_post_optimizer_budget_utilization_increase)
+            ),
+            max_resolution_rate_drop=max(0.0, float(args.max_resolution_rate_drop)),
+            max_cost_per_resolved_session_increase=max(0.0, float(args.max_cost_per_resolved_session_increase)),
+            max_unresolved_cost_burn_total_increase=max(0.0, float(args.max_unresolved_cost_burn_total_increase)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "forecast_report": str(forecast_report) if forecast_report else None,
         "unit_econ_report": str(unit_report) if unit_report else None,
         "optimizer_report": str(optimizer_report) if optimizer_report else None,
+        "source": {
+            "reports_dir": str(reports_dir),
+            "forecast_report": str(forecast_report) if forecast_report else None,
+            "unit_econ_report": str(unit_report) if unit_report else None,
+            "optimizer_report": str(optimizer_report) if optimizer_report else None,
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "decision": {
             "release_state": release_state,
             "rationale": "all thresholds satisfied" if not failures else "threshold breaches detected",
         },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "min_resolution_rate": float(args.min_resolution_rate),
@@ -283,6 +393,13 @@ def main() -> int:
                 "max_budget_utilization": float(args.max_budget_utilization),
                 "clamp_trigger_utilization": float(args.clamp_trigger_utilization),
                 "require_clamp": bool(args.require_clamp),
+                "max_release_state_step_increase": int(args.max_release_state_step_increase),
+                "max_post_optimizer_budget_utilization_increase": float(
+                    args.max_post_optimizer_budget_utilization_increase
+                ),
+                "max_resolution_rate_drop": float(args.max_resolution_rate_drop),
+                "max_cost_per_resolved_session_increase": float(args.max_cost_per_resolved_session_increase),
+                "max_unresolved_cost_burn_total_increase": float(args.max_unresolved_cost_burn_total_increase),
             },
         },
     }
@@ -299,8 +416,9 @@ def main() -> int:
     print(f"report_md={md_path}")
     print(f"release_state={release_state}")
     print(f"post_optimizer_budget_utilization={_safe_float(summary.get('post_optimizer_budget_utilization'), 0.0):.4f}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and (failures or baseline_failures):
         return 2
     return 0
 

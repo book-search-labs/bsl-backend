@@ -86,3 +86,34 @@ def test_decide_release_state_blocks_on_severe_failure():
         ]
     )
     assert state == "BLOCK"
+
+
+def test_compare_with_baseline_detects_release_and_budget_regression():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "post_optimizer_budget_utilization": 0.60,
+                "resolution_rate": 0.90,
+                "cost_per_resolved_session": 1.80,
+                "unresolved_cost_burn_total": 40.0,
+            }
+        },
+        "decision": {"release_state": "PROMOTE"},
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "post_optimizer_budget_utilization": 0.75,
+            "resolution_rate": 0.80,
+            "cost_per_resolved_session": 2.60,
+            "unresolved_cost_burn_total": 120.0,
+        },
+        "BLOCK",
+        max_release_state_step_increase=0,
+        max_post_optimizer_budget_utilization_increase=0.05,
+        max_resolution_rate_drop=0.05,
+        max_cost_per_resolved_session_increase=0.50,
+        max_unresolved_cost_burn_total_increase=50.0,
+    )
+    assert len(failures) == 5

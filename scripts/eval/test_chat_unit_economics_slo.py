@@ -103,3 +103,34 @@ def test_evaluate_gate_skips_ratio_checks_when_window_empty():
         max_stale_days=8,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_resolution_cost_and_mix_regression():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "resolution_rate": 0.90,
+                "cost_per_resolved_session": 1.00,
+                "unresolved_cost_burn_total": 20.0,
+                "tool_cost_mix_ratio": 0.40,
+                "token_cost_mix_ratio": 0.45,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "resolution_rate": 0.80,
+            "cost_per_resolved_session": 1.70,
+            "unresolved_cost_burn_total": 90.0,
+            "tool_cost_mix_ratio": 0.55,
+            "token_cost_mix_ratio": 0.60,
+        },
+        max_resolution_rate_drop=0.05,
+        max_cost_per_resolved_session_increase=0.50,
+        max_unresolved_cost_burn_total_increase=50.0,
+        max_tool_cost_mix_ratio_increase=0.10,
+        max_token_cost_mix_ratio_increase=0.10,
+    )
+    assert len(failures) == 5

@@ -89,6 +89,13 @@ def read_events(path: Path, *, window_days: int, limit: int, now: datetime | Non
     return filtered
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"expected JSON object from {path}")
+    return payload
+
+
 def summarize_unit_economics(events: list[Mapping[str, Any]], *, now: datetime | None = None) -> dict[str, Any]:
     now_dt = now or datetime.now(timezone.utc)
 
@@ -237,6 +244,75 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_resolution_rate_drop: float,
+    max_cost_per_resolved_session_increase: float,
+    max_unresolved_cost_burn_total_increase: float,
+    max_tool_cost_mix_ratio_increase: float,
+    max_token_cost_mix_ratio_increase: float,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_resolution_rate = _safe_float(base_summary.get("resolution_rate"), 0.0)
+    cur_resolution_rate = _safe_float(current_summary.get("resolution_rate"), 0.0)
+    resolution_rate_drop = max(0.0, base_resolution_rate - cur_resolution_rate)
+    if resolution_rate_drop > max(0.0, float(max_resolution_rate_drop)):
+        failures.append(
+            "resolution rate regression: "
+            f"baseline={base_resolution_rate:.6f}, current={cur_resolution_rate:.6f}, "
+            f"allowed_drop={float(max_resolution_rate_drop):.6f}"
+        )
+
+    base_cost_per_resolved = _safe_float(base_summary.get("cost_per_resolved_session"), 0.0)
+    cur_cost_per_resolved = _safe_float(current_summary.get("cost_per_resolved_session"), 0.0)
+    cost_per_resolved_increase = max(0.0, cur_cost_per_resolved - base_cost_per_resolved)
+    if cost_per_resolved_increase > max(0.0, float(max_cost_per_resolved_session_increase)):
+        failures.append(
+            "cost per resolved regression: "
+            f"baseline={base_cost_per_resolved:.6f}, current={cur_cost_per_resolved:.6f}, "
+            f"allowed_increase={float(max_cost_per_resolved_session_increase):.6f}"
+        )
+
+    base_unresolved_burn = _safe_float(base_summary.get("unresolved_cost_burn_total"), 0.0)
+    cur_unresolved_burn = _safe_float(current_summary.get("unresolved_cost_burn_total"), 0.0)
+    unresolved_burn_increase = max(0.0, cur_unresolved_burn - base_unresolved_burn)
+    if unresolved_burn_increase > max(0.0, float(max_unresolved_cost_burn_total_increase)):
+        failures.append(
+            "unresolved burn regression: "
+            f"baseline={base_unresolved_burn:.6f}, current={cur_unresolved_burn:.6f}, "
+            f"allowed_increase={float(max_unresolved_cost_burn_total_increase):.6f}"
+        )
+
+    base_tool_mix = _safe_float(base_summary.get("tool_cost_mix_ratio"), 0.0)
+    cur_tool_mix = _safe_float(current_summary.get("tool_cost_mix_ratio"), 0.0)
+    tool_mix_increase = max(0.0, cur_tool_mix - base_tool_mix)
+    if tool_mix_increase > max(0.0, float(max_tool_cost_mix_ratio_increase)):
+        failures.append(
+            "tool cost mix regression: "
+            f"baseline={base_tool_mix:.6f}, current={cur_tool_mix:.6f}, "
+            f"allowed_increase={float(max_tool_cost_mix_ratio_increase):.6f}"
+        )
+
+    base_token_mix = _safe_float(base_summary.get("token_cost_mix_ratio"), 0.0)
+    cur_token_mix = _safe_float(current_summary.get("token_cost_mix_ratio"), 0.0)
+    token_mix_increase = max(0.0, cur_token_mix - base_token_mix)
+    if token_mix_increase > max(0.0, float(max_token_cost_mix_ratio_increase)):
+        failures.append(
+            "token cost mix regression: "
+            f"baseline={base_token_mix:.6f}, current={cur_token_mix:.6f}, "
+            f"allowed_increase={float(max_token_cost_mix_ratio_increase):.6f}"
+        )
+
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -259,11 +335,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -280,6 +361,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-unresolved-cost-burn-total", type=float, default=200.0)
     parser.add_argument("--max-tool-cost-mix-ratio", type=float, default=0.80)
     parser.add_argument("--max-stale-days", type=float, default=8.0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-resolution-rate-drop", type=float, default=0.05)
+    parser.add_argument("--max-cost-per-resolved-session-increase", type=float, default=0.50)
+    parser.add_argument("--max-unresolved-cost-burn-total-increase", type=float, default=50.0)
+    parser.add_argument("--max-tool-cost-mix-ratio-increase", type=float, default=0.10)
+    parser.add_argument("--max-token-cost-mix-ratio-increase", type=float, default=0.10)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -303,15 +390,37 @@ def main() -> int:
         max_tool_cost_mix_ratio=max(0.0, float(args.max_tool_cost_mix_ratio)),
         max_stale_days=max(0.0, float(args.max_stale_days)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_report = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_report,
+            summary,
+            max_resolution_rate_drop=max(0.0, float(args.max_resolution_rate_drop)),
+            max_cost_per_resolved_session_increase=max(0.0, float(args.max_cost_per_resolved_session_increase)),
+            max_unresolved_cost_burn_total_increase=max(0.0, float(args.max_unresolved_cost_burn_total_increase)),
+            max_tool_cost_mix_ratio_increase=max(0.0, float(args.max_tool_cost_mix_ratio_increase)),
+            max_token_cost_mix_ratio_increase=max(0.0, float(args.max_token_cost_mix_ratio_increase)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "events_jsonl": str(events_path),
+        "source": {
+            "events_jsonl": str(events_path),
+            "window_days": max(1, int(args.window_days)),
+            "limit": max(1, int(args.limit)),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "min_resolution_rate": float(args.min_resolution_rate),
@@ -319,6 +428,11 @@ def main() -> int:
                 "max_unresolved_cost_burn_total": float(args.max_unresolved_cost_burn_total),
                 "max_tool_cost_mix_ratio": float(args.max_tool_cost_mix_ratio),
                 "max_stale_days": float(args.max_stale_days),
+                "max_resolution_rate_drop": float(args.max_resolution_rate_drop),
+                "max_cost_per_resolved_session_increase": float(args.max_cost_per_resolved_session_increase),
+                "max_unresolved_cost_burn_total_increase": float(args.max_unresolved_cost_burn_total_increase),
+                "max_tool_cost_mix_ratio_increase": float(args.max_tool_cost_mix_ratio_increase),
+                "max_token_cost_mix_ratio_increase": float(args.max_token_cost_mix_ratio_increase),
             },
         },
     }
@@ -335,8 +449,9 @@ def main() -> int:
     print(f"report_md={md_path}")
     print(f"window_size={_safe_int(summary.get('window_size'), 0)}")
     print(f"cost_per_resolved_session={_safe_float(summary.get('cost_per_resolved_session'), 0.0):.4f}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and (failures or baseline_failures):
         return 2
     return 0
 

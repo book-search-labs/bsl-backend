@@ -90,3 +90,24 @@ Add FinOps-grade control for production chat:
   - `scripts/eval/test_chat_finops_tradeoff_report.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_FINOPS_TRADEOFF_REPORT=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Baseline drift governance 추가 (I-0365 전체)
+  - `scripts/eval/chat_unit_economics_slo.py`
+  - `scripts/eval/chat_cost_optimizer_policy.py`
+  - `scripts/eval/chat_budget_release_guard.py`
+  - `scripts/eval/chat_finops_tradeoff_report.py`
+  - 공통으로 `--baseline-report` + drift threshold 인자를 지원하고, `gate.pass`를 `failures + baseline_failures` 결합 기준으로 계산
+  - payload에 `source`, `derived.summary`를 추가해 baseline 비교 입력 스키마를 고정
+- [x] Baseline 회귀 단위테스트 추가
+  - `scripts/eval/test_chat_unit_economics_slo.py`
+  - `scripts/eval/test_chat_cost_optimizer_policy.py`
+  - `scripts/eval/test_chat_budget_release_guard.py`
+  - `scripts/eval/test_chat_finops_tradeoff_report.py`
+- [x] CI baseline wiring 추가
+  - `scripts/test.sh` 36~39단계에 baseline fixture 자동 연결 + drift env 노출
+- [x] Baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_unit_economics_slo_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_cost_optimizer_policy_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_budget_release_guard_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_finops_tradeoff_report_baseline_v1.json`

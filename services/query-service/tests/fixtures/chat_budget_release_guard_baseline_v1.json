@@ -1,0 +1,71 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "forecast_report": null,
+  "unit_econ_report": null,
+  "optimizer_report": null,
+  "source": {
+    "reports_dir": "data/eval/reports",
+    "forecast_report": null,
+    "unit_econ_report": null,
+    "optimizer_report": null,
+    "baseline_report": null
+  },
+  "summary": {
+    "monthly_budget_limit_usd": 15000.0,
+    "unit_window_size": 0,
+    "resolution_rate": 0.0,
+    "cost_per_resolved_session": 0.0,
+    "unresolved_cost_burn_total": 0.0,
+    "forecast_monthly_cost_usd": 0.0,
+    "forecast_peak_rps": 0.0,
+    "optimizer_mode": "NORMAL",
+    "optimizer_budget_utilization": 0.0,
+    "estimated_savings_total_usd": 0.0,
+    "savings_ratio": 0.0,
+    "pre_optimizer_budget_utilization": 0.0,
+    "post_optimizer_budget_utilization": 0.0,
+    "projected_monthly_cost_after_optimizer_usd": 0.0
+  },
+  "derived": {
+    "summary": {
+      "monthly_budget_limit_usd": 15000.0,
+      "unit_window_size": 0,
+      "resolution_rate": 0.0,
+      "cost_per_resolved_session": 0.0,
+      "unresolved_cost_burn_total": 0.0,
+      "forecast_monthly_cost_usd": 0.0,
+      "forecast_peak_rps": 0.0,
+      "optimizer_mode": "NORMAL",
+      "optimizer_budget_utilization": 0.0,
+      "estimated_savings_total_usd": 0.0,
+      "savings_ratio": 0.0,
+      "pre_optimizer_budget_utilization": 0.0,
+      "post_optimizer_budget_utilization": 0.0,
+      "projected_monthly_cost_after_optimizer_usd": 0.0
+    }
+  },
+  "decision": {
+    "release_state": "PROMOTE",
+    "rationale": "all thresholds satisfied"
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 1,
+      "min_resolution_rate": 0.8,
+      "max_cost_per_resolved_session": 2.5,
+      "max_unresolved_cost_burn_total": 200.0,
+      "max_budget_utilization": 0.9,
+      "clamp_trigger_utilization": 0.75,
+      "require_clamp": false,
+      "max_release_state_step_increase": 0,
+      "max_post_optimizer_budget_utilization_increase": 0.05,
+      "max_resolution_rate_drop": 0.05,
+      "max_cost_per_resolved_session_increase": 0.5,
+      "max_unresolved_cost_burn_total_increase": 50.0
+    }
+  }
+}

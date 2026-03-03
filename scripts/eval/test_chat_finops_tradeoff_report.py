@@ -77,3 +77,34 @@ def test_evaluate_gate_passes_healthy_metrics():
         max_avg_unresolved_cost_burn_total=200.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_tradeoff_cost_quality_regression():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "tradeoff_index": 0.40,
+                "avg_cost_per_resolved_session": 1.50,
+                "avg_unresolved_cost_burn_total": 80.0,
+                "avg_budget_utilization": 0.60,
+                "quality_drop_with_cost_cut": False,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "tradeoff_index": 0.30,
+            "avg_cost_per_resolved_session": 2.20,
+            "avg_unresolved_cost_burn_total": 160.0,
+            "avg_budget_utilization": 0.72,
+            "quality_drop_with_cost_cut": True,
+        },
+        max_tradeoff_index_drop=0.05,
+        max_avg_cost_per_resolved_session_increase=0.50,
+        max_avg_unresolved_cost_burn_total_increase=50.0,
+        max_avg_budget_utilization_increase=0.05,
+        max_quality_drop_with_cost_cut_increase=0,
+    )
+    assert len(failures) == 5

@@ -1636,7 +1636,7 @@ python scripts/eval/chat_session_resilience_drill_report.py \
     - `CHAT_SESSION_DRILL_MAX_MISSING_SCENARIO_INCREASE`
 
 ## Unit economics SLO gate (I-0365, Bundle 1)
-- 세션 비용 이벤트에서 cost-to-resolve와 unresolved burn을 계산해 FinOps SLO를 게이트로 검증:
+- 세션 비용 이벤트에서 cost-to-resolve와 unresolved burn을 계산해 FinOps SLO를 게이트로 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_unit_economics_slo.py \
   --events-jsonl var/chat_finops/session_cost_events.jsonl \
@@ -1646,6 +1646,12 @@ python scripts/eval/chat_unit_economics_slo.py \
   --max-unresolved-cost-burn-total 200 \
   --max-tool-cost-mix-ratio 0.80 \
   --max-stale-days 8 \
+  --baseline-report services/query-service/tests/fixtures/chat_unit_economics_slo_baseline_v1.json \
+  --max-resolution-rate-drop 0.05 \
+  --max-cost-per-resolved-session-increase 0.50 \
+  --max-unresolved-cost-burn-total-increase 50 \
+  --max-tool-cost-mix-ratio-increase 0.10 \
+  --max-token-cost-mix-ratio-increase 0.10 \
   --gate
 ```
 - 산출물:
@@ -1654,9 +1660,15 @@ python scripts/eval/chat_unit_economics_slo.py \
   - resolution rate 기반 품질 제약 여부
 - CI 옵션:
   - `RUN_CHAT_UNIT_ECONOMICS_SLO=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_UNIT_ECON_MAX_RESOLUTION_DROP`
+    - `CHAT_UNIT_ECON_MAX_COST_INCREASE`
+    - `CHAT_UNIT_ECON_MAX_UNRESOLVED_INCREASE`
+    - `CHAT_UNIT_ECON_MAX_TOOL_MIX_INCREASE`
+    - `CHAT_UNIT_ECON_MAX_TOKEN_MIX_INCREASE`
 
 ## Cost optimizer policy gate (I-0365, Bundle 2)
-- 예산 압력과 품질 제약을 함께 고려해 intent별 라우팅 정책(`NORMAL/SOFT_CLAMP/HARD_CLAMP`)을 계산:
+- 예산 압력과 품질 제약을 함께 고려해 intent별 라우팅 정책(`NORMAL/SOFT_CLAMP/HARD_CLAMP`)을 계산 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_cost_optimizer_policy.py \
   --events-jsonl var/chat_finops/session_cost_events.jsonl \
@@ -1666,6 +1678,12 @@ python scripts/eval/chat_cost_optimizer_policy.py \
   --min-resolution-rate 0.80 \
   --max-cost-per-resolved-session 2.5 \
   --high-risk-intents CANCEL_ORDER,REFUND_REQUEST,ADDRESS_CHANGE,PAYMENT_CHANGE \
+  --baseline-report services/query-service/tests/fixtures/chat_cost_optimizer_policy_baseline_v1.json \
+  --max-resolution-rate-drop 0.05 \
+  --max-cost-per-resolved-session-increase 0.50 \
+  --max-heavy-route-ratio-increase 0.10 \
+  --max-avg-rewrite-steps-increase 0.50 \
+  --max-high-risk-light-increase 0 \
   --gate
 ```
 - 산출물:
@@ -1674,9 +1692,15 @@ python scripts/eval/chat_cost_optimizer_policy.py \
   - budget 압력 기반 예상 절감 비용(`estimated_savings_total_usd`)
 - CI 옵션:
   - `RUN_CHAT_COST_OPTIMIZER_POLICY=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_COST_OPT_MAX_RESOLUTION_DROP`
+    - `CHAT_COST_OPT_MAX_COST_INCREASE`
+    - `CHAT_COST_OPT_MAX_HEAVY_ROUTE_INCREASE`
+    - `CHAT_COST_OPT_MAX_REWRITE_INCREASE`
+    - `CHAT_COST_OPT_MAX_HIGH_RISK_LIGHT_INCREASE`
 
 ## Budget release guard gate (I-0365, Bundle 3)
-- forecast/unit-economics/optimizer 리포트를 결합해 릴리스 예산 안전성(`PROMOTE/HOLD/BLOCK`)을 계산:
+- forecast/unit-economics/optimizer 리포트를 결합해 릴리스 예산 안전성(`PROMOTE/HOLD/BLOCK`)을 계산 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_budget_release_guard.py \
   --reports-dir data/eval/reports \
@@ -1687,6 +1711,12 @@ python scripts/eval/chat_budget_release_guard.py \
   --max-budget-utilization 0.90 \
   --max-unresolved-cost-burn-total 200 \
   --min-resolution-rate 0.80 \
+  --baseline-report services/query-service/tests/fixtures/chat_budget_release_guard_baseline_v1.json \
+  --max-release-state-step-increase 0 \
+  --max-post-optimizer-budget-utilization-increase 0.05 \
+  --max-resolution-rate-drop 0.05 \
+  --max-cost-per-resolved-session-increase 0.50 \
+  --max-unresolved-cost-burn-total-increase 50 \
   --gate
 ```
 - 산출물:
@@ -1695,9 +1725,15 @@ python scripts/eval/chat_budget_release_guard.py \
   - optimizer mode와 clamp 필요 여부 점검 결과
 - CI 옵션:
   - `RUN_CHAT_BUDGET_RELEASE_GUARD=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_BUDGET_GUARD_MAX_RELEASE_STATE_STEP_INCREASE`
+    - `CHAT_BUDGET_GUARD_MAX_POST_UTILIZATION_INCREASE`
+    - `CHAT_BUDGET_GUARD_MAX_RESOLUTION_DROP`
+    - `CHAT_BUDGET_GUARD_MAX_COST_INCREASE`
+    - `CHAT_BUDGET_GUARD_MAX_UNRESOLVED_INCREASE`
 
 ## FinOps tradeoff report gate (I-0365, Bundle 4)
-- unit economics/예산가드/감사로그를 합쳐 cost-quality 트레이드오프를 주간 리포트로 평가:
+- unit economics/예산가드/감사로그를 합쳐 cost-quality 트레이드오프를 주간 리포트로 평가 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_finops_tradeoff_report.py \
   --reports-dir data/eval/reports \
@@ -1708,6 +1744,12 @@ python scripts/eval/chat_finops_tradeoff_report.py \
   --min-tradeoff-index 0.20 \
   --max-avg-cost-per-resolved-session 2.5 \
   --max-avg-unresolved-cost-burn-total 200 \
+  --baseline-report services/query-service/tests/fixtures/chat_finops_tradeoff_report_baseline_v1.json \
+  --max-tradeoff-index-drop 0.05 \
+  --max-avg-cost-per-resolved-session-increase 0.50 \
+  --max-avg-unresolved-cost-burn-total-increase 50 \
+  --max-avg-budget-utilization-increase 0.05 \
+  --max-quality-drop-with-cost-cut-increase 0 \
   --gate
 ```
 - 산출물:
@@ -1716,6 +1758,12 @@ python scripts/eval/chat_finops_tradeoff_report.py \
   - reason_code별 비용 급등(top reasons) 분해
 - CI 옵션:
   - `RUN_CHAT_FINOPS_TRADEOFF_REPORT=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_FINOPS_MAX_TRADEOFF_INDEX_DROP`
+    - `CHAT_FINOPS_MAX_COST_INCREASE`
+    - `CHAT_FINOPS_MAX_UNRESOLVED_INCREASE`
+    - `CHAT_FINOPS_MAX_BUDGET_UTILIZATION_INCREASE`
+    - `CHAT_FINOPS_MAX_QUALITY_DROP_INCREASE`
 
 ## Config distribution rollout gate (I-0366, Bundle 1)
 - 실시간 정책 번들 배포 이벤트를 집계해 서명/단계 롤아웃/드리프트 상태를 검증:

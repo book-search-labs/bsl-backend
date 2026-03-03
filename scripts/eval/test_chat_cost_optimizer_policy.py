@@ -110,3 +110,42 @@ def test_evaluate_gate_passes_empty_window_when_min_window_zero():
         require_clamp=False,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_cost_and_high_risk_light_regression():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "resolution_rate": 0.90,
+                "cost_per_resolved_session": 1.20,
+                "heavy_route_ratio": 0.40,
+                "avg_rewrite_steps": 1.0,
+            }
+        },
+        "decision": {
+            "intent_policies": [
+                {"intent": "REFUND_REQUEST", "risk_level": "HIGH", "route_policy": "TRUSTED"},
+            ]
+        },
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "resolution_rate": 0.80,
+            "cost_per_resolved_session": 1.90,
+            "heavy_route_ratio": 0.60,
+            "avg_rewrite_steps": 1.8,
+        },
+        {
+            "intent_policies": [
+                {"intent": "REFUND_REQUEST", "risk_level": "HIGH", "route_policy": "LIGHT"},
+            ]
+        },
+        max_resolution_rate_drop=0.05,
+        max_cost_per_resolved_session_increase=0.50,
+        max_heavy_route_ratio_increase=0.10,
+        max_avg_rewrite_steps_increase=0.50,
+        max_high_risk_light_increase=0,
+    )
+    assert len(failures) == 5

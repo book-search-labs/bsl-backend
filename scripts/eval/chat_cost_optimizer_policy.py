@@ -115,6 +115,13 @@ def read_events(path: Path, *, window_days: int, limit: int, now: datetime | Non
     return filtered
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"expected JSON object from {path}")
+    return payload
+
+
 def infer_budget_utilization(events: list[Mapping[str, Any]], *, override: float | None = None) -> float:
     if override is not None and override >= 0.0:
         return max(0.0, float(override))
@@ -419,6 +426,90 @@ def evaluate_gate(
     return failures
 
 
+def _count_high_risk_light(decision: Mapping[str, Any]) -> int:
+    rows = decision.get("intent_policies") if isinstance(decision.get("intent_policies"), list) else []
+    total = 0
+    for row in rows:
+        if not isinstance(row, Mapping):
+            continue
+        intent = str(row.get("intent") or "UNKNOWN").strip().upper() or "UNKNOWN"
+        risk_level = _normalize_risk(row.get("risk_level"), intent=intent)
+        route_policy = str(row.get("route_policy") or "BALANCED").strip().upper()
+        if risk_level == "HIGH" and route_policy == "LIGHT":
+            total += 1
+    return total
+
+
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    current_decision: Mapping[str, Any],
+    *,
+    max_resolution_rate_drop: float,
+    max_cost_per_resolved_session_increase: float,
+    max_heavy_route_ratio_increase: float,
+    max_avg_rewrite_steps_increase: float,
+    max_high_risk_light_increase: int,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_resolution_rate = _safe_float(base_summary.get("resolution_rate"), 0.0)
+    cur_resolution_rate = _safe_float(current_summary.get("resolution_rate"), 0.0)
+    resolution_rate_drop = max(0.0, base_resolution_rate - cur_resolution_rate)
+    if resolution_rate_drop > max(0.0, float(max_resolution_rate_drop)):
+        failures.append(
+            "resolution rate regression: "
+            f"baseline={base_resolution_rate:.6f}, current={cur_resolution_rate:.6f}, "
+            f"allowed_drop={float(max_resolution_rate_drop):.6f}"
+        )
+
+    base_cost_per_resolved = _safe_float(base_summary.get("cost_per_resolved_session"), 0.0)
+    cur_cost_per_resolved = _safe_float(current_summary.get("cost_per_resolved_session"), 0.0)
+    cost_per_resolved_increase = max(0.0, cur_cost_per_resolved - base_cost_per_resolved)
+    if cost_per_resolved_increase > max(0.0, float(max_cost_per_resolved_session_increase)):
+        failures.append(
+            "cost per resolved regression: "
+            f"baseline={base_cost_per_resolved:.6f}, current={cur_cost_per_resolved:.6f}, "
+            f"allowed_increase={float(max_cost_per_resolved_session_increase):.6f}"
+        )
+
+    base_heavy_route_ratio = _safe_float(base_summary.get("heavy_route_ratio"), 0.0)
+    cur_heavy_route_ratio = _safe_float(current_summary.get("heavy_route_ratio"), 0.0)
+    heavy_route_ratio_increase = max(0.0, cur_heavy_route_ratio - base_heavy_route_ratio)
+    if heavy_route_ratio_increase > max(0.0, float(max_heavy_route_ratio_increase)):
+        failures.append(
+            "heavy route ratio regression: "
+            f"baseline={base_heavy_route_ratio:.6f}, current={cur_heavy_route_ratio:.6f}, "
+            f"allowed_increase={float(max_heavy_route_ratio_increase):.6f}"
+        )
+
+    base_avg_rewrite_steps = _safe_float(base_summary.get("avg_rewrite_steps"), 0.0)
+    cur_avg_rewrite_steps = _safe_float(current_summary.get("avg_rewrite_steps"), 0.0)
+    avg_rewrite_steps_increase = max(0.0, cur_avg_rewrite_steps - base_avg_rewrite_steps)
+    if avg_rewrite_steps_increase > max(0.0, float(max_avg_rewrite_steps_increase)):
+        failures.append(
+            "avg rewrite steps regression: "
+            f"baseline={base_avg_rewrite_steps:.6f}, current={cur_avg_rewrite_steps:.6f}, "
+            f"allowed_increase={float(max_avg_rewrite_steps_increase):.6f}"
+        )
+
+    base_decision = baseline_report.get("decision") if isinstance(baseline_report.get("decision"), Mapping) else {}
+    base_high_risk_light_total = _count_high_risk_light(base_decision)
+    cur_high_risk_light_total = _count_high_risk_light(current_decision)
+    high_risk_light_increase = max(0, cur_high_risk_light_total - base_high_risk_light_total)
+    if high_risk_light_increase > max(0, int(max_high_risk_light_increase)):
+        failures.append(
+            "high-risk LIGHT route regression: "
+            f"baseline={base_high_risk_light_total}, current={cur_high_risk_light_total}, "
+            f"allowed_increase={max(0, int(max_high_risk_light_increase))}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     decision = payload.get("decision") if isinstance(payload.get("decision"), Mapping) else {}
@@ -453,11 +544,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -477,6 +573,12 @@ def _parse_args() -> argparse.Namespace:
         default="CANCEL_ORDER,REFUND_REQUEST,ADDRESS_CHANGE,PAYMENT_CHANGE",
     )
     parser.add_argument("--require-clamp", action="store_true")
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-resolution-rate-drop", type=float, default=0.05)
+    parser.add_argument("--max-cost-per-resolved-session-increase", type=float, default=0.50)
+    parser.add_argument("--max-heavy-route-ratio-increase", type=float, default=0.10)
+    parser.add_argument("--max-avg-rewrite-steps-increase", type=float, default=0.50)
+    parser.add_argument("--max-high-risk-light-increase", type=int, default=0)
     parser.add_argument("--out", default="data/eval/reports")
     parser.add_argument("--prefix", default="chat_cost_optimizer_policy")
     parser.add_argument("--gate", action="store_true")
@@ -520,16 +622,41 @@ def main() -> int:
         hard_budget_utilization=max(0.0, float(args.hard_budget_utilization)),
         require_clamp=bool(args.require_clamp),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_report = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_report,
+            summary,
+            decision,
+            max_resolution_rate_drop=max(0.0, float(args.max_resolution_rate_drop)),
+            max_cost_per_resolved_session_increase=max(0.0, float(args.max_cost_per_resolved_session_increase)),
+            max_heavy_route_ratio_increase=max(0.0, float(args.max_heavy_route_ratio_increase)),
+            max_avg_rewrite_steps_increase=max(0.0, float(args.max_avg_rewrite_steps_increase)),
+            max_high_risk_light_increase=max(0, int(args.max_high_risk_light_increase)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "events_jsonl": str(events_path),
+        "source": {
+            "events_jsonl": str(events_path),
+            "window_days": max(1, int(args.window_days)),
+            "limit": max(1, int(args.limit)),
+            "budget_utilization_override": None if float(args.budget_utilization) < 0 else float(args.budget_utilization),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+            "decision": decision,
+        },
         "decision": decision,
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "min_resolution_rate": float(args.min_resolution_rate),
@@ -537,6 +664,11 @@ def main() -> int:
                 "soft_budget_utilization": float(args.soft_budget_utilization),
                 "hard_budget_utilization": float(args.hard_budget_utilization),
                 "require_clamp": bool(args.require_clamp),
+                "max_resolution_rate_drop": float(args.max_resolution_rate_drop),
+                "max_cost_per_resolved_session_increase": float(args.max_cost_per_resolved_session_increase),
+                "max_heavy_route_ratio_increase": float(args.max_heavy_route_ratio_increase),
+                "max_avg_rewrite_steps_increase": float(args.max_avg_rewrite_steps_increase),
+                "max_high_risk_light_increase": int(args.max_high_risk_light_increase),
             },
         },
     }
@@ -553,8 +685,9 @@ def main() -> int:
     print(f"report_md={md_path}")
     print(f"mode={decision.get('mode')}")
     print(f"budget_utilization={_safe_float(decision.get('budget_utilization'), 0.0):.4f}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and (failures or baseline_failures):
         return 2
     return 0
 
