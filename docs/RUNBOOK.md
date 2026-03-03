@@ -2846,6 +2846,30 @@ python scripts/eval/chat_temporal_conflict_fallback.py \
 - CI 옵션:
   - `RUN_CHAT_TEMPORAL_CONFLICT_FALLBACK=1 ./scripts/test.sh`
 
+## Chat correction memory schema gate (B-0381, Bundle 1)
+- 운영자 승인 교정 메모리 레코드의 필수 필드/스코프/활성 상태 정합성을 검증:
+```bash
+python scripts/eval/chat_correction_memory_schema.py \
+  --events-jsonl var/chat_correction/correction_memory_records.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-record-total 20 \
+  --max-missing-required-total 0 \
+  --max-missing-scope-total 0 \
+  --max-invalid-approval-state-total 0 \
+  --max-unapproved-active-total 0 \
+  --max-expired-active-total 0 \
+  --max-duplicate-active-pattern-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - 필수 필드 누락/스코프 누락 건수
+  - 승인상태 불일치(active+unapproved) 및 만료 active 건수
+  - active trigger 중복 패턴 건수
+- CI 옵션:
+  - `RUN_CHAT_CORRECTION_MEMORY_SCHEMA=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

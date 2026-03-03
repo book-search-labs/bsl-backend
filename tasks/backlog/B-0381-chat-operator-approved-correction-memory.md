@@ -51,3 +51,13 @@ Implement approved correction memory for chat:
 - Store operator-approved fixes with scope, expiry, and ownership.
 - Apply corrections in retrieval with policy-safe precedence.
 - Support approval lifecycle, rollback, and misuse detection metrics.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Correction memory schema gate 추가
+  - `scripts/eval/chat_correction_memory_schema.py`
+  - 필수 필드/스코프 누락 및 승인상태 정합성 검증
+  - active 교정의 만료/중복 trigger 패턴 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_correction_memory_schema.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_CORRECTION_MEMORY_SCHEMA=1 ./scripts/test.sh`
