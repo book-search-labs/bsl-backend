@@ -2345,6 +2345,31 @@ python scripts/eval/chat_ticket_sla_estimator.py \
 - CI 옵션:
   - `RUN_CHAT_TICKET_SLA_ESTIMATOR=1 ./scripts/test.sh`
 
+## Ticket feedback loop gate (B-0375, Bundle 4)
+- triage 정정 피드백이 실제 결과(outcome)와 연결되고 재학습 신호로 축적되는지 검증:
+```bash
+python scripts/eval/chat_ticket_feedback_loop.py \
+  --feedback-jsonl var/chat_ticket/triage_feedback.jsonl \
+  --outcomes-jsonl var/chat_ticket/sla_outcomes.jsonl \
+  --window-hours 24 \
+  --min-window 100 \
+  --min-feedback-total 20 \
+  --max-missing-actor-total 0 \
+  --max-missing-corrected-time-total 0 \
+  --max-missing-model-version-total 0 \
+  --min-feedback-linkage-ratio 0.80 \
+  --min-monthly-bucket-total 1 \
+  --min-monthly-samples-per-bucket 10 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - correction rate, corrected ticket의 outcome linkage ratio
+  - corrected_by/corrected_at/model_version 누락 건수
+  - 월별 feedback 샘플 커버리지와 evidence freshness
+- CI 옵션:
+  - `RUN_CHAT_TICKET_FEEDBACK_LOOP=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

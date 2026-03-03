@@ -98,3 +98,14 @@ Implement chat ticket triage intelligence:
   - `scripts/eval/test_chat_ticket_sla_estimator.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TICKET_SLA_ESTIMATOR=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Feedback loop gate 추가
+  - `scripts/eval/chat_ticket_feedback_loop.py`
+  - triage correction 피드백과 outcome 연결율(linkage ratio) 검증
+  - corrected_by/corrected_at/model_version 누락을 게이트화
+  - 월별 feedback 샘플 커버리지(재학습 신호)와 evidence stale 여부 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_ticket_feedback_loop.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TICKET_FEEDBACK_LOOP=1 ./scripts/test.sh`
