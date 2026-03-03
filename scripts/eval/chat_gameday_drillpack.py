@@ -128,6 +128,65 @@ def build_default_scenarios(top_reasons: list[Mapping[str, Any]]) -> list[dict[s
     ]
 
 
+def _reason_count(rows: list[Mapping[str, Any]], reason_code: str) -> int:
+    target = str(reason_code or "").strip().upper()
+    total = 0
+    for row in rows:
+        code = str(row.get("reason_code") or "").strip().upper()
+        if code == target:
+            total += int(row.get("count") or 0)
+    return total
+
+
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_payload: Mapping[str, Any],
+    *,
+    max_triage_case_increase: int,
+    max_unknown_reason_increase: int,
+    max_scenario_drop: int,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    cur_summary = current_payload.get("summary") if isinstance(current_payload.get("summary"), Mapping) else {}
+
+    base_triage_total = int(base_summary.get("triage_case_total") or 0)
+    cur_triage_total = int(cur_summary.get("triage_case_total") or 0)
+    triage_increase = max(0, cur_triage_total - base_triage_total)
+    if triage_increase > max(0, int(max_triage_case_increase)):
+        failures.append(
+            "triage case regression: "
+            f"baseline={base_triage_total}, current={cur_triage_total}, "
+            f"allowed_increase={max(0, int(max_triage_case_increase))}"
+        )
+
+    base_top_reasons = base_summary.get("top_reasons") if isinstance(base_summary.get("top_reasons"), list) else []
+    cur_top_reasons = cur_summary.get("top_reasons") if isinstance(cur_summary.get("top_reasons"), list) else []
+    base_unknown = _reason_count(base_top_reasons, "UNKNOWN")
+    cur_unknown = _reason_count(cur_top_reasons, "UNKNOWN")
+    unknown_increase = max(0, cur_unknown - base_unknown)
+    if unknown_increase > max(0, int(max_unknown_reason_increase)):
+        failures.append(
+            "unknown reason regression: "
+            f"baseline={base_unknown}, current={cur_unknown}, "
+            f"allowed_increase={max(0, int(max_unknown_reason_increase))}"
+        )
+
+    base_scenario_total = int(base_summary.get("scenario_total") or 0)
+    cur_scenario_total = int(cur_summary.get("scenario_total") or 0)
+    scenario_drop = max(0, base_scenario_total - cur_scenario_total)
+    if scenario_drop > max(0, int(max_scenario_drop)):
+        failures.append(
+            "scenario coverage regression: "
+            f"baseline={base_scenario_total}, current={cur_scenario_total}, allowed_drop={max(0, int(max_scenario_drop))}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     lines: list[str] = []
     lines.append("# Chat Gameday Drillpack")
@@ -169,6 +228,20 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
         for item in scenario.get("evidence") or []:
             lines.append(f"  - [ ] {item}")
         lines.append("")
+    lines.append("## Gate")
+    lines.append("")
+    gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
+    failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
+    lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
+    if failures:
+        for failure in failures:
+            lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
+    if not failures and not baseline_failures:
+        lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -179,6 +252,10 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--out", default="data/eval/reports")
     parser.add_argument("--prefix", default="chat_gameday_drillpack")
     parser.add_argument("--require-triage", action="store_true")
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-triage-case-increase", type=int, default=10)
+    parser.add_argument("--max-unknown-reason-increase", type=int, default=2)
+    parser.add_argument("--max-scenario-drop", type=int, default=0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -189,14 +266,54 @@ def main() -> int:
     triage_rows = read_jsonl(triage_path)
     top_reasons = summarize_top_reasons(triage_rows, top_n=max(1, int(args.top_reasons)))
     scenarios = build_default_scenarios(top_reasons)
+    failures: list[str] = []
+    if args.require_triage and len(triage_rows) <= 0:
+        failures.append("triage cases required but none found")
+    if len(scenarios) <= 0:
+        failures.append("no scenarios generated")
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "triage_file": str(triage_path),
+        "source": {
+            "triage_file": str(triage_path),
+            "top_reasons": max(1, int(args.top_reasons)),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
+        "summary": {
+            "triage_case_total": len(triage_rows),
+            "top_reasons": top_reasons,
+            "scenario_total": len(scenarios),
+        },
         "triage_case_total": len(triage_rows),
         "top_reasons": top_reasons,
         "scenarios": scenarios,
+        "gate": {
+            "enabled": bool(args.gate),
+            "pass": True,
+            "failures": failures,
+            "baseline_failures": [],
+            "thresholds": {
+                "require_triage": bool(args.require_triage),
+                "max_triage_case_increase": int(args.max_triage_case_increase),
+                "max_unknown_reason_increase": int(args.max_unknown_reason_increase),
+                "max_scenario_drop": int(args.max_scenario_drop),
+            },
+        },
     }
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = json.loads(Path(args.baseline_report).read_text(encoding="utf-8"))
+        if not isinstance(baseline_payload, dict):
+            raise RuntimeError(f"expected JSON object from {args.baseline_report}")
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            payload,
+            max_triage_case_increase=max(0, int(args.max_triage_case_increase)),
+            max_unknown_reason_increase=max(0, int(args.max_unknown_reason_increase)),
+            max_scenario_drop=max(0, int(args.max_scenario_drop)),
+        )
+    payload["gate"]["baseline_failures"] = baseline_failures
+    payload["gate"]["pass"] = len(failures) == 0 and len(baseline_failures) == 0
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -210,13 +327,12 @@ def main() -> int:
     print(f"report_md={md_path}")
     print(f"scenario_total={len(scenarios)}")
     print(f"triage_case_total={len(triage_rows)}")
-
-    failures: list[str] = []
-    if args.require_triage and len(triage_rows) <= 0:
-        failures.append("triage cases required but none found")
-    if len(scenarios) <= 0:
-        failures.append("no scenarios generated")
-    if args.gate and failures:
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
+    if args.gate and not payload["gate"]["pass"]:
+        for failure in failures:
+            print(f"[gate-failure] {failure}")
+        for failure in baseline_failures:
+            print(f"[baseline-failure] {failure}")
         return 2
     return 0
 

@@ -48,3 +48,31 @@ def test_render_markdown_includes_checklist_sections():
     assert "# Chat Gameday Drillpack" in md
     assert "## Scenarios" in md
     assert "- [ ]" in md
+
+
+def test_compare_with_baseline_detects_triage_unknown_and_scenario_regression():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "triage_case_total": 1,
+            "top_reasons": [{"reason_code": "UNKNOWN", "count": 0}],
+            "scenario_total": 4,
+        }
+    }
+    current = {
+        "summary": {
+            "triage_case_total": 20,
+            "top_reasons": [{"reason_code": "UNKNOWN", "count": 10}],
+            "scenario_total": 2,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_triage_case_increase=1,
+        max_unknown_reason_increase=0,
+        max_scenario_drop=0,
+    )
+    assert any("triage case regression" in item for item in failures)
+    assert any("unknown reason regression" in item for item in failures)
+    assert any("scenario coverage regression" in item for item in failures)

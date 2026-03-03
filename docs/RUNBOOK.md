@@ -1228,18 +1228,26 @@ python scripts/eval/chat_readiness_trend.py \
     - `CHAT_READINESS_TREND_MAX_REPORT_TOTAL_DROP`
 
 ## Gameday drillpack template (I-0361, Bundle 2)
-- triage reason 분포를 반영해 장애 훈련 체크리스트 자동 생성:
+- triage reason 분포를 반영해 장애 훈련 체크리스트 자동 생성 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_gameday_drillpack.py \
   --triage-file var/chat_graph/triage/chat_launch_failure_cases.jsonl \
   --top-reasons 5 \
   --out data/eval/reports \
+  --baseline-report services/query-service/tests/fixtures/chat_gameday_drillpack_baseline_v1.json \
+  --max-triage-case-increase 10 \
+  --max-unknown-reason-increase 2 \
+  --max-scenario-drop 0 \
   --gate
 ```
 - 필요 시 triage 데이터 강제:
   - `--require-triage`
 - CI 옵션:
   - `RUN_CHAT_GAMEDAY_DRILLPACK=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_GAMEDAY_MAX_TRIAGE_INCREASE`
+    - `CHAT_GAMEDAY_MAX_UNKNOWN_INCREASE`
+    - `CHAT_GAMEDAY_MAX_SCENARIO_DROP`
 
 ## Incident feedback binding (I-0361, Bundle 3)
 - 실제 incident와 triage reason을 drill taxonomy로 자동 매핑 + baseline drift 게이트:

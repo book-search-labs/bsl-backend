@@ -869,14 +869,24 @@ if [ "${RUN_CHAT_GAMEDAY_DRILLPACK:-0}" = "1" ]; then
     CHAT_GAMEDAY_TOP_REASONS="${CHAT_GAMEDAY_TOP_REASONS:-5}"
     CHAT_GAMEDAY_OUT_DIR="${CHAT_GAMEDAY_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
     CHAT_GAMEDAY_REQUIRE_TRIAGE="${CHAT_GAMEDAY_REQUIRE_TRIAGE:-0}"
+    CHAT_GAMEDAY_BASELINE_PATH="${CHAT_GAMEDAY_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_gameday_drillpack_baseline_v1.json}"
+    CHAT_GAMEDAY_MAX_TRIAGE_INCREASE="${CHAT_GAMEDAY_MAX_TRIAGE_INCREASE:-10}"
+    CHAT_GAMEDAY_MAX_UNKNOWN_INCREASE="${CHAT_GAMEDAY_MAX_UNKNOWN_INCREASE:-2}"
+    CHAT_GAMEDAY_MAX_SCENARIO_DROP="${CHAT_GAMEDAY_MAX_SCENARIO_DROP:-0}"
 
     CHAT_GAMEDAY_ARGS=(
       "$ROOT_DIR/scripts/eval/chat_gameday_drillpack.py"
       --triage-file "$CHAT_GAMEDAY_TRIAGE_FILE"
       --top-reasons "$CHAT_GAMEDAY_TOP_REASONS"
       --out "$CHAT_GAMEDAY_OUT_DIR"
+      --max-triage-case-increase "$CHAT_GAMEDAY_MAX_TRIAGE_INCREASE"
+      --max-unknown-reason-increase "$CHAT_GAMEDAY_MAX_UNKNOWN_INCREASE"
+      --max-scenario-drop "$CHAT_GAMEDAY_MAX_SCENARIO_DROP"
       --gate
     )
+    if [ -f "$CHAT_GAMEDAY_BASELINE_PATH" ]; then
+      CHAT_GAMEDAY_ARGS+=(--baseline-report "$CHAT_GAMEDAY_BASELINE_PATH")
+    fi
     if [ "$CHAT_GAMEDAY_REQUIRE_TRIAGE" = "1" ]; then
       CHAT_GAMEDAY_ARGS+=(--require-triage)
     fi
