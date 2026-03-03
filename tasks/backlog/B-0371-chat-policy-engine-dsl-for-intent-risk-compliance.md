@@ -66,3 +66,14 @@ Build a declarative chat policy engine:
 - Introduce DSL rules for intent, risk, and compliance actions.
 - Evaluate policy per request with deterministic trace output.
 - Support versioned rollout/rollback and policy lint checks.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Policy DSL lint gate 추가
+  - `scripts/eval/chat_policy_dsl_lint.py`
+  - 정책 번들의 rule_id/priority/action/condition/risk/reliability/locale/effective window 정합성 검사
+  - `policy_version` 누락 및 최신성(stale minutes) 검증 포함
+  - gate 모드에서 rule 누락, DSL 위반, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_policy_dsl_lint.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_POLICY_DSL_LINT=1 ./scripts/test.sh`

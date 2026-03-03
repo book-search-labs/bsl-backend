@@ -1893,6 +1893,34 @@ python scripts/eval/chat_ticket_security_ownership.py \
 - CI 옵션:
   - `RUN_CHAT_TICKET_SECURITY_OWNERSHIP=1 ./scripts/test.sh`
 
+## Policy DSL lint gate (B-0371, Bundle 1)
+- 선언형 정책 번들의 DSL 정합성(조건/액션/우선순위/버전/유효기간)을 검증:
+```bash
+python scripts/eval/chat_policy_dsl_lint.py \
+  --bundle-json var/chat_policy/policy_bundle.json \
+  --min-rule-total 1 \
+  --require-policy-version 1 \
+  --max-missing-rule-id-total 0 \
+  --max-duplicate-rule-id-total 0 \
+  --max-invalid-priority-total 0 \
+  --max-invalid-action-total 0 \
+  --max-empty-condition-total 0 \
+  --max-unknown-condition-key-total 0 \
+  --max-invalid-risk-level-total 0 \
+  --max-invalid-reliability-level-total 0 \
+  --max-invalid-locale-total 0 \
+  --max-invalid-effective-window-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - policy_version/rule_total/action distribution
+  - rule_id 누락/중복, priority/action/condition/locale/risk/reliability 유효성 위반 건수
+  - effective window 역전(start>end) 건수
+  - bundle 최신성(stale minutes)
+- CI 옵션:
+  - `RUN_CHAT_POLICY_DSL_LINT=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
