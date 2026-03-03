@@ -2512,6 +2512,29 @@ python scripts/eval/chat_source_conflict_resolution_policy.py \
 - CI 옵션:
   - `RUN_CHAT_SOURCE_CONFLICT_RESOLUTION_POLICY=1 ./scripts/test.sh`
 
+## Source conflict safe abstention gate (B-0377, Bundle 3)
+- 상충 상황 사용자 안내에서 단정 답변 차단과 표준문구/출처링크 포함을 검증:
+```bash
+python scripts/eval/chat_source_conflict_safe_abstention.py \
+  --events-jsonl var/chat_trust/source_conflict_user_messages.jsonl \
+  --window-hours 24 \
+  --min-window 100 \
+  --max-unsafe-definitive-total 0 \
+  --min-abstain-compliance-ratio 0.90 \
+  --max-missing-standard-phrase-total 0 \
+  --max-missing-source-link-total 0 \
+  --max-missing-reason-code-total 0 \
+  --min-message-quality-ratio 0.90 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - should-abstain 대비 안전결정 준수율
+  - unsafe definitive/표준문구 누락/출처링크 누락 건수
+  - 안내 메시지 품질 비율(message quality ratio)과 freshness
+- CI 옵션:
+  - `RUN_CHAT_SOURCE_CONFLICT_SAFE_ABSTENTION=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

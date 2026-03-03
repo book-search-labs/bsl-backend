@@ -68,3 +68,14 @@ Implement conflict-aware chat grounding:
   - `scripts/eval/test_chat_source_conflict_resolution_policy.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_SOURCE_CONFLICT_RESOLUTION_POLICY=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Safe abstention messaging gate 추가
+  - `scripts/eval/chat_source_conflict_safe_abstention.py`
+  - should-abstain 케이스의 unsafe definitive 응답 차단 검증
+  - 한국어 표준문구/출처링크 포함 여부 검증
+  - reason_code 누락 및 메시지 품질 비율 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_source_conflict_safe_abstention.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_SOURCE_CONFLICT_SAFE_ABSTENTION=1 ./scripts/test.sh`
