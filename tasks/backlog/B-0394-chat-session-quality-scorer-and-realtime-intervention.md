@@ -76,3 +76,13 @@ Add a real-time session quality scorer:
   - `scripts/eval/test_chat_realtime_intervention_policy_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_REALTIME_INTERVENTION_POLICY_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 4)
+- [x] Intervention recovery feedback guard gate 추가
+  - `scripts/eval/chat_intervention_recovery_feedback_guard.py`
+  - intervention 후 recovery/completion uplift 검증
+  - ineffective streak 기준 auto decay 누락 및 feedback 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_intervention_recovery_feedback_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_INTERVENTION_RECOVERY_FEEDBACK_GUARD=1 ./scripts/test.sh`

@@ -3987,6 +3987,29 @@ python scripts/eval/chat_realtime_intervention_policy_guard.py \
 - CI 옵션:
   - `RUN_CHAT_REALTIME_INTERVENTION_POLICY_GUARD=1 ./scripts/test.sh`
 
+## Chat intervention recovery feedback guard gate (B-0394, Bundle 4)
+- 개입 후 회복률/완료율 uplift와 무효 개입 자동 감쇠(decay) 누락을 검증:
+```bash
+python scripts/eval/chat_intervention_recovery_feedback_guard.py \
+  --events-jsonl var/session_quality/intervention_feedback_events.jsonl \
+  --window-hours 24 \
+  --decay-ineffective-streak-threshold 3 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-recovery-rate 0.60 \
+  --min-completion-uplift 0.05 \
+  --max-feedback-missing-total 5 \
+  --max-auto-decay-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - intervention recovery rate
+  - completion uplift
+  - feedback 누락 및 auto decay 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_INTERVENTION_RECOVERY_FEEDBACK_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
