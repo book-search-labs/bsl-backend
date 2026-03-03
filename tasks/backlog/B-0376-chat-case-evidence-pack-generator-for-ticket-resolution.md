@@ -80,3 +80,14 @@ Generate structured chat evidence packs for support tickets:
   - `scripts/eval/test_chat_ticket_resolution_assistance.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TICKET_RESOLUTION_ASSISTANCE=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Evidence integrity gate 추가
+  - `scripts/eval/chat_ticket_evidence_integrity.py`
+  - evidence link 누락/형식 오류/해결불가 상태(unresolved) 검증
+  - policy_version/tool_version/evidence_hash 누락 검증
+  - stale evidence 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_ticket_evidence_integrity.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TICKET_EVIDENCE_INTEGRITY=1 ./scripts/test.sh`

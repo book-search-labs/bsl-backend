@@ -2442,6 +2442,29 @@ python scripts/eval/chat_ticket_resolution_assistance.py \
 - CI 옵션:
   - `RUN_CHAT_TICKET_RESOLUTION_ASSISTANCE=1 ./scripts/test.sh`
 
+## Ticket evidence integrity gate (B-0376, Bundle 4)
+- evidence link 무결성과 policy/tool/version/hash 기록 완전성을 배포 전에 검증:
+```bash
+python scripts/eval/chat_ticket_evidence_integrity.py \
+  --packs-jsonl var/chat_ticket/evidence_packs.jsonl \
+  --window-hours 24 \
+  --min-window 100 \
+  --max-missing-link-total 0 \
+  --max-invalid-url-total 0 \
+  --max-unresolved-link-total 0 \
+  --max-missing-policy-version-total 0 \
+  --max-missing-tool-version-total 0 \
+  --max-missing-evidence-hash-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - evidence link 누락/형식오류/해결불가(unresolved) 건수
+  - policy_version/tool_version/evidence_hash 누락 건수
+  - integrity evidence freshness
+- CI 옵션:
+  - `RUN_CHAT_TICKET_EVIDENCE_INTEGRITY=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
