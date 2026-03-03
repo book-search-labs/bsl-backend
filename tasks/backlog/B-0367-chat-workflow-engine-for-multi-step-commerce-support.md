@@ -51,3 +51,14 @@ Implement a stateful chat workflow engine for commerce support:
 - Add workflow state, step orchestration, and mandatory confirmation checkpoints.
 - Support interruption recovery and deterministic re-entry.
 - Persist per-step audit records and reliability metrics.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Workflow state model gate 추가
+  - `scripts/eval/chat_workflow_state_model.py`
+  - workflow 상태 이벤트(`workflow_id/workflow_type/current_step/required_inputs/last_action_at`)를 집계해 상태필드 완전성과 템플릿 지원 범위를 검증
+  - `CANCEL_ORDER/REFUND_REQUEST/ADDRESS_CHANGE` 템플릿 외 타입 유입과 checkpoint 비율을 게이트화
+  - gate 모드에서 상태 필드 누락, unsupported type, checkpoint ratio 저하, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_workflow_state_model.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_WORKFLOW_STATE_MODEL=1 ./scripts/test.sh`

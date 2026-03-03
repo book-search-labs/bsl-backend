@@ -1555,6 +1555,25 @@ python scripts/eval/chat_config_ops_runbook_integration.py \
 - CI 옵션:
   - `RUN_CHAT_CONFIG_OPS_RUNBOOK_INTEGRATION=1 ./scripts/test.sh`
 
+## Workflow state model gate (B-0367, Bundle 1)
+- 멀티스텝 커머스 워크플로우 상태 모델 필드 완전성과 템플릿 지원 범위를 검증:
+```bash
+python scripts/eval/chat_workflow_state_model.py \
+  --events-jsonl var/chat_workflow/workflow_events.jsonl \
+  --window-hours 24 \
+  --max-missing-state-fields-total 0 \
+  --max-unsupported-type-total 0 \
+  --min-checkpoint-ratio 0.80 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - workflow/state record 집계
+  - missing state fields / unsupported workflow type 건수
+  - checkpoint ratio 및 템플릿 누락 여부
+- CI 옵션:
+  - `RUN_CHAT_WORKFLOW_STATE_MODEL=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
