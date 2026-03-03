@@ -2821,6 +2821,31 @@ python scripts/eval/chat_temporal_answer_rendering.py \
 - CI 옵션:
   - `RUN_CHAT_TEMPORAL_ANSWER_RENDERING=1 ./scripts/test.sh`
 
+## Chat temporal conflict fallback gate (B-0380, Bundle 4)
+- 시점 충돌/해결 불가 상황에서 안전 fallback, follow-up, 공식 출처 안내 준수 여부를 검증:
+```bash
+python scripts/eval/chat_temporal_conflict_fallback.py \
+  --events-jsonl var/chat_policy/temporal_conflict_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-temporal-conflict-total 10 \
+  --min-fallback-coverage-ratio 0.95 \
+  --max-unsafe-resolution-total 0 \
+  --max-missing-followup-prompt-total 0 \
+  --max-missing-official-source-link-total 0 \
+  --max-missing-reason-code-total 0 \
+  --max-p95-fallback-latency-ms 1000 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - temporal conflict 발생량 및 fallback 적용 비율
+  - unsafe resolution(단정/실행) 건수
+  - follow-up prompt/공식 출처 링크/reason_code 누락 건수
+  - fallback 처리 p95 latency
+- CI 옵션:
+  - `RUN_CHAT_TEMPORAL_CONFLICT_FALLBACK=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

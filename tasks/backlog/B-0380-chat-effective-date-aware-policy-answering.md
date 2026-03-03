@@ -96,3 +96,14 @@ Add temporal reasoning to policy answers:
   - `scripts/eval/test_chat_temporal_answer_rendering.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TEMPORAL_ANSWER_RENDERING=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Temporal conflict fallback gate 추가
+  - `scripts/eval/chat_temporal_conflict_fallback.py`
+  - temporal conflict + unresolved 상황에서 safe fallback 적용 비율 검증
+  - unsafe resolution(단정/실행) 차단 검증
+  - follow-up prompt/공식 출처 링크/reason_code 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_temporal_conflict_fallback.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TEMPORAL_CONFLICT_FALLBACK=1 ./scripts/test.sh`

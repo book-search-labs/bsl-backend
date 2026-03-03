@@ -3417,7 +3417,7 @@ else
   echo "  - set RUN_CHAT_PRIVACY_USER_RIGHTS_ALIGNMENT=1 to enable"
 fi
 
-echo "[95/101] Chat privacy incident handling gate (optional)"
+echo "[95/102] Chat privacy incident handling gate (optional)"
 if [ "${RUN_CHAT_PRIVACY_INCIDENT_HANDLING:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_PRIVACY_INCIDENTS_JSONL="${CHAT_PRIVACY_INCIDENTS_JSONL:-$ROOT_DIR/var/chat_privacy/privacy_incidents.jsonl}"
@@ -3456,7 +3456,7 @@ else
   echo "  - set RUN_CHAT_PRIVACY_INCIDENT_HANDLING=1 to enable"
 fi
 
-echo "[96/101] Chat temporal metadata model gate (optional)"
+echo "[96/102] Chat temporal metadata model gate (optional)"
 if [ "${RUN_CHAT_TEMPORAL_METADATA_MODEL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TEMPORAL_META_JSONL="${CHAT_TEMPORAL_META_JSONL:-$ROOT_DIR/var/chat_policy/temporal_meta.jsonl}"
@@ -3495,7 +3495,7 @@ else
   echo "  - set RUN_CHAT_TEMPORAL_METADATA_MODEL=1 to enable"
 fi
 
-echo "[97/101] Chat temporal query filtering gate (optional)"
+echo "[97/102] Chat temporal query filtering gate (optional)"
 if [ "${RUN_CHAT_TEMPORAL_QUERY_FILTERING:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TEMPORAL_QUERY_EVENTS_JSONL="${CHAT_TEMPORAL_QUERY_EVENTS_JSONL:-$ROOT_DIR/var/chat_policy/temporal_resolution_audit.jsonl}"
@@ -3534,7 +3534,7 @@ else
   echo "  - set RUN_CHAT_TEMPORAL_QUERY_FILTERING=1 to enable"
 fi
 
-echo "[98/101] Chat temporal answer rendering gate (optional)"
+echo "[98/102] Chat temporal answer rendering gate (optional)"
 if [ "${RUN_CHAT_TEMPORAL_ANSWER_RENDERING:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TEMPORAL_ANSWER_EVENTS_JSONL="${CHAT_TEMPORAL_ANSWER_EVENTS_JSONL:-$ROOT_DIR/var/chat_policy/temporal_answer_events.jsonl}"
@@ -3577,7 +3577,46 @@ else
   echo "  - set RUN_CHAT_TEMPORAL_ANSWER_RENDERING=1 to enable"
 fi
 
-echo "[99/101] Canonical quality checks (optional)"
+echo "[99/102] Chat temporal conflict fallback gate (optional)"
+if [ "${RUN_CHAT_TEMPORAL_CONFLICT_FALLBACK:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TEMPORAL_CONFLICT_EVENTS_JSONL="${CHAT_TEMPORAL_CONFLICT_EVENTS_JSONL:-$ROOT_DIR/var/chat_policy/temporal_conflict_events.jsonl}"
+    CHAT_TEMPORAL_CONFLICT_WINDOW_HOURS="${CHAT_TEMPORAL_CONFLICT_WINDOW_HOURS:-24}"
+    CHAT_TEMPORAL_CONFLICT_LIMIT="${CHAT_TEMPORAL_CONFLICT_LIMIT:-50000}"
+    CHAT_TEMPORAL_CONFLICT_OUT_DIR="${CHAT_TEMPORAL_CONFLICT_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TEMPORAL_CONFLICT_MIN_WINDOW="${CHAT_TEMPORAL_CONFLICT_MIN_WINDOW:-0}"
+    CHAT_TEMPORAL_CONFLICT_MIN_TOTAL="${CHAT_TEMPORAL_CONFLICT_MIN_TOTAL:-0}"
+    CHAT_TEMPORAL_CONFLICT_MIN_FALLBACK_COVERAGE_RATIO="${CHAT_TEMPORAL_CONFLICT_MIN_FALLBACK_COVERAGE_RATIO:-0.0}"
+    CHAT_TEMPORAL_CONFLICT_MAX_UNSAFE_RESOLUTION_TOTAL="${CHAT_TEMPORAL_CONFLICT_MAX_UNSAFE_RESOLUTION_TOTAL:-1000000}"
+    CHAT_TEMPORAL_CONFLICT_MAX_MISSING_FOLLOWUP_PROMPT_TOTAL="${CHAT_TEMPORAL_CONFLICT_MAX_MISSING_FOLLOWUP_PROMPT_TOTAL:-1000000}"
+    CHAT_TEMPORAL_CONFLICT_MAX_MISSING_OFFICIAL_SOURCE_LINK_TOTAL="${CHAT_TEMPORAL_CONFLICT_MAX_MISSING_OFFICIAL_SOURCE_LINK_TOTAL:-1000000}"
+    CHAT_TEMPORAL_CONFLICT_MAX_MISSING_REASON_CODE_TOTAL="${CHAT_TEMPORAL_CONFLICT_MAX_MISSING_REASON_CODE_TOTAL:-1000000}"
+    CHAT_TEMPORAL_CONFLICT_MAX_P95_FALLBACK_LATENCY_MS="${CHAT_TEMPORAL_CONFLICT_MAX_P95_FALLBACK_LATENCY_MS:-1000000}"
+    CHAT_TEMPORAL_CONFLICT_MAX_STALE_MINUTES="${CHAT_TEMPORAL_CONFLICT_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_temporal_conflict_fallback.py" \
+      --events-jsonl "$CHAT_TEMPORAL_CONFLICT_EVENTS_JSONL" \
+      --window-hours "$CHAT_TEMPORAL_CONFLICT_WINDOW_HOURS" \
+      --limit "$CHAT_TEMPORAL_CONFLICT_LIMIT" \
+      --out "$CHAT_TEMPORAL_CONFLICT_OUT_DIR" \
+      --min-window "$CHAT_TEMPORAL_CONFLICT_MIN_WINDOW" \
+      --min-temporal-conflict-total "$CHAT_TEMPORAL_CONFLICT_MIN_TOTAL" \
+      --min-fallback-coverage-ratio "$CHAT_TEMPORAL_CONFLICT_MIN_FALLBACK_COVERAGE_RATIO" \
+      --max-unsafe-resolution-total "$CHAT_TEMPORAL_CONFLICT_MAX_UNSAFE_RESOLUTION_TOTAL" \
+      --max-missing-followup-prompt-total "$CHAT_TEMPORAL_CONFLICT_MAX_MISSING_FOLLOWUP_PROMPT_TOTAL" \
+      --max-missing-official-source-link-total "$CHAT_TEMPORAL_CONFLICT_MAX_MISSING_OFFICIAL_SOURCE_LINK_TOTAL" \
+      --max-missing-reason-code-total "$CHAT_TEMPORAL_CONFLICT_MAX_MISSING_REASON_CODE_TOTAL" \
+      --max-p95-fallback-latency-ms "$CHAT_TEMPORAL_CONFLICT_MAX_P95_FALLBACK_LATENCY_MS" \
+      --max-stale-minutes "$CHAT_TEMPORAL_CONFLICT_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat temporal conflict fallback gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TEMPORAL_CONFLICT_FALLBACK=1 to enable"
+fi
+
+echo "[100/102] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -3588,7 +3627,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[100/101] E2E tests (optional)"
+echo "[101/102] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -3599,4 +3638,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[101/101] Done"
+echo "[102/102] Done"
