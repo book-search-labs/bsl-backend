@@ -102,3 +102,37 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_source_trust_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "coverage_ratio": 1.0,
+                "invalid_weight_total": 0,
+                "invalid_ttl_total": 0,
+                "missing_version_total": 0,
+                "stale_ratio": 0.0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "coverage_ratio": 0.5,
+            "invalid_weight_total": 1,
+            "invalid_ttl_total": 1,
+            "missing_version_total": 1,
+            "stale_ratio": 0.4,
+            "stale_minutes": 40.0,
+        },
+        max_coverage_ratio_drop=0.05,
+        max_invalid_weight_total_increase=0,
+        max_invalid_ttl_total_increase=0,
+        max_missing_version_total_increase=0,
+        max_stale_ratio_increase=0.05,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 6

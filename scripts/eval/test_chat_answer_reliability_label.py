@@ -90,3 +90,40 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_reliability_label_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "invalid_level_total": 0,
+                "label_shift_ratio": 0.05,
+                "low_definitive_claim_total": 0,
+                "low_missing_guidance_total": 0,
+                "low_missing_reason_total": 0,
+                "low_guardrail_coverage_ratio": 1.0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "invalid_level_total": 1,
+            "label_shift_ratio": 0.2,
+            "low_definitive_claim_total": 2,
+            "low_missing_guidance_total": 1,
+            "low_missing_reason_total": 1,
+            "low_guardrail_coverage_ratio": 0.7,
+            "stale_minutes": 40.0,
+        },
+        max_invalid_level_total_increase=0,
+        max_label_shift_ratio_increase=0.05,
+        max_low_definitive_claim_total_increase=0,
+        max_low_missing_guidance_total_increase=0,
+        max_low_missing_reason_total_increase=0,
+        max_low_guardrail_coverage_ratio_drop=0.05,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 7

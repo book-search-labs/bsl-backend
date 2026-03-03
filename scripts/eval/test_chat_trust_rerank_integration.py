@@ -99,3 +99,34 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_trust_rerank_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "low_trust_topk_after_ratio": 0.1,
+                "stale_topk_after_ratio": 0.1,
+                "trust_lift_ratio": 0.5,
+                "stale_drop_ratio": 0.5,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "low_trust_topk_after_ratio": 0.3,
+            "stale_topk_after_ratio": 0.3,
+            "trust_lift_ratio": 0.2,
+            "stale_drop_ratio": 0.2,
+            "stale_minutes": 40.0,
+        },
+        max_low_trust_topk_after_ratio_increase=0.05,
+        max_stale_topk_after_ratio_increase=0.05,
+        max_trust_lift_ratio_drop=0.10,
+        max_stale_drop_ratio_drop=0.10,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 5

@@ -2021,7 +2021,7 @@ python scripts/eval/chat_workflow_recovery_audit.py \
     - `CHAT_WORKFLOW_RECOVERY_MAX_STALE_MINUTES_INCREASE`
 
 ## Source trust registry gate (B-0368, Bundle 1)
-- 출처 신뢰도 정책 레지스트리의 커버리지/정합성/신선도를 검증:
+- 출처 신뢰도 정책 레지스트리의 커버리지/정합성/신선도를 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_source_trust_registry.py \
   --policy-json var/chat_trust/source_trust_policy.json \
@@ -2033,6 +2033,13 @@ python scripts/eval/chat_source_trust_registry.py \
   --max-missing-version-total 0 \
   --max-stale-ratio 0.10 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_source_trust_registry_baseline_v1.json \
+  --max-coverage-ratio-drop 0.05 \
+  --max-invalid-weight-total-increase 0 \
+  --max-invalid-ttl-total-increase 0 \
+  --max-missing-version-total-increase 0 \
+  --max-stale-ratio-increase 0.05 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2041,9 +2048,16 @@ python scripts/eval/chat_source_trust_registry.py \
   - 최신 정책 시각 기반 stale ratio/stale minutes
 - CI 옵션:
   - `RUN_CHAT_SOURCE_TRUST_REGISTRY=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_SOURCE_TRUST_MAX_COVERAGE_RATIO_DROP`
+    - `CHAT_SOURCE_TRUST_MAX_INVALID_WEIGHT_INCREASE`
+    - `CHAT_SOURCE_TRUST_MAX_INVALID_TTL_INCREASE`
+    - `CHAT_SOURCE_TRUST_MAX_MISSING_VERSION_INCREASE`
+    - `CHAT_SOURCE_TRUST_MAX_STALE_RATIO_INCREASE`
+    - `CHAT_SOURCE_TRUST_MAX_STALE_MINUTES_INCREASE`
 
 ## Trust rerank integration gate (B-0368, Bundle 2)
-- trust-aware 점수(신뢰도 boost + stale penalty)가 top-k 노출 품질을 개선하는지 검증:
+- trust-aware 점수(신뢰도 boost + stale penalty)가 top-k 노출 품질을 개선하는지 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_trust_rerank_integration.py \
   --events-jsonl var/chat_trust/retrieval_events.jsonl \
@@ -2058,6 +2072,12 @@ python scripts/eval/chat_trust_rerank_integration.py \
   --min-trust-lift-ratio 0.0 \
   --min-stale-drop-ratio 0.0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_trust_rerank_integration_baseline_v1.json \
+  --max-low-trust-topk-after-ratio-increase 0.05 \
+  --max-stale-topk-after-ratio-increase 0.05 \
+  --max-trust-lift-ratio-drop 0.10 \
+  --max-stale-drop-ratio-drop 0.10 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2066,9 +2086,15 @@ python scripts/eval/chat_trust_rerank_integration.py \
   - rerank shift query 비율
 - CI 옵션:
   - `RUN_CHAT_TRUST_RERANK_INTEGRATION=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TRUST_RERANK_MAX_LOW_TRUST_TOPK_AFTER_INCREASE`
+    - `CHAT_TRUST_RERANK_MAX_STALE_TOPK_AFTER_INCREASE`
+    - `CHAT_TRUST_RERANK_MAX_TRUST_LIFT_DROP`
+    - `CHAT_TRUST_RERANK_MAX_STALE_DROP_DROP`
+    - `CHAT_TRUST_RERANK_MAX_STALE_MINUTES_INCREASE`
 
 ## Answer reliability label gate (B-0368, Bundle 3)
-- 답변 신뢰도 라벨(`HIGH/MEDIUM/LOW`) 품질과 LOW 가드레일 준수(확답 금지, 안내 경로 제공)를 검증:
+- 답변 신뢰도 라벨(`HIGH/MEDIUM/LOW`) 품질과 LOW 가드레일 준수(확답 금지, 안내 경로 제공)를 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_answer_reliability_label.py \
   --events-jsonl var/chat_trust/answer_reliability_audit.jsonl \
@@ -2080,6 +2106,14 @@ python scripts/eval/chat_answer_reliability_label.py \
   --max-low-missing-reason-total 0 \
   --min-low-guardrail-coverage-ratio 0.95 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_answer_reliability_label_baseline_v1.json \
+  --max-invalid-level-total-increase 0 \
+  --max-label-shift-ratio-increase 0.05 \
+  --max-low-definitive-claim-total-increase 0 \
+  --max-low-missing-guidance-total-increase 0 \
+  --max-low-missing-reason-total-increase 0 \
+  --max-low-guardrail-coverage-ratio-drop 0.05 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2088,9 +2122,17 @@ python scripts/eval/chat_answer_reliability_label.py \
   - label shift ratio(명시 라벨 vs 파생 라벨)와 guardrail coverage ratio
 - CI 옵션:
   - `RUN_CHAT_ANSWER_RELIABILITY_LABEL=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_ANSWER_RELIABILITY_MAX_INVALID_LEVEL_INCREASE`
+    - `CHAT_ANSWER_RELIABILITY_MAX_LABEL_SHIFT_RATIO_INCREASE`
+    - `CHAT_ANSWER_RELIABILITY_MAX_LOW_DEFINITIVE_INCREASE`
+    - `CHAT_ANSWER_RELIABILITY_MAX_LOW_MISSING_GUIDANCE_INCREASE`
+    - `CHAT_ANSWER_RELIABILITY_MAX_LOW_MISSING_REASON_INCREASE`
+    - `CHAT_ANSWER_RELIABILITY_MAX_GUARDRAIL_COVERAGE_DROP`
+    - `CHAT_ANSWER_RELIABILITY_MAX_STALE_MINUTES_INCREASE`
 
 ## Low reliability guardrail gate (B-0368, Bundle 4)
-- LOW 신뢰도 + 민감 액션 조합에서 실행 차단/상담전환 정책이 강제되는지 검증:
+- LOW 신뢰도 + 민감 액션 조합에서 실행 차단/상담전환 정책이 강제되는지 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_low_reliability_guardrail.py \
   --events-jsonl var/chat_trust/guardrail_events.jsonl \
@@ -2102,6 +2144,13 @@ python scripts/eval/chat_low_reliability_guardrail.py \
   --max-missing-policy-version-total 0 \
   --max-missing-reason-code-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_low_reliability_guardrail_baseline_v1.json \
+  --max-low-sensitive-execute-total-increase 0 \
+  --max-low-sensitive-guardrail-ratio-drop 0.05 \
+  --max-invalid-decision-total-increase 0 \
+  --max-missing-policy-version-total-increase 0 \
+  --max-missing-reason-code-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2110,6 +2159,13 @@ python scripts/eval/chat_low_reliability_guardrail.py \
   - 정책 버전 누락/결정 타입 비정상/reason_code 누락 건수
 - CI 옵션:
   - `RUN_CHAT_LOW_RELIABILITY_GUARDRAIL=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_LOW_GUARDRAIL_MAX_EXECUTE_TOTAL_INCREASE`
+    - `CHAT_LOW_GUARDRAIL_MAX_RATIO_DROP`
+    - `CHAT_LOW_GUARDRAIL_MAX_INVALID_DECISION_INCREASE`
+    - `CHAT_LOW_GUARDRAIL_MAX_MISSING_POLICY_VERSION_INCREASE`
+    - `CHAT_LOW_GUARDRAIL_MAX_MISSING_REASON_INCREASE`
+    - `CHAT_LOW_GUARDRAIL_MAX_STALE_MINUTES_INCREASE`
 
 ## Sensitive action risk classification gate (B-0369, Bundle 1)
 - 민감 액션 리스크 분류 품질과 고위험 step-up 정책(추가 인증 요구) 준수 여부를 검증:

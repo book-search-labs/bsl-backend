@@ -103,3 +103,24 @@ Add trust-aware chat grounding:
   - `scripts/eval/test_chat_low_reliability_guardrail.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_LOW_RELIABILITY_GUARDRAIL=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Baseline drift governance 추가 (B-0368 전체)
+  - `scripts/eval/chat_source_trust_registry.py`
+  - `scripts/eval/chat_trust_rerank_integration.py`
+  - `scripts/eval/chat_answer_reliability_label.py`
+  - `scripts/eval/chat_low_reliability_guardrail.py`
+  - 공통으로 `--baseline-report` + drift threshold 인자를 지원하고, `gate.pass`를 `failures + baseline_failures` 결합 기준으로 계산
+  - payload에 `source`, `derived.summary`를 추가해 baseline 비교 입력 스키마를 고정
+- [x] Baseline 회귀 단위테스트 추가
+  - `scripts/eval/test_chat_source_trust_registry.py`
+  - `scripts/eval/test_chat_trust_rerank_integration.py`
+  - `scripts/eval/test_chat_answer_reliability_label.py`
+  - `scripts/eval/test_chat_low_reliability_guardrail.py`
+- [x] CI baseline wiring 추가
+  - `scripts/test.sh` 48~51단계에 baseline fixture 자동 연결 + drift env 노출
+- [x] Baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_source_trust_registry_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_trust_rerank_integration_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_answer_reliability_label_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_low_reliability_guardrail_baseline_v1.json`

@@ -2177,19 +2177,38 @@ if [ "${RUN_CHAT_SOURCE_TRUST_REGISTRY:-0}" = "1" ]; then
     CHAT_SOURCE_TRUST_MAX_MISSING_VERSION_TOTAL="${CHAT_SOURCE_TRUST_MAX_MISSING_VERSION_TOTAL:-0}"
     CHAT_SOURCE_TRUST_MAX_STALE_RATIO="${CHAT_SOURCE_TRUST_MAX_STALE_RATIO:-0.10}"
     CHAT_SOURCE_TRUST_MAX_STALE_MINUTES="${CHAT_SOURCE_TRUST_MAX_STALE_MINUTES:-60}"
+    CHAT_SOURCE_TRUST_BASELINE_PATH="${CHAT_SOURCE_TRUST_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_source_trust_registry_baseline_v1.json}"
+    CHAT_SOURCE_TRUST_MAX_COVERAGE_RATIO_DROP="${CHAT_SOURCE_TRUST_MAX_COVERAGE_RATIO_DROP:-0.05}"
+    CHAT_SOURCE_TRUST_MAX_INVALID_WEIGHT_INCREASE="${CHAT_SOURCE_TRUST_MAX_INVALID_WEIGHT_INCREASE:-0}"
+    CHAT_SOURCE_TRUST_MAX_INVALID_TTL_INCREASE="${CHAT_SOURCE_TRUST_MAX_INVALID_TTL_INCREASE:-0}"
+    CHAT_SOURCE_TRUST_MAX_MISSING_VERSION_INCREASE="${CHAT_SOURCE_TRUST_MAX_MISSING_VERSION_INCREASE:-0}"
+    CHAT_SOURCE_TRUST_MAX_STALE_RATIO_INCREASE="${CHAT_SOURCE_TRUST_MAX_STALE_RATIO_INCREASE:-0.05}"
+    CHAT_SOURCE_TRUST_MAX_STALE_MINUTES_INCREASE="${CHAT_SOURCE_TRUST_MAX_STALE_MINUTES_INCREASE:-30}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_source_trust_registry.py" \
-      --policy-json "$CHAT_SOURCE_TRUST_POLICY_JSON" \
-      --max-policy-age-days "$CHAT_SOURCE_TRUST_MAX_POLICY_AGE_DAYS" \
-      --out "$CHAT_SOURCE_TRUST_OUT_DIR" \
-      --min-policy-total "$CHAT_SOURCE_TRUST_MIN_POLICY_TOTAL" \
-      --min-coverage-ratio "$CHAT_SOURCE_TRUST_MIN_COVERAGE_RATIO" \
-      --max-invalid-weight-total "$CHAT_SOURCE_TRUST_MAX_INVALID_WEIGHT_TOTAL" \
-      --max-invalid-ttl-total "$CHAT_SOURCE_TRUST_MAX_INVALID_TTL_TOTAL" \
-      --max-missing-version-total "$CHAT_SOURCE_TRUST_MAX_MISSING_VERSION_TOTAL" \
-      --max-stale-ratio "$CHAT_SOURCE_TRUST_MAX_STALE_RATIO" \
-      --max-stale-minutes "$CHAT_SOURCE_TRUST_MAX_STALE_MINUTES" \
-      --gate || exit 1
+    CHAT_SOURCE_TRUST_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_source_trust_registry.py"
+      --policy-json "$CHAT_SOURCE_TRUST_POLICY_JSON"
+      --max-policy-age-days "$CHAT_SOURCE_TRUST_MAX_POLICY_AGE_DAYS"
+      --out "$CHAT_SOURCE_TRUST_OUT_DIR"
+      --min-policy-total "$CHAT_SOURCE_TRUST_MIN_POLICY_TOTAL"
+      --min-coverage-ratio "$CHAT_SOURCE_TRUST_MIN_COVERAGE_RATIO"
+      --max-invalid-weight-total "$CHAT_SOURCE_TRUST_MAX_INVALID_WEIGHT_TOTAL"
+      --max-invalid-ttl-total "$CHAT_SOURCE_TRUST_MAX_INVALID_TTL_TOTAL"
+      --max-missing-version-total "$CHAT_SOURCE_TRUST_MAX_MISSING_VERSION_TOTAL"
+      --max-stale-ratio "$CHAT_SOURCE_TRUST_MAX_STALE_RATIO"
+      --max-stale-minutes "$CHAT_SOURCE_TRUST_MAX_STALE_MINUTES"
+      --max-coverage-ratio-drop "$CHAT_SOURCE_TRUST_MAX_COVERAGE_RATIO_DROP"
+      --max-invalid-weight-total-increase "$CHAT_SOURCE_TRUST_MAX_INVALID_WEIGHT_INCREASE"
+      --max-invalid-ttl-total-increase "$CHAT_SOURCE_TRUST_MAX_INVALID_TTL_INCREASE"
+      --max-missing-version-total-increase "$CHAT_SOURCE_TRUST_MAX_MISSING_VERSION_INCREASE"
+      --max-stale-ratio-increase "$CHAT_SOURCE_TRUST_MAX_STALE_RATIO_INCREASE"
+      --max-stale-minutes-increase "$CHAT_SOURCE_TRUST_MAX_STALE_MINUTES_INCREASE"
+      --gate
+    )
+    if [ -f "$CHAT_SOURCE_TRUST_BASELINE_PATH" ]; then
+      CHAT_SOURCE_TRUST_ARGS+=(--baseline-report "$CHAT_SOURCE_TRUST_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_SOURCE_TRUST_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat source trust registry gate"
   fi
@@ -2216,25 +2235,42 @@ if [ "${RUN_CHAT_TRUST_RERANK_INTEGRATION:-0}" = "1" ]; then
     CHAT_TRUST_RERANK_MIN_TRUST_LIFT_RATIO="${CHAT_TRUST_RERANK_MIN_TRUST_LIFT_RATIO:-0.0}"
     CHAT_TRUST_RERANK_MIN_STALE_DROP_RATIO="${CHAT_TRUST_RERANK_MIN_STALE_DROP_RATIO:-0.0}"
     CHAT_TRUST_RERANK_MAX_STALE_MINUTES="${CHAT_TRUST_RERANK_MAX_STALE_MINUTES:-60}"
+    CHAT_TRUST_RERANK_BASELINE_PATH="${CHAT_TRUST_RERANK_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_trust_rerank_integration_baseline_v1.json}"
+    CHAT_TRUST_RERANK_MAX_LOW_TRUST_TOPK_AFTER_INCREASE="${CHAT_TRUST_RERANK_MAX_LOW_TRUST_TOPK_AFTER_INCREASE:-0.05}"
+    CHAT_TRUST_RERANK_MAX_STALE_TOPK_AFTER_INCREASE="${CHAT_TRUST_RERANK_MAX_STALE_TOPK_AFTER_INCREASE:-0.05}"
+    CHAT_TRUST_RERANK_MAX_TRUST_LIFT_DROP="${CHAT_TRUST_RERANK_MAX_TRUST_LIFT_DROP:-0.10}"
+    CHAT_TRUST_RERANK_MAX_STALE_DROP_DROP="${CHAT_TRUST_RERANK_MAX_STALE_DROP_DROP:-0.10}"
+    CHAT_TRUST_RERANK_MAX_STALE_MINUTES_INCREASE="${CHAT_TRUST_RERANK_MAX_STALE_MINUTES_INCREASE:-30}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_trust_rerank_integration.py" \
-      --events-jsonl "$CHAT_TRUST_RERANK_EVENTS_JSONL" \
-      --window-hours "$CHAT_TRUST_RERANK_WINDOW_HOURS" \
-      --limit "$CHAT_TRUST_RERANK_LIMIT" \
-      --top-k "$CHAT_TRUST_RERANK_TOP_K" \
-      --low-trust-threshold "$CHAT_TRUST_RERANK_LOW_TRUST_THRESHOLD" \
-      --trust-boost-scale "$CHAT_TRUST_RERANK_TRUST_BOOST_SCALE" \
-      --stale-penalty "$CHAT_TRUST_RERANK_STALE_PENALTY" \
-      --default-freshness-ttl-sec "$CHAT_TRUST_RERANK_DEFAULT_TTL_SEC" \
-      --out "$CHAT_TRUST_RERANK_OUT_DIR" \
-      --min-window "$CHAT_TRUST_RERANK_MIN_WINDOW" \
-      --min-query-total "$CHAT_TRUST_RERANK_MIN_QUERY_TOTAL" \
-      --max-low-trust-topk-ratio "$CHAT_TRUST_RERANK_MAX_LOW_TRUST_TOPK_RATIO" \
-      --max-stale-topk-ratio "$CHAT_TRUST_RERANK_MAX_STALE_TOPK_RATIO" \
-      --min-trust-lift-ratio "$CHAT_TRUST_RERANK_MIN_TRUST_LIFT_RATIO" \
-      --min-stale-drop-ratio "$CHAT_TRUST_RERANK_MIN_STALE_DROP_RATIO" \
-      --max-stale-minutes "$CHAT_TRUST_RERANK_MAX_STALE_MINUTES" \
-      --gate || exit 1
+    CHAT_TRUST_RERANK_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_trust_rerank_integration.py"
+      --events-jsonl "$CHAT_TRUST_RERANK_EVENTS_JSONL"
+      --window-hours "$CHAT_TRUST_RERANK_WINDOW_HOURS"
+      --limit "$CHAT_TRUST_RERANK_LIMIT"
+      --top-k "$CHAT_TRUST_RERANK_TOP_K"
+      --low-trust-threshold "$CHAT_TRUST_RERANK_LOW_TRUST_THRESHOLD"
+      --trust-boost-scale "$CHAT_TRUST_RERANK_TRUST_BOOST_SCALE"
+      --stale-penalty "$CHAT_TRUST_RERANK_STALE_PENALTY"
+      --default-freshness-ttl-sec "$CHAT_TRUST_RERANK_DEFAULT_TTL_SEC"
+      --out "$CHAT_TRUST_RERANK_OUT_DIR"
+      --min-window "$CHAT_TRUST_RERANK_MIN_WINDOW"
+      --min-query-total "$CHAT_TRUST_RERANK_MIN_QUERY_TOTAL"
+      --max-low-trust-topk-ratio "$CHAT_TRUST_RERANK_MAX_LOW_TRUST_TOPK_RATIO"
+      --max-stale-topk-ratio "$CHAT_TRUST_RERANK_MAX_STALE_TOPK_RATIO"
+      --min-trust-lift-ratio "$CHAT_TRUST_RERANK_MIN_TRUST_LIFT_RATIO"
+      --min-stale-drop-ratio "$CHAT_TRUST_RERANK_MIN_STALE_DROP_RATIO"
+      --max-stale-minutes "$CHAT_TRUST_RERANK_MAX_STALE_MINUTES"
+      --max-low-trust-topk-after-ratio-increase "$CHAT_TRUST_RERANK_MAX_LOW_TRUST_TOPK_AFTER_INCREASE"
+      --max-stale-topk-after-ratio-increase "$CHAT_TRUST_RERANK_MAX_STALE_TOPK_AFTER_INCREASE"
+      --max-trust-lift-ratio-drop "$CHAT_TRUST_RERANK_MAX_TRUST_LIFT_DROP"
+      --max-stale-drop-ratio-drop "$CHAT_TRUST_RERANK_MAX_STALE_DROP_DROP"
+      --max-stale-minutes-increase "$CHAT_TRUST_RERANK_MAX_STALE_MINUTES_INCREASE"
+      --gate
+    )
+    if [ -f "$CHAT_TRUST_RERANK_BASELINE_PATH" ]; then
+      CHAT_TRUST_RERANK_ARGS+=(--baseline-report "$CHAT_TRUST_RERANK_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_TRUST_RERANK_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat trust rerank integration gate"
   fi
@@ -2257,21 +2293,42 @@ if [ "${RUN_CHAT_ANSWER_RELIABILITY_LABEL:-0}" = "1" ]; then
     CHAT_ANSWER_RELIABILITY_MAX_LOW_MISSING_REASON_TOTAL="${CHAT_ANSWER_RELIABILITY_MAX_LOW_MISSING_REASON_TOTAL:-0}"
     CHAT_ANSWER_RELIABILITY_MIN_GUARDRAIL_COVERAGE="${CHAT_ANSWER_RELIABILITY_MIN_GUARDRAIL_COVERAGE:-0.95}"
     CHAT_ANSWER_RELIABILITY_MAX_STALE_MINUTES="${CHAT_ANSWER_RELIABILITY_MAX_STALE_MINUTES:-60}"
+    CHAT_ANSWER_RELIABILITY_BASELINE_PATH="${CHAT_ANSWER_RELIABILITY_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_answer_reliability_label_baseline_v1.json}"
+    CHAT_ANSWER_RELIABILITY_MAX_INVALID_LEVEL_INCREASE="${CHAT_ANSWER_RELIABILITY_MAX_INVALID_LEVEL_INCREASE:-0}"
+    CHAT_ANSWER_RELIABILITY_MAX_LABEL_SHIFT_RATIO_INCREASE="${CHAT_ANSWER_RELIABILITY_MAX_LABEL_SHIFT_RATIO_INCREASE:-0.05}"
+    CHAT_ANSWER_RELIABILITY_MAX_LOW_DEFINITIVE_INCREASE="${CHAT_ANSWER_RELIABILITY_MAX_LOW_DEFINITIVE_INCREASE:-0}"
+    CHAT_ANSWER_RELIABILITY_MAX_LOW_MISSING_GUIDANCE_INCREASE="${CHAT_ANSWER_RELIABILITY_MAX_LOW_MISSING_GUIDANCE_INCREASE:-0}"
+    CHAT_ANSWER_RELIABILITY_MAX_LOW_MISSING_REASON_INCREASE="${CHAT_ANSWER_RELIABILITY_MAX_LOW_MISSING_REASON_INCREASE:-0}"
+    CHAT_ANSWER_RELIABILITY_MAX_GUARDRAIL_COVERAGE_DROP="${CHAT_ANSWER_RELIABILITY_MAX_GUARDRAIL_COVERAGE_DROP:-0.05}"
+    CHAT_ANSWER_RELIABILITY_MAX_STALE_MINUTES_INCREASE="${CHAT_ANSWER_RELIABILITY_MAX_STALE_MINUTES_INCREASE:-30}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_answer_reliability_label.py" \
-      --events-jsonl "$CHAT_ANSWER_RELIABILITY_EVENTS_JSONL" \
-      --window-hours "$CHAT_ANSWER_RELIABILITY_WINDOW_HOURS" \
-      --limit "$CHAT_ANSWER_RELIABILITY_LIMIT" \
-      --out "$CHAT_ANSWER_RELIABILITY_OUT_DIR" \
-      --min-window "$CHAT_ANSWER_RELIABILITY_MIN_WINDOW" \
-      --max-invalid-level-total "$CHAT_ANSWER_RELIABILITY_MAX_INVALID_LEVEL_TOTAL" \
-      --max-label-shift-ratio "$CHAT_ANSWER_RELIABILITY_MAX_LABEL_SHIFT_RATIO" \
-      --max-low-definitive-claim-total "$CHAT_ANSWER_RELIABILITY_MAX_LOW_DEFINITIVE_TOTAL" \
-      --max-low-missing-guidance-total "$CHAT_ANSWER_RELIABILITY_MAX_LOW_MISSING_GUIDANCE_TOTAL" \
-      --max-low-missing-reason-total "$CHAT_ANSWER_RELIABILITY_MAX_LOW_MISSING_REASON_TOTAL" \
-      --min-low-guardrail-coverage-ratio "$CHAT_ANSWER_RELIABILITY_MIN_GUARDRAIL_COVERAGE" \
-      --max-stale-minutes "$CHAT_ANSWER_RELIABILITY_MAX_STALE_MINUTES" \
-      --gate || exit 1
+    CHAT_ANSWER_RELIABILITY_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_answer_reliability_label.py"
+      --events-jsonl "$CHAT_ANSWER_RELIABILITY_EVENTS_JSONL"
+      --window-hours "$CHAT_ANSWER_RELIABILITY_WINDOW_HOURS"
+      --limit "$CHAT_ANSWER_RELIABILITY_LIMIT"
+      --out "$CHAT_ANSWER_RELIABILITY_OUT_DIR"
+      --min-window "$CHAT_ANSWER_RELIABILITY_MIN_WINDOW"
+      --max-invalid-level-total "$CHAT_ANSWER_RELIABILITY_MAX_INVALID_LEVEL_TOTAL"
+      --max-label-shift-ratio "$CHAT_ANSWER_RELIABILITY_MAX_LABEL_SHIFT_RATIO"
+      --max-low-definitive-claim-total "$CHAT_ANSWER_RELIABILITY_MAX_LOW_DEFINITIVE_TOTAL"
+      --max-low-missing-guidance-total "$CHAT_ANSWER_RELIABILITY_MAX_LOW_MISSING_GUIDANCE_TOTAL"
+      --max-low-missing-reason-total "$CHAT_ANSWER_RELIABILITY_MAX_LOW_MISSING_REASON_TOTAL"
+      --min-low-guardrail-coverage-ratio "$CHAT_ANSWER_RELIABILITY_MIN_GUARDRAIL_COVERAGE"
+      --max-stale-minutes "$CHAT_ANSWER_RELIABILITY_MAX_STALE_MINUTES"
+      --max-invalid-level-total-increase "$CHAT_ANSWER_RELIABILITY_MAX_INVALID_LEVEL_INCREASE"
+      --max-label-shift-ratio-increase "$CHAT_ANSWER_RELIABILITY_MAX_LABEL_SHIFT_RATIO_INCREASE"
+      --max-low-definitive-claim-total-increase "$CHAT_ANSWER_RELIABILITY_MAX_LOW_DEFINITIVE_INCREASE"
+      --max-low-missing-guidance-total-increase "$CHAT_ANSWER_RELIABILITY_MAX_LOW_MISSING_GUIDANCE_INCREASE"
+      --max-low-missing-reason-total-increase "$CHAT_ANSWER_RELIABILITY_MAX_LOW_MISSING_REASON_INCREASE"
+      --max-low-guardrail-coverage-ratio-drop "$CHAT_ANSWER_RELIABILITY_MAX_GUARDRAIL_COVERAGE_DROP"
+      --max-stale-minutes-increase "$CHAT_ANSWER_RELIABILITY_MAX_STALE_MINUTES_INCREASE"
+      --gate
+    )
+    if [ -f "$CHAT_ANSWER_RELIABILITY_BASELINE_PATH" ]; then
+      CHAT_ANSWER_RELIABILITY_ARGS+=(--baseline-report "$CHAT_ANSWER_RELIABILITY_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_ANSWER_RELIABILITY_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat answer reliability label gate"
   fi
@@ -2294,21 +2351,40 @@ if [ "${RUN_CHAT_LOW_RELIABILITY_GUARDRAIL:-0}" = "1" ]; then
     CHAT_LOW_GUARDRAIL_MAX_MISSING_POLICY_VERSION_TOTAL="${CHAT_LOW_GUARDRAIL_MAX_MISSING_POLICY_VERSION_TOTAL:-0}"
     CHAT_LOW_GUARDRAIL_MAX_MISSING_REASON_TOTAL="${CHAT_LOW_GUARDRAIL_MAX_MISSING_REASON_TOTAL:-0}"
     CHAT_LOW_GUARDRAIL_MAX_STALE_MINUTES="${CHAT_LOW_GUARDRAIL_MAX_STALE_MINUTES:-60}"
+    CHAT_LOW_GUARDRAIL_BASELINE_PATH="${CHAT_LOW_GUARDRAIL_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_low_reliability_guardrail_baseline_v1.json}"
+    CHAT_LOW_GUARDRAIL_MAX_EXECUTE_TOTAL_INCREASE="${CHAT_LOW_GUARDRAIL_MAX_EXECUTE_TOTAL_INCREASE:-0}"
+    CHAT_LOW_GUARDRAIL_MAX_RATIO_DROP="${CHAT_LOW_GUARDRAIL_MAX_RATIO_DROP:-0.05}"
+    CHAT_LOW_GUARDRAIL_MAX_INVALID_DECISION_INCREASE="${CHAT_LOW_GUARDRAIL_MAX_INVALID_DECISION_INCREASE:-0}"
+    CHAT_LOW_GUARDRAIL_MAX_MISSING_POLICY_VERSION_INCREASE="${CHAT_LOW_GUARDRAIL_MAX_MISSING_POLICY_VERSION_INCREASE:-0}"
+    CHAT_LOW_GUARDRAIL_MAX_MISSING_REASON_INCREASE="${CHAT_LOW_GUARDRAIL_MAX_MISSING_REASON_INCREASE:-0}"
+    CHAT_LOW_GUARDRAIL_MAX_STALE_MINUTES_INCREASE="${CHAT_LOW_GUARDRAIL_MAX_STALE_MINUTES_INCREASE:-30}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_low_reliability_guardrail.py" \
-      --events-jsonl "$CHAT_LOW_GUARDRAIL_EVENTS_JSONL" \
-      --window-hours "$CHAT_LOW_GUARDRAIL_WINDOW_HOURS" \
-      --limit "$CHAT_LOW_GUARDRAIL_LIMIT" \
-      --sensitive-intents "$CHAT_LOW_GUARDRAIL_SENSITIVE_INTENTS" \
-      --out "$CHAT_LOW_GUARDRAIL_OUT_DIR" \
-      --min-window "$CHAT_LOW_GUARDRAIL_MIN_WINDOW" \
-      --max-low-sensitive-execute-total "$CHAT_LOW_GUARDRAIL_MAX_EXECUTE_TOTAL" \
-      --min-low-sensitive-guardrail-ratio "$CHAT_LOW_GUARDRAIL_MIN_RATIO" \
-      --max-invalid-decision-total "$CHAT_LOW_GUARDRAIL_MAX_INVALID_DECISION_TOTAL" \
-      --max-missing-policy-version-total "$CHAT_LOW_GUARDRAIL_MAX_MISSING_POLICY_VERSION_TOTAL" \
-      --max-missing-reason-code-total "$CHAT_LOW_GUARDRAIL_MAX_MISSING_REASON_TOTAL" \
-      --max-stale-minutes "$CHAT_LOW_GUARDRAIL_MAX_STALE_MINUTES" \
-      --gate || exit 1
+    CHAT_LOW_GUARDRAIL_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_low_reliability_guardrail.py"
+      --events-jsonl "$CHAT_LOW_GUARDRAIL_EVENTS_JSONL"
+      --window-hours "$CHAT_LOW_GUARDRAIL_WINDOW_HOURS"
+      --limit "$CHAT_LOW_GUARDRAIL_LIMIT"
+      --sensitive-intents "$CHAT_LOW_GUARDRAIL_SENSITIVE_INTENTS"
+      --out "$CHAT_LOW_GUARDRAIL_OUT_DIR"
+      --min-window "$CHAT_LOW_GUARDRAIL_MIN_WINDOW"
+      --max-low-sensitive-execute-total "$CHAT_LOW_GUARDRAIL_MAX_EXECUTE_TOTAL"
+      --min-low-sensitive-guardrail-ratio "$CHAT_LOW_GUARDRAIL_MIN_RATIO"
+      --max-invalid-decision-total "$CHAT_LOW_GUARDRAIL_MAX_INVALID_DECISION_TOTAL"
+      --max-missing-policy-version-total "$CHAT_LOW_GUARDRAIL_MAX_MISSING_POLICY_VERSION_TOTAL"
+      --max-missing-reason-code-total "$CHAT_LOW_GUARDRAIL_MAX_MISSING_REASON_TOTAL"
+      --max-stale-minutes "$CHAT_LOW_GUARDRAIL_MAX_STALE_MINUTES"
+      --max-low-sensitive-execute-total-increase "$CHAT_LOW_GUARDRAIL_MAX_EXECUTE_TOTAL_INCREASE"
+      --max-low-sensitive-guardrail-ratio-drop "$CHAT_LOW_GUARDRAIL_MAX_RATIO_DROP"
+      --max-invalid-decision-total-increase "$CHAT_LOW_GUARDRAIL_MAX_INVALID_DECISION_INCREASE"
+      --max-missing-policy-version-total-increase "$CHAT_LOW_GUARDRAIL_MAX_MISSING_POLICY_VERSION_INCREASE"
+      --max-missing-reason-code-total-increase "$CHAT_LOW_GUARDRAIL_MAX_MISSING_REASON_INCREASE"
+      --max-stale-minutes-increase "$CHAT_LOW_GUARDRAIL_MAX_STALE_MINUTES_INCREASE"
+      --gate
+    )
+    if [ -f "$CHAT_LOW_GUARDRAIL_BASELINE_PATH" ]; then
+      CHAT_LOW_GUARDRAIL_ARGS+=(--baseline-report "$CHAT_LOW_GUARDRAIL_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_LOW_GUARDRAIL_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat low reliability guardrail gate"
   fi
