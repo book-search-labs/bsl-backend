@@ -76,3 +76,14 @@ Implement chat ticket triage intelligence:
   - `scripts/eval/test_chat_ticket_triage_taxonomy.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TICKET_TRIAGE_TAXONOMY=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Classifier pipeline gate 추가
+  - `scripts/eval/chat_ticket_classifier_pipeline.py`
+  - low-confidence 분류의 manual review 라우팅 커버리지 검증
+  - unknown category/severity, model_version 누락, 입력 signal 누락을 게이트화
+  - gate 모드에서 classifier 품질 임계치 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_ticket_classifier_pipeline.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TICKET_CLASSIFIER_PIPELINE=1 ./scripts/test.sh`

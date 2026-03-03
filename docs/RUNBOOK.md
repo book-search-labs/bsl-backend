@@ -2296,6 +2296,30 @@ python scripts/eval/chat_ticket_triage_taxonomy.py \
 - CI 옵션:
   - `RUN_CHAT_TICKET_TRIAGE_TAXONOMY=1 ./scripts/test.sh`
 
+## Ticket classifier pipeline gate (B-0375, Bundle 2)
+- low-confidence 분류를 manual review 큐로 제대로 보내는지 포함해 분류 파이프라인 품질을 검증:
+```bash
+python scripts/eval/chat_ticket_classifier_pipeline.py \
+  --events-jsonl var/chat_ticket/triage_predictions.jsonl \
+  --window-hours 24 \
+  --low-confidence-threshold 0.70 \
+  --min-window 100 \
+  --max-low-confidence-unrouted-total 0 \
+  --min-manual-review-coverage-ratio 0.80 \
+  --max-unknown-category-total 0 \
+  --max-unknown-severity-total 0 \
+  --max-missing-model-version-total 0 \
+  --max-missing-signal-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - low-confidence total / unrouted total / manual review coverage
+  - unknown category/severity 및 model_version 누락 건수
+  - classifier input signal(요약/reason/tool failure) 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_TICKET_CLASSIFIER_PIPELINE=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

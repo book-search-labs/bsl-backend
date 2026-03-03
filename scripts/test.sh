@@ -2727,7 +2727,46 @@ else
   echo "  - set RUN_CHAT_TICKET_TRIAGE_TAXONOMY=1 to enable"
 fi
 
-echo "[77/79] Canonical quality checks (optional)"
+echo "[77/80] Chat ticket classifier pipeline gate (optional)"
+if [ "${RUN_CHAT_TICKET_CLASSIFIER_PIPELINE:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TICKET_CLASSIFIER_EVENTS_JSONL="${CHAT_TICKET_CLASSIFIER_EVENTS_JSONL:-$ROOT_DIR/var/chat_ticket/triage_predictions.jsonl}"
+    CHAT_TICKET_CLASSIFIER_WINDOW_HOURS="${CHAT_TICKET_CLASSIFIER_WINDOW_HOURS:-24}"
+    CHAT_TICKET_CLASSIFIER_LIMIT="${CHAT_TICKET_CLASSIFIER_LIMIT:-50000}"
+    CHAT_TICKET_CLASSIFIER_LOW_CONF_THRESHOLD="${CHAT_TICKET_CLASSIFIER_LOW_CONF_THRESHOLD:-0.7}"
+    CHAT_TICKET_CLASSIFIER_OUT_DIR="${CHAT_TICKET_CLASSIFIER_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TICKET_CLASSIFIER_MIN_WINDOW="${CHAT_TICKET_CLASSIFIER_MIN_WINDOW:-0}"
+    CHAT_TICKET_CLASSIFIER_MAX_LOW_CONF_UNROUTED_TOTAL="${CHAT_TICKET_CLASSIFIER_MAX_LOW_CONF_UNROUTED_TOTAL:-1000000}"
+    CHAT_TICKET_CLASSIFIER_MIN_MANUAL_REVIEW_COVERAGE_RATIO="${CHAT_TICKET_CLASSIFIER_MIN_MANUAL_REVIEW_COVERAGE_RATIO:-0.0}"
+    CHAT_TICKET_CLASSIFIER_MAX_UNKNOWN_CATEGORY_TOTAL="${CHAT_TICKET_CLASSIFIER_MAX_UNKNOWN_CATEGORY_TOTAL:-1000000}"
+    CHAT_TICKET_CLASSIFIER_MAX_UNKNOWN_SEVERITY_TOTAL="${CHAT_TICKET_CLASSIFIER_MAX_UNKNOWN_SEVERITY_TOTAL:-1000000}"
+    CHAT_TICKET_CLASSIFIER_MAX_MISSING_MODEL_VERSION_TOTAL="${CHAT_TICKET_CLASSIFIER_MAX_MISSING_MODEL_VERSION_TOTAL:-1000000}"
+    CHAT_TICKET_CLASSIFIER_MAX_MISSING_SIGNAL_TOTAL="${CHAT_TICKET_CLASSIFIER_MAX_MISSING_SIGNAL_TOTAL:-1000000}"
+    CHAT_TICKET_CLASSIFIER_MAX_STALE_MINUTES="${CHAT_TICKET_CLASSIFIER_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_ticket_classifier_pipeline.py" \
+      --events-jsonl "$CHAT_TICKET_CLASSIFIER_EVENTS_JSONL" \
+      --window-hours "$CHAT_TICKET_CLASSIFIER_WINDOW_HOURS" \
+      --limit "$CHAT_TICKET_CLASSIFIER_LIMIT" \
+      --low-confidence-threshold "$CHAT_TICKET_CLASSIFIER_LOW_CONF_THRESHOLD" \
+      --out "$CHAT_TICKET_CLASSIFIER_OUT_DIR" \
+      --min-window "$CHAT_TICKET_CLASSIFIER_MIN_WINDOW" \
+      --max-low-confidence-unrouted-total "$CHAT_TICKET_CLASSIFIER_MAX_LOW_CONF_UNROUTED_TOTAL" \
+      --min-manual-review-coverage-ratio "$CHAT_TICKET_CLASSIFIER_MIN_MANUAL_REVIEW_COVERAGE_RATIO" \
+      --max-unknown-category-total "$CHAT_TICKET_CLASSIFIER_MAX_UNKNOWN_CATEGORY_TOTAL" \
+      --max-unknown-severity-total "$CHAT_TICKET_CLASSIFIER_MAX_UNKNOWN_SEVERITY_TOTAL" \
+      --max-missing-model-version-total "$CHAT_TICKET_CLASSIFIER_MAX_MISSING_MODEL_VERSION_TOTAL" \
+      --max-missing-signal-total "$CHAT_TICKET_CLASSIFIER_MAX_MISSING_SIGNAL_TOTAL" \
+      --max-stale-minutes "$CHAT_TICKET_CLASSIFIER_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat ticket classifier pipeline gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TICKET_CLASSIFIER_PIPELINE=1 to enable"
+fi
+
+echo "[78/80] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -2738,7 +2777,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[78/79] E2E tests (optional)"
+echo "[79/80] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -2749,4 +2788,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[79/79] Done"
+echo "[80/80] Done"
