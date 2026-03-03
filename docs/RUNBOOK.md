@@ -3943,6 +3943,27 @@ python scripts/eval/chat_session_quality_scorer_guard.py \
 - CI 옵션:
   - `RUN_CHAT_SESSION_QUALITY_SCORER_GUARD=1 ./scripts/test.sh`
 
+## Chat session state transition guard gate (B-0394, Bundle 2)
+- 세션 상태 분류(`HEALTHY/AT_RISK/DEGRADED`)와 상태 전이 규칙 위반을 검증:
+```bash
+python scripts/eval/chat_session_state_transition_guard.py \
+  --events-jsonl var/session_quality/session_state_events.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --max-state-mismatch-total 5 \
+  --max-invalid-transition-total 0 \
+  --max-false-alarm-total 10 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - 상태별 분포(healthy/at_risk/degraded)
+  - invalid transition 및 state mismatch 건수
+  - false alarm 건수
+- CI 옵션:
+  - `RUN_CHAT_SESSION_STATE_TRANSITION_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

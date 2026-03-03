@@ -56,3 +56,13 @@ Add a real-time session quality scorer:
   - `scripts/eval/test_chat_session_quality_scorer_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_SESSION_QUALITY_SCORER_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 2)
+- [x] Session state transition guard gate 추가
+  - `scripts/eval/chat_session_state_transition_guard.py`
+  - 상태 분류(HEALTHY/AT_RISK/DEGRADED) 집계 및 state mismatch 검증
+  - invalid transition(특히 DEGRADED→HEALTHY 직행) 및 false alarm 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_session_state_transition_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_SESSION_STATE_TRANSITION_GUARD=1 ./scripts/test.sh`
