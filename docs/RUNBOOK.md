@@ -3758,6 +3758,30 @@ python scripts/eval/chat_answer_risk_band_model_guard.py \
 - CI 옵션:
   - `RUN_CHAT_ANSWER_RISK_BAND_MODEL_GUARD=1 ./scripts/test.sh`
 
+## Chat answer tiered approval flow guard gate (B-0390, Bundle 2)
+- 밴드별 승인 정책(저위험 자동응답, 고위험 승인 전환) 집행을 검증:
+```bash
+python scripts/eval/chat_answer_tiered_approval_flow_guard.py \
+  --events-jsonl var/risk_banding/tiered_approval_events.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-high-risk-approval-coverage-ratio 0.95 \
+  --min-low-risk-auto-ratio 0.90 \
+  --max-missing-band-total 0 \
+  --max-unsafe-auto-high-risk-total 0 \
+  --max-r3-auto-total 0 \
+  --max-approval-queue-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - high-risk 승인 전환 coverage 및 low-risk auto 비율
+  - high-risk 자동응답 위반, R3 자동응답 위반 건수
+  - 승인 라우팅 시 queue_id 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_ANSWER_TIERED_APPROVAL_FLOW_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

@@ -4940,7 +4940,7 @@ else
   echo "  - set RUN_CHAT_CROSSLINGUAL_FALLBACK_POLICY_GUARD=1 to enable"
 fi
 
-echo "[132/139] Chat tool health score guard gate (optional)"
+echo "[132/140] Chat tool health score guard gate (optional)"
 if [ "${RUN_CHAT_TOOL_HEALTH_SCORE_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_HEALTH_EVENTS_JSONL="${CHAT_TOOL_HEALTH_EVENTS_JSONL:-$ROOT_DIR/var/tool_health/tool_events.jsonl}"
@@ -4981,7 +4981,7 @@ else
   echo "  - set RUN_CHAT_TOOL_HEALTH_SCORE_GUARD=1 to enable"
 fi
 
-echo "[133/139] Chat tool capability routing guard gate (optional)"
+echo "[133/140] Chat tool capability routing guard gate (optional)"
 if [ "${RUN_CHAT_TOOL_CAPABILITY_ROUTING_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_CAP_ROUTING_EVENTS_JSONL="${CHAT_TOOL_CAP_ROUTING_EVENTS_JSONL:-$ROOT_DIR/var/tool_health/capability_routing_events.jsonl}"
@@ -5016,7 +5016,7 @@ else
   echo "  - set RUN_CHAT_TOOL_CAPABILITY_ROUTING_GUARD=1 to enable"
 fi
 
-echo "[134/139] Chat tool degrade strategy guard gate (optional)"
+echo "[134/140] Chat tool degrade strategy guard gate (optional)"
 if [ "${RUN_CHAT_TOOL_DEGRADE_STRATEGY_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_DEGRADE_EVENTS_JSONL="${CHAT_TOOL_DEGRADE_EVENTS_JSONL:-$ROOT_DIR/var/tool_health/degrade_strategy_events.jsonl}"
@@ -5051,7 +5051,7 @@ else
   echo "  - set RUN_CHAT_TOOL_DEGRADE_STRATEGY_GUARD=1 to enable"
 fi
 
-echo "[135/139] Chat tool override audit guard gate (optional)"
+echo "[135/140] Chat tool override audit guard gate (optional)"
 if [ "${RUN_CHAT_TOOL_OVERRIDE_AUDIT_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_OVERRIDE_EVENTS_JSONL="${CHAT_TOOL_OVERRIDE_EVENTS_JSONL:-$ROOT_DIR/var/tool_health/override_events.jsonl}"
@@ -5090,7 +5090,7 @@ else
   echo "  - set RUN_CHAT_TOOL_OVERRIDE_AUDIT_GUARD=1 to enable"
 fi
 
-echo "[136/139] Chat answer risk band model guard gate (optional)"
+echo "[136/140] Chat answer risk band model guard gate (optional)"
 if [ "${RUN_CHAT_ANSWER_RISK_BAND_MODEL_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_ANSWER_RISK_BAND_EVENTS_JSONL="${CHAT_ANSWER_RISK_BAND_EVENTS_JSONL:-$ROOT_DIR/var/risk_banding/risk_band_events.jsonl}"
@@ -5123,7 +5123,46 @@ else
   echo "  - set RUN_CHAT_ANSWER_RISK_BAND_MODEL_GUARD=1 to enable"
 fi
 
-echo "[137/139] Canonical quality checks (optional)"
+echo "[137/140] Chat answer tiered approval flow guard gate (optional)"
+if [ "${RUN_CHAT_ANSWER_TIERED_APPROVAL_FLOW_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_ANSWER_TIERED_APPROVAL_EVENTS_JSONL="${CHAT_ANSWER_TIERED_APPROVAL_EVENTS_JSONL:-$ROOT_DIR/var/risk_banding/tiered_approval_events.jsonl}"
+    CHAT_ANSWER_TIERED_APPROVAL_WINDOW_HOURS="${CHAT_ANSWER_TIERED_APPROVAL_WINDOW_HOURS:-24}"
+    CHAT_ANSWER_TIERED_APPROVAL_LIMIT="${CHAT_ANSWER_TIERED_APPROVAL_LIMIT:-100000}"
+    CHAT_ANSWER_TIERED_APPROVAL_OUT_DIR="${CHAT_ANSWER_TIERED_APPROVAL_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_ANSWER_TIERED_APPROVAL_MIN_WINDOW="${CHAT_ANSWER_TIERED_APPROVAL_MIN_WINDOW:-0}"
+    CHAT_ANSWER_TIERED_APPROVAL_MIN_EVENT_TOTAL="${CHAT_ANSWER_TIERED_APPROVAL_MIN_EVENT_TOTAL:-0}"
+    CHAT_ANSWER_TIERED_APPROVAL_MIN_HIGH_RISK_COVERAGE_RATIO="${CHAT_ANSWER_TIERED_APPROVAL_MIN_HIGH_RISK_COVERAGE_RATIO:-0.0}"
+    CHAT_ANSWER_TIERED_APPROVAL_MIN_LOW_RISK_AUTO_RATIO="${CHAT_ANSWER_TIERED_APPROVAL_MIN_LOW_RISK_AUTO_RATIO:-0.0}"
+    CHAT_ANSWER_TIERED_APPROVAL_MAX_MISSING_BAND_TOTAL="${CHAT_ANSWER_TIERED_APPROVAL_MAX_MISSING_BAND_TOTAL:-1000000}"
+    CHAT_ANSWER_TIERED_APPROVAL_MAX_UNSAFE_AUTO_HIGH_RISK_TOTAL="${CHAT_ANSWER_TIERED_APPROVAL_MAX_UNSAFE_AUTO_HIGH_RISK_TOTAL:-1000000}"
+    CHAT_ANSWER_TIERED_APPROVAL_MAX_R3_AUTO_TOTAL="${CHAT_ANSWER_TIERED_APPROVAL_MAX_R3_AUTO_TOTAL:-1000000}"
+    CHAT_ANSWER_TIERED_APPROVAL_MAX_QUEUE_MISSING_TOTAL="${CHAT_ANSWER_TIERED_APPROVAL_MAX_QUEUE_MISSING_TOTAL:-1000000}"
+    CHAT_ANSWER_TIERED_APPROVAL_MAX_STALE_MINUTES="${CHAT_ANSWER_TIERED_APPROVAL_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_answer_tiered_approval_flow_guard.py" \
+      --events-jsonl "$CHAT_ANSWER_TIERED_APPROVAL_EVENTS_JSONL" \
+      --window-hours "$CHAT_ANSWER_TIERED_APPROVAL_WINDOW_HOURS" \
+      --limit "$CHAT_ANSWER_TIERED_APPROVAL_LIMIT" \
+      --out "$CHAT_ANSWER_TIERED_APPROVAL_OUT_DIR" \
+      --min-window "$CHAT_ANSWER_TIERED_APPROVAL_MIN_WINDOW" \
+      --min-event-total "$CHAT_ANSWER_TIERED_APPROVAL_MIN_EVENT_TOTAL" \
+      --min-high-risk-approval-coverage-ratio "$CHAT_ANSWER_TIERED_APPROVAL_MIN_HIGH_RISK_COVERAGE_RATIO" \
+      --min-low-risk-auto-ratio "$CHAT_ANSWER_TIERED_APPROVAL_MIN_LOW_RISK_AUTO_RATIO" \
+      --max-missing-band-total "$CHAT_ANSWER_TIERED_APPROVAL_MAX_MISSING_BAND_TOTAL" \
+      --max-unsafe-auto-high-risk-total "$CHAT_ANSWER_TIERED_APPROVAL_MAX_UNSAFE_AUTO_HIGH_RISK_TOTAL" \
+      --max-r3-auto-total "$CHAT_ANSWER_TIERED_APPROVAL_MAX_R3_AUTO_TOTAL" \
+      --max-approval-queue-missing-total "$CHAT_ANSWER_TIERED_APPROVAL_MAX_QUEUE_MISSING_TOTAL" \
+      --max-stale-minutes "$CHAT_ANSWER_TIERED_APPROVAL_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat answer tiered approval flow guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_ANSWER_TIERED_APPROVAL_FLOW_GUARD=1 to enable"
+fi
+
+echo "[138/140] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -5134,7 +5173,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[138/139] E2E tests (optional)"
+echo "[139/140] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -5145,4 +5184,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[139/139] Done"
+echo "[140/140] Done"

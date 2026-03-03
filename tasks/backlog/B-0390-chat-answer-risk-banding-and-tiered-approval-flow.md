@@ -56,3 +56,13 @@ Introduce risk-banded response controls:
   - `scripts/eval/test_chat_answer_risk_band_model_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_ANSWER_RISK_BAND_MODEL_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 2)
+- [x] Tiered approval flow guard gate 추가
+  - `scripts/eval/chat_answer_tiered_approval_flow_guard.py`
+  - 고위험(R2/R3) 승인 라우팅 커버리지 및 저위험 자동응답 비율 검증
+  - 고위험 자동응답 위반/R3 자동응답/승인 큐 누락 건수 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_answer_tiered_approval_flow_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_ANSWER_TIERED_APPROVAL_FLOW_GUARD=1 ./scripts/test.sh`
