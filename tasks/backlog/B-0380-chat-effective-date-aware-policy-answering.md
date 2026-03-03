@@ -64,3 +64,13 @@ Add temporal reasoning to policy answers:
 - Use effective date metadata in retrieval and synthesis.
 - Resolve user time references and surface policy effective windows.
 - Apply safe fallback when temporal ambiguity or conflicts remain.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Temporal metadata model gate 추가
+  - `scripts/eval/chat_temporal_metadata_model.py`
+  - `effective_from/effective_to/announced_at/timezone` 누락 검증
+  - invalid window 및 source 기준 overlap conflict 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_temporal_metadata_model.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TEMPORAL_METADATA_MODEL=1 ./scripts/test.sh`

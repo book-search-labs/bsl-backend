@@ -3456,7 +3456,46 @@ else
   echo "  - set RUN_CHAT_PRIVACY_INCIDENT_HANDLING=1 to enable"
 fi
 
-echo "[96/98] Canonical quality checks (optional)"
+echo "[96/99] Chat temporal metadata model gate (optional)"
+if [ "${RUN_CHAT_TEMPORAL_METADATA_MODEL:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TEMPORAL_META_JSONL="${CHAT_TEMPORAL_META_JSONL:-$ROOT_DIR/var/chat_policy/temporal_meta.jsonl}"
+    CHAT_TEMPORAL_META_WINDOW_HOURS="${CHAT_TEMPORAL_META_WINDOW_HOURS:-24}"
+    CHAT_TEMPORAL_META_LIMIT="${CHAT_TEMPORAL_META_LIMIT:-50000}"
+    CHAT_TEMPORAL_META_OUT_DIR="${CHAT_TEMPORAL_META_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TEMPORAL_META_MIN_WINDOW="${CHAT_TEMPORAL_META_MIN_WINDOW:-0}"
+    CHAT_TEMPORAL_META_MIN_DOC_TOTAL="${CHAT_TEMPORAL_META_MIN_DOC_TOTAL:-0}"
+    CHAT_TEMPORAL_META_MAX_MISSING_SOURCE_ID_TOTAL="${CHAT_TEMPORAL_META_MAX_MISSING_SOURCE_ID_TOTAL:-1000000}"
+    CHAT_TEMPORAL_META_MAX_MISSING_EFFECTIVE_FROM_TOTAL="${CHAT_TEMPORAL_META_MAX_MISSING_EFFECTIVE_FROM_TOTAL:-1000000}"
+    CHAT_TEMPORAL_META_MAX_MISSING_ANNOUNCED_AT_TOTAL="${CHAT_TEMPORAL_META_MAX_MISSING_ANNOUNCED_AT_TOTAL:-1000000}"
+    CHAT_TEMPORAL_META_MAX_MISSING_TIMEZONE_TOTAL="${CHAT_TEMPORAL_META_MAX_MISSING_TIMEZONE_TOTAL:-1000000}"
+    CHAT_TEMPORAL_META_MAX_INVALID_WINDOW_TOTAL="${CHAT_TEMPORAL_META_MAX_INVALID_WINDOW_TOTAL:-1000000}"
+    CHAT_TEMPORAL_META_MAX_OVERLAP_CONFLICT_TOTAL="${CHAT_TEMPORAL_META_MAX_OVERLAP_CONFLICT_TOTAL:-1000000}"
+    CHAT_TEMPORAL_META_MAX_STALE_HOURS="${CHAT_TEMPORAL_META_MAX_STALE_HOURS:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_temporal_metadata_model.py" \
+      --events-jsonl "$CHAT_TEMPORAL_META_JSONL" \
+      --window-hours "$CHAT_TEMPORAL_META_WINDOW_HOURS" \
+      --limit "$CHAT_TEMPORAL_META_LIMIT" \
+      --out "$CHAT_TEMPORAL_META_OUT_DIR" \
+      --min-window "$CHAT_TEMPORAL_META_MIN_WINDOW" \
+      --min-doc-total "$CHAT_TEMPORAL_META_MIN_DOC_TOTAL" \
+      --max-missing-source-id-total "$CHAT_TEMPORAL_META_MAX_MISSING_SOURCE_ID_TOTAL" \
+      --max-missing-effective-from-total "$CHAT_TEMPORAL_META_MAX_MISSING_EFFECTIVE_FROM_TOTAL" \
+      --max-missing-announced-at-total "$CHAT_TEMPORAL_META_MAX_MISSING_ANNOUNCED_AT_TOTAL" \
+      --max-missing-timezone-total "$CHAT_TEMPORAL_META_MAX_MISSING_TIMEZONE_TOTAL" \
+      --max-invalid-window-total "$CHAT_TEMPORAL_META_MAX_INVALID_WINDOW_TOTAL" \
+      --max-overlap-conflict-total "$CHAT_TEMPORAL_META_MAX_OVERLAP_CONFLICT_TOTAL" \
+      --max-stale-hours "$CHAT_TEMPORAL_META_MAX_STALE_HOURS" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat temporal metadata model gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TEMPORAL_METADATA_MODEL=1 to enable"
+fi
+
+echo "[97/99] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -3467,7 +3506,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[97/98] E2E tests (optional)"
+echo "[98/99] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -3478,4 +3517,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[98/98] Done"
+echo "[99/99] Done"

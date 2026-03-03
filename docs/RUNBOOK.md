@@ -2745,6 +2745,30 @@ python scripts/eval/chat_privacy_incident_handling.py \
 - CI 옵션:
   - `RUN_CHAT_PRIVACY_INCIDENT_HANDLING=1 ./scripts/test.sh`
 
+## Chat temporal metadata model gate (B-0380, Bundle 1)
+- 정책 문서의 유효시점 메타데이터(`effective_from/effective_to/announced_at/timezone`) 정합성을 검증:
+```bash
+python scripts/eval/chat_temporal_metadata_model.py \
+  --events-jsonl var/chat_policy/temporal_meta.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-doc-total 20 \
+  --max-missing-source-id-total 0 \
+  --max-missing-effective-from-total 0 \
+  --max-missing-announced-at-total 0 \
+  --max-missing-timezone-total 0 \
+  --max-invalid-window-total 0 \
+  --max-overlap-conflict-total 0 \
+  --max-stale-hours 24 \
+  --gate
+```
+- 산출물:
+  - 필수 메타데이터 누락 건수
+  - invalid window / overlap conflict 건수
+  - timezone 분포 및 최신성(stale hours)
+- CI 옵션:
+  - `RUN_CHAT_TEMPORAL_METADATA_MODEL=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
