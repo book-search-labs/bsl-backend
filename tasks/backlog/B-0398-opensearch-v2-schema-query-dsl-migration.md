@@ -195,3 +195,14 @@ Implement OpenSearch v2 migration pack:
     - verifies author fallback query uses v2 author fields without wildcard
   - `services/autocomplete-service/.../OpenSearchGatewayTest.java` (new)
     - verifies suggestion/trending DSL include gauss decay and visibility contract
+
+## Implementation Update (Bundle 2)
+
+- Strengthened `/search` QC v1.1 controller regression tests for override DSL contracts.
+  - `usesAuthorRoutingDslWhenUnderstandingExists`
+    - now asserts generated DSL includes `author_names_ko.compact` and `author_names_ko.auto`
+    - now asserts DSL excludes legacy/banned patterns (`wildcard`, `authors.name_`, `.ngram`, `.edge`)
+  - Added `usesIsbnRoutingDslWithNormalizedIdentifierTerms`
+    - verifies understanding ISBN input with hyphenated format is normalized before term routing
+    - verifies override DSL includes both `identifiers.isbn13` and `identifiers.isbn10` terms
+    - verifies routed ISBN term values are de-hyphenated normalized tokens

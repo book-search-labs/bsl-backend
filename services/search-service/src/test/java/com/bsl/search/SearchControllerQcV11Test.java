@@ -359,6 +359,92 @@ class SearchControllerQcV11Test {
         @SuppressWarnings("unchecked")
         Map<String, Object> bool = (Map<String, Object>) dslCaptor.getValue().get("bool");
         org.junit.jupiter.api.Assertions.assertNotNull(bool.get("must"));
+        String renderedDsl = objectMapper.writeValueAsString(dslCaptor.getValue());
+        org.junit.jupiter.api.Assertions.assertTrue(renderedDsl.contains("author_names_ko.compact"));
+        org.junit.jupiter.api.Assertions.assertTrue(renderedDsl.contains("author_names_ko.auto^1.6"));
+        org.junit.jupiter.api.Assertions.assertFalse(renderedDsl.contains("wildcard"));
+        org.junit.jupiter.api.Assertions.assertFalse(renderedDsl.contains("authors.name_"));
+        org.junit.jupiter.api.Assertions.assertFalse(renderedDsl.contains(".ngram"));
+        org.junit.jupiter.api.Assertions.assertFalse(renderedDsl.contains(".edge"));
+    }
+
+    @Test
+    void usesIsbnRoutingDslWithNormalizedIdentifierTerms() throws Exception {
+        when(openSearchGateway.searchLexicalByDslDetailed(any(), anyInt(), any(), any(), anyBoolean()))
+            .thenReturn(new OpenSearchQueryResult(List.of("b1"), Map.of(), Map.of()));
+        when(openSearchGateway.mgetSources(anyList(), any())).thenReturn(buildSources());
+
+        Map<String, Object> payload = qcV11Payload(
+            Map.of("raw", "isbn:978-89-349-1829-7", "norm", "isbn:9788934918297", "final", "978-89-349-1829-7"),
+            Map.of(
+                "queryTextSource", "query.final",
+                "lexical", Map.of("enabled", true, "topKHint", 50),
+                "vector", Map.of("enabled", false),
+                "rerank", Map.of("enabled", false)
+            )
+        );
+        @SuppressWarnings("unchecked")
+        Map<String, Object> qc = (Map<String, Object>) payload.get("query_context_v1_1");
+        qc.put(
+            "understanding",
+            Map.of(
+                "entities",
+                Map.of(
+                    "author",
+                    List.of(),
+                    "title",
+                    List.of(),
+                    "series",
+                    List.of(),
+                    "publisher",
+                    List.of(),
+                    "isbn",
+                    List.of("978-89-349-1829-7")
+                ),
+                "constraints",
+                Map.of("residualText", "")
+            )
+        );
+
+        mockMvc.perform(post("/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(payload)))
+            .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> dslCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(openSearchGateway, times(1)).searchLexicalByDslDetailed(dslCaptor.capture(), anyInt(), any(), any(), anyBoolean());
+        String renderedDsl = objectMapper.writeValueAsString(dslCaptor.getValue());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> bool = (Map<String, Object>) dslCaptor.getValue().get("bool");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> must = (List<Map<String, Object>>) bool.get("must");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> isbnBool = (Map<String, Object>) must.get(0).get("bool");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> isbnShould = (List<Map<String, Object>>) isbnBool.get("should");
+        List<String> isbnTermValues = new java.util.ArrayList<>();
+        for (Map<String, Object> clause : isbnShould) {
+            Object termObj = clause.get("term");
+            if (!(termObj instanceof Map<?, ?> termMap)) {
+                continue;
+            }
+            Object isbn13 = termMap.get("identifiers.isbn13");
+            if (isbn13 != null) {
+                isbnTermValues.add(String.valueOf(isbn13));
+            }
+            Object isbn10 = termMap.get("identifiers.isbn10");
+            if (isbn10 != null) {
+                isbnTermValues.add(String.valueOf(isbn10));
+            }
+        }
+
+        org.junit.jupiter.api.Assertions.assertTrue(renderedDsl.contains("identifiers.isbn13"));
+        org.junit.jupiter.api.Assertions.assertTrue(renderedDsl.contains("identifiers.isbn10"));
+        org.junit.jupiter.api.Assertions.assertTrue(isbnTermValues.contains("9788934918297"));
+        for (String isbnValue : isbnTermValues) {
+            org.junit.jupiter.api.Assertions.assertFalse(isbnValue.contains("-"));
+        }
     }
 
     @Test
