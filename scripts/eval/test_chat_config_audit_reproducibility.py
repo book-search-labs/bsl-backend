@@ -120,3 +120,34 @@ def test_evaluate_gate_allows_empty_window_when_min_window_zero():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_audit_repro_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "missing_actor_total": 0,
+                "missing_trace_total": 0,
+                "immutable_violation_total": 0,
+                "snapshot_replay_ratio": 0.98,
+                "diff_coverage_ratio": 0.97,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "missing_actor_total": 2,
+            "missing_trace_total": 1,
+            "immutable_violation_total": 1,
+            "snapshot_replay_ratio": 0.85,
+            "diff_coverage_ratio": 0.80,
+        },
+        max_missing_actor_total_increase=0,
+        max_missing_trace_total_increase=0,
+        max_immutable_violation_total_increase=0,
+        max_snapshot_replay_ratio_drop=0.05,
+        max_diff_coverage_ratio_drop=0.05,
+    )
+    assert len(failures) == 5

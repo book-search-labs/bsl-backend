@@ -1766,7 +1766,7 @@ python scripts/eval/chat_finops_tradeoff_report.py \
     - `CHAT_FINOPS_MAX_QUALITY_DROP_INCREASE`
 
 ## Config distribution rollout gate (I-0366, Bundle 1)
-- 실시간 정책 번들 배포 이벤트를 집계해 서명/단계 롤아웃/드리프트 상태를 검증:
+- 실시간 정책 번들 배포 이벤트를 집계해 서명/단계 롤아웃/드리프트 상태를 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_config_distribution_rollout.py \
   --events-jsonl var/chat_control/config_rollout_events.jsonl \
@@ -1777,6 +1777,12 @@ python scripts/eval/chat_config_distribution_rollout.py \
   --max-signature-invalid-total 0 \
   --max-stage-regression-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_config_distribution_rollout_baseline_v1.json \
+  --max-success-ratio-drop 0.02 \
+  --max-drift-ratio-increase 0.02 \
+  --max-signature-invalid-total-increase 0 \
+  --max-stage-regression-total-increase 0 \
+  --max-missing-stage-bundle-increase 0 \
   --gate
 ```
 - 산출물:
@@ -1785,9 +1791,15 @@ python scripts/eval/chat_config_distribution_rollout.py \
   - bundle별 stage progress와 missing required stage
 - CI 옵션:
   - `RUN_CHAT_CONFIG_DISTRIBUTION_ROLLOUT=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_CONFIG_ROLLOUT_MAX_SUCCESS_DROP`
+    - `CHAT_CONFIG_ROLLOUT_MAX_DRIFT_INCREASE`
+    - `CHAT_CONFIG_ROLLOUT_MAX_SIGNATURE_INVALID_INCREASE`
+    - `CHAT_CONFIG_ROLLOUT_MAX_STAGE_REGRESSION_INCREASE`
+    - `CHAT_CONFIG_ROLLOUT_MAX_MISSING_STAGE_INCREASE`
 
 ## Config safety guard gate (I-0366, Bundle 2)
-- 배포 중 이상 감지 시 auto-stop/rollback/kill-switch 대응이 충분했는지 검증:
+- 배포 중 이상 감지 시 auto-stop/rollback/kill-switch 대응이 충분했는지 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_config_safety_guard.py \
   --events-jsonl var/chat_control/config_guard_events.jsonl \
@@ -1798,6 +1810,11 @@ python scripts/eval/chat_config_safety_guard.py \
   --max-detection-lag-p95-sec 120 \
   --max-forbidden-killswitch-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_config_safety_guard_baseline_v1.json \
+  --max-unhandled-anomaly-total-increase 0 \
+  --max-mitigation-ratio-drop 0.05 \
+  --max-detection-lag-p95-sec-increase 30 \
+  --max-forbidden-killswitch-total-increase 0 \
   --gate
 ```
 - 산출물:
@@ -1806,9 +1823,14 @@ python scripts/eval/chat_config_safety_guard.py \
   - detection lag p95 및 forbidden scope kill-switch 위반
 - CI 옵션:
   - `RUN_CHAT_CONFIG_SAFETY_GUARD=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_CONFIG_SAFETY_MAX_UNHANDLED_INCREASE`
+    - `CHAT_CONFIG_SAFETY_MAX_MITIGATION_DROP`
+    - `CHAT_CONFIG_SAFETY_MAX_DETECTION_LAG_INCREASE`
+    - `CHAT_CONFIG_SAFETY_MAX_FORBIDDEN_KILLSWITCH_INCREASE`
 
 ## Config audit reproducibility gate (I-0366, Bundle 3)
-- 누가/언제/무엇을 배포했는지 감사 증적과 snapshot replay 가능성을 검증:
+- 누가/언제/무엇을 배포했는지 감사 증적과 snapshot replay 가능성을 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_config_audit_reproducibility.py \
   --events-jsonl var/chat_control/config_audit_events.jsonl \
@@ -1820,6 +1842,12 @@ python scripts/eval/chat_config_audit_reproducibility.py \
   --min-snapshot-replay-ratio 0.95 \
   --min-diff-coverage-ratio 0.95 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_config_audit_reproducibility_baseline_v1.json \
+  --max-missing-actor-total-increase 0 \
+  --max-missing-trace-total-increase 0 \
+  --max-immutable-violation-total-increase 0 \
+  --max-snapshot-replay-ratio-drop 0.05 \
+  --max-diff-coverage-ratio-drop 0.05 \
   --gate
 ```
 - 산출물:
@@ -1828,9 +1856,15 @@ python scripts/eval/chat_config_audit_reproducibility.py \
   - snapshot replay ratio / diff coverage ratio
 - CI 옵션:
   - `RUN_CHAT_CONFIG_AUDIT_REPRO_GUARD=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_CONFIG_AUDIT_MAX_MISSING_ACTOR_INCREASE`
+    - `CHAT_CONFIG_AUDIT_MAX_MISSING_TRACE_INCREASE`
+    - `CHAT_CONFIG_AUDIT_MAX_IMMUTABLE_VIOLATION_INCREASE`
+    - `CHAT_CONFIG_AUDIT_MAX_SNAPSHOT_REPLAY_DROP`
+    - `CHAT_CONFIG_AUDIT_MAX_DIFF_COVERAGE_DROP`
 
 ## Config ops runbook integration gate (I-0366, Bundle 4)
-- 실패 유형별 플레이북 연결과 온콜 알림 payload(버전/영향서비스/권장조치) 완전성을 검증:
+- 실패 유형별 플레이북 연결과 온콜 알림 payload(버전/영향서비스/권장조치) 완전성을 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_config_ops_runbook_integration.py \
   --events-jsonl var/chat_control/config_ops_events.jsonl \
@@ -1841,6 +1875,12 @@ python scripts/eval/chat_config_ops_runbook_integration.py \
   --max-missing-bundle-version-total 0 \
   --max-missing-impacted-services-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_config_ops_runbook_integration_baseline_v1.json \
+  --max-payload-complete-ratio-drop 0.05 \
+  --max-missing-runbook-total-increase 0 \
+  --max-missing-recommended-action-total-increase 0 \
+  --max-missing-bundle-version-total-increase 0 \
+  --max-missing-impacted-services-total-increase 0 \
   --gate
 ```
 - 산출물:
@@ -1849,6 +1889,12 @@ python scripts/eval/chat_config_ops_runbook_integration.py \
   - incident type별 분포
 - CI 옵션:
   - `RUN_CHAT_CONFIG_OPS_RUNBOOK_INTEGRATION=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_CONFIG_OPS_MAX_PAYLOAD_DROP`
+    - `CHAT_CONFIG_OPS_MAX_MISSING_RUNBOOK_INCREASE`
+    - `CHAT_CONFIG_OPS_MAX_MISSING_ACTION_INCREASE`
+    - `CHAT_CONFIG_OPS_MAX_MISSING_BUNDLE_VERSION_INCREASE`
+    - `CHAT_CONFIG_OPS_MAX_MISSING_IMPACTED_SERVICES_INCREASE`
 
 ## Workflow state model gate (B-0367, Bundle 1)
 - 멀티스텝 커머스 워크플로우 상태 모델 필드 완전성과 템플릿 지원 범위를 검증:

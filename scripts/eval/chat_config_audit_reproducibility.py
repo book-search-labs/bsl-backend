@@ -84,6 +84,13 @@ def read_events(path: Path, *, window_hours: int, limit: int, now: datetime | No
     return filtered
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"expected JSON object from {path}")
+    return payload
+
+
 def summarize_audit_reproducibility(
     events: list[Mapping[str, Any]],
     *,
@@ -217,6 +224,74 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_missing_actor_total_increase: int,
+    max_missing_trace_total_increase: int,
+    max_immutable_violation_total_increase: int,
+    max_snapshot_replay_ratio_drop: float,
+    max_diff_coverage_ratio_drop: float,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_missing_actor = _safe_int(base_summary.get("missing_actor_total"), 0)
+    cur_missing_actor = _safe_int(current_summary.get("missing_actor_total"), 0)
+    missing_actor_increase = max(0, cur_missing_actor - base_missing_actor)
+    if missing_actor_increase > max(0, int(max_missing_actor_total_increase)):
+        failures.append(
+            "missing actor regression: "
+            f"baseline={base_missing_actor}, current={cur_missing_actor}, "
+            f"allowed_increase={max(0, int(max_missing_actor_total_increase))}"
+        )
+
+    base_missing_trace = _safe_int(base_summary.get("missing_trace_total"), 0)
+    cur_missing_trace = _safe_int(current_summary.get("missing_trace_total"), 0)
+    missing_trace_increase = max(0, cur_missing_trace - base_missing_trace)
+    if missing_trace_increase > max(0, int(max_missing_trace_total_increase)):
+        failures.append(
+            "missing trace regression: "
+            f"baseline={base_missing_trace}, current={cur_missing_trace}, "
+            f"allowed_increase={max(0, int(max_missing_trace_total_increase))}"
+        )
+
+    base_immutable_violation = _safe_int(base_summary.get("immutable_violation_total"), 0)
+    cur_immutable_violation = _safe_int(current_summary.get("immutable_violation_total"), 0)
+    immutable_violation_increase = max(0, cur_immutable_violation - base_immutable_violation)
+    if immutable_violation_increase > max(0, int(max_immutable_violation_total_increase)):
+        failures.append(
+            "immutable violation regression: "
+            f"baseline={base_immutable_violation}, current={cur_immutable_violation}, "
+            f"allowed_increase={max(0, int(max_immutable_violation_total_increase))}"
+        )
+
+    base_snapshot_replay_ratio = _safe_float(base_summary.get("snapshot_replay_ratio"), 1.0)
+    cur_snapshot_replay_ratio = _safe_float(current_summary.get("snapshot_replay_ratio"), 1.0)
+    snapshot_replay_ratio_drop = max(0.0, base_snapshot_replay_ratio - cur_snapshot_replay_ratio)
+    if snapshot_replay_ratio_drop > max(0.0, float(max_snapshot_replay_ratio_drop)):
+        failures.append(
+            "snapshot replay ratio regression: "
+            f"baseline={base_snapshot_replay_ratio:.6f}, current={cur_snapshot_replay_ratio:.6f}, "
+            f"allowed_drop={float(max_snapshot_replay_ratio_drop):.6f}"
+        )
+
+    base_diff_coverage_ratio = _safe_float(base_summary.get("diff_coverage_ratio"), 1.0)
+    cur_diff_coverage_ratio = _safe_float(current_summary.get("diff_coverage_ratio"), 1.0)
+    diff_coverage_ratio_drop = max(0.0, base_diff_coverage_ratio - cur_diff_coverage_ratio)
+    if diff_coverage_ratio_drop > max(0.0, float(max_diff_coverage_ratio_drop)):
+        failures.append(
+            "diff coverage ratio regression: "
+            f"baseline={base_diff_coverage_ratio:.6f}, current={cur_diff_coverage_ratio:.6f}, "
+            f"allowed_drop={float(max_diff_coverage_ratio_drop):.6f}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -239,11 +314,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -262,6 +342,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--min-snapshot-replay-ratio", type=float, default=0.95)
     parser.add_argument("--min-diff-coverage-ratio", type=float, default=0.95)
     parser.add_argument("--max-stale-minutes", type=float, default=60.0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-missing-actor-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-trace-total-increase", type=int, default=0)
+    parser.add_argument("--max-immutable-violation-total-increase", type=int, default=0)
+    parser.add_argument("--max-snapshot-replay-ratio-drop", type=float, default=0.05)
+    parser.add_argument("--max-diff-coverage-ratio-drop", type=float, default=0.05)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -287,16 +373,39 @@ def main() -> int:
         min_diff_coverage_ratio=max(0.0, float(args.min_diff_coverage_ratio)),
         max_stale_minutes=max(0.0, float(args.max_stale_minutes)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            summary,
+            max_missing_actor_total_increase=max(0, int(args.max_missing_actor_total_increase)),
+            max_missing_trace_total_increase=max(0, int(args.max_missing_trace_total_increase)),
+            max_immutable_violation_total_increase=max(0, int(args.max_immutable_violation_total_increase)),
+            max_snapshot_replay_ratio_drop=max(0.0, float(args.max_snapshot_replay_ratio_drop)),
+            max_diff_coverage_ratio_drop=max(0.0, float(args.max_diff_coverage_ratio_drop)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "events_jsonl": str(events_path),
         "snapshots_dir": str(snapshots_dir),
+        "source": {
+            "events_jsonl": str(events_path),
+            "snapshots_dir": str(snapshots_dir),
+            "window_hours": max(1, int(args.window_hours)),
+            "limit": max(1, int(args.limit)),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "max_missing_actor_total": int(args.max_missing_actor_total),
@@ -305,6 +414,11 @@ def main() -> int:
                 "min_snapshot_replay_ratio": float(args.min_snapshot_replay_ratio),
                 "min_diff_coverage_ratio": float(args.min_diff_coverage_ratio),
                 "max_stale_minutes": float(args.max_stale_minutes),
+                "max_missing_actor_total_increase": int(args.max_missing_actor_total_increase),
+                "max_missing_trace_total_increase": int(args.max_missing_trace_total_increase),
+                "max_immutable_violation_total_increase": int(args.max_immutable_violation_total_increase),
+                "max_snapshot_replay_ratio_drop": float(args.max_snapshot_replay_ratio_drop),
+                "max_diff_coverage_ratio_drop": float(args.max_diff_coverage_ratio_drop),
             },
         },
     }
@@ -321,8 +435,9 @@ def main() -> int:
     print(f"report_md={md_path}")
     print(f"window_size={_safe_int(summary.get('window_size'), 0)}")
     print(f"snapshot_replay_ratio={_safe_float(summary.get('snapshot_replay_ratio'), 0.0):.4f}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and (failures or baseline_failures):
         return 2
     return 0
 

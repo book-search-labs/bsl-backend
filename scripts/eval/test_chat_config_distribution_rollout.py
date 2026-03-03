@@ -114,3 +114,34 @@ def test_evaluate_gate_allows_empty_window_when_min_window_zero():
         require_stages=False,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_rollout_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "success_ratio": 0.99,
+                "drift_ratio": 0.01,
+                "signature_invalid_total": 0,
+                "stage_regression_total": 0,
+                "missing_stage_bundles": [],
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "success_ratio": 0.92,
+            "drift_ratio": 0.06,
+            "signature_invalid_total": 2,
+            "stage_regression_total": 1,
+            "missing_stage_bundles": [{"bundle_id": "b1", "missing_stages": [50]}],
+        },
+        max_success_ratio_drop=0.02,
+        max_drift_ratio_increase=0.02,
+        max_signature_invalid_total_increase=0,
+        max_stage_regression_total_increase=0,
+        max_missing_stage_bundle_increase=0,
+    )
+    assert len(failures) == 5

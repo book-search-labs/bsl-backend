@@ -111,6 +111,13 @@ def read_events(path: Path, *, window_hours: int, limit: int, now: datetime | No
     return filtered
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"expected JSON object from {path}")
+    return payload
+
+
 def summarize_distribution(events: list[Mapping[str, Any]], *, required_stages: list[int], now: datetime | None = None) -> dict[str, Any]:
     now_dt = now or datetime.now(timezone.utc)
 
@@ -245,6 +252,80 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_success_ratio_drop: float,
+    max_drift_ratio_increase: float,
+    max_signature_invalid_total_increase: int,
+    max_stage_regression_total_increase: int,
+    max_missing_stage_bundle_increase: int,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_success_ratio = _safe_float(base_summary.get("success_ratio"), 1.0)
+    cur_success_ratio = _safe_float(current_summary.get("success_ratio"), 1.0)
+    success_ratio_drop = max(0.0, base_success_ratio - cur_success_ratio)
+    if success_ratio_drop > max(0.0, float(max_success_ratio_drop)):
+        failures.append(
+            "rollout success ratio regression: "
+            f"baseline={base_success_ratio:.6f}, current={cur_success_ratio:.6f}, "
+            f"allowed_drop={float(max_success_ratio_drop):.6f}"
+        )
+
+    base_drift_ratio = _safe_float(base_summary.get("drift_ratio"), 0.0)
+    cur_drift_ratio = _safe_float(current_summary.get("drift_ratio"), 0.0)
+    drift_ratio_increase = max(0.0, cur_drift_ratio - base_drift_ratio)
+    if drift_ratio_increase > max(0.0, float(max_drift_ratio_increase)):
+        failures.append(
+            "config drift ratio regression: "
+            f"baseline={base_drift_ratio:.6f}, current={cur_drift_ratio:.6f}, "
+            f"allowed_increase={float(max_drift_ratio_increase):.6f}"
+        )
+
+    base_signature_invalid_total = _safe_int(base_summary.get("signature_invalid_total"), 0)
+    cur_signature_invalid_total = _safe_int(current_summary.get("signature_invalid_total"), 0)
+    signature_invalid_increase = max(0, cur_signature_invalid_total - base_signature_invalid_total)
+    if signature_invalid_increase > max(0, int(max_signature_invalid_total_increase)):
+        failures.append(
+            "signature invalid regression: "
+            f"baseline={base_signature_invalid_total}, current={cur_signature_invalid_total}, "
+            f"allowed_increase={max(0, int(max_signature_invalid_total_increase))}"
+        )
+
+    base_stage_regression_total = _safe_int(base_summary.get("stage_regression_total"), 0)
+    cur_stage_regression_total = _safe_int(current_summary.get("stage_regression_total"), 0)
+    stage_regression_increase = max(0, cur_stage_regression_total - base_stage_regression_total)
+    if stage_regression_increase > max(0, int(max_stage_regression_total_increase)):
+        failures.append(
+            "stage regression count regression: "
+            f"baseline={base_stage_regression_total}, current={cur_stage_regression_total}, "
+            f"allowed_increase={max(0, int(max_stage_regression_total_increase))}"
+        )
+
+    base_missing_stage_bundles = (
+        base_summary.get("missing_stage_bundles") if isinstance(base_summary.get("missing_stage_bundles"), list) else []
+    )
+    cur_missing_stage_bundles = (
+        current_summary.get("missing_stage_bundles")
+        if isinstance(current_summary.get("missing_stage_bundles"), list)
+        else []
+    )
+    missing_stage_bundle_increase = max(0, len(cur_missing_stage_bundles) - len(base_missing_stage_bundles))
+    if missing_stage_bundle_increase > max(0, int(max_missing_stage_bundle_increase)):
+        failures.append(
+            "missing stage bundle regression: "
+            f"baseline={len(base_missing_stage_bundles)}, current={len(cur_missing_stage_bundles)}, "
+            f"allowed_increase={max(0, int(max_missing_stage_bundle_increase))}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -266,11 +347,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -289,6 +375,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-stage-regression-total", type=int, default=0)
     parser.add_argument("--max-stale-minutes", type=float, default=60.0)
     parser.add_argument("--require-stages", action="store_true")
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-success-ratio-drop", type=float, default=0.02)
+    parser.add_argument("--max-drift-ratio-increase", type=float, default=0.02)
+    parser.add_argument("--max-signature-invalid-total-increase", type=int, default=0)
+    parser.add_argument("--max-stage-regression-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-stage-bundle-increase", type=int, default=0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -318,15 +410,38 @@ def main() -> int:
         max_stale_minutes=max(0.0, float(args.max_stale_minutes)),
         require_stages=bool(args.require_stages),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            summary,
+            max_success_ratio_drop=max(0.0, float(args.max_success_ratio_drop)),
+            max_drift_ratio_increase=max(0.0, float(args.max_drift_ratio_increase)),
+            max_signature_invalid_total_increase=max(0, int(args.max_signature_invalid_total_increase)),
+            max_stage_regression_total_increase=max(0, int(args.max_stage_regression_total_increase)),
+            max_missing_stage_bundle_increase=max(0, int(args.max_missing_stage_bundle_increase)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "events_jsonl": str(events_path),
+        "source": {
+            "events_jsonl": str(events_path),
+            "window_hours": max(1, int(args.window_hours)),
+            "limit": max(1, int(args.limit)),
+            "required_stages": sorted(set(int(item) for item in required_stages if item > 0)),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "min_success_ratio": float(args.min_success_ratio),
@@ -335,6 +450,11 @@ def main() -> int:
                 "max_stage_regression_total": int(args.max_stage_regression_total),
                 "max_stale_minutes": float(args.max_stale_minutes),
                 "require_stages": bool(args.require_stages),
+                "max_success_ratio_drop": float(args.max_success_ratio_drop),
+                "max_drift_ratio_increase": float(args.max_drift_ratio_increase),
+                "max_signature_invalid_total_increase": int(args.max_signature_invalid_total_increase),
+                "max_stage_regression_total_increase": int(args.max_stage_regression_total_increase),
+                "max_missing_stage_bundle_increase": int(args.max_missing_stage_bundle_increase),
             },
         },
     }
@@ -351,8 +471,9 @@ def main() -> int:
     print(f"report_md={md_path}")
     print(f"window_size={_safe_int(summary.get('window_size'), 0)}")
     print(f"success_ratio={_safe_float(summary.get('success_ratio'), 0.0):.4f}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and (failures or baseline_failures):
         return 2
     return 0
 

@@ -111,3 +111,34 @@ def test_evaluate_gate_allows_empty_window_when_min_window_zero():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_ops_payload_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "payload_complete_ratio": 0.98,
+                "missing_runbook_total": 0,
+                "missing_recommended_action_total": 0,
+                "missing_bundle_version_total": 0,
+                "missing_impacted_services_total": 0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "payload_complete_ratio": 0.80,
+            "missing_runbook_total": 2,
+            "missing_recommended_action_total": 1,
+            "missing_bundle_version_total": 1,
+            "missing_impacted_services_total": 1,
+        },
+        max_payload_complete_ratio_drop=0.05,
+        max_missing_runbook_total_increase=0,
+        max_missing_recommended_action_total_increase=0,
+        max_missing_bundle_version_total_increase=0,
+        max_missing_impacted_services_total_increase=0,
+    )
+    assert len(failures) == 5

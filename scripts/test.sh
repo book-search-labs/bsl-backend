@@ -1769,6 +1769,12 @@ if [ "${RUN_CHAT_CONFIG_DISTRIBUTION_ROLLOUT:-0}" = "1" ]; then
     CHAT_CONFIG_ROLLOUT_MAX_STAGE_REGRESSION_TOTAL="${CHAT_CONFIG_ROLLOUT_MAX_STAGE_REGRESSION_TOTAL:-0}"
     CHAT_CONFIG_ROLLOUT_MAX_STALE_MINUTES="${CHAT_CONFIG_ROLLOUT_MAX_STALE_MINUTES:-60}"
     CHAT_CONFIG_ROLLOUT_REQUIRE_STAGES="${CHAT_CONFIG_ROLLOUT_REQUIRE_STAGES:-0}"
+    CHAT_CONFIG_ROLLOUT_BASELINE_PATH="${CHAT_CONFIG_ROLLOUT_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_config_distribution_rollout_baseline_v1.json}"
+    CHAT_CONFIG_ROLLOUT_MAX_SUCCESS_DROP="${CHAT_CONFIG_ROLLOUT_MAX_SUCCESS_DROP:-0.02}"
+    CHAT_CONFIG_ROLLOUT_MAX_DRIFT_INCREASE="${CHAT_CONFIG_ROLLOUT_MAX_DRIFT_INCREASE:-0.02}"
+    CHAT_CONFIG_ROLLOUT_MAX_SIGNATURE_INVALID_INCREASE="${CHAT_CONFIG_ROLLOUT_MAX_SIGNATURE_INVALID_INCREASE:-0}"
+    CHAT_CONFIG_ROLLOUT_MAX_STAGE_REGRESSION_INCREASE="${CHAT_CONFIG_ROLLOUT_MAX_STAGE_REGRESSION_INCREASE:-0}"
+    CHAT_CONFIG_ROLLOUT_MAX_MISSING_STAGE_INCREASE="${CHAT_CONFIG_ROLLOUT_MAX_MISSING_STAGE_INCREASE:-0}"
 
     CHAT_CONFIG_ROLLOUT_ARGS=(
       "$ROOT_DIR/scripts/eval/chat_config_distribution_rollout.py"
@@ -1783,8 +1789,16 @@ if [ "${RUN_CHAT_CONFIG_DISTRIBUTION_ROLLOUT:-0}" = "1" ]; then
       --max-signature-invalid-total "$CHAT_CONFIG_ROLLOUT_MAX_SIGNATURE_INVALID_TOTAL"
       --max-stage-regression-total "$CHAT_CONFIG_ROLLOUT_MAX_STAGE_REGRESSION_TOTAL"
       --max-stale-minutes "$CHAT_CONFIG_ROLLOUT_MAX_STALE_MINUTES"
+      --max-success-ratio-drop "$CHAT_CONFIG_ROLLOUT_MAX_SUCCESS_DROP"
+      --max-drift-ratio-increase "$CHAT_CONFIG_ROLLOUT_MAX_DRIFT_INCREASE"
+      --max-signature-invalid-total-increase "$CHAT_CONFIG_ROLLOUT_MAX_SIGNATURE_INVALID_INCREASE"
+      --max-stage-regression-total-increase "$CHAT_CONFIG_ROLLOUT_MAX_STAGE_REGRESSION_INCREASE"
+      --max-missing-stage-bundle-increase "$CHAT_CONFIG_ROLLOUT_MAX_MISSING_STAGE_INCREASE"
       --gate
     )
+    if [ -f "$CHAT_CONFIG_ROLLOUT_BASELINE_PATH" ]; then
+      CHAT_CONFIG_ROLLOUT_ARGS+=(--baseline-report "$CHAT_CONFIG_ROLLOUT_BASELINE_PATH")
+    fi
     if [ "$CHAT_CONFIG_ROLLOUT_REQUIRE_STAGES" = "1" ]; then
       CHAT_CONFIG_ROLLOUT_ARGS+=(--require-stages)
     fi
@@ -1810,20 +1824,35 @@ if [ "${RUN_CHAT_CONFIG_SAFETY_GUARD:-0}" = "1" ]; then
     CHAT_CONFIG_SAFETY_MAX_DETECTION_LAG_P95="${CHAT_CONFIG_SAFETY_MAX_DETECTION_LAG_P95:-120}"
     CHAT_CONFIG_SAFETY_MAX_FORBIDDEN_KILLSWITCH="${CHAT_CONFIG_SAFETY_MAX_FORBIDDEN_KILLSWITCH:-0}"
     CHAT_CONFIG_SAFETY_MAX_STALE_MINUTES="${CHAT_CONFIG_SAFETY_MAX_STALE_MINUTES:-60}"
+    CHAT_CONFIG_SAFETY_BASELINE_PATH="${CHAT_CONFIG_SAFETY_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_config_safety_guard_baseline_v1.json}"
+    CHAT_CONFIG_SAFETY_MAX_UNHANDLED_INCREASE="${CHAT_CONFIG_SAFETY_MAX_UNHANDLED_INCREASE:-0}"
+    CHAT_CONFIG_SAFETY_MAX_MITIGATION_DROP="${CHAT_CONFIG_SAFETY_MAX_MITIGATION_DROP:-0.05}"
+    CHAT_CONFIG_SAFETY_MAX_DETECTION_LAG_INCREASE="${CHAT_CONFIG_SAFETY_MAX_DETECTION_LAG_INCREASE:-30}"
+    CHAT_CONFIG_SAFETY_MAX_FORBIDDEN_KILLSWITCH_INCREASE="${CHAT_CONFIG_SAFETY_MAX_FORBIDDEN_KILLSWITCH_INCREASE:-0}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_config_safety_guard.py" \
-      --events-jsonl "$CHAT_CONFIG_SAFETY_EVENTS_JSONL" \
-      --window-hours "$CHAT_CONFIG_SAFETY_WINDOW_HOURS" \
-      --limit "$CHAT_CONFIG_SAFETY_LIMIT" \
-      --forbidden-killswitch-scopes "$CHAT_CONFIG_SAFETY_FORBIDDEN_SCOPES" \
-      --out "$CHAT_CONFIG_SAFETY_OUT_DIR" \
-      --min-window "$CHAT_CONFIG_SAFETY_MIN_WINDOW" \
-      --max-unhandled-anomaly-total "$CHAT_CONFIG_SAFETY_MAX_UNHANDLED" \
-      --min-mitigation-ratio "$CHAT_CONFIG_SAFETY_MIN_MITIGATION_RATIO" \
-      --max-detection-lag-p95-sec "$CHAT_CONFIG_SAFETY_MAX_DETECTION_LAG_P95" \
-      --max-forbidden-killswitch-total "$CHAT_CONFIG_SAFETY_MAX_FORBIDDEN_KILLSWITCH" \
-      --max-stale-minutes "$CHAT_CONFIG_SAFETY_MAX_STALE_MINUTES" \
-      --gate || exit 1
+    CHAT_CONFIG_SAFETY_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_config_safety_guard.py"
+      --events-jsonl "$CHAT_CONFIG_SAFETY_EVENTS_JSONL"
+      --window-hours "$CHAT_CONFIG_SAFETY_WINDOW_HOURS"
+      --limit "$CHAT_CONFIG_SAFETY_LIMIT"
+      --forbidden-killswitch-scopes "$CHAT_CONFIG_SAFETY_FORBIDDEN_SCOPES"
+      --out "$CHAT_CONFIG_SAFETY_OUT_DIR"
+      --min-window "$CHAT_CONFIG_SAFETY_MIN_WINDOW"
+      --max-unhandled-anomaly-total "$CHAT_CONFIG_SAFETY_MAX_UNHANDLED"
+      --min-mitigation-ratio "$CHAT_CONFIG_SAFETY_MIN_MITIGATION_RATIO"
+      --max-detection-lag-p95-sec "$CHAT_CONFIG_SAFETY_MAX_DETECTION_LAG_P95"
+      --max-forbidden-killswitch-total "$CHAT_CONFIG_SAFETY_MAX_FORBIDDEN_KILLSWITCH"
+      --max-stale-minutes "$CHAT_CONFIG_SAFETY_MAX_STALE_MINUTES"
+      --max-unhandled-anomaly-total-increase "$CHAT_CONFIG_SAFETY_MAX_UNHANDLED_INCREASE"
+      --max-mitigation-ratio-drop "$CHAT_CONFIG_SAFETY_MAX_MITIGATION_DROP"
+      --max-detection-lag-p95-sec-increase "$CHAT_CONFIG_SAFETY_MAX_DETECTION_LAG_INCREASE"
+      --max-forbidden-killswitch-total-increase "$CHAT_CONFIG_SAFETY_MAX_FORBIDDEN_KILLSWITCH_INCREASE"
+      --gate
+    )
+    if [ -f "$CHAT_CONFIG_SAFETY_BASELINE_PATH" ]; then
+      CHAT_CONFIG_SAFETY_ARGS+=(--baseline-report "$CHAT_CONFIG_SAFETY_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_CONFIG_SAFETY_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat config safety guard gate"
   fi
@@ -1846,21 +1875,38 @@ if [ "${RUN_CHAT_CONFIG_AUDIT_REPRO_GUARD:-0}" = "1" ]; then
     CHAT_CONFIG_AUDIT_MIN_SNAPSHOT_REPLAY_RATIO="${CHAT_CONFIG_AUDIT_MIN_SNAPSHOT_REPLAY_RATIO:-0.95}"
     CHAT_CONFIG_AUDIT_MIN_DIFF_COVERAGE_RATIO="${CHAT_CONFIG_AUDIT_MIN_DIFF_COVERAGE_RATIO:-0.95}"
     CHAT_CONFIG_AUDIT_MAX_STALE_MINUTES="${CHAT_CONFIG_AUDIT_MAX_STALE_MINUTES:-60}"
+    CHAT_CONFIG_AUDIT_BASELINE_PATH="${CHAT_CONFIG_AUDIT_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_config_audit_reproducibility_baseline_v1.json}"
+    CHAT_CONFIG_AUDIT_MAX_MISSING_ACTOR_INCREASE="${CHAT_CONFIG_AUDIT_MAX_MISSING_ACTOR_INCREASE:-0}"
+    CHAT_CONFIG_AUDIT_MAX_MISSING_TRACE_INCREASE="${CHAT_CONFIG_AUDIT_MAX_MISSING_TRACE_INCREASE:-0}"
+    CHAT_CONFIG_AUDIT_MAX_IMMUTABLE_VIOLATION_INCREASE="${CHAT_CONFIG_AUDIT_MAX_IMMUTABLE_VIOLATION_INCREASE:-0}"
+    CHAT_CONFIG_AUDIT_MAX_SNAPSHOT_REPLAY_DROP="${CHAT_CONFIG_AUDIT_MAX_SNAPSHOT_REPLAY_DROP:-0.05}"
+    CHAT_CONFIG_AUDIT_MAX_DIFF_COVERAGE_DROP="${CHAT_CONFIG_AUDIT_MAX_DIFF_COVERAGE_DROP:-0.05}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_config_audit_reproducibility.py" \
-      --events-jsonl "$CHAT_CONFIG_AUDIT_EVENTS_JSONL" \
-      --snapshots-dir "$CHAT_CONFIG_AUDIT_SNAPSHOTS_DIR" \
-      --window-hours "$CHAT_CONFIG_AUDIT_WINDOW_HOURS" \
-      --limit "$CHAT_CONFIG_AUDIT_LIMIT" \
-      --out "$CHAT_CONFIG_AUDIT_OUT_DIR" \
-      --min-window "$CHAT_CONFIG_AUDIT_MIN_WINDOW" \
-      --max-missing-actor-total "$CHAT_CONFIG_AUDIT_MAX_MISSING_ACTOR" \
-      --max-missing-trace-total "$CHAT_CONFIG_AUDIT_MAX_MISSING_TRACE" \
-      --max-immutable-violation-total "$CHAT_CONFIG_AUDIT_MAX_IMMUTABLE_VIOLATION" \
-      --min-snapshot-replay-ratio "$CHAT_CONFIG_AUDIT_MIN_SNAPSHOT_REPLAY_RATIO" \
-      --min-diff-coverage-ratio "$CHAT_CONFIG_AUDIT_MIN_DIFF_COVERAGE_RATIO" \
-      --max-stale-minutes "$CHAT_CONFIG_AUDIT_MAX_STALE_MINUTES" \
-      --gate || exit 1
+    CHAT_CONFIG_AUDIT_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_config_audit_reproducibility.py"
+      --events-jsonl "$CHAT_CONFIG_AUDIT_EVENTS_JSONL"
+      --snapshots-dir "$CHAT_CONFIG_AUDIT_SNAPSHOTS_DIR"
+      --window-hours "$CHAT_CONFIG_AUDIT_WINDOW_HOURS"
+      --limit "$CHAT_CONFIG_AUDIT_LIMIT"
+      --out "$CHAT_CONFIG_AUDIT_OUT_DIR"
+      --min-window "$CHAT_CONFIG_AUDIT_MIN_WINDOW"
+      --max-missing-actor-total "$CHAT_CONFIG_AUDIT_MAX_MISSING_ACTOR"
+      --max-missing-trace-total "$CHAT_CONFIG_AUDIT_MAX_MISSING_TRACE"
+      --max-immutable-violation-total "$CHAT_CONFIG_AUDIT_MAX_IMMUTABLE_VIOLATION"
+      --min-snapshot-replay-ratio "$CHAT_CONFIG_AUDIT_MIN_SNAPSHOT_REPLAY_RATIO"
+      --min-diff-coverage-ratio "$CHAT_CONFIG_AUDIT_MIN_DIFF_COVERAGE_RATIO"
+      --max-stale-minutes "$CHAT_CONFIG_AUDIT_MAX_STALE_MINUTES"
+      --max-missing-actor-total-increase "$CHAT_CONFIG_AUDIT_MAX_MISSING_ACTOR_INCREASE"
+      --max-missing-trace-total-increase "$CHAT_CONFIG_AUDIT_MAX_MISSING_TRACE_INCREASE"
+      --max-immutable-violation-total-increase "$CHAT_CONFIG_AUDIT_MAX_IMMUTABLE_VIOLATION_INCREASE"
+      --max-snapshot-replay-ratio-drop "$CHAT_CONFIG_AUDIT_MAX_SNAPSHOT_REPLAY_DROP"
+      --max-diff-coverage-ratio-drop "$CHAT_CONFIG_AUDIT_MAX_DIFF_COVERAGE_DROP"
+      --gate
+    )
+    if [ -f "$CHAT_CONFIG_AUDIT_BASELINE_PATH" ]; then
+      CHAT_CONFIG_AUDIT_ARGS+=(--baseline-report "$CHAT_CONFIG_AUDIT_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_CONFIG_AUDIT_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat config audit reproducibility gate"
   fi
@@ -1882,20 +1928,37 @@ if [ "${RUN_CHAT_CONFIG_OPS_RUNBOOK_INTEGRATION:-0}" = "1" ]; then
     CHAT_CONFIG_OPS_MAX_MISSING_BUNDLE_VERSION="${CHAT_CONFIG_OPS_MAX_MISSING_BUNDLE_VERSION:-0}"
     CHAT_CONFIG_OPS_MAX_MISSING_IMPACTED_SERVICES="${CHAT_CONFIG_OPS_MAX_MISSING_IMPACTED_SERVICES:-0}"
     CHAT_CONFIG_OPS_MAX_STALE_MINUTES="${CHAT_CONFIG_OPS_MAX_STALE_MINUTES:-60}"
+    CHAT_CONFIG_OPS_BASELINE_PATH="${CHAT_CONFIG_OPS_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_config_ops_runbook_integration_baseline_v1.json}"
+    CHAT_CONFIG_OPS_MAX_PAYLOAD_DROP="${CHAT_CONFIG_OPS_MAX_PAYLOAD_DROP:-0.05}"
+    CHAT_CONFIG_OPS_MAX_MISSING_RUNBOOK_INCREASE="${CHAT_CONFIG_OPS_MAX_MISSING_RUNBOOK_INCREASE:-0}"
+    CHAT_CONFIG_OPS_MAX_MISSING_ACTION_INCREASE="${CHAT_CONFIG_OPS_MAX_MISSING_ACTION_INCREASE:-0}"
+    CHAT_CONFIG_OPS_MAX_MISSING_BUNDLE_VERSION_INCREASE="${CHAT_CONFIG_OPS_MAX_MISSING_BUNDLE_VERSION_INCREASE:-0}"
+    CHAT_CONFIG_OPS_MAX_MISSING_IMPACTED_SERVICES_INCREASE="${CHAT_CONFIG_OPS_MAX_MISSING_IMPACTED_SERVICES_INCREASE:-0}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_config_ops_runbook_integration.py" \
-      --events-jsonl "$CHAT_CONFIG_OPS_EVENTS_JSONL" \
-      --window-hours "$CHAT_CONFIG_OPS_WINDOW_HOURS" \
-      --limit "$CHAT_CONFIG_OPS_LIMIT" \
-      --out "$CHAT_CONFIG_OPS_OUT_DIR" \
-      --min-window "$CHAT_CONFIG_OPS_MIN_WINDOW" \
-      --min-payload-complete-ratio "$CHAT_CONFIG_OPS_MIN_PAYLOAD_COMPLETE_RATIO" \
-      --max-missing-runbook-total "$CHAT_CONFIG_OPS_MAX_MISSING_RUNBOOK" \
-      --max-missing-recommended-action-total "$CHAT_CONFIG_OPS_MAX_MISSING_ACTION" \
-      --max-missing-bundle-version-total "$CHAT_CONFIG_OPS_MAX_MISSING_BUNDLE_VERSION" \
-      --max-missing-impacted-services-total "$CHAT_CONFIG_OPS_MAX_MISSING_IMPACTED_SERVICES" \
-      --max-stale-minutes "$CHAT_CONFIG_OPS_MAX_STALE_MINUTES" \
-      --gate || exit 1
+    CHAT_CONFIG_OPS_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_config_ops_runbook_integration.py"
+      --events-jsonl "$CHAT_CONFIG_OPS_EVENTS_JSONL"
+      --window-hours "$CHAT_CONFIG_OPS_WINDOW_HOURS"
+      --limit "$CHAT_CONFIG_OPS_LIMIT"
+      --out "$CHAT_CONFIG_OPS_OUT_DIR"
+      --min-window "$CHAT_CONFIG_OPS_MIN_WINDOW"
+      --min-payload-complete-ratio "$CHAT_CONFIG_OPS_MIN_PAYLOAD_COMPLETE_RATIO"
+      --max-missing-runbook-total "$CHAT_CONFIG_OPS_MAX_MISSING_RUNBOOK"
+      --max-missing-recommended-action-total "$CHAT_CONFIG_OPS_MAX_MISSING_ACTION"
+      --max-missing-bundle-version-total "$CHAT_CONFIG_OPS_MAX_MISSING_BUNDLE_VERSION"
+      --max-missing-impacted-services-total "$CHAT_CONFIG_OPS_MAX_MISSING_IMPACTED_SERVICES"
+      --max-stale-minutes "$CHAT_CONFIG_OPS_MAX_STALE_MINUTES"
+      --max-payload-complete-ratio-drop "$CHAT_CONFIG_OPS_MAX_PAYLOAD_DROP"
+      --max-missing-runbook-total-increase "$CHAT_CONFIG_OPS_MAX_MISSING_RUNBOOK_INCREASE"
+      --max-missing-recommended-action-total-increase "$CHAT_CONFIG_OPS_MAX_MISSING_ACTION_INCREASE"
+      --max-missing-bundle-version-total-increase "$CHAT_CONFIG_OPS_MAX_MISSING_BUNDLE_VERSION_INCREASE"
+      --max-missing-impacted-services-total-increase "$CHAT_CONFIG_OPS_MAX_MISSING_IMPACTED_SERVICES_INCREASE"
+      --gate
+    )
+    if [ -f "$CHAT_CONFIG_OPS_BASELINE_PATH" ]; then
+      CHAT_CONFIG_OPS_ARGS+=(--baseline-report "$CHAT_CONFIG_OPS_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_CONFIG_OPS_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat config ops runbook integration gate"
   fi

@@ -90,3 +90,24 @@ Build a realtime control plane for chat policy/config rollout:
   - `scripts/eval/test_chat_config_ops_runbook_integration.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_CONFIG_OPS_RUNBOOK_INTEGRATION=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Baseline drift governance 추가 (I-0366 전체)
+  - `scripts/eval/chat_config_distribution_rollout.py`
+  - `scripts/eval/chat_config_safety_guard.py`
+  - `scripts/eval/chat_config_audit_reproducibility.py`
+  - `scripts/eval/chat_config_ops_runbook_integration.py`
+  - 공통으로 `--baseline-report` + drift threshold 인자를 지원하고, `gate.pass`를 `failures + baseline_failures` 결합 기준으로 계산
+  - payload에 `source`, `derived.summary`를 추가해 baseline 비교 입력 스키마를 고정
+- [x] Baseline 회귀 단위테스트 추가
+  - `scripts/eval/test_chat_config_distribution_rollout.py`
+  - `scripts/eval/test_chat_config_safety_guard.py`
+  - `scripts/eval/test_chat_config_audit_reproducibility.py`
+  - `scripts/eval/test_chat_config_ops_runbook_integration.py`
+- [x] CI baseline wiring 추가
+  - `scripts/test.sh` 40~43단계에 baseline fixture 자동 연결 + drift env 노출
+- [x] Baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_config_distribution_rollout_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_config_safety_guard_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_config_audit_reproducibility_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_config_ops_runbook_integration_baseline_v1.json`

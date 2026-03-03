@@ -102,3 +102,31 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_safety_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "unhandled_anomaly_total": 0,
+                "mitigation_ratio": 0.98,
+                "detection_lag_p95_sec": 40.0,
+                "forbidden_killswitch_total": 0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "unhandled_anomaly_total": 2,
+            "mitigation_ratio": 0.80,
+            "detection_lag_p95_sec": 110.0,
+            "forbidden_killswitch_total": 1,
+        },
+        max_unhandled_anomaly_total_increase=0,
+        max_mitigation_ratio_drop=0.05,
+        max_detection_lag_p95_sec_increase=30.0,
+        max_forbidden_killswitch_total_increase=0,
+    )
+    assert len(failures) == 4
