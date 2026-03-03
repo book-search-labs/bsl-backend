@@ -66,3 +66,13 @@ Secure the prompt supply chain for chat:
   - `scripts/eval/test_chat_prompt_runtime_integrity_fallback_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_PROMPT_RUNTIME_INTEGRITY_FALLBACK_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 3)
+- [x] Prompt signing key rotation guard gate 추가
+  - `scripts/eval/chat_prompt_signing_key_rotation_guard.py`
+  - key rotation 성공률, unauthorized access, least-privilege violation 검증
+  - deprecated key sign, KMS sync 실패, audit log 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_prompt_signing_key_rotation_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_PROMPT_SIGNING_KEY_ROTATION_GUARD=1 ./scripts/test.sh`

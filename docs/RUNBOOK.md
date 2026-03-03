@@ -3390,6 +3390,33 @@ python scripts/eval/chat_prompt_runtime_integrity_fallback_guard.py \
 - CI 옵션:
   - `RUN_CHAT_PROMPT_RUNTIME_INTEGRITY_FALLBACK_GUARD=1 ./scripts/test.sh`
 
+## Chat prompt signing key rotation guard gate (B-0386, Bundle 3)
+- 서명키 회전 성공률, 최소권한 위반, 감사로그 누락, KMS 동기화 실패를 검증:
+```bash
+python scripts/eval/chat_prompt_signing_key_rotation_guard.py \
+  --events-jsonl var/chat_prompt_supply/key_rotation_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-event-total 20 \
+  --min-key-rotation-total 1 \
+  --min-key-rotation-success-ratio 1.0 \
+  --max-key-rotation-failed-total 0 \
+  --max-unauthorized-key-access-total 0 \
+  --max-least-privilege-violation-total 0 \
+  --max-deprecated-key-sign-total 0 \
+  --max-kms-sync-failed-total 0 \
+  --max-audit-log-missing-total 0 \
+  --max-reason-code-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - key rotation total/success ratio 및 failed total
+  - unauthorized access/least privilege violation/deprecated key sign 건수
+  - kms sync failed/audit log missing/reason_code missing 건수
+- CI 옵션:
+  - `RUN_CHAT_PROMPT_SIGNING_KEY_ROTATION_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
