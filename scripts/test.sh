@@ -4940,7 +4940,48 @@ else
   echo "  - set RUN_CHAT_CROSSLINGUAL_FALLBACK_POLICY_GUARD=1 to enable"
 fi
 
-echo "[132/134] Canonical quality checks (optional)"
+echo "[132/135] Chat tool health score guard gate (optional)"
+if [ "${RUN_CHAT_TOOL_HEALTH_SCORE_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TOOL_HEALTH_EVENTS_JSONL="${CHAT_TOOL_HEALTH_EVENTS_JSONL:-$ROOT_DIR/var/tool_health/tool_events.jsonl}"
+    CHAT_TOOL_HEALTH_WINDOW_HOURS="${CHAT_TOOL_HEALTH_WINDOW_HOURS:-24}"
+    CHAT_TOOL_HEALTH_LIMIT="${CHAT_TOOL_HEALTH_LIMIT:-100000}"
+    CHAT_TOOL_HEALTH_OUT_DIR="${CHAT_TOOL_HEALTH_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TOOL_HEALTH_MAX_LATENCY_P95_MS="${CHAT_TOOL_HEALTH_MAX_LATENCY_P95_MS:-1500}"
+    CHAT_TOOL_HEALTH_MAX_ERROR_RATIO="${CHAT_TOOL_HEALTH_MAX_ERROR_RATIO:-0.20}"
+    CHAT_TOOL_HEALTH_MIN_WINDOW="${CHAT_TOOL_HEALTH_MIN_WINDOW:-0}"
+    CHAT_TOOL_HEALTH_MIN_EVENT_TOTAL="${CHAT_TOOL_HEALTH_MIN_EVENT_TOTAL:-0}"
+    CHAT_TOOL_HEALTH_MIN_TOOL_TOTAL="${CHAT_TOOL_HEALTH_MIN_TOOL_TOTAL:-0}"
+    CHAT_TOOL_HEALTH_MIN_TOOL_SCORE="${CHAT_TOOL_HEALTH_MIN_TOOL_SCORE:-0.0}"
+    CHAT_TOOL_HEALTH_MIN_AVG_SCORE="${CHAT_TOOL_HEALTH_MIN_AVG_SCORE:-0.0}"
+    CHAT_TOOL_HEALTH_MAX_UNHEALTHY_TOTAL="${CHAT_TOOL_HEALTH_MAX_UNHEALTHY_TOTAL:-1000000}"
+    CHAT_TOOL_HEALTH_MAX_MISSING_TELEMETRY_TOTAL="${CHAT_TOOL_HEALTH_MAX_MISSING_TELEMETRY_TOTAL:-1000000}"
+    CHAT_TOOL_HEALTH_MAX_STALE_MINUTES="${CHAT_TOOL_HEALTH_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_tool_health_score_guard.py" \
+      --events-jsonl "$CHAT_TOOL_HEALTH_EVENTS_JSONL" \
+      --window-hours "$CHAT_TOOL_HEALTH_WINDOW_HOURS" \
+      --limit "$CHAT_TOOL_HEALTH_LIMIT" \
+      --out "$CHAT_TOOL_HEALTH_OUT_DIR" \
+      --max-latency-p95-ms "$CHAT_TOOL_HEALTH_MAX_LATENCY_P95_MS" \
+      --max-error-ratio "$CHAT_TOOL_HEALTH_MAX_ERROR_RATIO" \
+      --min-window "$CHAT_TOOL_HEALTH_MIN_WINDOW" \
+      --min-event-total "$CHAT_TOOL_HEALTH_MIN_EVENT_TOTAL" \
+      --min-tool-total "$CHAT_TOOL_HEALTH_MIN_TOOL_TOTAL" \
+      --min-tool-health-score "$CHAT_TOOL_HEALTH_MIN_TOOL_SCORE" \
+      --min-average-health-score "$CHAT_TOOL_HEALTH_MIN_AVG_SCORE" \
+      --max-unhealthy-tool-total "$CHAT_TOOL_HEALTH_MAX_UNHEALTHY_TOTAL" \
+      --max-missing-telemetry-total "$CHAT_TOOL_HEALTH_MAX_MISSING_TELEMETRY_TOTAL" \
+      --max-stale-minutes "$CHAT_TOOL_HEALTH_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat tool health score guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TOOL_HEALTH_SCORE_GUARD=1 to enable"
+fi
+
+echo "[133/135] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -4951,7 +4992,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[133/134] E2E tests (optional)"
+echo "[134/135] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -4962,4 +5003,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[134/134] Done"
+echo "[135/135] Done"

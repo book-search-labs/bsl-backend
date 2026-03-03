@@ -3644,6 +3644,31 @@ python scripts/eval/chat_crosslingual_fallback_policy_guard.py \
 - CI 옵션:
   - `RUN_CHAT_CROSSLINGUAL_FALLBACK_POLICY_GUARD=1 ./scripts/test.sh`
 
+## Chat tool health score guard gate (B-0389, Bundle 1)
+- tool 성공률/지연/오류/변동성 기반 health score를 검증:
+```bash
+python scripts/eval/chat_tool_health_score_guard.py \
+  --events-jsonl var/tool_health/tool_events.jsonl \
+  --window-hours 24 \
+  --max-latency-p95-ms 1500 \
+  --max-error-ratio 0.20 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-tool-total 2 \
+  --min-tool-health-score 0.60 \
+  --min-average-health-score 0.70 \
+  --max-unhealthy-tool-total 0 \
+  --max-missing-telemetry-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - tool별 health score, success/error ratio, latency p95
+  - 평균 health score 및 unhealthy tool 총량
+  - telemetry 누락 총량
+- CI 옵션:
+  - `RUN_CHAT_TOOL_HEALTH_SCORE_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

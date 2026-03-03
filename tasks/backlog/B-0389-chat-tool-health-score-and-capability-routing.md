@@ -47,3 +47,13 @@ Add capability-aware tool routing for chat:
 - Score tool health from reliability and latency signals.
 - Route intents to tools that satisfy capability and health thresholds.
 - Support safe degradation and operator overrides with full telemetry.
+
+## Implementation Update (2026-03-04, Bundle 1)
+- [x] Tool health score guard gate 추가
+  - `scripts/eval/chat_tool_health_score_guard.py`
+  - 성공률/지연/오류/변동성 기반 health score 산출 및 임계 검증
+  - unhealthy tool 총량 및 telemetry 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_tool_health_score_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TOOL_HEALTH_SCORE_GUARD=1 ./scripts/test.sh`
