@@ -3096,6 +3096,29 @@ python scripts/eval/chat_claim_verifier_guard.py \
 - CI 옵션:
   - `RUN_CHAT_CLAIM_VERIFIER_GUARD=1 ./scripts/test.sh`
 
+## Chat output policy consistency guard gate (B-0383, Bundle 3)
+- 정책 엔진 결정(allow/deny/clarify)과 최종 응답 결정의 일관성 검증:
+```bash
+python scripts/eval/chat_output_policy_consistency_guard.py \
+  --events-jsonl var/chat_output_guard/output_policy_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-policy-checked-total 20 \
+  --min-consistency-ratio 0.99 \
+  --max-mismatch-total 0 \
+  --max-deny-bypass-total 0 \
+  --max-clarify-ignored-total 0 \
+  --max-missing-reason-code-total 0 \
+  --max-downgrade-without-reason-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - policy consistency ratio, mismatch/deny-bypass/clarify-ignored 건수
+  - mismatch 및 downgrade 시 reason_code 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_OUTPUT_POLICY_CONSISTENCY_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

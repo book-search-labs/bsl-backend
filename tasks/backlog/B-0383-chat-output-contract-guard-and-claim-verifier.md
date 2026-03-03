@@ -85,3 +85,13 @@ Add a final output guard for chat responses:
   - `scripts/eval/test_chat_claim_verifier_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_CLAIM_VERIFIER_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Output policy consistency guard gate 추가
+  - `scripts/eval/chat_output_policy_consistency_guard.py`
+  - policy allow/deny/clarify 대비 output 결정 일관성 검증
+  - deny bypass, clarify ignored, reason_code 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_output_policy_consistency_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_OUTPUT_POLICY_CONSISTENCY_GUARD=1 ./scripts/test.sh`
