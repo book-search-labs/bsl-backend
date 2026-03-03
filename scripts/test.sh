@@ -5528,7 +5528,7 @@ else
   echo "  - set RUN_CHAT_INTERVENTION_RECOVERY_FEEDBACK_GUARD=1 to enable"
 fi
 
-echo "[148/157] Chat resolution plan compiler guard gate (optional)"
+echo "[148/158] Chat resolution plan compiler guard gate (optional)"
 if [ "${RUN_CHAT_RESOLUTION_PLAN_COMPILER_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_RESOLUTION_PLAN_EVENTS_JSONL="${CHAT_RESOLUTION_PLAN_EVENTS_JSONL:-$ROOT_DIR/var/resolution_plan/plan_events.jsonl}"
@@ -5563,7 +5563,7 @@ else
   echo "  - set RUN_CHAT_RESOLUTION_PLAN_COMPILER_GUARD=1 to enable"
 fi
 
-echo "[149/157] Chat action simulation guard gate (optional)"
+echo "[149/158] Chat action simulation guard gate (optional)"
 if [ "${RUN_CHAT_ACTION_SIMULATION_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_ACTION_SIM_EVENTS_JSONL="${CHAT_ACTION_SIM_EVENTS_JSONL:-$ROOT_DIR/var/resolution_plan/simulation_events.jsonl}"
@@ -5600,7 +5600,7 @@ else
   echo "  - set RUN_CHAT_ACTION_SIMULATION_GUARD=1 to enable"
 fi
 
-echo "[150/157] Chat execution safety contract guard gate (optional)"
+echo "[150/158] Chat execution safety contract guard gate (optional)"
 if [ "${RUN_CHAT_EXECUTION_SAFETY_CONTRACT_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_EXEC_SAFETY_EVENTS_JSONL="${CHAT_EXEC_SAFETY_EVENTS_JSONL:-$ROOT_DIR/var/resolution_plan/execution_safety_events.jsonl}"
@@ -5641,7 +5641,7 @@ else
   echo "  - set RUN_CHAT_EXECUTION_SAFETY_CONTRACT_GUARD=1 to enable"
 fi
 
-echo "[151/157] Chat plan persistence resume guard gate (optional)"
+echo "[151/158] Chat plan persistence resume guard gate (optional)"
 if [ "${RUN_CHAT_PLAN_PERSISTENCE_RESUME_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_PLAN_PERSISTENCE_EVENTS_JSONL="${CHAT_PLAN_PERSISTENCE_EVENTS_JSONL:-$ROOT_DIR/var/resolution_plan/plan_persistence_events.jsonl}"
@@ -5678,7 +5678,7 @@ else
   echo "  - set RUN_CHAT_PLAN_PERSISTENCE_RESUME_GUARD=1 to enable"
 fi
 
-echo "[152/157] Chat actionability scorer guard gate (optional)"
+echo "[152/158] Chat actionability scorer guard gate (optional)"
 if [ "${RUN_CHAT_ACTIONABILITY_SCORER_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_ACTIONABILITY_SCORER_EVENTS_JSONL="${CHAT_ACTIONABILITY_SCORER_EVENTS_JSONL:-$ROOT_DIR/var/actionability/scorer_events.jsonl}"
@@ -5719,7 +5719,7 @@ else
   echo "  - set RUN_CHAT_ACTIONABILITY_SCORER_GUARD=1 to enable"
 fi
 
-echo "[153/157] Chat actionability repair loop guard gate (optional)"
+echo "[153/158] Chat actionability repair loop guard gate (optional)"
 if [ "${RUN_CHAT_ACTIONABILITY_REPAIR_LOOP_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_ACTIONABILITY_REPAIR_EVENTS_JSONL="${CHAT_ACTIONABILITY_REPAIR_EVENTS_JSONL:-$ROOT_DIR/var/actionability/repair_loop_events.jsonl}"
@@ -5762,7 +5762,7 @@ else
   echo "  - set RUN_CHAT_ACTIONABILITY_REPAIR_LOOP_GUARD=1 to enable"
 fi
 
-echo "[154/157] Chat claim-action consistency guard gate (optional)"
+echo "[154/158] Chat claim-action consistency guard gate (optional)"
 if [ "${RUN_CHAT_CLAIM_ACTION_CONSISTENCY_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CLAIM_ACTION_EVENTS_JSONL="${CHAT_CLAIM_ACTION_EVENTS_JSONL:-$ROOT_DIR/var/actionability/claim_action_events.jsonl}"
@@ -5801,7 +5801,46 @@ else
   echo "  - set RUN_CHAT_CLAIM_ACTION_CONSISTENCY_GUARD=1 to enable"
 fi
 
-echo "[155/157] Canonical quality checks (optional)"
+echo "[155/158] Chat actionability release gate guard (optional)"
+if [ "${RUN_CHAT_ACTIONABILITY_RELEASE_GATE_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_ACTIONABILITY_RELEASE_EVENTS_JSONL="${CHAT_ACTIONABILITY_RELEASE_EVENTS_JSONL:-$ROOT_DIR/var/actionability/release_gate_events.jsonl}"
+    CHAT_ACTIONABILITY_RELEASE_WINDOW_HOURS="${CHAT_ACTIONABILITY_RELEASE_WINDOW_HOURS:-24}"
+    CHAT_ACTIONABILITY_RELEASE_LIMIT="${CHAT_ACTIONABILITY_RELEASE_LIMIT:-100000}"
+    CHAT_ACTIONABILITY_RELEASE_OUT_DIR="${CHAT_ACTIONABILITY_RELEASE_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_ACTIONABILITY_RELEASE_MIN_SAMPLES_PER_BUCKET="${CHAT_ACTIONABILITY_RELEASE_MIN_SAMPLES_PER_BUCKET:-20}"
+    CHAT_ACTIONABILITY_RELEASE_MIN_WINDOW="${CHAT_ACTIONABILITY_RELEASE_MIN_WINDOW:-0}"
+    CHAT_ACTIONABILITY_RELEASE_MIN_EVENT_TOTAL="${CHAT_ACTIONABILITY_RELEASE_MIN_EVENT_TOTAL:-0}"
+    CHAT_ACTIONABILITY_RELEASE_MIN_BLOCK_COVERAGE_RATIO="${CHAT_ACTIONABILITY_RELEASE_MIN_BLOCK_COVERAGE_RATIO:-0.0}"
+    CHAT_ACTIONABILITY_RELEASE_MIN_PARTIAL_ISOLATION_RATIO="${CHAT_ACTIONABILITY_RELEASE_MIN_PARTIAL_ISOLATION_RATIO:-0.0}"
+    CHAT_ACTIONABILITY_RELEASE_MAX_MISSED_BLOCK_TOTAL="${CHAT_ACTIONABILITY_RELEASE_MAX_MISSED_BLOCK_TOTAL:-1000000}"
+    CHAT_ACTIONABILITY_RELEASE_MAX_PARTIAL_ISOLATION_MISSING_TOTAL="${CHAT_ACTIONABILITY_RELEASE_MAX_PARTIAL_ISOLATION_MISSING_TOTAL:-1000000}"
+    CHAT_ACTIONABILITY_RELEASE_MAX_FALSE_BLOCK_RATIO="${CHAT_ACTIONABILITY_RELEASE_MAX_FALSE_BLOCK_RATIO:-1.0}"
+    CHAT_ACTIONABILITY_RELEASE_MAX_STALE_MINUTES="${CHAT_ACTIONABILITY_RELEASE_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_actionability_release_gate_guard.py" \
+      --events-jsonl "$CHAT_ACTIONABILITY_RELEASE_EVENTS_JSONL" \
+      --window-hours "$CHAT_ACTIONABILITY_RELEASE_WINDOW_HOURS" \
+      --limit "$CHAT_ACTIONABILITY_RELEASE_LIMIT" \
+      --out "$CHAT_ACTIONABILITY_RELEASE_OUT_DIR" \
+      --min-samples-per-bucket "$CHAT_ACTIONABILITY_RELEASE_MIN_SAMPLES_PER_BUCKET" \
+      --min-window "$CHAT_ACTIONABILITY_RELEASE_MIN_WINDOW" \
+      --min-event-total "$CHAT_ACTIONABILITY_RELEASE_MIN_EVENT_TOTAL" \
+      --min-block-coverage-ratio "$CHAT_ACTIONABILITY_RELEASE_MIN_BLOCK_COVERAGE_RATIO" \
+      --min-partial-isolation-ratio "$CHAT_ACTIONABILITY_RELEASE_MIN_PARTIAL_ISOLATION_RATIO" \
+      --max-missed-block-total "$CHAT_ACTIONABILITY_RELEASE_MAX_MISSED_BLOCK_TOTAL" \
+      --max-partial-isolation-missing-total "$CHAT_ACTIONABILITY_RELEASE_MAX_PARTIAL_ISOLATION_MISSING_TOTAL" \
+      --max-false-block-ratio "$CHAT_ACTIONABILITY_RELEASE_MAX_FALSE_BLOCK_RATIO" \
+      --max-stale-minutes "$CHAT_ACTIONABILITY_RELEASE_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat actionability release gate guard"
+  fi
+else
+  echo "  - set RUN_CHAT_ACTIONABILITY_RELEASE_GATE_GUARD=1 to enable"
+fi
+
+echo "[156/158] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -5812,7 +5851,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[156/157] E2E tests (optional)"
+echo "[157/158] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -5823,4 +5862,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[157/157] Done"
+echo "[158/158] Done"

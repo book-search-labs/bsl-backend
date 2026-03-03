@@ -81,3 +81,13 @@ Add actionability guarantees for production chat:
   - `scripts/eval/test_chat_claim_action_consistency_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_CLAIM_ACTION_CONSISTENCY_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 4)
+- [x] Release gate integration guard 추가
+  - `scripts/eval/chat_actionability_release_gate_guard.py`
+  - 임계치 초과 intent 버킷의 canary 승격 차단(missed block) 검증
+  - 저품질 버킷 부분 격리/롤백 미적용 및 false block 비율 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_actionability_release_gate_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_ACTIONABILITY_RELEASE_GATE_GUARD=1 ./scripts/test.sh`

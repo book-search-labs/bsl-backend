@@ -4180,6 +4180,30 @@ python scripts/eval/chat_claim_action_consistency_guard.py \
 - CI 옵션:
   - `RUN_CHAT_CLAIM_ACTION_CONSISTENCY_GUARD=1 ./scripts/test.sh`
 
+## Chat actionability release gate guard (B-0396, Bundle 4)
+- 저품질 intent 버킷의 canary 승격 차단/부분 격리(rollback) 연동을 검증:
+```bash
+python scripts/eval/chat_actionability_release_gate_guard.py \
+  --events-jsonl var/actionability/release_gate_events.jsonl \
+  --window-hours 24 \
+  --min-samples-per-bucket 20 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-block-coverage-ratio 1.0 \
+  --min-partial-isolation-ratio 1.0 \
+  --max-missed-block-total 0 \
+  --max-partial-isolation-missing-total 0 \
+  --max-false-block-ratio 0.05 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - block coverage ratio / partial isolation ratio
+  - false block ratio
+  - missed block / isolation missing 건수
+- CI 옵션:
+  - `RUN_CHAT_ACTIONABILITY_RELEASE_GATE_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
