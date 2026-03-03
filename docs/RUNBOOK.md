@@ -2920,6 +2920,30 @@ python scripts/eval/chat_correction_retrieval_integration.py \
 - CI 옵션:
   - `RUN_CHAT_CORRECTION_RETRIEVAL_INTEGRATION=1 ./scripts/test.sh`
 
+## Chat correction quality safeguards gate (B-0381, Bundle 4)
+- 교정 문구 과적용/오탐 신고/긴급차단/롤백 SLA 위반을 검증:
+```bash
+python scripts/eval/chat_correction_quality_safeguards.py \
+  --events-jsonl var/chat_correction/correction_quality_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-event-total 20 \
+  --max-overapply-total 0 \
+  --max-precision-gate-fail-total 0 \
+  --max-false-positive-open-total 0 \
+  --max-rollback-sla-breach-total 0 \
+  --max-missing-audit-total 0 \
+  --max-p95-report-to-rollback-minutes 30 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - overapply / precision gate fail 건수
+  - false-positive open 건수 및 rollback SLA breach 건수
+  - correction 품질 이벤트 audit 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_CORRECTION_QUALITY_SAFEGUARDS=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

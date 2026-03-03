@@ -81,3 +81,13 @@ Implement approved correction memory for chat:
   - `scripts/eval/test_chat_correction_retrieval_integration.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_CORRECTION_RETRIEVAL_INTEGRATION=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Correction quality safeguards gate 추가
+  - `scripts/eval/chat_correction_quality_safeguards.py`
+  - correction 과적용(overapply) 및 precision gate fail 검증
+  - false-positive open/rollback SLA breach/audit 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_correction_quality_safeguards.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_CORRECTION_QUALITY_SAFEGUARDS=1 ./scripts/test.sh`
