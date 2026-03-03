@@ -69,3 +69,14 @@ Strengthen Korean chat safety evaluation:
   - `scripts/eval/test_chat_adversarial_safety_metrics.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_ADVERSARIAL_SAFETY_METRICS=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] PR/Release stage gate 추가
+  - `scripts/eval/chat_adversarial_ci_gate.py`
+  - Bundle 1(coverage) + Bundle 2(metrics) 리포트를 결합해 stage별 임계치 평가
+  - report 누락(require-reports), evidence stale, stage별 quality threshold 위반을 게이트화
+  - gate 모드에서 `PASS/BLOCK` decision과 failure reason 출력
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_adversarial_ci_gate.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_ADVERSARIAL_CI_GATE=1 ./scripts/test.sh`
