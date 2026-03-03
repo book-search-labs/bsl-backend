@@ -62,3 +62,14 @@ Implement a stateful chat workflow engine for commerce support:
   - `scripts/eval/test_chat_workflow_state_model.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_WORKFLOW_STATE_MODEL=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Workflow plan-and-execute gate 추가
+  - `scripts/eval/chat_workflow_plan_execute.py`
+  - 단계 순서(`INTENT_CONFIRM -> INPUT_COLLECTION -> VALIDATION -> EXECUTE`)의 일관성과 `validation-before-execute` 준수율 계산
+  - step 실패 후 재진입(reentry) 성공률과 단계별 에러 분포를 집계
+  - gate 모드에서 sequence/order 위반, 검증 누락 실행, step 오류 증가, 재진입 성공률 저하, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_workflow_plan_execute.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_WORKFLOW_PLAN_EXECUTE=1 ./scripts/test.sh`

@@ -1574,6 +1574,26 @@ python scripts/eval/chat_workflow_state_model.py \
 - CI 옵션:
   - `RUN_CHAT_WORKFLOW_STATE_MODEL=1 ./scripts/test.sh`
 
+## Workflow plan-execute gate (B-0367, Bundle 2)
+- 워크플로우 단계 순서(의도확인→입력수집→검증→실행)와 재진입 성공률을 검증:
+```bash
+python scripts/eval/chat_workflow_plan_execute.py \
+  --events-jsonl var/chat_workflow/workflow_events.jsonl \
+  --window-hours 24 \
+  --min-sequence-valid-ratio 0.95 \
+  --min-validation-before-execute-ratio 0.99 \
+  --max-step-error-total 0 \
+  --min-reentry-success-ratio 0.80 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - sequence valid ratio
+  - validation-before-execute ratio
+  - step error total / reentry success ratio
+- CI 옵션:
+  - `RUN_CHAT_WORKFLOW_PLAN_EXECUTE=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
