@@ -2247,6 +2247,30 @@ python scripts/eval/chat_reasoning_budget_adaptive_policy.py \
 - CI 옵션:
   - `RUN_CHAT_REASONING_BUDGET_ADAPTIVE_POLICY=1 ./scripts/test.sh`
 
+## Reasoning budget audit explainability gate (B-0374, Bundle 4)
+- budget 소진/중단 이벤트의 감사·설명 필드 완전성을 검증:
+```bash
+python scripts/eval/chat_reasoning_budget_audit_explainability.py \
+  --events-jsonl var/chat_budget/audit_events.jsonl \
+  --window-hours 24 \
+  --min-window 100 \
+  --max-missing-reason-code-total 0 \
+  --max-unknown-reason-code-total 0 \
+  --max-missing-trace-id-total 0 \
+  --max-missing-request-id-total 0 \
+  --max-missing-budget-type-total 0 \
+  --max-explainability-missing-total 0 \
+  --max-dashboard-tag-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - reason_code/trace_id/request_id/budget_type 누락 건수
+  - explainability payload 및 dashboard 태그 누락 건수
+  - audit evidence freshness(stale minutes)
+- CI 옵션:
+  - `RUN_CHAT_REASONING_BUDGET_AUDIT_EXPLAINABILITY=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

@@ -80,3 +80,14 @@ Implement reasoning budget controls for chat agents:
   - `scripts/eval/test_chat_reasoning_budget_adaptive_policy.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_REASONING_BUDGET_ADAPTIVE_POLICY=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Audit explainability gate 추가
+  - `scripts/eval/chat_reasoning_budget_audit_explainability.py`
+  - reason_code/trace_id/request_id/budget_type/audit explain payload 누락 검증
+  - dashboard 태그(intent/tenant) 누락을 게이트화
+  - gate 모드에서 stale evidence 포함 임계치 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_reasoning_budget_audit_explainability.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_REASONING_BUDGET_AUDIT_EXPLAINABILITY=1 ./scripts/test.sh`
