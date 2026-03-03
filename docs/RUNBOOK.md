@@ -1680,6 +1680,28 @@ python scripts/eval/chat_trust_rerank_integration.py \
 - CI 옵션:
   - `RUN_CHAT_TRUST_RERANK_INTEGRATION=1 ./scripts/test.sh`
 
+## Answer reliability label gate (B-0368, Bundle 3)
+- 답변 신뢰도 라벨(`HIGH/MEDIUM/LOW`) 품질과 LOW 가드레일 준수(확답 금지, 안내 경로 제공)를 검증:
+```bash
+python scripts/eval/chat_answer_reliability_label.py \
+  --events-jsonl var/chat_trust/answer_reliability_audit.jsonl \
+  --window-hours 24 \
+  --max-invalid-level-total 0 \
+  --max-label-shift-ratio 0.10 \
+  --max-low-definitive-claim-total 0 \
+  --max-low-missing-guidance-total 0 \
+  --max-low-missing-reason-total 0 \
+  --min-low-guardrail-coverage-ratio 0.95 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - reliability label 분포(HIGH/MEDIUM/LOW)
+  - LOW 응답의 확답 문구 위반/가이드 누락/reason_code 누락 건수
+  - label shift ratio(명시 라벨 vs 파생 라벨)와 guardrail coverage ratio
+- CI 옵션:
+  - `RUN_CHAT_ANSWER_RELIABILITY_LABEL=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

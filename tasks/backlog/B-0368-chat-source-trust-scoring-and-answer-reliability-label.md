@@ -81,3 +81,14 @@ Add trust-aware chat grounding:
   - `scripts/eval/test_chat_trust_rerank_integration.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TRUST_RERANK_INTEGRATION=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Answer reliability label gate 추가
+  - `scripts/eval/chat_answer_reliability_label.py`
+  - 답변별 신뢰도 라벨(`HIGH/MEDIUM/LOW`)을 집계하고 명시 라벨과 파생 라벨 간 shift 비율을 측정
+  - LOW 라벨에서 확답 문구, guidance 누락, reason_code 누락을 검증해 안전 fallback 일관성을 게이트화
+  - gate 모드에서 invalid label/label drift/LOW 가드레일 위반/stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_answer_reliability_label.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_ANSWER_RELIABILITY_LABEL=1 ./scripts/test.sh`
