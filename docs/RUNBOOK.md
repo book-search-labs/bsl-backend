@@ -1594,6 +1594,25 @@ python scripts/eval/chat_workflow_plan_execute.py \
 - CI 옵션:
   - `RUN_CHAT_WORKFLOW_PLAN_EXECUTE=1 ./scripts/test.sh`
 
+## Workflow confirmation checkpoint gate (B-0367, Bundle 3)
+- 민감 액션 실행 전 최종 확인 누락과 timeout 자동취소 정책 준수 여부를 검증:
+```bash
+python scripts/eval/chat_workflow_confirmation_checkpoint.py \
+  --events-jsonl var/chat_workflow/workflow_events.jsonl \
+  --window-hours 24 \
+  --max-execute-without-confirmation-total 0 \
+  --min-timeout-auto-cancel-ratio 1.0 \
+  --max-confirmation-latency-p95-sec 300 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - sensitive execute 대비 무확인 실행 건수
+  - confirmation timeout 대비 auto-cancel 비율
+  - confirmation latency p95
+- CI 옵션:
+  - `RUN_CHAT_WORKFLOW_CONFIRM_CHECKPOINT=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

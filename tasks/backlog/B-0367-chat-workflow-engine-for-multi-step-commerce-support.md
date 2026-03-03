@@ -73,3 +73,14 @@ Implement a stateful chat workflow engine for commerce support:
   - `scripts/eval/test_chat_workflow_plan_execute.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_WORKFLOW_PLAN_EXECUTE=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Workflow confirmation checkpoint gate 추가
+  - `scripts/eval/chat_workflow_confirmation_checkpoint.py`
+  - 민감 워크플로우 실행 전 confirmation 누락(`execute_without_confirmation_total`)을 탐지
+  - confirmation timeout 이후 auto-cancel 실행 비율과 확인 지연 p95를 계산
+  - gate 모드에서 무확인 실행, timeout auto-cancel 미준수, 확인 지연 과다, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_workflow_confirmation_checkpoint.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_WORKFLOW_CONFIRM_CHECKPOINT=1 ./scripts/test.sh`
