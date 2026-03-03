@@ -47,3 +47,13 @@ Secure the prompt supply chain for chat:
 - Sign prompt/policy artifacts and verify signatures at deploy/runtime.
 - Block tampered bundles and fall back to trusted versions.
 - Integrate key rotation, audit logs, and incident signaling.
+
+## Implementation Update (2026-03-04, Bundle 1)
+- [x] Prompt signature verification guard gate 추가
+  - `scripts/eval/chat_prompt_signature_verification_guard.py`
+  - signature verify fail/unsigned/untrusted/checksum mismatch 검증
+  - verify fail 시 deploy/load 차단(unblocked tampered=0) 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_prompt_signature_verification_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_PROMPT_SIGNATURE_VERIFICATION_GUARD=1 ./scripts/test.sh`

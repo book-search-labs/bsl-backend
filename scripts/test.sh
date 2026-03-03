@@ -4393,7 +4393,7 @@ else
   echo "  - set RUN_CHAT_TICKET_KNOWLEDGE_APPROVAL_ROLLBACK_GUARD=1 to enable"
 fi
 
-echo "[119/122] Chat ticket knowledge retrieval impact guard gate (optional)"
+echo "[119/123] Chat ticket knowledge retrieval impact guard gate (optional)"
 if [ "${RUN_CHAT_TICKET_KNOWLEDGE_RETRIEVAL_IMPACT_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TICKET_KNOWLEDGE_RETRIEVAL_EVENTS_JSONL="${CHAT_TICKET_KNOWLEDGE_RETRIEVAL_EVENTS_JSONL:-$ROOT_DIR/var/chat_ticket_knowledge/retrieval_integration_events.jsonl}"
@@ -4432,7 +4432,48 @@ else
   echo "  - set RUN_CHAT_TICKET_KNOWLEDGE_RETRIEVAL_IMPACT_GUARD=1 to enable"
 fi
 
-echo "[120/122] Canonical quality checks (optional)"
+echo "[120/123] Chat prompt signature verification guard gate (optional)"
+if [ "${RUN_CHAT_PROMPT_SIGNATURE_VERIFICATION_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_PROMPT_SIGNATURE_EVENTS_JSONL="${CHAT_PROMPT_SIGNATURE_EVENTS_JSONL:-$ROOT_DIR/var/chat_prompt_supply/signature_events.jsonl}"
+    CHAT_PROMPT_SIGNATURE_WINDOW_HOURS="${CHAT_PROMPT_SIGNATURE_WINDOW_HOURS:-24}"
+    CHAT_PROMPT_SIGNATURE_LIMIT="${CHAT_PROMPT_SIGNATURE_LIMIT:-50000}"
+    CHAT_PROMPT_SIGNATURE_OUT_DIR="${CHAT_PROMPT_SIGNATURE_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_PROMPT_SIGNATURE_MIN_WINDOW="${CHAT_PROMPT_SIGNATURE_MIN_WINDOW:-0}"
+    CHAT_PROMPT_SIGNATURE_MIN_ARTIFACT_TOTAL="${CHAT_PROMPT_SIGNATURE_MIN_ARTIFACT_TOTAL:-0}"
+    CHAT_PROMPT_SIGNATURE_MIN_VERIFIED_RATIO="${CHAT_PROMPT_SIGNATURE_MIN_VERIFIED_RATIO:-0.0}"
+    CHAT_PROMPT_SIGNATURE_MAX_VERIFY_FAIL_TOTAL="${CHAT_PROMPT_SIGNATURE_MAX_VERIFY_FAIL_TOTAL:-1000000}"
+    CHAT_PROMPT_SIGNATURE_MAX_UNSIGNED_TOTAL="${CHAT_PROMPT_SIGNATURE_MAX_UNSIGNED_TOTAL:-1000000}"
+    CHAT_PROMPT_SIGNATURE_MAX_UNTRUSTED_SIGNER_TOTAL="${CHAT_PROMPT_SIGNATURE_MAX_UNTRUSTED_SIGNER_TOTAL:-1000000}"
+    CHAT_PROMPT_SIGNATURE_MAX_CHECKSUM_MISMATCH_TOTAL="${CHAT_PROMPT_SIGNATURE_MAX_CHECKSUM_MISMATCH_TOTAL:-1000000}"
+    CHAT_PROMPT_SIGNATURE_MAX_UNBLOCKED_TAMPERED_TOTAL="${CHAT_PROMPT_SIGNATURE_MAX_UNBLOCKED_TAMPERED_TOTAL:-1000000}"
+    CHAT_PROMPT_SIGNATURE_MAX_REASON_CODE_MISSING_TOTAL="${CHAT_PROMPT_SIGNATURE_MAX_REASON_CODE_MISSING_TOTAL:-1000000}"
+    CHAT_PROMPT_SIGNATURE_MAX_STALE_MINUTES="${CHAT_PROMPT_SIGNATURE_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_prompt_signature_verification_guard.py" \
+      --events-jsonl "$CHAT_PROMPT_SIGNATURE_EVENTS_JSONL" \
+      --window-hours "$CHAT_PROMPT_SIGNATURE_WINDOW_HOURS" \
+      --limit "$CHAT_PROMPT_SIGNATURE_LIMIT" \
+      --out "$CHAT_PROMPT_SIGNATURE_OUT_DIR" \
+      --min-window "$CHAT_PROMPT_SIGNATURE_MIN_WINDOW" \
+      --min-artifact-total "$CHAT_PROMPT_SIGNATURE_MIN_ARTIFACT_TOTAL" \
+      --min-signature-verified-ratio "$CHAT_PROMPT_SIGNATURE_MIN_VERIFIED_RATIO" \
+      --max-signature-verify-fail-total "$CHAT_PROMPT_SIGNATURE_MAX_VERIFY_FAIL_TOTAL" \
+      --max-unsigned-artifact-total "$CHAT_PROMPT_SIGNATURE_MAX_UNSIGNED_TOTAL" \
+      --max-untrusted-signer-total "$CHAT_PROMPT_SIGNATURE_MAX_UNTRUSTED_SIGNER_TOTAL" \
+      --max-checksum-mismatch-total "$CHAT_PROMPT_SIGNATURE_MAX_CHECKSUM_MISMATCH_TOTAL" \
+      --max-unblocked-tampered-total "$CHAT_PROMPT_SIGNATURE_MAX_UNBLOCKED_TAMPERED_TOTAL" \
+      --max-reason-code-missing-total "$CHAT_PROMPT_SIGNATURE_MAX_REASON_CODE_MISSING_TOTAL" \
+      --max-stale-minutes "$CHAT_PROMPT_SIGNATURE_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat prompt signature verification guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_PROMPT_SIGNATURE_VERIFICATION_GUARD=1 to enable"
+fi
+
+echo "[121/123] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -4443,7 +4484,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[121/122] E2E tests (optional)"
+echo "[122/123] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -4454,4 +4495,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[122/122] Done"
+echo "[123/123] Done"

@@ -3342,6 +3342,30 @@ python scripts/eval/chat_ticket_knowledge_retrieval_impact_guard.py \
 - CI 옵션:
   - `RUN_CHAT_TICKET_KNOWLEDGE_RETRIEVAL_IMPACT_GUARD=1 ./scripts/test.sh`
 
+## Chat prompt signature verification guard gate (B-0386, Bundle 1)
+- 프롬프트/정책 번들 서명검증 실패 시 로드/배포 차단 여부를 검증:
+```bash
+python scripts/eval/chat_prompt_signature_verification_guard.py \
+  --events-jsonl var/chat_prompt_supply/signature_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-artifact-total 20 \
+  --min-signature-verified-ratio 0.99 \
+  --max-signature-verify-fail-total 0 \
+  --max-unsigned-artifact-total 0 \
+  --max-untrusted-signer-total 0 \
+  --max-checksum-mismatch-total 0 \
+  --max-unblocked-tampered-total 0 \
+  --max-reason-code-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - signature verified ratio, verify fail/unsigned/untrusted/checksum mismatch 건수
+  - unblocked tampered 건수(차단 실패) 및 reason_code 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_PROMPT_SIGNATURE_VERIFICATION_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
