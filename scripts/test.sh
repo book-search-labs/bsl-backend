@@ -4940,7 +4940,7 @@ else
   echo "  - set RUN_CHAT_CROSSLINGUAL_FALLBACK_POLICY_GUARD=1 to enable"
 fi
 
-echo "[132/140] Chat tool health score guard gate (optional)"
+echo "[132/141] Chat tool health score guard gate (optional)"
 if [ "${RUN_CHAT_TOOL_HEALTH_SCORE_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_HEALTH_EVENTS_JSONL="${CHAT_TOOL_HEALTH_EVENTS_JSONL:-$ROOT_DIR/var/tool_health/tool_events.jsonl}"
@@ -4981,7 +4981,7 @@ else
   echo "  - set RUN_CHAT_TOOL_HEALTH_SCORE_GUARD=1 to enable"
 fi
 
-echo "[133/140] Chat tool capability routing guard gate (optional)"
+echo "[133/141] Chat tool capability routing guard gate (optional)"
 if [ "${RUN_CHAT_TOOL_CAPABILITY_ROUTING_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_CAP_ROUTING_EVENTS_JSONL="${CHAT_TOOL_CAP_ROUTING_EVENTS_JSONL:-$ROOT_DIR/var/tool_health/capability_routing_events.jsonl}"
@@ -5016,7 +5016,7 @@ else
   echo "  - set RUN_CHAT_TOOL_CAPABILITY_ROUTING_GUARD=1 to enable"
 fi
 
-echo "[134/140] Chat tool degrade strategy guard gate (optional)"
+echo "[134/141] Chat tool degrade strategy guard gate (optional)"
 if [ "${RUN_CHAT_TOOL_DEGRADE_STRATEGY_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_DEGRADE_EVENTS_JSONL="${CHAT_TOOL_DEGRADE_EVENTS_JSONL:-$ROOT_DIR/var/tool_health/degrade_strategy_events.jsonl}"
@@ -5051,7 +5051,7 @@ else
   echo "  - set RUN_CHAT_TOOL_DEGRADE_STRATEGY_GUARD=1 to enable"
 fi
 
-echo "[135/140] Chat tool override audit guard gate (optional)"
+echo "[135/141] Chat tool override audit guard gate (optional)"
 if [ "${RUN_CHAT_TOOL_OVERRIDE_AUDIT_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_OVERRIDE_EVENTS_JSONL="${CHAT_TOOL_OVERRIDE_EVENTS_JSONL:-$ROOT_DIR/var/tool_health/override_events.jsonl}"
@@ -5090,7 +5090,7 @@ else
   echo "  - set RUN_CHAT_TOOL_OVERRIDE_AUDIT_GUARD=1 to enable"
 fi
 
-echo "[136/140] Chat answer risk band model guard gate (optional)"
+echo "[136/141] Chat answer risk band model guard gate (optional)"
 if [ "${RUN_CHAT_ANSWER_RISK_BAND_MODEL_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_ANSWER_RISK_BAND_EVENTS_JSONL="${CHAT_ANSWER_RISK_BAND_EVENTS_JSONL:-$ROOT_DIR/var/risk_banding/risk_band_events.jsonl}"
@@ -5123,7 +5123,7 @@ else
   echo "  - set RUN_CHAT_ANSWER_RISK_BAND_MODEL_GUARD=1 to enable"
 fi
 
-echo "[137/140] Chat answer tiered approval flow guard gate (optional)"
+echo "[137/141] Chat answer tiered approval flow guard gate (optional)"
 if [ "${RUN_CHAT_ANSWER_TIERED_APPROVAL_FLOW_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_ANSWER_TIERED_APPROVAL_EVENTS_JSONL="${CHAT_ANSWER_TIERED_APPROVAL_EVENTS_JSONL:-$ROOT_DIR/var/risk_banding/tiered_approval_events.jsonl}"
@@ -5162,7 +5162,48 @@ else
   echo "  - set RUN_CHAT_ANSWER_TIERED_APPROVAL_FLOW_GUARD=1 to enable"
 fi
 
-echo "[138/140] Canonical quality checks (optional)"
+echo "[138/141] Chat answer band policy guard gate (optional)"
+if [ "${RUN_CHAT_ANSWER_BAND_POLICY_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_ANSWER_BAND_POLICY_EVENTS_JSONL="${CHAT_ANSWER_BAND_POLICY_EVENTS_JSONL:-$ROOT_DIR/var/risk_banding/band_policy_events.jsonl}"
+    CHAT_ANSWER_BAND_POLICY_WINDOW_HOURS="${CHAT_ANSWER_BAND_POLICY_WINDOW_HOURS:-24}"
+    CHAT_ANSWER_BAND_POLICY_LIMIT="${CHAT_ANSWER_BAND_POLICY_LIMIT:-100000}"
+    CHAT_ANSWER_BAND_POLICY_OUT_DIR="${CHAT_ANSWER_BAND_POLICY_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_ANSWER_BAND_POLICY_MIN_WINDOW="${CHAT_ANSWER_BAND_POLICY_MIN_WINDOW:-0}"
+    CHAT_ANSWER_BAND_POLICY_MIN_EVENT_TOTAL="${CHAT_ANSWER_BAND_POLICY_MIN_EVENT_TOTAL:-0}"
+    CHAT_ANSWER_BAND_POLICY_MIN_SAFE_COVERAGE_RATIO="${CHAT_ANSWER_BAND_POLICY_MIN_SAFE_COVERAGE_RATIO:-0.0}"
+    CHAT_ANSWER_BAND_POLICY_MAX_MISSING_BAND_TOTAL="${CHAT_ANSWER_BAND_POLICY_MAX_MISSING_BAND_TOTAL:-1000000}"
+    CHAT_ANSWER_BAND_POLICY_MAX_POLICY_VIOLATION_TOTAL="${CHAT_ANSWER_BAND_POLICY_MAX_POLICY_VIOLATION_TOTAL:-1000000}"
+    CHAT_ANSWER_BAND_POLICY_MAX_FORBIDDEN_PHRASE_TOTAL="${CHAT_ANSWER_BAND_POLICY_MAX_FORBIDDEN_PHRASE_TOTAL:-1000000}"
+    CHAT_ANSWER_BAND_POLICY_MAX_MISSING_MANDATORY_TOTAL="${CHAT_ANSWER_BAND_POLICY_MAX_MISSING_MANDATORY_TOTAL:-1000000}"
+    CHAT_ANSWER_BAND_POLICY_MAX_R3_EXECUTION_CLAIM_TOTAL="${CHAT_ANSWER_BAND_POLICY_MAX_R3_EXECUTION_CLAIM_TOTAL:-1000000}"
+    CHAT_ANSWER_BAND_POLICY_MAX_R3_HANDOFF_MISSING_TOTAL="${CHAT_ANSWER_BAND_POLICY_MAX_R3_HANDOFF_MISSING_TOTAL:-1000000}"
+    CHAT_ANSWER_BAND_POLICY_MAX_STALE_MINUTES="${CHAT_ANSWER_BAND_POLICY_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_answer_band_policy_guard.py" \
+      --events-jsonl "$CHAT_ANSWER_BAND_POLICY_EVENTS_JSONL" \
+      --window-hours "$CHAT_ANSWER_BAND_POLICY_WINDOW_HOURS" \
+      --limit "$CHAT_ANSWER_BAND_POLICY_LIMIT" \
+      --out "$CHAT_ANSWER_BAND_POLICY_OUT_DIR" \
+      --min-window "$CHAT_ANSWER_BAND_POLICY_MIN_WINDOW" \
+      --min-event-total "$CHAT_ANSWER_BAND_POLICY_MIN_EVENT_TOTAL" \
+      --min-safe-policy-coverage-ratio "$CHAT_ANSWER_BAND_POLICY_MIN_SAFE_COVERAGE_RATIO" \
+      --max-missing-band-total "$CHAT_ANSWER_BAND_POLICY_MAX_MISSING_BAND_TOTAL" \
+      --max-policy-violation-total "$CHAT_ANSWER_BAND_POLICY_MAX_POLICY_VIOLATION_TOTAL" \
+      --max-forbidden-phrase-total "$CHAT_ANSWER_BAND_POLICY_MAX_FORBIDDEN_PHRASE_TOTAL" \
+      --max-missing-mandatory-phrase-total "$CHAT_ANSWER_BAND_POLICY_MAX_MISSING_MANDATORY_TOTAL" \
+      --max-r3-execution-claim-total "$CHAT_ANSWER_BAND_POLICY_MAX_R3_EXECUTION_CLAIM_TOTAL" \
+      --max-r3-handoff-missing-total "$CHAT_ANSWER_BAND_POLICY_MAX_R3_HANDOFF_MISSING_TOTAL" \
+      --max-stale-minutes "$CHAT_ANSWER_BAND_POLICY_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat answer band policy guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_ANSWER_BAND_POLICY_GUARD=1 to enable"
+fi
+
+echo "[139/141] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -5173,7 +5214,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[139/140] E2E tests (optional)"
+echo "[140/141] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -5184,4 +5225,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[140/140] Done"
+echo "[141/141] Done"

@@ -3782,6 +3782,31 @@ python scripts/eval/chat_answer_tiered_approval_flow_guard.py \
 - CI 옵션:
   - `RUN_CHAT_ANSWER_TIERED_APPROVAL_FLOW_GUARD=1 ./scripts/test.sh`
 
+## Chat answer band policy guard gate (B-0390, Bundle 3)
+- 밴드별 응답 정책(필수/금지 문구, R3 실행 금지/핸드오프)을 검증:
+```bash
+python scripts/eval/chat_answer_band_policy_guard.py \
+  --events-jsonl var/risk_banding/band_policy_events.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-safe-policy-coverage-ratio 0.95 \
+  --max-missing-band-total 0 \
+  --max-policy-violation-total 0 \
+  --max-forbidden-phrase-total 0 \
+  --max-missing-mandatory-phrase-total 0 \
+  --max-r3-execution-claim-total 0 \
+  --max-r3-handoff-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - high-risk 응답 safe-policy coverage 비율
+  - 금지 문구/필수 문구 누락/R3 실행 claim 위반 건수
+  - R3 handoff 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_ANSWER_BAND_POLICY_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
