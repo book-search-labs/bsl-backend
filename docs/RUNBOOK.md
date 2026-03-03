@@ -1768,6 +1768,27 @@ python scripts/eval/chat_sensitive_action_double_confirmation.py \
 - CI 옵션:
   - `RUN_CHAT_SENSITIVE_ACTION_DOUBLE_CONFIRMATION=1 ./scripts/test.sh`
 
+## Sensitive action step-up auth gate (B-0369, Bundle 3)
+- HIGH 리스크 액션의 추가 인증(step-up auth) 실패/타임아웃 시 차단·상담전환 정책 준수 여부를 검증:
+```bash
+python scripts/eval/chat_sensitive_action_stepup_auth.py \
+  --events-jsonl var/chat_actions/sensitive_action_events.jsonl \
+  --window-hours 24 \
+  --max-high-risk-execute-without-stepup-total 0 \
+  --max-stepup-failed-then-execute-total 0 \
+  --min-stepup-failure-block-ratio 1.0 \
+  --max-stepup-latency-p95-sec 300 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - high-risk 액션에서 step-up challenge/verify/failure 집계
+  - step-up 실패 후 block/handoff 비율
+  - step-up 미완료 execute 및 실패 후 execute 지속 건수
+  - step-up latency p95
+- CI 옵션:
+  - `RUN_CHAT_SENSITIVE_ACTION_STEPUP_AUTH=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

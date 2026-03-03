@@ -69,3 +69,14 @@ Harden sensitive chat actions:
   - `scripts/eval/test_chat_sensitive_action_double_confirmation.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_SENSITIVE_ACTION_DOUBLE_CONFIRMATION=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Step-up auth 정책 게이트 추가
+  - `scripts/eval/chat_sensitive_action_stepup_auth.py`
+  - HIGH 리스크 액션에서 step-up 인증 완료 전 실행(`high_risk_execute_without_stepup_total`)을 검출
+  - step-up 실패/타임아웃 이후 block 또는 handoff로 전환되지 않은 실행 지속을 차단
+  - gate 모드에서 고위험 무인증 실행, 실패 후 실행 지속, failure block ratio 저하, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_sensitive_action_stepup_auth.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_SENSITIVE_ACTION_STEPUP_AUTH=1 ./scripts/test.sh`
