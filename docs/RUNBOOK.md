@@ -1512,6 +1512,28 @@ python scripts/eval/chat_config_safety_guard.py \
 - CI 옵션:
   - `RUN_CHAT_CONFIG_SAFETY_GUARD=1 ./scripts/test.sh`
 
+## Config audit reproducibility gate (I-0366, Bundle 3)
+- 누가/언제/무엇을 배포했는지 감사 증적과 snapshot replay 가능성을 검증:
+```bash
+python scripts/eval/chat_config_audit_reproducibility.py \
+  --events-jsonl var/chat_control/config_audit_events.jsonl \
+  --snapshots-dir var/chat_control/snapshots \
+  --window-hours 24 \
+  --max-missing-actor-total 0 \
+  --max-missing-trace-total 0 \
+  --max-immutable-violation-total 0 \
+  --min-snapshot-replay-ratio 0.95 \
+  --min-diff-coverage-ratio 0.95 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - actor/request/trace 누락 건수
+  - immutable 위반 건수
+  - snapshot replay ratio / diff coverage ratio
+- CI 옵션:
+  - `RUN_CHAT_CONFIG_AUDIT_REPRO_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

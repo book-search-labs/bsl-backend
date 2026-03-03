@@ -68,3 +68,14 @@ Build a realtime control plane for chat policy/config rollout:
   - `scripts/eval/test_chat_config_safety_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_CONFIG_SAFETY_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Config audit reproducibility gate 추가
+  - `scripts/eval/chat_config_audit_reproducibility.py`
+  - config audit 이벤트에서 actor/request/trace 누락, immutable 위반, snapshot replay 가능 여부, diff 증적 커버리지를 집계
+  - snapshot id/path 기반 재현 가능률(`snapshot_replay_ratio`)과 변경 diff 증적 비율(`diff_coverage_ratio`)을 게이트화
+  - stale evidence, 감사 필드 누락, immutable 위반 시 배포 증적 불충분으로 차단
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_config_audit_reproducibility.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_CONFIG_AUDIT_REPRO_GUARD=1 ./scripts/test.sh`

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[1/44] Contract validation (optional)"
+echo "[1/45] Contract validation (optional)"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN=""
 if command -v python >/dev/null 2>&1; then
@@ -20,9 +20,9 @@ else
   echo "  - python not found; skipping contract validation"
 fi
 
-echo "[2/44] Contract compatibility gate (optional)"
+echo "[2/45] Contract compatibility gate (optional)"
 
-echo "[3/44] Event schema compatibility check (optional)"
+echo "[3/45] Event schema compatibility check (optional)"
 if [ "${RUN_SCHEMA_CHECK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/kafka/schema_compat_check.py" || exit 1
@@ -38,7 +38,7 @@ else
   echo "  - python not found; skipping contract compatibility check"
 fi
 
-echo "[4/44] Feature spec validation (optional)"
+echo "[4/45] Feature spec validation (optional)"
 if [ -n "$PYTHON_BIN" ]; then
   if $PYTHON_BIN -c "import yaml" >/dev/null 2>&1; then
     $PYTHON_BIN "$ROOT_DIR/scripts/validate_feature_spec.py" || exit 1
@@ -49,7 +49,7 @@ else
   echo "  - python not found; skipping feature spec validation"
 fi
 
-echo "[5/44] Offline eval gate (optional)"
+echo "[5/45] Offline eval gate (optional)"
 if [ "${RUN_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     EVAL_RUN_PATH="${EVAL_RUN_PATH:-$ROOT_DIR/evaluation/runs/sample_run.jsonl}"
@@ -62,7 +62,7 @@ else
   echo "  - set RUN_EVAL=1 to enable"
 fi
 
-echo "[6/44] Rerank eval gate (optional)"
+echo "[6/45] Rerank eval gate (optional)"
 if [ "${RUN_RERANK_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     RERANK_BASELINE_PATH="${RERANK_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/rerank_eval_sample.json}"
@@ -127,7 +127,7 @@ else
   echo "  - set RUN_RERANK_EVAL=1 to enable"
 fi
 
-echo "[7/44] Chat contract compatibility gate (optional)"
+echo "[7/45] Chat contract compatibility gate (optional)"
 if [ "${RUN_CHAT_CONTRACT_COMPAT_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CONTRACT_CASES_PATH="${CHAT_CONTRACT_CASES_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_contract_compat_v1.json}"
@@ -162,7 +162,7 @@ else
   echo "  - set RUN_CHAT_CONTRACT_COMPAT_EVAL=1 to enable"
 fi
 
-echo "[8/44] Chat reason taxonomy gate (optional)"
+echo "[8/45] Chat reason taxonomy gate (optional)"
 if [ "${RUN_CHAT_REASON_TAXONOMY_EVAL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_REASON_CASES_PATH="${CHAT_REASON_CASES_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_reason_taxonomy_cases_v1.json}"
@@ -200,7 +200,7 @@ else
   echo "  - set RUN_CHAT_REASON_TAXONOMY_EVAL=1 to enable"
 fi
 
-echo "[9/44] Chat full eval matrix (optional)"
+echo "[9/45] Chat full eval matrix (optional)"
 if [ "${RUN_CHAT_ALL_EVALS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_PARITY_OUT_DIR="${CHAT_PARITY_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -242,7 +242,7 @@ else
   echo "  - set RUN_CHAT_ALL_EVALS=1 to enable"
 fi
 
-echo "[10/44] Chat cutover gate (optional)"
+echo "[10/45] Chat cutover gate (optional)"
 if [ "${RUN_CHAT_CUTOVER_GATE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CUTOVER_CURRENT_STAGE="${CHAT_CUTOVER_CURRENT_STAGE:-10}"
@@ -262,7 +262,7 @@ else
   echo "  - set RUN_CHAT_CUTOVER_GATE=1 to enable"
 fi
 
-echo "[11/44] Chat legacy decommission gate (optional)"
+echo "[11/45] Chat legacy decommission gate (optional)"
 if [ "${RUN_CHAT_LEGACY_DECOMMISSION_CHECK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_LEGACY_DECOMMISSION_LIMIT="${CHAT_LEGACY_DECOMMISSION_LIMIT:-500}"
@@ -285,7 +285,7 @@ else
   echo "  - set RUN_CHAT_LEGACY_DECOMMISSION_CHECK=1 to enable"
 fi
 
-echo "[12/44] Chat production launch gate (optional)"
+echo "[12/45] Chat production launch gate (optional)"
 if [ "${RUN_CHAT_PROD_LAUNCH_GATE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_PROD_LAUNCH_OUT_DIR="${CHAT_PROD_LAUNCH_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -369,7 +369,7 @@ else
   echo "  - set RUN_CHAT_PROD_LAUNCH_GATE=1 to enable"
 fi
 
-echo "[13/44] Chat release train gate (optional)"
+echo "[13/45] Chat release train gate (optional)"
 if [ "${RUN_CHAT_RELEASE_TRAIN_GATE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_RELEASE_TRAIN_REPORT_PATH="${CHAT_RELEASE_TRAIN_REPORT_PATH:-}"
@@ -400,7 +400,7 @@ else
   echo "  - set RUN_CHAT_RELEASE_TRAIN_GATE=1 to enable"
 fi
 
-echo "[14/44] Chat liveops cycle (optional)"
+echo "[14/45] Chat liveops cycle (optional)"
 if [ "${RUN_CHAT_LIVEOPS_CYCLE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_LIVEOPS_OUT_DIR="${CHAT_LIVEOPS_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -437,7 +437,7 @@ else
   echo "  - set RUN_CHAT_LIVEOPS_CYCLE=1 to enable"
 fi
 
-echo "[15/44] Chat liveops summary gate (optional)"
+echo "[15/45] Chat liveops summary gate (optional)"
 if [ "${RUN_CHAT_LIVEOPS_SUMMARY_GATE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_LIVEOPS_SUMMARY_REPORTS_DIR="${CHAT_LIVEOPS_SUMMARY_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -460,7 +460,7 @@ else
   echo "  - set RUN_CHAT_LIVEOPS_SUMMARY_GATE=1 to enable"
 fi
 
-echo "[16/44] Chat liveops incident gate (optional)"
+echo "[16/45] Chat liveops incident gate (optional)"
 if [ "${RUN_CHAT_LIVEOPS_INCIDENT_GATE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_LIVEOPS_INCIDENT_REPORTS_DIR="${CHAT_LIVEOPS_INCIDENT_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -485,7 +485,7 @@ else
   echo "  - set RUN_CHAT_LIVEOPS_INCIDENT_GATE=1 to enable"
 fi
 
-echo "[17/44] Chat oncall action plan (optional)"
+echo "[17/45] Chat oncall action plan (optional)"
 if [ "${RUN_CHAT_ONCALL_ACTION_PLAN:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_ONCALL_TRIAGE_FILE="${CHAT_ONCALL_TRIAGE_FILE:-$ROOT_DIR/var/chat_graph/triage/chat_launch_failure_cases.jsonl}"
@@ -510,7 +510,7 @@ else
   echo "  - set RUN_CHAT_ONCALL_ACTION_PLAN=1 to enable"
 fi
 
-echo "[18/44] Chat capacity/cost guard (optional)"
+echo "[18/45] Chat capacity/cost guard (optional)"
 if [ "${RUN_CHAT_CAPACITY_COST_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CAPACITY_LAUNCH_REPORT="${CHAT_CAPACITY_LAUNCH_REPORT:-}"
@@ -554,7 +554,7 @@ else
   echo "  - set RUN_CHAT_CAPACITY_COST_GUARD=1 to enable"
 fi
 
-echo "[19/44] Chat immutable bundle guard (optional)"
+echo "[19/45] Chat immutable bundle guard (optional)"
 if [ "${RUN_CHAT_IMMUTABLE_BUNDLE_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_IMMUTABLE_REPORTS_DIR="${CHAT_IMMUTABLE_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -588,7 +588,7 @@ else
   echo "  - set RUN_CHAT_IMMUTABLE_BUNDLE_GUARD=1 to enable"
 fi
 
-echo "[20/44] Chat DR drill report (optional)"
+echo "[20/45] Chat DR drill report (optional)"
 if [ "${RUN_CHAT_DR_DRILL_REPORT:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_DR_DRILL_REPORTS_DIR="${CHAT_DR_DRILL_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -624,7 +624,7 @@ else
   echo "  - set RUN_CHAT_DR_DRILL_REPORT=1 to enable"
 fi
 
-echo "[21/44] Chat readiness score gate (optional)"
+echo "[21/45] Chat readiness score gate (optional)"
 if [ "${RUN_CHAT_READINESS_SCORE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_READINESS_REPORTS_DIR="${CHAT_READINESS_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -668,7 +668,7 @@ else
   echo "  - set RUN_CHAT_READINESS_SCORE=1 to enable"
 fi
 
-echo "[22/44] Chat readiness trend gate (optional)"
+echo "[22/45] Chat readiness trend gate (optional)"
 if [ "${RUN_CHAT_READINESS_TREND:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_READINESS_TREND_REPORTS_DIR="${CHAT_READINESS_TREND_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -695,7 +695,7 @@ else
   echo "  - set RUN_CHAT_READINESS_TREND=1 to enable"
 fi
 
-echo "[23/44] Chat gameday drillpack (optional)"
+echo "[23/45] Chat gameday drillpack (optional)"
 if [ "${RUN_CHAT_GAMEDAY_DRILLPACK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_GAMEDAY_TRIAGE_FILE="${CHAT_GAMEDAY_TRIAGE_FILE:-$ROOT_DIR/var/chat_graph/triage/chat_launch_failure_cases.jsonl}"
@@ -721,7 +721,7 @@ else
   echo "  - set RUN_CHAT_GAMEDAY_DRILLPACK=1 to enable"
 fi
 
-echo "[24/44] Chat incident feedback binding (optional)"
+echo "[24/45] Chat incident feedback binding (optional)"
 if [ "${RUN_CHAT_INCIDENT_FEEDBACK_BINDING:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_FEEDBACK_REPORTS_DIR="${CHAT_FEEDBACK_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -751,7 +751,7 @@ else
   echo "  - set RUN_CHAT_INCIDENT_FEEDBACK_BINDING=1 to enable"
 fi
 
-echo "[25/44] Chat gameday readiness packet (optional)"
+echo "[25/45] Chat gameday readiness packet (optional)"
 if [ "${RUN_CHAT_GAMEDAY_PACKET:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_PACKET_REPORTS_DIR="${CHAT_PACKET_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -779,7 +779,7 @@ else
   echo "  - set RUN_CHAT_GAMEDAY_PACKET=1 to enable"
 fi
 
-echo "[26/44] Chat data retention guard (optional)"
+echo "[26/45] Chat data retention guard (optional)"
 if [ "${RUN_CHAT_DATA_RETENTION_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_RETENTION_EVENTS_JSONL="${CHAT_RETENTION_EVENTS_JSONL:-$ROOT_DIR/var/chat_governance/retention_events.jsonl}"
@@ -816,7 +816,7 @@ else
   echo "  - set RUN_CHAT_DATA_RETENTION_GUARD=1 to enable"
 fi
 
-echo "[27/44] Chat egress guardrails gate (optional)"
+echo "[27/45] Chat egress guardrails gate (optional)"
 if [ "${RUN_CHAT_EGRESS_GUARDRAILS_GATE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_EGRESS_EVENTS_JSONL="${CHAT_EGRESS_EVENTS_JSONL:-$ROOT_DIR/var/chat_governance/egress_events.jsonl}"
@@ -855,7 +855,7 @@ else
   echo "  - set RUN_CHAT_EGRESS_GUARDRAILS_GATE=1 to enable"
 fi
 
-echo "[28/44] Chat data governance evidence gate (optional)"
+echo "[28/45] Chat data governance evidence gate (optional)"
 if [ "${RUN_CHAT_DATA_GOV_EVIDENCE_GATE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_DATA_GOV_REPORTS_DIR="${CHAT_DATA_GOV_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -895,7 +895,7 @@ else
   echo "  - set RUN_CHAT_DATA_GOV_EVIDENCE_GATE=1 to enable"
 fi
 
-echo "[29/44] Chat load profile model gate (optional)"
+echo "[29/45] Chat load profile model gate (optional)"
 if [ "${RUN_CHAT_LOAD_PROFILE_MODEL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_LOAD_PROFILE_JSONL="${CHAT_LOAD_PROFILE_JSONL:-$ROOT_DIR/var/chat_governance/load_events.jsonl}"
@@ -924,7 +924,7 @@ else
   echo "  - set RUN_CHAT_LOAD_PROFILE_MODEL=1 to enable"
 fi
 
-echo "[30/44] Chat capacity forecast gate (optional)"
+echo "[30/45] Chat capacity forecast gate (optional)"
 if [ "${RUN_CHAT_CAPACITY_FORECAST:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_FORECAST_REPORTS_DIR="${CHAT_FORECAST_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -978,7 +978,7 @@ else
   echo "  - set RUN_CHAT_CAPACITY_FORECAST=1 to enable"
 fi
 
-echo "[31/44] Chat autoscaling calibration gate (optional)"
+echo "[31/45] Chat autoscaling calibration gate (optional)"
 if [ "${RUN_CHAT_AUTOSCALING_CALIBRATION:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_AUTOSCALE_EVENTS_JSONL="${CHAT_AUTOSCALE_EVENTS_JSONL:-$ROOT_DIR/var/chat_governance/autoscaling_events.jsonl}"
@@ -1032,7 +1032,7 @@ else
   echo "  - set RUN_CHAT_AUTOSCALING_CALIBRATION=1 to enable"
 fi
 
-echo "[32/44] Chat session gateway durability gate (optional)"
+echo "[32/45] Chat session gateway durability gate (optional)"
 if [ "${RUN_CHAT_SESSION_DURABILITY_GATE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_SESSION_DURABILITY_EVENTS_JSONL="${CHAT_SESSION_DURABILITY_EVENTS_JSONL:-$ROOT_DIR/var/chat_governance/session_gateway_events.jsonl}"
@@ -1067,7 +1067,7 @@ else
   echo "  - set RUN_CHAT_SESSION_DURABILITY_GATE=1 to enable"
 fi
 
-echo "[33/44] Chat event delivery guarantee gate (optional)"
+echo "[33/45] Chat event delivery guarantee gate (optional)"
 if [ "${RUN_CHAT_EVENT_DELIVERY_GUARANTEE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_EVENT_DELIVERY_EVENTS_JSONL="${CHAT_EVENT_DELIVERY_EVENTS_JSONL:-$ROOT_DIR/var/chat_governance/event_delivery_events.jsonl}"
@@ -1104,7 +1104,7 @@ else
   echo "  - set RUN_CHAT_EVENT_DELIVERY_GUARANTEE=1 to enable"
 fi
 
-echo "[34/44] Chat backpressure admission guard (optional)"
+echo "[34/45] Chat backpressure admission guard (optional)"
 if [ "${RUN_CHAT_BACKPRESSURE_ADMISSION_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_BACKPRESSURE_EVENTS_JSONL="${CHAT_BACKPRESSURE_EVENTS_JSONL:-$ROOT_DIR/var/chat_governance/backpressure_events.jsonl}"
@@ -1141,7 +1141,7 @@ else
   echo "  - set RUN_CHAT_BACKPRESSURE_ADMISSION_GUARD=1 to enable"
 fi
 
-echo "[35/44] Chat session resilience drill report gate (optional)"
+echo "[35/45] Chat session resilience drill report gate (optional)"
 if [ "${RUN_CHAT_SESSION_RESILIENCE_DRILL_REPORT:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_SESSION_DRILL_EVENTS_JSONL="${CHAT_SESSION_DRILL_EVENTS_JSONL:-$ROOT_DIR/var/chat_governance/session_resilience_drills.jsonl}"
@@ -1181,7 +1181,7 @@ else
   echo "  - set RUN_CHAT_SESSION_RESILIENCE_DRILL_REPORT=1 to enable"
 fi
 
-echo "[36/44] Chat unit economics SLO gate (optional)"
+echo "[36/45] Chat unit economics SLO gate (optional)"
 if [ "${RUN_CHAT_UNIT_ECONOMICS_SLO:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_UNIT_ECON_EVENTS_JSONL="${CHAT_UNIT_ECON_EVENTS_JSONL:-$ROOT_DIR/var/chat_finops/session_cost_events.jsonl}"
@@ -1214,7 +1214,7 @@ else
   echo "  - set RUN_CHAT_UNIT_ECONOMICS_SLO=1 to enable"
 fi
 
-echo "[37/44] Chat cost optimizer policy gate (optional)"
+echo "[37/45] Chat cost optimizer policy gate (optional)"
 if [ "${RUN_CHAT_COST_OPTIMIZER_POLICY:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_COST_OPT_EVENTS_JSONL="${CHAT_COST_OPT_EVENTS_JSONL:-$ROOT_DIR/var/chat_finops/session_cost_events.jsonl}"
@@ -1256,7 +1256,7 @@ else
   echo "  - set RUN_CHAT_COST_OPTIMIZER_POLICY=1 to enable"
 fi
 
-echo "[38/44] Chat budget release guard gate (optional)"
+echo "[38/45] Chat budget release guard gate (optional)"
 if [ "${RUN_CHAT_BUDGET_RELEASE_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_BUDGET_GUARD_REPORTS_DIR="${CHAT_BUDGET_GUARD_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -1312,7 +1312,7 @@ else
   echo "  - set RUN_CHAT_BUDGET_RELEASE_GUARD=1 to enable"
 fi
 
-echo "[39/44] Chat finops tradeoff report gate (optional)"
+echo "[39/45] Chat finops tradeoff report gate (optional)"
 if [ "${RUN_CHAT_FINOPS_TRADEOFF_REPORT:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_FINOPS_REPORTS_DIR="${CHAT_FINOPS_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
@@ -1349,7 +1349,7 @@ else
   echo "  - set RUN_CHAT_FINOPS_TRADEOFF_REPORT=1 to enable"
 fi
 
-echo "[40/44] Chat config distribution rollout gate (optional)"
+echo "[40/45] Chat config distribution rollout gate (optional)"
 if [ "${RUN_CHAT_CONFIG_DISTRIBUTION_ROLLOUT:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CONFIG_ROLLOUT_EVENTS_JSONL="${CHAT_CONFIG_ROLLOUT_EVENTS_JSONL:-$ROOT_DIR/var/chat_control/config_rollout_events.jsonl}"
@@ -1391,7 +1391,7 @@ else
   echo "  - set RUN_CHAT_CONFIG_DISTRIBUTION_ROLLOUT=1 to enable"
 fi
 
-echo "[41/44] Chat config safety guard gate (optional)"
+echo "[41/45] Chat config safety guard gate (optional)"
 if [ "${RUN_CHAT_CONFIG_SAFETY_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CONFIG_SAFETY_EVENTS_JSONL="${CHAT_CONFIG_SAFETY_EVENTS_JSONL:-$ROOT_DIR/var/chat_control/config_guard_events.jsonl}"
@@ -1426,7 +1426,44 @@ else
   echo "  - set RUN_CHAT_CONFIG_SAFETY_GUARD=1 to enable"
 fi
 
-echo "[42/44] Canonical quality checks (optional)"
+echo "[42/45] Chat config audit reproducibility gate (optional)"
+if [ "${RUN_CHAT_CONFIG_AUDIT_REPRO_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_CONFIG_AUDIT_EVENTS_JSONL="${CHAT_CONFIG_AUDIT_EVENTS_JSONL:-$ROOT_DIR/var/chat_control/config_audit_events.jsonl}"
+    CHAT_CONFIG_AUDIT_SNAPSHOTS_DIR="${CHAT_CONFIG_AUDIT_SNAPSHOTS_DIR:-$ROOT_DIR/var/chat_control/snapshots}"
+    CHAT_CONFIG_AUDIT_WINDOW_HOURS="${CHAT_CONFIG_AUDIT_WINDOW_HOURS:-24}"
+    CHAT_CONFIG_AUDIT_LIMIT="${CHAT_CONFIG_AUDIT_LIMIT:-50000}"
+    CHAT_CONFIG_AUDIT_OUT_DIR="${CHAT_CONFIG_AUDIT_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_CONFIG_AUDIT_MIN_WINDOW="${CHAT_CONFIG_AUDIT_MIN_WINDOW:-0}"
+    CHAT_CONFIG_AUDIT_MAX_MISSING_ACTOR="${CHAT_CONFIG_AUDIT_MAX_MISSING_ACTOR:-0}"
+    CHAT_CONFIG_AUDIT_MAX_MISSING_TRACE="${CHAT_CONFIG_AUDIT_MAX_MISSING_TRACE:-0}"
+    CHAT_CONFIG_AUDIT_MAX_IMMUTABLE_VIOLATION="${CHAT_CONFIG_AUDIT_MAX_IMMUTABLE_VIOLATION:-0}"
+    CHAT_CONFIG_AUDIT_MIN_SNAPSHOT_REPLAY_RATIO="${CHAT_CONFIG_AUDIT_MIN_SNAPSHOT_REPLAY_RATIO:-0.95}"
+    CHAT_CONFIG_AUDIT_MIN_DIFF_COVERAGE_RATIO="${CHAT_CONFIG_AUDIT_MIN_DIFF_COVERAGE_RATIO:-0.95}"
+    CHAT_CONFIG_AUDIT_MAX_STALE_MINUTES="${CHAT_CONFIG_AUDIT_MAX_STALE_MINUTES:-60}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_config_audit_reproducibility.py" \
+      --events-jsonl "$CHAT_CONFIG_AUDIT_EVENTS_JSONL" \
+      --snapshots-dir "$CHAT_CONFIG_AUDIT_SNAPSHOTS_DIR" \
+      --window-hours "$CHAT_CONFIG_AUDIT_WINDOW_HOURS" \
+      --limit "$CHAT_CONFIG_AUDIT_LIMIT" \
+      --out "$CHAT_CONFIG_AUDIT_OUT_DIR" \
+      --min-window "$CHAT_CONFIG_AUDIT_MIN_WINDOW" \
+      --max-missing-actor-total "$CHAT_CONFIG_AUDIT_MAX_MISSING_ACTOR" \
+      --max-missing-trace-total "$CHAT_CONFIG_AUDIT_MAX_MISSING_TRACE" \
+      --max-immutable-violation-total "$CHAT_CONFIG_AUDIT_MAX_IMMUTABLE_VIOLATION" \
+      --min-snapshot-replay-ratio "$CHAT_CONFIG_AUDIT_MIN_SNAPSHOT_REPLAY_RATIO" \
+      --min-diff-coverage-ratio "$CHAT_CONFIG_AUDIT_MIN_DIFF_COVERAGE_RATIO" \
+      --max-stale-minutes "$CHAT_CONFIG_AUDIT_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat config audit reproducibility gate"
+  fi
+else
+  echo "  - set RUN_CHAT_CONFIG_AUDIT_REPRO_GUARD=1 to enable"
+fi
+
+echo "[43/45] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -1437,7 +1474,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[43/44] E2E tests (optional)"
+echo "[44/45] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -1448,4 +1485,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[44/44] Done"
+echo "[45/45] Done"
