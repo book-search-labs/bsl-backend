@@ -4686,7 +4686,64 @@ else
   echo "  - set RUN_CHAT_INTENT_CONFIDENCE_ROUTING_GUARD=1 to enable"
 fi
 
-echo "[126/128] Canonical quality checks (optional)"
+echo "[126/129] Chat intent calibration drift guard gate (optional)"
+if [ "${RUN_CHAT_INTENT_CALIBRATION_DRIFT_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_INTENT_DRIFT_EVENTS_JSONL="${CHAT_INTENT_DRIFT_EVENTS_JSONL:-$ROOT_DIR/var/intent_calibration/calibration_metrics.jsonl}"
+    CHAT_INTENT_DRIFT_WINDOW_HOURS="${CHAT_INTENT_DRIFT_WINDOW_HOURS:-720}"
+    CHAT_INTENT_DRIFT_RECENT_HOURS="${CHAT_INTENT_DRIFT_RECENT_HOURS:-72}"
+    CHAT_INTENT_DRIFT_LIMIT="${CHAT_INTENT_DRIFT_LIMIT:-200000}"
+    CHAT_INTENT_DRIFT_OUT_DIR="${CHAT_INTENT_DRIFT_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_INTENT_DRIFT_REQUIRED_INTENTS="${CHAT_INTENT_DRIFT_REQUIRED_INTENTS:-ORDER_STATUS,DELIVERY_TRACKING,REFUND_REQUEST,POLICY_QA}"
+    CHAT_INTENT_DRIFT_MIN_BASELINE_SAMPLES="${CHAT_INTENT_DRIFT_MIN_BASELINE_SAMPLES:-3}"
+    CHAT_INTENT_DRIFT_MIN_RECENT_SAMPLES="${CHAT_INTENT_DRIFT_MIN_RECENT_SAMPLES:-3}"
+    CHAT_INTENT_DRIFT_ECE_DELTA="${CHAT_INTENT_DRIFT_ECE_DELTA:-0.03}"
+    CHAT_INTENT_DRIFT_BRIER_DELTA="${CHAT_INTENT_DRIFT_BRIER_DELTA:-0.03}"
+    CHAT_INTENT_DRIFT_OVER_DELTA="${CHAT_INTENT_DRIFT_OVER_DELTA:-0.03}"
+    CHAT_INTENT_DRIFT_UNDER_DELTA="${CHAT_INTENT_DRIFT_UNDER_DELTA:-0.03}"
+    CHAT_INTENT_DRIFT_MIN_WINDOW="${CHAT_INTENT_DRIFT_MIN_WINDOW:-0}"
+    CHAT_INTENT_DRIFT_MIN_INTENT_TOTAL="${CHAT_INTENT_DRIFT_MIN_INTENT_TOTAL:-0}"
+    CHAT_INTENT_DRIFT_MIN_COMPARABLE_INTENT_TOTAL="${CHAT_INTENT_DRIFT_MIN_COMPARABLE_INTENT_TOTAL:-0}"
+    CHAT_INTENT_DRIFT_MAX_DRIFTED_INTENT_TOTAL="${CHAT_INTENT_DRIFT_MAX_DRIFTED_INTENT_TOTAL:-1000000}"
+    CHAT_INTENT_DRIFT_MAX_WORST_ECE_DELTA="${CHAT_INTENT_DRIFT_MAX_WORST_ECE_DELTA:-1000000}"
+    CHAT_INTENT_DRIFT_MAX_WORST_BRIER_DELTA="${CHAT_INTENT_DRIFT_MAX_WORST_BRIER_DELTA:-1000000}"
+    CHAT_INTENT_DRIFT_MAX_WORST_OVER_DELTA="${CHAT_INTENT_DRIFT_MAX_WORST_OVER_DELTA:-1000000}"
+    CHAT_INTENT_DRIFT_MAX_WORST_UNDER_DELTA="${CHAT_INTENT_DRIFT_MAX_WORST_UNDER_DELTA:-1000000}"
+    CHAT_INTENT_DRIFT_MAX_MISSING_REQUIRED_INTENT_TOTAL="${CHAT_INTENT_DRIFT_MAX_MISSING_REQUIRED_INTENT_TOTAL:-1000000}"
+    CHAT_INTENT_DRIFT_MAX_STALE_MINUTES="${CHAT_INTENT_DRIFT_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_intent_calibration_drift_guard.py" \
+      --events-jsonl "$CHAT_INTENT_DRIFT_EVENTS_JSONL" \
+      --window-hours "$CHAT_INTENT_DRIFT_WINDOW_HOURS" \
+      --recent-hours "$CHAT_INTENT_DRIFT_RECENT_HOURS" \
+      --limit "$CHAT_INTENT_DRIFT_LIMIT" \
+      --out "$CHAT_INTENT_DRIFT_OUT_DIR" \
+      --required-intents "$CHAT_INTENT_DRIFT_REQUIRED_INTENTS" \
+      --min-baseline-samples "$CHAT_INTENT_DRIFT_MIN_BASELINE_SAMPLES" \
+      --min-recent-samples "$CHAT_INTENT_DRIFT_MIN_RECENT_SAMPLES" \
+      --drift-ece-delta "$CHAT_INTENT_DRIFT_ECE_DELTA" \
+      --drift-brier-delta "$CHAT_INTENT_DRIFT_BRIER_DELTA" \
+      --drift-overconfidence-rate-delta "$CHAT_INTENT_DRIFT_OVER_DELTA" \
+      --drift-underconfidence-rate-delta "$CHAT_INTENT_DRIFT_UNDER_DELTA" \
+      --min-window "$CHAT_INTENT_DRIFT_MIN_WINDOW" \
+      --min-intent-total "$CHAT_INTENT_DRIFT_MIN_INTENT_TOTAL" \
+      --min-comparable-intent-total "$CHAT_INTENT_DRIFT_MIN_COMPARABLE_INTENT_TOTAL" \
+      --max-drifted-intent-total "$CHAT_INTENT_DRIFT_MAX_DRIFTED_INTENT_TOTAL" \
+      --max-worst-ece-delta "$CHAT_INTENT_DRIFT_MAX_WORST_ECE_DELTA" \
+      --max-worst-brier-delta "$CHAT_INTENT_DRIFT_MAX_WORST_BRIER_DELTA" \
+      --max-worst-overconfidence-rate-delta "$CHAT_INTENT_DRIFT_MAX_WORST_OVER_DELTA" \
+      --max-worst-underconfidence-rate-delta "$CHAT_INTENT_DRIFT_MAX_WORST_UNDER_DELTA" \
+      --max-missing-required-intent-total "$CHAT_INTENT_DRIFT_MAX_MISSING_REQUIRED_INTENT_TOTAL" \
+      --max-stale-minutes "$CHAT_INTENT_DRIFT_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat intent calibration drift guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_INTENT_CALIBRATION_DRIFT_GUARD=1 to enable"
+fi
+
+echo "[127/129] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -4697,7 +4754,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[127/128] E2E tests (optional)"
+echo "[128/129] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -4708,4 +4765,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[128/128] Done"
+echo "[129/129] Done"

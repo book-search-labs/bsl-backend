@@ -3493,6 +3493,36 @@ python scripts/eval/chat_intent_confidence_routing_guard.py \
 - CI 옵션:
   - `RUN_CHAT_INTENT_CONFIDENCE_ROUTING_GUARD=1 ./scripts/test.sh`
 
+## Chat intent calibration drift guard gate (B-0387, Bundle 3)
+- 최근 구간 vs baseline 구간의 calibration drift를 intent별로 검증:
+```bash
+python scripts/eval/chat_intent_calibration_drift_guard.py \
+  --events-jsonl var/intent_calibration/calibration_metrics.jsonl \
+  --window-hours 720 \
+  --recent-hours 72 \
+  --required-intents ORDER_STATUS,DELIVERY_TRACKING,REFUND_REQUEST,POLICY_QA \
+  --min-baseline-samples 3 \
+  --min-recent-samples 3 \
+  --drift-ece-delta 0.03 \
+  --drift-brier-delta 0.03 \
+  --drift-overconfidence-rate-delta 0.03 \
+  --drift-underconfidence-rate-delta 0.03 \
+  --max-drifted-intent-total 0 \
+  --max-worst-ece-delta 0.05 \
+  --max-worst-brier-delta 0.05 \
+  --max-worst-overconfidence-rate-delta 0.05 \
+  --max-worst-underconfidence-rate-delta 0.05 \
+  --max-missing-required-intent-total 0 \
+  --max-stale-minutes 180 \
+  --gate
+```
+- 산출물:
+  - comparable intent 수, drifted intent 수/비율
+  - worst ECE/Brier/overconfidence/underconfidence delta
+  - required intent 누락 현황
+- CI 옵션:
+  - `RUN_CHAT_INTENT_CALIBRATION_DRIFT_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

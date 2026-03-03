@@ -67,3 +67,13 @@ Improve intent confidence reliability:
   - `scripts/eval/test_chat_intent_confidence_routing_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_INTENT_CONFIDENCE_ROUTING_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 3)
+- [x] Intent calibration drift guard gate 추가
+  - `scripts/eval/chat_intent_calibration_drift_guard.py`
+  - baseline 대비 recent 구간의 ECE/Brier/overconfidence/underconfidence delta 검증
+  - drifted intent 수 및 required intent 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_intent_calibration_drift_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_INTENT_CALIBRATION_DRIFT_GUARD=1 ./scripts/test.sh`
