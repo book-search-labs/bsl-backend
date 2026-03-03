@@ -75,3 +75,13 @@ Add a final output guard for chat responses:
   - `scripts/eval/test_chat_output_contract_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_OUTPUT_CONTRACT_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Claim verifier guard gate 추가
+  - `scripts/eval/chat_claim_verifier_guard.py`
+  - claim verifier coverage/mismatch/unsupported 검증
+  - mismatch 완화(제거/abstain) 비율 및 evidence ref 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_claim_verifier_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_CLAIM_VERIFIER_GUARD=1 ./scripts/test.sh`

@@ -3072,6 +3072,30 @@ python scripts/eval/chat_output_contract_guard.py \
 - CI 옵션:
   - `RUN_CHAT_OUTPUT_CONTRACT_GUARD=1 ./scripts/test.sh`
 
+## Chat claim verifier guard gate (B-0383, Bundle 2)
+- 핵심 claim의 entailment verdict와 근거 참조/완화 동작을 검증:
+```bash
+python scripts/eval/chat_claim_verifier_guard.py \
+  --events-jsonl var/chat_output_guard/claim_verifier_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-claim-total 20 \
+  --min-verifier-coverage-ratio 0.99 \
+  --max-mismatch-ratio 0.05 \
+  --max-unsupported-total 0 \
+  --min-mismatch-mitigated-ratio 0.99 \
+  --max-missing-evidence-ref-total 0 \
+  --max-p95-verifier-latency-ms 1200 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - verifier coverage, mismatch/unsupported 비율
+  - mismatch 완화(자동 제거/abstain) 비율
+  - evidence ref 누락 건수 및 verifier latency p95
+- CI 옵션:
+  - `RUN_CHAT_CLAIM_VERIFIER_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

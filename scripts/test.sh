@@ -3577,7 +3577,7 @@ else
   echo "  - set RUN_CHAT_TEMPORAL_ANSWER_RENDERING=1 to enable"
 fi
 
-echo "[99/111] Chat temporal conflict fallback gate (optional)"
+echo "[99/112] Chat temporal conflict fallback gate (optional)"
 if [ "${RUN_CHAT_TEMPORAL_CONFLICT_FALLBACK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TEMPORAL_CONFLICT_EVENTS_JSONL="${CHAT_TEMPORAL_CONFLICT_EVENTS_JSONL:-$ROOT_DIR/var/chat_policy/temporal_conflict_events.jsonl}"
@@ -3616,7 +3616,7 @@ else
   echo "  - set RUN_CHAT_TEMPORAL_CONFLICT_FALLBACK=1 to enable"
 fi
 
-echo "[100/111] Chat correction memory schema gate (optional)"
+echo "[100/112] Chat correction memory schema gate (optional)"
 if [ "${RUN_CHAT_CORRECTION_MEMORY_SCHEMA:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CORRECTION_MEMORY_SCHEMA_JSONL="${CHAT_CORRECTION_MEMORY_SCHEMA_JSONL:-$ROOT_DIR/var/chat_correction/correction_memory_records.jsonl}"
@@ -3655,7 +3655,7 @@ else
   echo "  - set RUN_CHAT_CORRECTION_MEMORY_SCHEMA=1 to enable"
 fi
 
-echo "[101/111] Chat correction approval workflow gate (optional)"
+echo "[101/112] Chat correction approval workflow gate (optional)"
 if [ "${RUN_CHAT_CORRECTION_APPROVAL_WORKFLOW:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CORRECTION_APPROVAL_EVENTS_JSONL="${CHAT_CORRECTION_APPROVAL_EVENTS_JSONL:-$ROOT_DIR/var/chat_correction/correction_approval_events.jsonl}"
@@ -3696,7 +3696,7 @@ else
   echo "  - set RUN_CHAT_CORRECTION_APPROVAL_WORKFLOW=1 to enable"
 fi
 
-echo "[102/111] Chat correction retrieval integration gate (optional)"
+echo "[102/112] Chat correction retrieval integration gate (optional)"
 if [ "${RUN_CHAT_CORRECTION_RETRIEVAL_INTEGRATION:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CORRECTION_RETRIEVAL_EVENTS_JSONL="${CHAT_CORRECTION_RETRIEVAL_EVENTS_JSONL:-$ROOT_DIR/var/chat_correction/correction_retrieval_events.jsonl}"
@@ -3735,7 +3735,7 @@ else
   echo "  - set RUN_CHAT_CORRECTION_RETRIEVAL_INTEGRATION=1 to enable"
 fi
 
-echo "[103/111] Chat correction quality safeguards gate (optional)"
+echo "[103/112] Chat correction quality safeguards gate (optional)"
 if [ "${RUN_CHAT_CORRECTION_QUALITY_SAFEGUARDS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CORRECTION_QUALITY_EVENTS_JSONL="${CHAT_CORRECTION_QUALITY_EVENTS_JSONL:-$ROOT_DIR/var/chat_correction/correction_quality_events.jsonl}"
@@ -3774,7 +3774,7 @@ else
   echo "  - set RUN_CHAT_CORRECTION_QUALITY_SAFEGUARDS=1 to enable"
 fi
 
-echo "[104/111] Chat tool transaction fence model gate (optional)"
+echo "[104/112] Chat tool transaction fence model gate (optional)"
 if [ "${RUN_CHAT_TOOL_TX_FENCE_MODEL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_TX_FENCE_EVENTS_JSONL="${CHAT_TOOL_TX_FENCE_EVENTS_JSONL:-$ROOT_DIR/var/chat_tool_tx/tx_events.jsonl}"
@@ -3813,7 +3813,7 @@ else
   echo "  - set RUN_CHAT_TOOL_TX_FENCE_MODEL=1 to enable"
 fi
 
-echo "[105/111] Chat tool transaction idempotency dedup gate (optional)"
+echo "[105/112] Chat tool transaction idempotency dedup gate (optional)"
 if [ "${RUN_CHAT_TOOL_TX_IDEMPOTENCY_DEDUP:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_TX_IDEMPOTENCY_EVENTS_JSONL="${CHAT_TOOL_TX_IDEMPOTENCY_EVENTS_JSONL:-$ROOT_DIR/var/chat_tool_tx/tx_events.jsonl}"
@@ -3850,7 +3850,7 @@ else
   echo "  - set RUN_CHAT_TOOL_TX_IDEMPOTENCY_DEDUP=1 to enable"
 fi
 
-echo "[106/111] Chat tool transaction compensation orchestrator gate (optional)"
+echo "[106/112] Chat tool transaction compensation orchestrator gate (optional)"
 if [ "${RUN_CHAT_TOOL_TX_COMPENSATION_ORCHESTRATOR:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_TX_COMP_EVENTS_JSONL="${CHAT_TOOL_TX_COMP_EVENTS_JSONL:-$ROOT_DIR/var/chat_tool_tx/tx_events.jsonl}"
@@ -3895,7 +3895,7 @@ else
   echo "  - set RUN_CHAT_TOOL_TX_COMPENSATION_ORCHESTRATOR=1 to enable"
 fi
 
-echo "[107/111] Chat tool transaction audit replayability gate (optional)"
+echo "[107/112] Chat tool transaction audit replayability gate (optional)"
 if [ "${RUN_CHAT_TOOL_TX_AUDIT_REPLAYABILITY:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_TX_AUDIT_EVENTS_JSONL="${CHAT_TOOL_TX_AUDIT_EVENTS_JSONL:-$ROOT_DIR/var/chat_tool_tx/tx_events.jsonl}"
@@ -3940,7 +3940,7 @@ else
   echo "  - set RUN_CHAT_TOOL_TX_AUDIT_REPLAYABILITY=1 to enable"
 fi
 
-echo "[108/111] Chat output contract guard gate (optional)"
+echo "[108/112] Chat output contract guard gate (optional)"
 if [ "${RUN_CHAT_OUTPUT_CONTRACT_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_OUTPUT_CONTRACT_EVENTS_JSONL="${CHAT_OUTPUT_CONTRACT_EVENTS_JSONL:-$ROOT_DIR/var/chat_output_guard/output_guard_events.jsonl}"
@@ -3985,7 +3985,46 @@ else
   echo "  - set RUN_CHAT_OUTPUT_CONTRACT_GUARD=1 to enable"
 fi
 
-echo "[109/111] Canonical quality checks (optional)"
+echo "[109/112] Chat claim verifier guard gate (optional)"
+if [ "${RUN_CHAT_CLAIM_VERIFIER_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_CLAIM_VERIFIER_EVENTS_JSONL="${CHAT_CLAIM_VERIFIER_EVENTS_JSONL:-$ROOT_DIR/var/chat_output_guard/claim_verifier_events.jsonl}"
+    CHAT_CLAIM_VERIFIER_WINDOW_HOURS="${CHAT_CLAIM_VERIFIER_WINDOW_HOURS:-24}"
+    CHAT_CLAIM_VERIFIER_LIMIT="${CHAT_CLAIM_VERIFIER_LIMIT:-50000}"
+    CHAT_CLAIM_VERIFIER_OUT_DIR="${CHAT_CLAIM_VERIFIER_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_CLAIM_VERIFIER_MIN_WINDOW="${CHAT_CLAIM_VERIFIER_MIN_WINDOW:-0}"
+    CHAT_CLAIM_VERIFIER_MIN_CLAIM_TOTAL="${CHAT_CLAIM_VERIFIER_MIN_CLAIM_TOTAL:-0}"
+    CHAT_CLAIM_VERIFIER_MIN_COVERAGE_RATIO="${CHAT_CLAIM_VERIFIER_MIN_COVERAGE_RATIO:-0.0}"
+    CHAT_CLAIM_VERIFIER_MAX_MISMATCH_RATIO="${CHAT_CLAIM_VERIFIER_MAX_MISMATCH_RATIO:-1.0}"
+    CHAT_CLAIM_VERIFIER_MAX_UNSUPPORTED_TOTAL="${CHAT_CLAIM_VERIFIER_MAX_UNSUPPORTED_TOTAL:-1000000}"
+    CHAT_CLAIM_VERIFIER_MIN_MISMATCH_MITIGATED_RATIO="${CHAT_CLAIM_VERIFIER_MIN_MISMATCH_MITIGATED_RATIO:-0.0}"
+    CHAT_CLAIM_VERIFIER_MAX_MISSING_EVIDENCE_REF_TOTAL="${CHAT_CLAIM_VERIFIER_MAX_MISSING_EVIDENCE_REF_TOTAL:-1000000}"
+    CHAT_CLAIM_VERIFIER_MAX_P95_LATENCY_MS="${CHAT_CLAIM_VERIFIER_MAX_P95_LATENCY_MS:-1000000}"
+    CHAT_CLAIM_VERIFIER_MAX_STALE_MINUTES="${CHAT_CLAIM_VERIFIER_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_claim_verifier_guard.py" \
+      --events-jsonl "$CHAT_CLAIM_VERIFIER_EVENTS_JSONL" \
+      --window-hours "$CHAT_CLAIM_VERIFIER_WINDOW_HOURS" \
+      --limit "$CHAT_CLAIM_VERIFIER_LIMIT" \
+      --out "$CHAT_CLAIM_VERIFIER_OUT_DIR" \
+      --min-window "$CHAT_CLAIM_VERIFIER_MIN_WINDOW" \
+      --min-claim-total "$CHAT_CLAIM_VERIFIER_MIN_CLAIM_TOTAL" \
+      --min-verifier-coverage-ratio "$CHAT_CLAIM_VERIFIER_MIN_COVERAGE_RATIO" \
+      --max-mismatch-ratio "$CHAT_CLAIM_VERIFIER_MAX_MISMATCH_RATIO" \
+      --max-unsupported-total "$CHAT_CLAIM_VERIFIER_MAX_UNSUPPORTED_TOTAL" \
+      --min-mismatch-mitigated-ratio "$CHAT_CLAIM_VERIFIER_MIN_MISMATCH_MITIGATED_RATIO" \
+      --max-missing-evidence-ref-total "$CHAT_CLAIM_VERIFIER_MAX_MISSING_EVIDENCE_REF_TOTAL" \
+      --max-p95-verifier-latency-ms "$CHAT_CLAIM_VERIFIER_MAX_P95_LATENCY_MS" \
+      --max-stale-minutes "$CHAT_CLAIM_VERIFIER_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat claim verifier guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_CLAIM_VERIFIER_GUARD=1 to enable"
+fi
+
+echo "[110/112] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -3996,7 +4035,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[110/111] E2E tests (optional)"
+echo "[111/112] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -4007,4 +4046,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[111/111] Done"
+echo "[112/112] Done"
