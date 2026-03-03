@@ -2604,6 +2604,27 @@ python scripts/eval/chat_replay_sandbox_runtime.py \
 - CI 옵션:
   - `RUN_CHAT_REPLAY_SANDBOX_RUNTIME=1 ./scripts/test.sh`
 
+## Replay diff inspector gate (B-0378, Bundle 3)
+- 정상/실패 replay 경로의 첫 분기점(first divergence) 추적 품질을 검증:
+```bash
+python scripts/eval/chat_replay_diff_inspector.py \
+  --events-jsonl var/chat_graph/replay/diff_inspector_runs.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-divergence-detected-total 5 \
+  --max-missing-first-divergence-total 0 \
+  --max-unknown-divergence-type-total 0 \
+  --max-invalid-step-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - divergence 감지 건수와 first divergence 파싱 성공 건수
+  - divergence type 분포(POLICY/TOOL_IO/PROMPT/BUDGET/STATE/OUTPUT)
+  - unknown divergence type/invalid step/stale freshness 건수
+- CI 옵션:
+  - `RUN_CHAT_REPLAY_DIFF_INSPECTOR=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

@@ -68,3 +68,14 @@ Build deterministic replay tooling for chat agents:
   - `scripts/eval/test_chat_replay_sandbox_runtime.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_REPLAY_SANDBOX_RUNTIME=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Replay diff inspector gate 추가
+  - `scripts/eval/chat_replay_diff_inspector.py`
+  - 정상/실패 replay의 first divergence 자동 탐지 검증
+  - divergence type 분류(POLICY/TOOL_IO/PROMPT/BUDGET/STATE/OUTPUT) 검증
+  - missing first divergence / unknown type / invalid step / stale 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_replay_diff_inspector.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_REPLAY_DIFF_INSPECTOR=1 ./scripts/test.sh`

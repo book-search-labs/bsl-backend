@@ -3187,7 +3187,7 @@ else
   echo "  - set RUN_CHAT_REPLAY_SNAPSHOT_FORMAT=1 to enable"
 fi
 
-echo "[89/92] Chat replay sandbox runtime gate (optional)"
+echo "[89/93] Chat replay sandbox runtime gate (optional)"
 if [ "${RUN_CHAT_REPLAY_SANDBOX_RUNTIME:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_REPLAY_SANDBOX_EVENTS_JSONL="${CHAT_REPLAY_SANDBOX_EVENTS_JSONL:-$ROOT_DIR/var/chat_graph/replay/sandbox_runs.jsonl}"
@@ -3228,7 +3228,40 @@ else
   echo "  - set RUN_CHAT_REPLAY_SANDBOX_RUNTIME=1 to enable"
 fi
 
-echo "[90/92] Canonical quality checks (optional)"
+echo "[90/93] Chat replay diff inspector gate (optional)"
+if [ "${RUN_CHAT_REPLAY_DIFF_INSPECTOR:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_REPLAY_DIFF_EVENTS_JSONL="${CHAT_REPLAY_DIFF_EVENTS_JSONL:-$ROOT_DIR/var/chat_graph/replay/diff_inspector_runs.jsonl}"
+    CHAT_REPLAY_DIFF_WINDOW_HOURS="${CHAT_REPLAY_DIFF_WINDOW_HOURS:-24}"
+    CHAT_REPLAY_DIFF_LIMIT="${CHAT_REPLAY_DIFF_LIMIT:-50000}"
+    CHAT_REPLAY_DIFF_OUT_DIR="${CHAT_REPLAY_DIFF_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_REPLAY_DIFF_MIN_WINDOW="${CHAT_REPLAY_DIFF_MIN_WINDOW:-0}"
+    CHAT_REPLAY_DIFF_MIN_DIVERGENCE_DETECTED_TOTAL="${CHAT_REPLAY_DIFF_MIN_DIVERGENCE_DETECTED_TOTAL:-0}"
+    CHAT_REPLAY_DIFF_MAX_MISSING_FIRST_DIVERGENCE_TOTAL="${CHAT_REPLAY_DIFF_MAX_MISSING_FIRST_DIVERGENCE_TOTAL:-1000000}"
+    CHAT_REPLAY_DIFF_MAX_UNKNOWN_DIVERGENCE_TYPE_TOTAL="${CHAT_REPLAY_DIFF_MAX_UNKNOWN_DIVERGENCE_TYPE_TOTAL:-1000000}"
+    CHAT_REPLAY_DIFF_MAX_INVALID_STEP_TOTAL="${CHAT_REPLAY_DIFF_MAX_INVALID_STEP_TOTAL:-1000000}"
+    CHAT_REPLAY_DIFF_MAX_STALE_MINUTES="${CHAT_REPLAY_DIFF_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_replay_diff_inspector.py" \
+      --events-jsonl "$CHAT_REPLAY_DIFF_EVENTS_JSONL" \
+      --window-hours "$CHAT_REPLAY_DIFF_WINDOW_HOURS" \
+      --limit "$CHAT_REPLAY_DIFF_LIMIT" \
+      --out "$CHAT_REPLAY_DIFF_OUT_DIR" \
+      --min-window "$CHAT_REPLAY_DIFF_MIN_WINDOW" \
+      --min-divergence-detected-total "$CHAT_REPLAY_DIFF_MIN_DIVERGENCE_DETECTED_TOTAL" \
+      --max-missing-first-divergence-total "$CHAT_REPLAY_DIFF_MAX_MISSING_FIRST_DIVERGENCE_TOTAL" \
+      --max-unknown-divergence-type-total "$CHAT_REPLAY_DIFF_MAX_UNKNOWN_DIVERGENCE_TYPE_TOTAL" \
+      --max-invalid-step-total "$CHAT_REPLAY_DIFF_MAX_INVALID_STEP_TOTAL" \
+      --max-stale-minutes "$CHAT_REPLAY_DIFF_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat replay diff inspector gate"
+  fi
+else
+  echo "  - set RUN_CHAT_REPLAY_DIFF_INSPECTOR=1 to enable"
+fi
+
+echo "[91/93] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -3239,7 +3272,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[91/92] E2E tests (optional)"
+echo "[92/93] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -3250,4 +3283,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[92/92] Done"
+echo "[93/93] Done"
