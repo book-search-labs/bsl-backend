@@ -3374,7 +3374,50 @@ else
   echo "  - set RUN_CHAT_PRIVACY_RETENTION_ENFORCEMENT=1 to enable"
 fi
 
-echo "[94/96] Canonical quality checks (optional)"
+echo "[94/97] Chat privacy user rights alignment gate (optional)"
+if [ "${RUN_CHAT_PRIVACY_USER_RIGHTS_ALIGNMENT:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_PRIVACY_RIGHTS_EVENTS_JSONL="${CHAT_PRIVACY_RIGHTS_EVENTS_JSONL:-$ROOT_DIR/var/chat_privacy/user_rights_events.jsonl}"
+    CHAT_PRIVACY_RIGHTS_WINDOW_HOURS="${CHAT_PRIVACY_RIGHTS_WINDOW_HOURS:-24}"
+    CHAT_PRIVACY_RIGHTS_LIMIT="${CHAT_PRIVACY_RIGHTS_LIMIT:-50000}"
+    CHAT_PRIVACY_RIGHTS_OUT_DIR="${CHAT_PRIVACY_RIGHTS_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_PRIVACY_RIGHTS_MIN_WINDOW="${CHAT_PRIVACY_RIGHTS_MIN_WINDOW:-0}"
+    CHAT_PRIVACY_RIGHTS_MIN_DELETE_REQUEST_TOTAL="${CHAT_PRIVACY_RIGHTS_MIN_DELETE_REQUEST_TOTAL:-0}"
+    CHAT_PRIVACY_RIGHTS_MIN_EXPORT_REQUEST_TOTAL="${CHAT_PRIVACY_RIGHTS_MIN_EXPORT_REQUEST_TOTAL:-0}"
+    CHAT_PRIVACY_RIGHTS_MIN_DELETE_COMPLETION_RATIO="${CHAT_PRIVACY_RIGHTS_MIN_DELETE_COMPLETION_RATIO:-0.0}"
+    CHAT_PRIVACY_RIGHTS_MIN_EXPORT_COMPLETION_RATIO="${CHAT_PRIVACY_RIGHTS_MIN_EXPORT_COMPLETION_RATIO:-0.0}"
+    CHAT_PRIVACY_RIGHTS_MAX_DELETE_CASCADE_MISS_TOTAL="${CHAT_PRIVACY_RIGHTS_MAX_DELETE_CASCADE_MISS_TOTAL:-1000000}"
+    CHAT_PRIVACY_RIGHTS_MAX_EXPORT_MISMATCH_TOTAL="${CHAT_PRIVACY_RIGHTS_MAX_EXPORT_MISMATCH_TOTAL:-1000000}"
+    CHAT_PRIVACY_RIGHTS_MAX_UNAUTHORIZED_TOTAL="${CHAT_PRIVACY_RIGHTS_MAX_UNAUTHORIZED_TOTAL:-1000000}"
+    CHAT_PRIVACY_RIGHTS_MAX_MISSING_AUDIT_TOTAL="${CHAT_PRIVACY_RIGHTS_MAX_MISSING_AUDIT_TOTAL:-1000000}"
+    CHAT_PRIVACY_RIGHTS_MAX_UNKNOWN_REQUEST_TYPE_TOTAL="${CHAT_PRIVACY_RIGHTS_MAX_UNKNOWN_REQUEST_TYPE_TOTAL:-1000000}"
+    CHAT_PRIVACY_RIGHTS_MAX_STALE_MINUTES="${CHAT_PRIVACY_RIGHTS_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_privacy_user_rights_alignment.py" \
+      --events-jsonl "$CHAT_PRIVACY_RIGHTS_EVENTS_JSONL" \
+      --window-hours "$CHAT_PRIVACY_RIGHTS_WINDOW_HOURS" \
+      --limit "$CHAT_PRIVACY_RIGHTS_LIMIT" \
+      --out "$CHAT_PRIVACY_RIGHTS_OUT_DIR" \
+      --min-window "$CHAT_PRIVACY_RIGHTS_MIN_WINDOW" \
+      --min-delete-request-total "$CHAT_PRIVACY_RIGHTS_MIN_DELETE_REQUEST_TOTAL" \
+      --min-export-request-total "$CHAT_PRIVACY_RIGHTS_MIN_EXPORT_REQUEST_TOTAL" \
+      --min-delete-completion-ratio "$CHAT_PRIVACY_RIGHTS_MIN_DELETE_COMPLETION_RATIO" \
+      --min-export-completion-ratio "$CHAT_PRIVACY_RIGHTS_MIN_EXPORT_COMPLETION_RATIO" \
+      --max-delete-cascade-miss-total "$CHAT_PRIVACY_RIGHTS_MAX_DELETE_CASCADE_MISS_TOTAL" \
+      --max-export-consistency-mismatch-total "$CHAT_PRIVACY_RIGHTS_MAX_EXPORT_MISMATCH_TOTAL" \
+      --max-unauthorized-request-total "$CHAT_PRIVACY_RIGHTS_MAX_UNAUTHORIZED_TOTAL" \
+      --max-missing-audit-total "$CHAT_PRIVACY_RIGHTS_MAX_MISSING_AUDIT_TOTAL" \
+      --max-unknown-request-type-total "$CHAT_PRIVACY_RIGHTS_MAX_UNKNOWN_REQUEST_TYPE_TOTAL" \
+      --max-stale-minutes "$CHAT_PRIVACY_RIGHTS_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat privacy user rights alignment gate"
+  fi
+else
+  echo "  - set RUN_CHAT_PRIVACY_USER_RIGHTS_ALIGNMENT=1 to enable"
+fi
+
+echo "[95/97] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -3385,7 +3428,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[95/96] E2E tests (optional)"
+echo "[96/97] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -3396,4 +3439,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[96/96] Done"
+echo "[97/97] Done"

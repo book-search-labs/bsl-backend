@@ -2695,6 +2695,32 @@ python scripts/eval/chat_privacy_retention_enforcement.py \
 - CI 옵션:
   - `RUN_CHAT_PRIVACY_RETENTION_ENFORCEMENT=1 ./scripts/test.sh`
 
+## Chat privacy user rights alignment gate (B-0379, Bundle 3)
+- 사용자 삭제/내보내기 요청 처리 완료율과 cascade/정합성을 검증:
+```bash
+python scripts/eval/chat_privacy_user_rights_alignment.py \
+  --events-jsonl var/chat_privacy/user_rights_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-delete-request-total 5 \
+  --min-export-request-total 5 \
+  --min-delete-completion-ratio 0.95 \
+  --min-export-completion-ratio 0.95 \
+  --max-delete-cascade-miss-total 0 \
+  --max-export-consistency-mismatch-total 0 \
+  --max-unauthorized-request-total 0 \
+  --max-missing-audit-total 0 \
+  --max-unknown-request-type-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - delete/export 요청량 및 완료율
+  - delete cascade miss, export consistency mismatch 건수
+  - unauthorized request, audit 누락, unknown request type 건수
+- CI 옵션:
+  - `RUN_CHAT_PRIVACY_USER_RIGHTS_ALIGNMENT=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

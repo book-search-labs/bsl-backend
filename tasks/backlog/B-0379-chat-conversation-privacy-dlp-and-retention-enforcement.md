@@ -72,3 +72,14 @@ Harden chat privacy controls:
   - `scripts/eval/test_chat_privacy_retention_enforcement.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_PRIVACY_RETENTION_ENFORCEMENT=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] User rights alignment gate 추가
+  - `scripts/eval/chat_privacy_user_rights_alignment.py`
+  - delete/export 요청 완료율 및 auth 정합성 검증
+  - delete cascade miss / export consistency mismatch 검증
+  - audit 누락 및 unknown request type 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_privacy_user_rights_alignment.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_PRIVACY_USER_RIGHTS_ALIGNMENT=1 ./scripts/test.sh`
