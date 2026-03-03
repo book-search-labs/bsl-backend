@@ -47,3 +47,24 @@ Freeze chat API contracts before full rewrite:
 - Build schema + snapshot compatibility harness for chat endpoints.
 - Block incompatible changes in CI.
 - Support controlled baseline refresh with explicit approval.
+
+---
+
+## Implementation Update (Bundle 1)
+
+- Enhanced `scripts/eval/chat_contract_compat_eval.py` with case-level snapshot signatures:
+  - response path/type snapshot (`path_types`)
+  - focus field snapshot (`reason_code`, `next_action`, `recoverable`)
+- Baseline comparison now detects:
+  - missing cases
+  - schema swaps per case
+  - removed paths and path type changes
+  - focus field value changes (`reason_code`/`next_action`/`recoverable`)
+- Extended unit tests:
+  - nested snapshot path typing
+  - baseline signature regression detection
+- CI gate strengthened:
+  - `.github/workflows/ci.yml` now runs `RUN_CHAT_CONTRACT_COMPAT_EVAL=1 ./scripts/test.sh`
+- Runbook updated with:
+  - baseline-aware gate command
+  - controlled baseline refresh command (`--write-baseline`)

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 _REASON_CODE_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*(?::[A-Z0-9_]+)*$")
+_FOCUS_FIELDS = ("reason_code", "next_action", "recoverable")
 
 
 def _validator_cls():
@@ -51,6 +52,46 @@ def _validate_reason_code(value: Any) -> bool:
     if not reason:
         return False
     return _REASON_CODE_PATTERN.match(reason) is not None
+
+
+def _json_type(value: Any) -> str:
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, int):
+        return "integer"
+    if isinstance(value, float):
+        return "number"
+    if isinstance(value, str):
+        return "string"
+    if isinstance(value, list):
+        return "array"
+    if isinstance(value, dict):
+        return "object"
+    return type(value).__name__
+
+
+def _snapshot_path_types(value: Any, prefix: str = "$") -> dict[str, str]:
+    snapshot: dict[str, str] = {prefix: _json_type(value)}
+    if isinstance(value, dict):
+        for key in sorted(value.keys()):
+            child_prefix = f"{prefix}.{key}"
+            snapshot.update(_snapshot_path_types(value[key], child_prefix))
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            child_prefix = f"{prefix}.{index}"
+            snapshot.update(_snapshot_path_types(item, child_prefix))
+    return snapshot
+
+
+def _snapshot_focus_fields(response: dict[str, Any]) -> dict[str, Any]:
+    focus_fields: dict[str, Any] = {}
+    for field in _FOCUS_FIELDS:
+        exists, value = _resolve_path(response, field)
+        if exists:
+            focus_fields[field] = value
+    return focus_fields
 
 
 def evaluate_cases(
@@ -106,6 +147,12 @@ def evaluate_cases(
             if not reason_code_ok:
                 reason_code_fail_total += 1
 
+        signature = {
+            "schema": schema_path_raw,
+            "path_types": _snapshot_path_types(response),
+            "focus_fields": _snapshot_focus_fields(response),
+        }
+
         error_messages = [str(err.message) for err in errors[:5]]
         results.append(
             {
@@ -114,6 +161,7 @@ def evaluate_cases(
                 "schema_ok": schema_ok,
                 "required_paths_missing": missing_paths,
                 "reason_code_ok": reason_code_ok,
+                "signature": signature,
                 "errors": error_messages,
             }
         )
@@ -179,6 +227,80 @@ def compare_with_baseline(
             "compat failures regression: "
             f"baseline={base_failures_total}, current={current_failures_total}, allowed_increase={max_failure_increase}"
         )
+
+    base_results = base.get("results") if isinstance(base.get("results"), list) else []
+    current_results = current_derived.get("results") if isinstance(current_derived.get("results"), list) else []
+    if base_results and current_results:
+        base_by_id = _index_results_by_case(base_results)
+        current_by_id = _index_results_by_case(current_results)
+        missing_case_ids = sorted(set(base_by_id.keys()) - set(current_by_id.keys()))
+        if missing_case_ids:
+            failures.append(f"case signature regression: missing_cases={','.join(missing_case_ids)}")
+        for case_id in sorted(set(base_by_id.keys()) & set(current_by_id.keys())):
+            failures.extend(_compare_case_signature(case_id, base_by_id[case_id], current_by_id[case_id]))
+    return failures
+
+
+def _index_results_by_case(results: list[Any]) -> dict[str, dict[str, Any]]:
+    indexed: dict[str, dict[str, Any]] = {}
+    for item in results:
+        if not isinstance(item, dict):
+            continue
+        case_id = str(item.get("id") or "").strip()
+        if not case_id:
+            continue
+        indexed[case_id] = item
+    return indexed
+
+
+def _compare_case_signature(
+    case_id: str,
+    baseline_case: dict[str, Any],
+    current_case: dict[str, Any],
+) -> list[str]:
+    failures: list[str] = []
+    baseline_signature = baseline_case.get("signature") if isinstance(baseline_case.get("signature"), dict) else {}
+    current_signature = current_case.get("signature") if isinstance(current_case.get("signature"), dict) else {}
+
+    baseline_schema = str(baseline_signature.get("schema") or baseline_case.get("schema") or "")
+    current_schema = str(current_signature.get("schema") or current_case.get("schema") or "")
+    if baseline_schema and current_schema and baseline_schema != current_schema:
+        failures.append(
+            f"case {case_id} schema changed: baseline={baseline_schema}, current={current_schema}"
+        )
+
+    baseline_paths = (
+        baseline_signature.get("path_types") if isinstance(baseline_signature.get("path_types"), dict) else None
+    )
+    current_paths = current_signature.get("path_types") if isinstance(current_signature.get("path_types"), dict) else None
+    if baseline_paths and current_paths:
+        removed_paths = sorted(set(baseline_paths.keys()) - set(current_paths.keys()))
+        if removed_paths:
+            failures.append(f"case {case_id} removed paths: {', '.join(removed_paths[:5])}")
+
+        type_changes: list[str] = []
+        for path in sorted(set(baseline_paths.keys()) & set(current_paths.keys())):
+            before = str(baseline_paths.get(path))
+            after = str(current_paths.get(path))
+            if before != after:
+                type_changes.append(f"{path}({before}->{after})")
+        if type_changes:
+            failures.append(f"case {case_id} type changes: {', '.join(type_changes[:5])}")
+
+    baseline_focus = (
+        baseline_signature.get("focus_fields") if isinstance(baseline_signature.get("focus_fields"), dict) else None
+    )
+    current_focus = current_signature.get("focus_fields") if isinstance(current_signature.get("focus_fields"), dict) else None
+    if baseline_focus and current_focus:
+        for field in _FOCUS_FIELDS:
+            if field not in baseline_focus or field not in current_focus:
+                continue
+            before = baseline_focus.get(field)
+            after = current_focus.get(field)
+            if before != after:
+                failures.append(
+                    f"case {case_id} focus field changed: {field} baseline={before!r}, current={after!r}"
+                )
     return failures
 
 

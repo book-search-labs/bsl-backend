@@ -715,10 +715,18 @@ export QS_LLM_MODEL=llama3.1:8b-instruct
 python scripts/eval/chat_contract_compat_eval.py \
   --cases-json services/query-service/tests/fixtures/chat_contract_compat_v1.json \
   --contracts-root . \
+  --baseline-report services/query-service/tests/fixtures/chat_contract_compat_baseline_v1.json \
   --require-all \
   --gate
 ```
-`RUN_CHAT_CONTRACT_COMPAT_EVAL=1 ./scripts/test.sh`로 옵션 게이트를 활성화할 수 있다.
+Baseline refresh (승인된 계약 변경 PR에서만 실행):
+```bash
+python scripts/eval/chat_contract_compat_eval.py \
+  --cases-json services/query-service/tests/fixtures/chat_contract_compat_v1.json \
+  --contracts-root . \
+  --write-baseline services/query-service/tests/fixtures/chat_contract_compat_baseline_v1.json
+```
+CI 기본 게이트: `RUN_CHAT_CONTRACT_COMPAT_EVAL=1 ./scripts/test.sh`
 
 ## Chat graph state schema v1 (B-0702)
 - state contract: `services/query-service/app/core/chat_graph/state.py`

@@ -55,3 +55,85 @@ def test_compare_with_baseline_detects_regression():
     assert len(failures) == 2
     assert "case count regression" in failures[0]
     assert "compat failures regression" in failures[1]
+
+
+def test_snapshot_path_types_tracks_nested_value_types():
+    module = _load_module()
+    snapshot = module._snapshot_path_types(
+        {
+            "status": "ok",
+            "recoverable": False,
+            "answer": {"content": "hello"},
+            "sources": [{"citation_key": "policy#0"}],
+        }
+    )
+    assert snapshot["$.status"] == "string"
+    assert snapshot["$.recoverable"] == "boolean"
+    assert snapshot["$.answer"] == "object"
+    assert snapshot["$.answer.content"] == "string"
+    assert snapshot["$.sources"] == "array"
+    assert snapshot["$.sources.0.citation_key"] == "string"
+
+
+def test_compare_with_baseline_detects_signature_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "case_total": 1,
+            "failures_total": 0,
+            "results": [
+                {
+                    "id": "chat_response_ok",
+                    "schema": "contracts/chat-response.schema.json",
+                    "signature": {
+                        "schema": "contracts/chat-response.schema.json",
+                        "path_types": {
+                            "$": "object",
+                            "$.status": "string",
+                            "$.reason_code": "string",
+                            "$.recoverable": "boolean",
+                        },
+                        "focus_fields": {
+                            "reason_code": "OK",
+                            "next_action": "NONE",
+                            "recoverable": False,
+                        },
+                    },
+                }
+            ],
+        }
+    }
+    current = {
+        "case_total": 1,
+        "failures_total": 0,
+        "results": [
+            {
+                "id": "chat_response_ok",
+                "schema": "contracts/chat-response.schema.json",
+                "signature": {
+                    "schema": "contracts/chat-response.schema.json",
+                    "path_types": {
+                        "$": "object",
+                        "$.status": "string",
+                        "$.recoverable": "string",
+                    },
+                    "focus_fields": {
+                        "reason_code": "PROVIDER_TIMEOUT",
+                        "next_action": "RETRY",
+                        "recoverable": True,
+                    },
+                },
+            }
+        ],
+    }
+
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_case_drop=0,
+        max_failure_increase=0,
+    )
+
+    assert any("removed paths" in item for item in failures)
+    assert any("type changes" in item for item in failures)
+    assert any("focus field changed: reason_code" in item for item in failures)
