@@ -72,3 +72,14 @@ Implement a production chat resolution engine:
   - `scripts/eval/test_chat_action_simulation_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_ACTION_SIMULATION_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 3)
+- [x] Execution safety contract guard gate 추가
+  - `scripts/eval/chat_execution_safety_contract_guard.py`
+  - preflight 실패 상태에서 실행 시도(preflight block violation) 검증
+  - simulation-execution mismatch 시 자동중단/운영알림 누락 검증
+  - idempotency key 누락 및 duplicate unsafe 실행 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_execution_safety_contract_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_EXECUTION_SAFETY_CONTRACT_GUARD=1 ./scripts/test.sh`

@@ -4055,6 +4055,31 @@ python scripts/eval/chat_action_simulation_guard.py \
 - CI 옵션:
   - `RUN_CHAT_ACTION_SIMULATION_GUARD=1 ./scripts/test.sh`
 
+## Chat execution safety contract guard gate (B-0395, Bundle 3)
+- preflight 차단, simulation-execution 불일치 중단/알림, idempotency 보장을 검증:
+```bash
+python scripts/eval/chat_execution_safety_contract_guard.py \
+  --events-jsonl var/resolution_plan/execution_safety_events.jsonl \
+  --window-hours 24 \
+  --max-outcome-drift 100 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-preflight-check-coverage-ratio 1.0 \
+  --min-idempotency-coverage-ratio 1.0 \
+  --max-preflight-block-violation-total 0 \
+  --max-mismatch-abort-missing-total 0 \
+  --max-mismatch-alert-missing-total 0 \
+  --max-duplicate-unsafe-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - preflight/idempotency coverage ratio
+  - preflight block violation 건수
+  - mismatch abort/alert 누락 및 duplicate unsafe 건수
+- CI 옵션:
+  - `RUN_CHAT_EXECUTION_SAFETY_CONTRACT_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
