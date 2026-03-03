@@ -2683,7 +2683,7 @@ else
   echo "  - set RUN_CHAT_REASONING_BUDGET_AUDIT_EXPLAINABILITY=1 to enable"
 fi
 
-echo "[76/82] Chat ticket triage taxonomy gate (optional)"
+echo "[76/83] Chat ticket triage taxonomy gate (optional)"
 if [ "${RUN_CHAT_TICKET_TRIAGE_TAXONOMY:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TICKET_TRIAGE_TAXONOMY_JSON="${CHAT_TICKET_TRIAGE_TAXONOMY_JSON:-$ROOT_DIR/var/chat_ticket/triage_taxonomy.json}"
@@ -2727,7 +2727,7 @@ else
   echo "  - set RUN_CHAT_TICKET_TRIAGE_TAXONOMY=1 to enable"
 fi
 
-echo "[77/82] Chat ticket classifier pipeline gate (optional)"
+echo "[77/83] Chat ticket classifier pipeline gate (optional)"
 if [ "${RUN_CHAT_TICKET_CLASSIFIER_PIPELINE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TICKET_CLASSIFIER_EVENTS_JSONL="${CHAT_TICKET_CLASSIFIER_EVENTS_JSONL:-$ROOT_DIR/var/chat_ticket/triage_predictions.jsonl}"
@@ -2766,7 +2766,7 @@ else
   echo "  - set RUN_CHAT_TICKET_CLASSIFIER_PIPELINE=1 to enable"
 fi
 
-echo "[78/82] Chat ticket SLA estimator gate (optional)"
+echo "[78/83] Chat ticket SLA estimator gate (optional)"
 if [ "${RUN_CHAT_TICKET_SLA_ESTIMATOR:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TICKET_SLA_ESTIMATES_JSONL="${CHAT_TICKET_SLA_ESTIMATES_JSONL:-$ROOT_DIR/var/chat_ticket/sla_estimates.jsonl}"
@@ -2807,7 +2807,7 @@ else
   echo "  - set RUN_CHAT_TICKET_SLA_ESTIMATOR=1 to enable"
 fi
 
-echo "[79/82] Chat ticket feedback loop gate (optional)"
+echo "[79/83] Chat ticket feedback loop gate (optional)"
 if [ "${RUN_CHAT_TICKET_FEEDBACK_LOOP:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TICKET_FEEDBACK_JSONL="${CHAT_TICKET_FEEDBACK_JSONL:-$ROOT_DIR/var/chat_ticket/triage_feedback.jsonl}"
@@ -2848,7 +2848,50 @@ else
   echo "  - set RUN_CHAT_TICKET_FEEDBACK_LOOP=1 to enable"
 fi
 
-echo "[80/82] Canonical quality checks (optional)"
+echo "[80/83] Chat ticket evidence pack schema gate (optional)"
+if [ "${RUN_CHAT_TICKET_EVIDENCE_PACK_SCHEMA:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TICKET_EVIDENCE_PACK_JSONL="${CHAT_TICKET_EVIDENCE_PACK_JSONL:-$ROOT_DIR/var/chat_ticket/evidence_packs.jsonl}"
+    CHAT_TICKET_EVIDENCE_PACK_WINDOW_HOURS="${CHAT_TICKET_EVIDENCE_PACK_WINDOW_HOURS:-24}"
+    CHAT_TICKET_EVIDENCE_PACK_LIMIT="${CHAT_TICKET_EVIDENCE_PACK_LIMIT:-50000}"
+    CHAT_TICKET_EVIDENCE_PACK_OUT_DIR="${CHAT_TICKET_EVIDENCE_PACK_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TICKET_EVIDENCE_PACK_MIN_WINDOW="${CHAT_TICKET_EVIDENCE_PACK_MIN_WINDOW:-0}"
+    CHAT_TICKET_EVIDENCE_PACK_MAX_DUPLICATE_TICKET_TOTAL="${CHAT_TICKET_EVIDENCE_PACK_MAX_DUPLICATE_TICKET_TOTAL:-1000000}"
+    CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_SUMMARY_TOTAL="${CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_SUMMARY_TOTAL:-1000000}"
+    CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_INTENT_TOTAL="${CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_INTENT_TOTAL:-1000000}"
+    CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_TOOL_TRACE_TOTAL="${CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_TOOL_TRACE_TOTAL:-1000000}"
+    CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_ERROR_CODE_TOTAL="${CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_ERROR_CODE_TOTAL:-1000000}"
+    CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_REFERENCE_TOTAL="${CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_REFERENCE_TOTAL:-1000000}"
+    CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_POLICY_VERSION_TOTAL="${CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_POLICY_VERSION_TOTAL:-1000000}"
+    CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_TOOL_VERSION_TOTAL="${CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_TOOL_VERSION_TOTAL:-1000000}"
+    CHAT_TICKET_EVIDENCE_PACK_MAX_UNMASKED_PII_TOTAL="${CHAT_TICKET_EVIDENCE_PACK_MAX_UNMASKED_PII_TOTAL:-1000000}"
+    CHAT_TICKET_EVIDENCE_PACK_MAX_STALE_MINUTES="${CHAT_TICKET_EVIDENCE_PACK_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_ticket_evidence_pack_schema.py" \
+      --packs-jsonl "$CHAT_TICKET_EVIDENCE_PACK_JSONL" \
+      --window-hours "$CHAT_TICKET_EVIDENCE_PACK_WINDOW_HOURS" \
+      --limit "$CHAT_TICKET_EVIDENCE_PACK_LIMIT" \
+      --out "$CHAT_TICKET_EVIDENCE_PACK_OUT_DIR" \
+      --min-window "$CHAT_TICKET_EVIDENCE_PACK_MIN_WINDOW" \
+      --max-duplicate-ticket-total "$CHAT_TICKET_EVIDENCE_PACK_MAX_DUPLICATE_TICKET_TOTAL" \
+      --max-missing-summary-total "$CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_SUMMARY_TOTAL" \
+      --max-missing-intent-total "$CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_INTENT_TOTAL" \
+      --max-missing-tool-trace-total "$CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_TOOL_TRACE_TOTAL" \
+      --max-missing-error-code-total "$CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_ERROR_CODE_TOTAL" \
+      --max-missing-reference-total "$CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_REFERENCE_TOTAL" \
+      --max-missing-policy-version-total "$CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_POLICY_VERSION_TOTAL" \
+      --max-missing-tool-version-total "$CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_TOOL_VERSION_TOTAL" \
+      --max-unmasked-pii-total "$CHAT_TICKET_EVIDENCE_PACK_MAX_UNMASKED_PII_TOTAL" \
+      --max-stale-minutes "$CHAT_TICKET_EVIDENCE_PACK_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat ticket evidence pack schema gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TICKET_EVIDENCE_PACK_SCHEMA=1 to enable"
+fi
+
+echo "[81/83] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -2859,7 +2902,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[81/82] E2E tests (optional)"
+echo "[82/83] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -2870,4 +2913,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[82/82] Done"
+echo "[83/83] Done"

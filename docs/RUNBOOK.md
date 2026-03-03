@@ -2370,6 +2370,32 @@ python scripts/eval/chat_ticket_feedback_loop.py \
 - CI 옵션:
   - `RUN_CHAT_TICKET_FEEDBACK_LOOP=1 ./scripts/test.sh`
 
+## Ticket evidence pack schema gate (B-0376, Bundle 1)
+- 티켓 evidence pack의 필수 필드/버전/PII 마스킹 누락을 배포 전에 차단:
+```bash
+python scripts/eval/chat_ticket_evidence_pack_schema.py \
+  --packs-jsonl var/chat_ticket/evidence_packs.jsonl \
+  --window-hours 24 \
+  --min-window 100 \
+  --max-duplicate-ticket-total 0 \
+  --max-missing-summary-total 0 \
+  --max-missing-intent-total 0 \
+  --max-missing-tool-trace-total 0 \
+  --max-missing-error-code-total 0 \
+  --max-missing-reference-total 0 \
+  --max-missing-policy-version-total 0 \
+  --max-missing-tool-version-total 0 \
+  --max-unmasked-pii-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - summary/intent/tool trace/error code/reference 누락 건수
+  - policy_version/tool_version 누락, duplicate ticket 건수
+  - unmasked PII 건수와 evidence freshness
+- CI 옵션:
+  - `RUN_CHAT_TICKET_EVIDENCE_PACK_SCHEMA=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

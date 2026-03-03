@@ -47,3 +47,14 @@ Generate structured chat evidence packs for support tickets:
 - Build a schema with summary, intent, tools, errors, and references.
 - Auto-assemble packs on ticket creation with redaction and integrity checks.
 - Improve resolution speed with complete, reproducible context.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Evidence pack schema gate 추가
+  - `scripts/eval/chat_ticket_evidence_pack_schema.py`
+  - summary/intent/tool trace/error code/reference 필수 필드 누락 검증
+  - policy_version/tool_version 누락 및 duplicate ticket 검증
+  - unmasked PII 검출과 evidence stale 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_ticket_evidence_pack_schema.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TICKET_EVIDENCE_PACK_SCHEMA=1 ./scripts/test.sh`
