@@ -3119,6 +3119,32 @@ python scripts/eval/chat_output_policy_consistency_guard.py \
 - CI 옵션:
   - `RUN_CHAT_OUTPUT_POLICY_CONSISTENCY_GUARD=1 ./scripts/test.sh`
 
+## Chat output guard failure handling gate (B-0383, Bundle 4)
+- guard 실패 시 fallback/triage/reason_code 처리 일관성 검증:
+```bash
+python scripts/eval/chat_output_guard_failure_handling.py \
+  --events-jsonl var/chat_output_guard/output_guard_failure_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-guard-failure-total 20 \
+  --min-fallback-coverage-ratio 0.99 \
+  --min-triage-coverage-ratio 0.99 \
+  --max-fallback-template-invalid-total 0 \
+  --max-fallback-non-korean-total 0 \
+  --max-reason-code-missing-total 0 \
+  --max-triage-missing-total 0 \
+  --max-p95-failure-to-fallback-ms 1000 \
+  --max-p95-failure-to-triage-ms 1500 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - guard 실패 대비 fallback/triage 적용 비율
+  - fallback 템플릿 유효성, 한국어 fallback 누락 건수
+  - reason_code 누락 및 failure→fallback/triage p95 latency
+- CI 옵션:
+  - `RUN_CHAT_OUTPUT_GUARD_FAILURE_HANDLING=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

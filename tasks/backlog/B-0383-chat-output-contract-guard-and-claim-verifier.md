@@ -95,3 +95,13 @@ Add a final output guard for chat responses:
   - `scripts/eval/test_chat_output_policy_consistency_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_OUTPUT_POLICY_CONSISTENCY_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Output guard failure handling gate 추가
+  - `scripts/eval/chat_output_guard_failure_handling.py`
+  - guard 실패 대비 fallback/triage 적용 비율 검증
+  - fallback 템플릿/한국어 문구/reason_code 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_output_guard_failure_handling.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_OUTPUT_GUARD_FAILURE_HANDLING=1 ./scripts/test.sh`
