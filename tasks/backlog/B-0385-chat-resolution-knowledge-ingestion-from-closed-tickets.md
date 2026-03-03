@@ -47,3 +47,13 @@ Close the loop from support tickets to chat knowledge:
 - Extract reusable resolutions from closed tickets with privacy scrubbing.
 - Require operator approval before indexing into retrieval.
 - Track impact on repeat-issue resolution and allow rollback.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Ticket knowledge candidate selection gate 추가
+  - `scripts/eval/chat_ticket_knowledge_candidate_selection.py`
+  - closed ticket 기준 후보 선별률/저신뢰 후보/상태 위반 후보 검증
+  - taxonomy/provenance 누락 건수 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_ticket_knowledge_candidate_selection.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TICKET_KNOWLEDGE_CANDIDATE_SELECTION=1 ./scripts/test.sh`

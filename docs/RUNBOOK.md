@@ -3244,6 +3244,31 @@ python scripts/eval/chat_korean_governance_loop_guard.py \
 - CI 옵션:
   - `RUN_CHAT_KOREAN_GOVERNANCE_LOOP_GUARD=1 ./scripts/test.sh`
 
+## Chat ticket knowledge candidate selection gate (B-0385, Bundle 1)
+- 종료 티켓에서 재사용 가능한 해결지식 후보 선별 품질을 검증:
+```bash
+python scripts/eval/chat_ticket_knowledge_candidate_selection.py \
+  --events-jsonl var/chat_ticket_knowledge/candidate_events.jsonl \
+  --window-hours 24 \
+  --min-reusable-score 0.60 \
+  --min-window 20 \
+  --min-ticket-total 20 \
+  --min-closed-ticket-total 10 \
+  --min-candidate-total 5 \
+  --min-candidate-rate 0.30 \
+  --max-invalid-status-candidate-total 0 \
+  --max-low-confidence-candidate-total 0 \
+  --max-candidate-taxonomy-missing-total 0 \
+  --max-source-provenance-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - closed ticket 대비 candidate 생성률(candidate_rate)
+  - closed 상태 위반 후보, 저신뢰 후보, taxonomy/provenance 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_TICKET_KNOWLEDGE_CANDIDATE_SELECTION=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
