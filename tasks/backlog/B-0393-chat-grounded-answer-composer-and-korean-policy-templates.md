@@ -35,3 +35,13 @@ Implement a grounded answer composer:
 - Build claim-level evidence binding for chat responses.
 - Route Korean policy templates by reason_code.
 - Block unsupported claims and enforce fail-closed output behavior.
+
+## Implementation Update (2026-03-04, Bundle 1)
+- [x] Grounded answer composer guard gate 추가
+  - `scripts/eval/chat_grounded_answer_composer_guard.py`
+  - claim binding coverage 및 response-level ungrounded claim 탐지 검증
+  - ungrounded claim 출력 노출(unsupported claim exposure) 건수 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_grounded_answer_composer_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_GROUNDED_ANSWER_COMPOSER_GUARD=1 ./scripts/test.sh`

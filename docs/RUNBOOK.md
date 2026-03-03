@@ -3833,6 +3833,27 @@ python scripts/eval/chat_answer_risk_misband_feedback_guard.py \
 - CI 옵션:
   - `RUN_CHAT_ANSWER_RISK_MISBAND_FEEDBACK_GUARD=1 ./scripts/test.sh`
 
+## Chat grounded answer composer guard gate (B-0393, Bundle 1)
+- claim 단위 근거 바인딩과 ungrounded claim 노출 차단을 검증:
+```bash
+python scripts/eval/chat_grounded_answer_composer_guard.py \
+  --events-jsonl var/grounded_answer/composer_events.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-response-total 100 \
+  --min-claim-binding-coverage-ratio 0.98 \
+  --max-response-with-ungrounded-total 0 \
+  --max-ungrounded-exposed-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - claim binding coverage 비율
+  - ungrounded claim 포함 응답 건수
+  - ungrounded claim 노출 건수
+- CI 옵션:
+  - `RUN_CHAT_GROUNDED_ANSWER_COMPOSER_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
