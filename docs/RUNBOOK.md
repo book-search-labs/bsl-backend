@@ -3595,6 +3595,30 @@ python scripts/eval/chat_korean_priority_ranking_guard.py \
 - CI 옵션:
   - `RUN_CHAT_KOREAN_PRIORITY_RANKING_GUARD=1 ./scripts/test.sh`
 
+## Chat crosslingual citation parity guard gate (B-0388, Bundle 3)
+- 번역/재작성 claim과 원문 근거의 citation 정합성을 검증:
+```bash
+python scripts/eval/chat_crosslingual_citation_parity_guard.py \
+  --events-jsonl var/crosslingual/citation_parity_events.jsonl \
+  --window-hours 24 \
+  --min-alignment-score 0.70 \
+  --min-window 50 \
+  --min-claim-total 50 \
+  --min-citation-parity-ratio 0.90 \
+  --max-citation-mismatch-total 5 \
+  --max-missing-citation-total 0 \
+  --max-entailment-mismatch-total 0 \
+  --max-reason-code-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - citation parity ratio, mismatch 총량
+  - missing citation/entailment mismatch 총량
+  - mismatch 사유 reason code 누락 총량
+- CI 옵션:
+  - `RUN_CHAT_CROSSLINGUAL_CITATION_PARITY_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
