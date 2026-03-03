@@ -80,3 +80,14 @@ Strengthen Korean chat safety evaluation:
   - `scripts/eval/test_chat_adversarial_ci_gate.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_ADVERSARIAL_CI_GATE=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Drift tracking gate 추가
+  - `scripts/eval/chat_adversarial_drift_tracking.py`
+  - 월별 dataset refresh gap, dataset version 증가, refresh age를 게이트화
+  - incident feedback의 dataset case 링크 비율/미연결 건수 추적
+  - gate 모드에서 drift evidence stale 포함 임계치 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_adversarial_drift_tracking.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_ADVERSARIAL_DRIFT_TRACKING=1 ./scripts/test.sh`

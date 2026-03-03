@@ -2493,7 +2493,46 @@ else
   echo "  - set RUN_CHAT_ADVERSARIAL_CI_GATE=1 to enable"
 fi
 
-echo "[71/73] Canonical quality checks (optional)"
+echo "[71/74] Chat adversarial drift tracking gate (optional)"
+if [ "${RUN_CHAT_ADVERSARIAL_DRIFT_TRACKING:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_ADVERSARIAL_DRIFT_DATASET_JSONL="${CHAT_ADVERSARIAL_DRIFT_DATASET_JSONL:-$ROOT_DIR/evaluation/chat_safety/adversarial_cases.jsonl}"
+    CHAT_ADVERSARIAL_DRIFT_INCIDENT_JSONL="${CHAT_ADVERSARIAL_DRIFT_INCIDENT_JSONL:-$ROOT_DIR/var/chat_ops/incident_feedback.jsonl}"
+    CHAT_ADVERSARIAL_DRIFT_WINDOW_DAYS="${CHAT_ADVERSARIAL_DRIFT_WINDOW_DAYS:-365}"
+    CHAT_ADVERSARIAL_DRIFT_LIMIT="${CHAT_ADVERSARIAL_DRIFT_LIMIT:-200000}"
+    CHAT_ADVERSARIAL_DRIFT_OUT_DIR="${CHAT_ADVERSARIAL_DRIFT_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_ADVERSARIAL_DRIFT_MIN_DATASET_CASE_TOTAL="${CHAT_ADVERSARIAL_DRIFT_MIN_DATASET_CASE_TOTAL:-0}"
+    CHAT_ADVERSARIAL_DRIFT_MIN_DATASET_VERSION_TOTAL="${CHAT_ADVERSARIAL_DRIFT_MIN_DATASET_VERSION_TOTAL:-0}"
+    CHAT_ADVERSARIAL_DRIFT_MAX_REFRESH_AGE_DAYS="${CHAT_ADVERSARIAL_DRIFT_MAX_REFRESH_AGE_DAYS:-1000000}"
+    CHAT_ADVERSARIAL_DRIFT_MAX_MISSING_MONTHLY_REFRESH_TOTAL="${CHAT_ADVERSARIAL_DRIFT_MAX_MISSING_MONTHLY_REFRESH_TOTAL:-1000000}"
+    CHAT_ADVERSARIAL_DRIFT_MIN_INCIDENT_TOTAL="${CHAT_ADVERSARIAL_DRIFT_MIN_INCIDENT_TOTAL:-0}"
+    CHAT_ADVERSARIAL_DRIFT_MIN_INCIDENT_LINK_RATIO="${CHAT_ADVERSARIAL_DRIFT_MIN_INCIDENT_LINK_RATIO:-0.0}"
+    CHAT_ADVERSARIAL_DRIFT_MAX_UNLINKED_INCIDENT_TOTAL="${CHAT_ADVERSARIAL_DRIFT_MAX_UNLINKED_INCIDENT_TOTAL:-1000000}"
+    CHAT_ADVERSARIAL_DRIFT_MAX_STALE_MINUTES="${CHAT_ADVERSARIAL_DRIFT_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_adversarial_drift_tracking.py" \
+      --dataset-jsonl "$CHAT_ADVERSARIAL_DRIFT_DATASET_JSONL" \
+      --incident-jsonl "$CHAT_ADVERSARIAL_DRIFT_INCIDENT_JSONL" \
+      --window-days "$CHAT_ADVERSARIAL_DRIFT_WINDOW_DAYS" \
+      --limit "$CHAT_ADVERSARIAL_DRIFT_LIMIT" \
+      --out "$CHAT_ADVERSARIAL_DRIFT_OUT_DIR" \
+      --min-dataset-case-total "$CHAT_ADVERSARIAL_DRIFT_MIN_DATASET_CASE_TOTAL" \
+      --min-dataset-version-total "$CHAT_ADVERSARIAL_DRIFT_MIN_DATASET_VERSION_TOTAL" \
+      --max-refresh-age-days "$CHAT_ADVERSARIAL_DRIFT_MAX_REFRESH_AGE_DAYS" \
+      --max-missing-monthly-refresh-total "$CHAT_ADVERSARIAL_DRIFT_MAX_MISSING_MONTHLY_REFRESH_TOTAL" \
+      --min-incident-total "$CHAT_ADVERSARIAL_DRIFT_MIN_INCIDENT_TOTAL" \
+      --min-incident-link-ratio "$CHAT_ADVERSARIAL_DRIFT_MIN_INCIDENT_LINK_RATIO" \
+      --max-unlinked-incident-total "$CHAT_ADVERSARIAL_DRIFT_MAX_UNLINKED_INCIDENT_TOTAL" \
+      --max-stale-minutes "$CHAT_ADVERSARIAL_DRIFT_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat adversarial drift tracking gate"
+  fi
+else
+  echo "  - set RUN_CHAT_ADVERSARIAL_DRIFT_TRACKING=1 to enable"
+fi
+
+echo "[72/74] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -2504,7 +2543,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[72/73] E2E tests (optional)"
+echo "[73/74] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -2515,4 +2554,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[73/73] Done"
+echo "[74/74] Done"

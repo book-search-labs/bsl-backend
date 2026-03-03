@@ -2155,6 +2155,30 @@ python scripts/eval/chat_adversarial_ci_gate.py \
 - CI 옵션:
   - `RUN_CHAT_ADVERSARIAL_CI_GATE=1 ./scripts/test.sh`
 
+## Adversarial drift tracking gate (B-0373, Bundle 4)
+- 월별 평가셋 갱신/버전 증가와 incident 환류 링크 비율을 게이트화:
+```bash
+python scripts/eval/chat_adversarial_drift_tracking.py \
+  --dataset-jsonl evaluation/chat_safety/adversarial_cases.jsonl \
+  --incident-jsonl var/chat_ops/incident_feedback.jsonl \
+  --window-days 365 \
+  --min-dataset-case-total 500 \
+  --min-dataset-version-total 6 \
+  --max-refresh-age-days 35 \
+  --max-missing-monthly-refresh-total 1 \
+  --min-incident-total 20 \
+  --min-incident-link-ratio 0.80 \
+  --max-unlinked-incident-total 5 \
+  --max-stale-minutes 1440 \
+  --gate
+```
+- 산출물:
+  - dataset version 수, refresh age(day), monthly refresh gap
+  - incident total/link ratio/unlinked total
+  - drift evidence freshness(stale minutes)
+- CI 옵션:
+  - `RUN_CHAT_ADVERSARIAL_DRIFT_TRACKING=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
