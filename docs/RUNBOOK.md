@@ -391,6 +391,19 @@ curl -s -XPOST http://localhost:9200/authors_doc_read/_search -H 'Content-Type: 
 curl -s -XPOST http://localhost:9200/series_doc_read/_search -H 'Content-Type: application/json' -d '{"query":{"match":{"name":"해리"}},"size":5}'
 ```
 
+### B-0398 DSL contract checks
+```bash
+# Legacy query patterns must not exist in runtime search/autocomplete gateways.
+rg -n 'wildcard|\\.edge\\b|\\.ngram\\b|authors\\.name_' \
+  services/search-service/src/main/java \
+  services/autocomplete-service/src/main/java
+
+# Search lexical fallback + autocomplete scoring DSL regression
+./gradlew :services:search-service:test --tests 'com.bsl.search.opensearch.OpenSearchGatewayTest'
+./gradlew :services:search-service:test --tests 'com.bsl.search.SearchControllerQcV11Test'
+./gradlew :services:autocomplete-service:test --tests 'com.bsl.autocomplete.opensearch.OpenSearchGatewayTest'
+```
+
 ### Optional entity indices (authors/series)
 - Skip entity indices:
   ```bash

@@ -206,3 +206,12 @@ Implement OpenSearch v2 migration pack:
     - verifies understanding ISBN input with hyphenated format is normalized before term routing
     - verifies override DSL includes both `identifiers.isbn13` and `identifiers.isbn10` terms
     - verifies routed ISBN term values are de-hyphenated normalized tokens
+
+## Implementation Update (Bundle 3)
+
+- Updated runbook with explicit B-0398 DSL contract verification commands:
+  - static grep guard against legacy query patterns in runtime gateways
+  - targeted test commands for:
+    - search gateway lexical fallback contract
+    - QC v1.1 override DSL regression
+    - autocomplete function-score contract
