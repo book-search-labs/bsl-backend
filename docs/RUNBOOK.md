@@ -3691,6 +3691,28 @@ python scripts/eval/chat_tool_capability_routing_guard.py \
 - CI 옵션:
   - `RUN_CHAT_TOOL_CAPABILITY_ROUTING_GUARD=1 ./scripts/test.sh`
 
+## Chat tool degrade strategy guard gate (B-0389, Bundle 3)
+- 주도구 실패 시 대체 툴 재시도/안전 fallback 정책 준수를 검증:
+```bash
+python scripts/eval/chat_tool_degrade_strategy_guard.py \
+  --events-jsonl var/tool_health/degrade_strategy_events.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-request-total 50 \
+  --min-degrade-coverage-ratio 0.95 \
+  --min-safe-fallback-ratio 0.95 \
+  --max-stalled-degrade-total 0 \
+  --max-duplicate-tool-retry-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - degrade required 대비 fallback attempted coverage 비율
+  - sequential retry success/safe fallback 성공 총량
+  - stalled degrade, duplicate-tool retry 위반 총량
+- CI 옵션:
+  - `RUN_CHAT_TOOL_DEGRADE_STRATEGY_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

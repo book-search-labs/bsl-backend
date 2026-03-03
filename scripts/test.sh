@@ -4940,7 +4940,7 @@ else
   echo "  - set RUN_CHAT_CROSSLINGUAL_FALLBACK_POLICY_GUARD=1 to enable"
 fi
 
-echo "[132/135] Chat tool health score guard gate (optional)"
+echo "[132/137] Chat tool health score guard gate (optional)"
 if [ "${RUN_CHAT_TOOL_HEALTH_SCORE_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_HEALTH_EVENTS_JSONL="${CHAT_TOOL_HEALTH_EVENTS_JSONL:-$ROOT_DIR/var/tool_health/tool_events.jsonl}"
@@ -4981,7 +4981,7 @@ else
   echo "  - set RUN_CHAT_TOOL_HEALTH_SCORE_GUARD=1 to enable"
 fi
 
-echo "[133/136] Chat tool capability routing guard gate (optional)"
+echo "[133/137] Chat tool capability routing guard gate (optional)"
 if [ "${RUN_CHAT_TOOL_CAPABILITY_ROUTING_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_CAP_ROUTING_EVENTS_JSONL="${CHAT_TOOL_CAP_ROUTING_EVENTS_JSONL:-$ROOT_DIR/var/tool_health/capability_routing_events.jsonl}"
@@ -5016,7 +5016,42 @@ else
   echo "  - set RUN_CHAT_TOOL_CAPABILITY_ROUTING_GUARD=1 to enable"
 fi
 
-echo "[134/136] Canonical quality checks (optional)"
+echo "[134/137] Chat tool degrade strategy guard gate (optional)"
+if [ "${RUN_CHAT_TOOL_DEGRADE_STRATEGY_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TOOL_DEGRADE_EVENTS_JSONL="${CHAT_TOOL_DEGRADE_EVENTS_JSONL:-$ROOT_DIR/var/tool_health/degrade_strategy_events.jsonl}"
+    CHAT_TOOL_DEGRADE_WINDOW_HOURS="${CHAT_TOOL_DEGRADE_WINDOW_HOURS:-24}"
+    CHAT_TOOL_DEGRADE_LIMIT="${CHAT_TOOL_DEGRADE_LIMIT:-100000}"
+    CHAT_TOOL_DEGRADE_OUT_DIR="${CHAT_TOOL_DEGRADE_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TOOL_DEGRADE_MIN_WINDOW="${CHAT_TOOL_DEGRADE_MIN_WINDOW:-0}"
+    CHAT_TOOL_DEGRADE_MIN_REQUEST_TOTAL="${CHAT_TOOL_DEGRADE_MIN_REQUEST_TOTAL:-0}"
+    CHAT_TOOL_DEGRADE_MIN_COVERAGE_RATIO="${CHAT_TOOL_DEGRADE_MIN_COVERAGE_RATIO:-0.0}"
+    CHAT_TOOL_DEGRADE_MIN_SAFE_FALLBACK_RATIO="${CHAT_TOOL_DEGRADE_MIN_SAFE_FALLBACK_RATIO:-0.0}"
+    CHAT_TOOL_DEGRADE_MAX_STALLED_TOTAL="${CHAT_TOOL_DEGRADE_MAX_STALLED_TOTAL:-1000000}"
+    CHAT_TOOL_DEGRADE_MAX_DUPLICATE_RETRY_TOTAL="${CHAT_TOOL_DEGRADE_MAX_DUPLICATE_RETRY_TOTAL:-1000000}"
+    CHAT_TOOL_DEGRADE_MAX_STALE_MINUTES="${CHAT_TOOL_DEGRADE_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_tool_degrade_strategy_guard.py" \
+      --events-jsonl "$CHAT_TOOL_DEGRADE_EVENTS_JSONL" \
+      --window-hours "$CHAT_TOOL_DEGRADE_WINDOW_HOURS" \
+      --limit "$CHAT_TOOL_DEGRADE_LIMIT" \
+      --out "$CHAT_TOOL_DEGRADE_OUT_DIR" \
+      --min-window "$CHAT_TOOL_DEGRADE_MIN_WINDOW" \
+      --min-request-total "$CHAT_TOOL_DEGRADE_MIN_REQUEST_TOTAL" \
+      --min-degrade-coverage-ratio "$CHAT_TOOL_DEGRADE_MIN_COVERAGE_RATIO" \
+      --min-safe-fallback-ratio "$CHAT_TOOL_DEGRADE_MIN_SAFE_FALLBACK_RATIO" \
+      --max-stalled-degrade-total "$CHAT_TOOL_DEGRADE_MAX_STALLED_TOTAL" \
+      --max-duplicate-tool-retry-total "$CHAT_TOOL_DEGRADE_MAX_DUPLICATE_RETRY_TOTAL" \
+      --max-stale-minutes "$CHAT_TOOL_DEGRADE_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat tool degrade strategy guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TOOL_DEGRADE_STRATEGY_GUARD=1 to enable"
+fi
+
+echo "[135/137] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -5027,7 +5062,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[135/136] E2E tests (optional)"
+echo "[136/137] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -5038,4 +5073,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[136/136] Done"
+echo "[137/137] Done"
