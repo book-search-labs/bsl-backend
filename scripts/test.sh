@@ -270,12 +270,23 @@ if [ "${RUN_CHAT_CUTOVER_GATE:-0}" = "1" ]; then
     CHAT_CUTOVER_DWELL_MINUTES="${CHAT_CUTOVER_DWELL_MINUTES:-0}"
     CHAT_CUTOVER_SHADOW_LIMIT="${CHAT_PARITY_SHADOW_LIMIT:-200}"
     CHAT_CUTOVER_PERF_LIMIT="${CHAT_CUTOVER_PERF_LIMIT:-500}"
+    CHAT_CUTOVER_OUT_DIR="${CHAT_CUTOVER_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_CUTOVER_REQUIRE_PROMOTE="${CHAT_CUTOVER_REQUIRE_PROMOTE:-0}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_cutover_gate.py" \
-      --current-stage "$CHAT_CUTOVER_CURRENT_STAGE" \
-      --dwell-minutes "$CHAT_CUTOVER_DWELL_MINUTES" \
-      --shadow-limit "$CHAT_CUTOVER_SHADOW_LIMIT" \
-      --perf-limit "$CHAT_CUTOVER_PERF_LIMIT" || exit 1
+    CHAT_CUTOVER_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_cutover_gate.py"
+      --current-stage "$CHAT_CUTOVER_CURRENT_STAGE"
+      --dwell-minutes "$CHAT_CUTOVER_DWELL_MINUTES"
+      --shadow-limit "$CHAT_CUTOVER_SHADOW_LIMIT"
+      --perf-limit "$CHAT_CUTOVER_PERF_LIMIT"
+      --out "$CHAT_CUTOVER_OUT_DIR"
+      --gate
+    )
+    if [ "$CHAT_CUTOVER_REQUIRE_PROMOTE" = "1" ]; then
+      CHAT_CUTOVER_ARGS+=(--require-promote)
+    fi
+
+    $PYTHON_BIN "${CHAT_CUTOVER_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat cutover gate"
   fi

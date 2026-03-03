@@ -890,10 +890,13 @@ python scripts/eval/chat_eval_matrix.py \
 ```bash
 python scripts/eval/chat_cutover_gate.py \
   --current-stage 25 \
-  --dwell-minutes 45
+  --dwell-minutes 45 \
+  --gate
 ```
 - CI 옵션:
   - `RUN_CHAT_CUTOVER_GATE=1 ./scripts/test.sh`
+  - strict promote 모드(옵션):
+    - `CHAT_CUTOVER_REQUIRE_PROMOTE=1`
 
 ## Legacy decommission enforcement (B-0724 follow-up)
 - routing audit 집계:

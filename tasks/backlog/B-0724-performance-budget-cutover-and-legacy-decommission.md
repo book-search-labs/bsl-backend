@@ -45,3 +45,23 @@ Complete rewrite rollout with performance/cost safeguards:
 - Define cutover budgets and promotion gates.
 - Run staged traffic migration with rollback drills.
 - Decommission legacy engine safely after stabilization.
+
+---
+
+## Implementation Update (Bundle 1)
+
+- `chat_cutover_gate.py`를 리포트/게이트형 스크립트로 승격:
+  - report JSON/Markdown 생성 (`report_json`, `report_md` 표준 출력)
+  - `--gate` 모드에서 fail-fast(exit 2) 지원
+  - `--require-promote` 옵션 추가(hold 허용 여부 제어)
+- cutover gate 판정 로직 분리:
+  - `evaluate_cutover(...)`로 parity/perf/cutover/rollback 계산 분리
+  - `evaluate_gate(...)`로 parity/perf 실패 및 rollback 액션 차단 규칙 고정
+- 테스트 추가:
+  - `scripts/eval/test_chat_cutover_gate.py`
+    - hold 허용 패스
+    - parity/perf 실패 + rollback 실패
+    - require-promote 활성 시 hold 차단
+- `scripts/test.sh` 연동 강화:
+  - `RUN_CHAT_CUTOVER_GATE=1` 실행 시 `--gate` 기본 적용
+  - `CHAT_CUTOVER_REQUIRE_PROMOTE=1`로 strict promote 모드 지원
