@@ -85,3 +85,14 @@ Add temporal reasoning to policy answers:
   - `scripts/eval/test_chat_temporal_query_filtering.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TEMPORAL_QUERY_FILTERING=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Temporal answer rendering gate 추가
+  - `scripts/eval/chat_temporal_answer_rendering.py`
+  - 적용일/정책버전/기준일 표시 누락 검증
+  - ambiguous query에서 follow-up 없이 direct answer 하는 케이스 검증
+  - 공식 출처 링크 누락 및 render contract violation 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_temporal_answer_rendering.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TEMPORAL_ANSWER_RENDERING=1 ./scripts/test.sh`

@@ -2794,6 +2794,33 @@ python scripts/eval/chat_temporal_query_filtering.py \
 - CI 옵션:
   - `RUN_CHAT_TEMPORAL_QUERY_FILTERING=1 ./scripts/test.sh`
 
+## Chat temporal answer rendering gate (B-0380, Bundle 3)
+- 최종 답변의 시점/버전 투명성과 불명확 질의 후속질문 처리 품질을 검증:
+```bash
+python scripts/eval/chat_temporal_answer_rendering.py \
+  --events-jsonl var/chat_policy/temporal_answer_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-answer-total 20 \
+  --min-effective-date-ratio 0.95 \
+  --min-policy-version-ratio 0.95 \
+  --min-ambiguous-followup-ratio 0.95 \
+  --max-missing-reference-date-total 0 \
+  --max-ambiguous-direct-answer-total 0 \
+  --max-missing-official-source-link-total 0 \
+  --max-render-contract-violation-total 0 \
+  --max-p95-render-latency-ms 800 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - 적용일/정책 버전/기준일 미포함 건수
+  - ambiguous query direct answer 및 follow-up 비율
+  - 공식 출처 링크 누락 건수와 render contract 위반 건수
+  - answer rendering p95 latency
+- CI 옵션:
+  - `RUN_CHAT_TEMPORAL_ANSWER_RENDERING=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
