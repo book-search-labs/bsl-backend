@@ -3441,6 +3441,32 @@ python scripts/eval/chat_prompt_tamper_incident_flow_guard.py \
 - CI 옵션:
   - `RUN_CHAT_PROMPT_TAMPER_INCIDENT_FLOW_GUARD=1 ./scripts/test.sh`
 
+## Chat intent confidence calibration guard gate (B-0387, Bundle 1)
+- 인텐트 confidence 보정 품질(ECE/Brier/과신/과소신뢰)을 검증:
+```bash
+python scripts/eval/chat_intent_confidence_calibration_guard.py \
+  --events-jsonl var/intent_calibration/intent_predictions.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-prediction-total 50 \
+  --required-domains ORDER,SHIPPING,REFUND,POLICY \
+  --min-domain-coverage-ratio 1.0 \
+  --max-calibrated-ece 0.20 \
+  --max-calibrated-brier-score 0.20 \
+  --min-ece-gain 0.0 \
+  --min-brier-gain 0.0 \
+  --max-overconfidence-total 5 \
+  --max-underconfidence-total 5 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - raw/calibrated ECE, raw/calibrated Brier score
+  - calibration gain(ECE/Brier), domain coverage ratio
+  - overconfidence/underconfidence 집계
+- CI 옵션:
+  - `RUN_CHAT_INTENT_CONFIDENCE_CALIBRATION_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

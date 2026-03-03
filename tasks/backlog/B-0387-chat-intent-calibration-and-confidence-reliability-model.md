@@ -47,3 +47,13 @@ Improve intent confidence reliability:
 - Calibrate intent probabilities and track calibration quality metrics.
 - Route tool calls/clarifications using calibrated confidence thresholds.
 - Detect calibration drift and refresh thresholds periodically.
+
+## Implementation Update (2026-03-04, Bundle 1)
+- [x] Intent confidence calibration guard gate 추가
+  - `scripts/eval/chat_intent_confidence_calibration_guard.py`
+  - raw/calibrated ECE, Brier score 및 calibration gain 검증
+  - overconfidence/underconfidence 및 required domain coverage 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_intent_confidence_calibration_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_INTENT_CONFIDENCE_CALIBRATION_GUARD=1 ./scripts/test.sh`
