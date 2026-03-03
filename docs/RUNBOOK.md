@@ -1633,6 +1633,28 @@ python scripts/eval/chat_workflow_recovery_audit.py \
 - CI 옵션:
   - `RUN_CHAT_WORKFLOW_RECOVERY_AUDIT=1 ./scripts/test.sh`
 
+## Source trust registry gate (B-0368, Bundle 1)
+- 출처 신뢰도 정책 레지스트리의 커버리지/정합성/신선도를 검증:
+```bash
+python scripts/eval/chat_source_trust_registry.py \
+  --policy-json var/chat_trust/source_trust_policy.json \
+  --max-policy-age-days 7 \
+  --min-policy-total 1 \
+  --min-coverage-ratio 1.0 \
+  --max-invalid-weight-total 0 \
+  --max-invalid-ttl-total 0 \
+  --max-missing-version-total 0 \
+  --max-stale-ratio 0.10 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - source type coverage ratio 및 missing source types
+  - trust weight/TTL/version 유효성 위반 건수
+  - 최신 정책 시각 기반 stale ratio/stale minutes
+- CI 옵션:
+  - `RUN_CHAT_SOURCE_TRUST_REGISTRY=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

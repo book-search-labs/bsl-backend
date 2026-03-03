@@ -59,3 +59,14 @@ Add trust-aware chat grounding:
 - Build source trust registry and freshness-aware scoring.
 - Generate per-answer reliability labels and enforce low-confidence guardrails.
 - Track trust metrics and validate regression on stale/weak evidence cases.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Source trust registry gate 추가
+  - `scripts/eval/chat_source_trust_registry.py`
+  - 출처 타입(`OFFICIAL_POLICY/EVENT_NOTICE/ANNOUNCEMENT/USER_GENERATED`)별 정책 커버리지와 trust/freshness 정책 정합성을 집계
+  - trust weight 범위(0..1), freshness TTL 양수, policy version 존재 여부를 게이트화
+  - 최신 정책 시각 기반 stale ratio/stale minutes를 계산해 오래된 정책 레지스트리 유입을 차단
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_source_trust_registry.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_SOURCE_TRUST_REGISTRY=1 ./scripts/test.sh`
