@@ -46,3 +46,13 @@ Add a real-time session quality scorer:
 - Score chat sessions per turn and classify health states.
 - Trigger policy-based interventions for at-risk/degraded sessions.
 - Measure recovery/completion lift and close the feedback loop.
+
+## Implementation Update (2026-03-04, Bundle 1)
+- [x] Session quality scorer guard gate 추가
+  - `scripts/eval/chat_session_quality_scorer_guard.py`
+  - intent 프로파일(commerce/general) 점수 산식 계산 및 평균 품질 점수 검증
+  - reported score 대비 model drift 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_session_quality_scorer_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_SESSION_QUALITY_SCORER_GUARD=1 ./scripts/test.sh`

@@ -3921,6 +3921,28 @@ python scripts/eval/chat_template_missing_fail_closed_guard.py \
 - CI 옵션:
   - `RUN_CHAT_TEMPLATE_MISSING_FAIL_CLOSED_GUARD=1 ./scripts/test.sh`
 
+## Chat session quality scorer guard gate (B-0394, Bundle 1)
+- 세션 품질 점수 산식과 intent 프로파일(commerce/general) 계산 드리프트를 검증:
+```bash
+python scripts/eval/chat_session_quality_scorer_guard.py \
+  --events-jsonl var/session_quality/session_quality_events.jsonl \
+  --window-hours 24 \
+  --model-drift-tolerance 0.05 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-mean-quality-score 0.60 \
+  --max-low-quality-total 40 \
+  --max-model-drift-total 5 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - mean session quality score
+  - low-quality session 건수
+  - reported score 대비 model drift 건수
+- CI 옵션:
+  - `RUN_CHAT_SESSION_QUALITY_SCORER_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
