@@ -3018,6 +3018,33 @@ python scripts/eval/chat_tool_tx_compensation_orchestrator.py \
 - CI 옵션:
   - `RUN_CHAT_TOOL_TX_COMPENSATION_ORCHESTRATOR=1 ./scripts/test.sh`
 
+## Chat tool transaction audit replayability gate (B-0382, Bundle 4)
+- 트랜잭션 이벤트의 감사 필드 완결성과 상태전이 재생 가능성을 검증:
+```bash
+python scripts/eval/chat_tool_tx_audit_replayability.py \
+  --events-jsonl var/chat_tool_tx/tx_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-tx-total 20 \
+  --min-replayable-ratio 0.99 \
+  --max-missing-trace-id-total 0 \
+  --max-missing-request-id-total 0 \
+  --max-missing-reason-code-total 0 \
+  --max-missing-phase-total 0 \
+  --max-missing-actor-total 0 \
+  --max-transition-gap-total 0 \
+  --max-non-replayable-tx-total 0 \
+  --max-p95-replay-span-ms 1500 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - replayable/non-replayable 트랜잭션 수 및 replayable ratio
+  - trace/request/reason/phase/actor 누락 건수
+  - transition gap 건수 및 replay span p95
+- CI 옵션:
+  - `RUN_CHAT_TOOL_TX_AUDIT_REPLAYABILITY=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

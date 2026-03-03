@@ -3577,7 +3577,7 @@ else
   echo "  - set RUN_CHAT_TEMPORAL_ANSWER_RENDERING=1 to enable"
 fi
 
-echo "[99/109] Chat temporal conflict fallback gate (optional)"
+echo "[99/110] Chat temporal conflict fallback gate (optional)"
 if [ "${RUN_CHAT_TEMPORAL_CONFLICT_FALLBACK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TEMPORAL_CONFLICT_EVENTS_JSONL="${CHAT_TEMPORAL_CONFLICT_EVENTS_JSONL:-$ROOT_DIR/var/chat_policy/temporal_conflict_events.jsonl}"
@@ -3616,7 +3616,7 @@ else
   echo "  - set RUN_CHAT_TEMPORAL_CONFLICT_FALLBACK=1 to enable"
 fi
 
-echo "[100/109] Chat correction memory schema gate (optional)"
+echo "[100/110] Chat correction memory schema gate (optional)"
 if [ "${RUN_CHAT_CORRECTION_MEMORY_SCHEMA:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CORRECTION_MEMORY_SCHEMA_JSONL="${CHAT_CORRECTION_MEMORY_SCHEMA_JSONL:-$ROOT_DIR/var/chat_correction/correction_memory_records.jsonl}"
@@ -3655,7 +3655,7 @@ else
   echo "  - set RUN_CHAT_CORRECTION_MEMORY_SCHEMA=1 to enable"
 fi
 
-echo "[101/109] Chat correction approval workflow gate (optional)"
+echo "[101/110] Chat correction approval workflow gate (optional)"
 if [ "${RUN_CHAT_CORRECTION_APPROVAL_WORKFLOW:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CORRECTION_APPROVAL_EVENTS_JSONL="${CHAT_CORRECTION_APPROVAL_EVENTS_JSONL:-$ROOT_DIR/var/chat_correction/correction_approval_events.jsonl}"
@@ -3696,7 +3696,7 @@ else
   echo "  - set RUN_CHAT_CORRECTION_APPROVAL_WORKFLOW=1 to enable"
 fi
 
-echo "[102/109] Chat correction retrieval integration gate (optional)"
+echo "[102/110] Chat correction retrieval integration gate (optional)"
 if [ "${RUN_CHAT_CORRECTION_RETRIEVAL_INTEGRATION:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CORRECTION_RETRIEVAL_EVENTS_JSONL="${CHAT_CORRECTION_RETRIEVAL_EVENTS_JSONL:-$ROOT_DIR/var/chat_correction/correction_retrieval_events.jsonl}"
@@ -3735,7 +3735,7 @@ else
   echo "  - set RUN_CHAT_CORRECTION_RETRIEVAL_INTEGRATION=1 to enable"
 fi
 
-echo "[103/109] Chat correction quality safeguards gate (optional)"
+echo "[103/110] Chat correction quality safeguards gate (optional)"
 if [ "${RUN_CHAT_CORRECTION_QUALITY_SAFEGUARDS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CORRECTION_QUALITY_EVENTS_JSONL="${CHAT_CORRECTION_QUALITY_EVENTS_JSONL:-$ROOT_DIR/var/chat_correction/correction_quality_events.jsonl}"
@@ -3774,7 +3774,7 @@ else
   echo "  - set RUN_CHAT_CORRECTION_QUALITY_SAFEGUARDS=1 to enable"
 fi
 
-echo "[104/109] Chat tool transaction fence model gate (optional)"
+echo "[104/110] Chat tool transaction fence model gate (optional)"
 if [ "${RUN_CHAT_TOOL_TX_FENCE_MODEL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_TX_FENCE_EVENTS_JSONL="${CHAT_TOOL_TX_FENCE_EVENTS_JSONL:-$ROOT_DIR/var/chat_tool_tx/tx_events.jsonl}"
@@ -3813,7 +3813,7 @@ else
   echo "  - set RUN_CHAT_TOOL_TX_FENCE_MODEL=1 to enable"
 fi
 
-echo "[105/109] Chat tool transaction idempotency dedup gate (optional)"
+echo "[105/110] Chat tool transaction idempotency dedup gate (optional)"
 if [ "${RUN_CHAT_TOOL_TX_IDEMPOTENCY_DEDUP:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_TX_IDEMPOTENCY_EVENTS_JSONL="${CHAT_TOOL_TX_IDEMPOTENCY_EVENTS_JSONL:-$ROOT_DIR/var/chat_tool_tx/tx_events.jsonl}"
@@ -3850,7 +3850,7 @@ else
   echo "  - set RUN_CHAT_TOOL_TX_IDEMPOTENCY_DEDUP=1 to enable"
 fi
 
-echo "[106/109] Chat tool transaction compensation orchestrator gate (optional)"
+echo "[106/110] Chat tool transaction compensation orchestrator gate (optional)"
 if [ "${RUN_CHAT_TOOL_TX_COMPENSATION_ORCHESTRATOR:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_TX_COMP_EVENTS_JSONL="${CHAT_TOOL_TX_COMP_EVENTS_JSONL:-$ROOT_DIR/var/chat_tool_tx/tx_events.jsonl}"
@@ -3895,7 +3895,52 @@ else
   echo "  - set RUN_CHAT_TOOL_TX_COMPENSATION_ORCHESTRATOR=1 to enable"
 fi
 
-echo "[107/109] Canonical quality checks (optional)"
+echo "[107/110] Chat tool transaction audit replayability gate (optional)"
+if [ "${RUN_CHAT_TOOL_TX_AUDIT_REPLAYABILITY:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TOOL_TX_AUDIT_EVENTS_JSONL="${CHAT_TOOL_TX_AUDIT_EVENTS_JSONL:-$ROOT_DIR/var/chat_tool_tx/tx_events.jsonl}"
+    CHAT_TOOL_TX_AUDIT_WINDOW_HOURS="${CHAT_TOOL_TX_AUDIT_WINDOW_HOURS:-24}"
+    CHAT_TOOL_TX_AUDIT_LIMIT="${CHAT_TOOL_TX_AUDIT_LIMIT:-50000}"
+    CHAT_TOOL_TX_AUDIT_OUT_DIR="${CHAT_TOOL_TX_AUDIT_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TOOL_TX_AUDIT_MIN_WINDOW="${CHAT_TOOL_TX_AUDIT_MIN_WINDOW:-0}"
+    CHAT_TOOL_TX_AUDIT_MIN_TX_TOTAL="${CHAT_TOOL_TX_AUDIT_MIN_TX_TOTAL:-0}"
+    CHAT_TOOL_TX_AUDIT_MIN_REPLAYABLE_RATIO="${CHAT_TOOL_TX_AUDIT_MIN_REPLAYABLE_RATIO:-0.0}"
+    CHAT_TOOL_TX_AUDIT_MAX_MISSING_TRACE_ID_TOTAL="${CHAT_TOOL_TX_AUDIT_MAX_MISSING_TRACE_ID_TOTAL:-1000000}"
+    CHAT_TOOL_TX_AUDIT_MAX_MISSING_REQUEST_ID_TOTAL="${CHAT_TOOL_TX_AUDIT_MAX_MISSING_REQUEST_ID_TOTAL:-1000000}"
+    CHAT_TOOL_TX_AUDIT_MAX_MISSING_REASON_CODE_TOTAL="${CHAT_TOOL_TX_AUDIT_MAX_MISSING_REASON_CODE_TOTAL:-1000000}"
+    CHAT_TOOL_TX_AUDIT_MAX_MISSING_PHASE_TOTAL="${CHAT_TOOL_TX_AUDIT_MAX_MISSING_PHASE_TOTAL:-1000000}"
+    CHAT_TOOL_TX_AUDIT_MAX_MISSING_ACTOR_TOTAL="${CHAT_TOOL_TX_AUDIT_MAX_MISSING_ACTOR_TOTAL:-1000000}"
+    CHAT_TOOL_TX_AUDIT_MAX_TRANSITION_GAP_TOTAL="${CHAT_TOOL_TX_AUDIT_MAX_TRANSITION_GAP_TOTAL:-1000000}"
+    CHAT_TOOL_TX_AUDIT_MAX_NON_REPLAYABLE_TX_TOTAL="${CHAT_TOOL_TX_AUDIT_MAX_NON_REPLAYABLE_TX_TOTAL:-1000000}"
+    CHAT_TOOL_TX_AUDIT_MAX_P95_REPLAY_SPAN_MS="${CHAT_TOOL_TX_AUDIT_MAX_P95_REPLAY_SPAN_MS:-1000000}"
+    CHAT_TOOL_TX_AUDIT_MAX_STALE_MINUTES="${CHAT_TOOL_TX_AUDIT_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_tool_tx_audit_replayability.py" \
+      --events-jsonl "$CHAT_TOOL_TX_AUDIT_EVENTS_JSONL" \
+      --window-hours "$CHAT_TOOL_TX_AUDIT_WINDOW_HOURS" \
+      --limit "$CHAT_TOOL_TX_AUDIT_LIMIT" \
+      --out "$CHAT_TOOL_TX_AUDIT_OUT_DIR" \
+      --min-window "$CHAT_TOOL_TX_AUDIT_MIN_WINDOW" \
+      --min-tx-total "$CHAT_TOOL_TX_AUDIT_MIN_TX_TOTAL" \
+      --min-replayable-ratio "$CHAT_TOOL_TX_AUDIT_MIN_REPLAYABLE_RATIO" \
+      --max-missing-trace-id-total "$CHAT_TOOL_TX_AUDIT_MAX_MISSING_TRACE_ID_TOTAL" \
+      --max-missing-request-id-total "$CHAT_TOOL_TX_AUDIT_MAX_MISSING_REQUEST_ID_TOTAL" \
+      --max-missing-reason-code-total "$CHAT_TOOL_TX_AUDIT_MAX_MISSING_REASON_CODE_TOTAL" \
+      --max-missing-phase-total "$CHAT_TOOL_TX_AUDIT_MAX_MISSING_PHASE_TOTAL" \
+      --max-missing-actor-total "$CHAT_TOOL_TX_AUDIT_MAX_MISSING_ACTOR_TOTAL" \
+      --max-transition-gap-total "$CHAT_TOOL_TX_AUDIT_MAX_TRANSITION_GAP_TOTAL" \
+      --max-non-replayable-tx-total "$CHAT_TOOL_TX_AUDIT_MAX_NON_REPLAYABLE_TX_TOTAL" \
+      --max-p95-replay-span-ms "$CHAT_TOOL_TX_AUDIT_MAX_P95_REPLAY_SPAN_MS" \
+      --max-stale-minutes "$CHAT_TOOL_TX_AUDIT_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat tool transaction audit replayability gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TOOL_TX_AUDIT_REPLAYABILITY=1 to enable"
+fi
+
+echo "[108/110] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -3906,7 +3951,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[108/109] E2E tests (optional)"
+echo "[109/110] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -3917,4 +3962,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[109/109] Done"
+echo "[110/110] Done"

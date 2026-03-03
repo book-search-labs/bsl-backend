@@ -79,3 +79,13 @@ Add transactional safety for multi-tool chat actions:
   - `scripts/eval/test_chat_tool_tx_compensation_orchestrator.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TOOL_TX_COMPENSATION_ORCHESTRATOR=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Tool transaction audit replayability gate 추가
+  - `scripts/eval/chat_tool_tx_audit_replayability.py`
+  - trace_id/request_id/reason_code/phase/actor 감사 필드 누락 검증
+  - 상태전이 transition gap 및 non-replayable transaction 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_tool_tx_audit_replayability.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TOOL_TX_AUDIT_REPLAYABILITY=1 ./scripts/test.sh`
