@@ -2895,6 +2895,31 @@ python scripts/eval/chat_correction_approval_workflow.py \
 - CI 옵션:
   - `RUN_CHAT_CORRECTION_APPROVAL_WORKFLOW=1 ./scripts/test.sh`
 
+## Chat correction retrieval integration gate (B-0381, Bundle 3)
+- 교정 메모리 우선 적용(precedence), 정책 충돌 처리, reason_code 누락 여부를 검증:
+```bash
+python scripts/eval/chat_correction_retrieval_integration.py \
+  --events-jsonl var/chat_correction/correction_retrieval_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-request-total 20 \
+  --min-hit-ratio 0.70 \
+  --max-stale-hit-total 0 \
+  --max-precedence-violation-total 0 \
+  --max-policy-conflict-unhandled-total 0 \
+  --max-missing-reason-code-total 0 \
+  --max-p95-retrieval-latency-ms 700 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - correction hit/override 비율
+  - precedence violation 및 policy conflict unhandled 건수
+  - correction 적용 요청의 reason_code 누락 건수
+  - retrieval p95 latency
+- CI 옵션:
+  - `RUN_CHAT_CORRECTION_RETRIEVAL_INTEGRATION=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
