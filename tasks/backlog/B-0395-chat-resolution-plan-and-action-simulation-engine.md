@@ -62,3 +62,13 @@ Implement a production chat resolution engine:
   - `scripts/eval/test_chat_resolution_plan_compiler_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_RESOLUTION_PLAN_COMPILER_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 2)
+- [x] Action simulation guard gate 추가
+  - `scripts/eval/chat_action_simulation_guard.py`
+  - 환불/배송 옵션 시뮬레이션 필수 추정값 누락 검증
+  - 정책 차단 시 대체 경로 제시 누락 및 simulation-execution drift 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_action_simulation_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_ACTION_SIMULATION_GUARD=1 ./scripts/test.sh`

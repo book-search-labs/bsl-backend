@@ -5563,7 +5563,44 @@ else
   echo "  - set RUN_CHAT_RESOLUTION_PLAN_COMPILER_GUARD=1 to enable"
 fi
 
-echo "[149/151] Canonical quality checks (optional)"
+echo "[149/152] Chat action simulation guard gate (optional)"
+if [ "${RUN_CHAT_ACTION_SIMULATION_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_ACTION_SIM_EVENTS_JSONL="${CHAT_ACTION_SIM_EVENTS_JSONL:-$ROOT_DIR/var/resolution_plan/simulation_events.jsonl}"
+    CHAT_ACTION_SIM_WINDOW_HOURS="${CHAT_ACTION_SIM_WINDOW_HOURS:-24}"
+    CHAT_ACTION_SIM_LIMIT="${CHAT_ACTION_SIM_LIMIT:-100000}"
+    CHAT_ACTION_SIM_OUT_DIR="${CHAT_ACTION_SIM_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_ACTION_SIM_MAX_VALUE_DRIFT="${CHAT_ACTION_SIM_MAX_VALUE_DRIFT:-0.0}"
+    CHAT_ACTION_SIM_MIN_WINDOW="${CHAT_ACTION_SIM_MIN_WINDOW:-0}"
+    CHAT_ACTION_SIM_MIN_EVENT_TOTAL="${CHAT_ACTION_SIM_MIN_EVENT_TOTAL:-0}"
+    CHAT_ACTION_SIM_MIN_COVERAGE_RATE="${CHAT_ACTION_SIM_MIN_COVERAGE_RATE:-0.0}"
+    CHAT_ACTION_SIM_MIN_BLOCKED_ALT_PATH_RATIO="${CHAT_ACTION_SIM_MIN_BLOCKED_ALT_PATH_RATIO:-0.0}"
+    CHAT_ACTION_SIM_MAX_MISSING_ESTIMATE_FIELDS_TOTAL="${CHAT_ACTION_SIM_MAX_MISSING_ESTIMATE_FIELDS_TOTAL:-1000000}"
+    CHAT_ACTION_SIM_MAX_EXECUTION_DRIFT_TOTAL="${CHAT_ACTION_SIM_MAX_EXECUTION_DRIFT_TOTAL:-1000000}"
+    CHAT_ACTION_SIM_MAX_STALE_MINUTES="${CHAT_ACTION_SIM_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_action_simulation_guard.py" \
+      --events-jsonl "$CHAT_ACTION_SIM_EVENTS_JSONL" \
+      --window-hours "$CHAT_ACTION_SIM_WINDOW_HOURS" \
+      --limit "$CHAT_ACTION_SIM_LIMIT" \
+      --out "$CHAT_ACTION_SIM_OUT_DIR" \
+      --max-value-drift "$CHAT_ACTION_SIM_MAX_VALUE_DRIFT" \
+      --min-window "$CHAT_ACTION_SIM_MIN_WINDOW" \
+      --min-event-total "$CHAT_ACTION_SIM_MIN_EVENT_TOTAL" \
+      --min-simulation-coverage-rate "$CHAT_ACTION_SIM_MIN_COVERAGE_RATE" \
+      --min-blocked-alt-path-ratio "$CHAT_ACTION_SIM_MIN_BLOCKED_ALT_PATH_RATIO" \
+      --max-missing-estimate-fields-total "$CHAT_ACTION_SIM_MAX_MISSING_ESTIMATE_FIELDS_TOTAL" \
+      --max-execution-drift-total "$CHAT_ACTION_SIM_MAX_EXECUTION_DRIFT_TOTAL" \
+      --max-stale-minutes "$CHAT_ACTION_SIM_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat action simulation guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_ACTION_SIMULATION_GUARD=1 to enable"
+fi
+
+echo "[150/152] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -5574,7 +5611,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[150/151] E2E tests (optional)"
+echo "[151/152] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -5585,4 +5622,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[151/151] Done"
+echo "[152/152] Done"

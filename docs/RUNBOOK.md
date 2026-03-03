@@ -4032,6 +4032,29 @@ python scripts/eval/chat_resolution_plan_compiler_guard.py \
 - CI 옵션:
   - `RUN_CHAT_RESOLUTION_PLAN_COMPILER_GUARD=1 ./scripts/test.sh`
 
+## Chat action simulation guard gate (B-0395, Bundle 2)
+- 환불/배송 옵션 변경 시 사전 시뮬레이션 품질과 실행 편차/대체경로를 검증:
+```bash
+python scripts/eval/chat_action_simulation_guard.py \
+  --events-jsonl var/resolution_plan/simulation_events.jsonl \
+  --window-hours 24 \
+  --max-value-drift 100 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-simulation-coverage-rate 0.80 \
+  --min-blocked-alt-path-ratio 1.0 \
+  --max-missing-estimate-fields-total 0 \
+  --max-execution-drift-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - simulation coverage/blocked alt-path ratio
+  - estimate fields 누락 건수
+  - simulation vs execution drift 건수
+- CI 옵션:
+  - `RUN_CHAT_ACTION_SIMULATION_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
