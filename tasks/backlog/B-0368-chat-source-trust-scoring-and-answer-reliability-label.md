@@ -70,3 +70,14 @@ Add trust-aware chat grounding:
   - `scripts/eval/test_chat_source_trust_registry.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_SOURCE_TRUST_REGISTRY=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Retrieval + rerank trust integration gate 추가
+  - `scripts/eval/chat_trust_rerank_integration.py`
+  - retrieval top-k 후보를 baseline score 대비 trust-aware score(신뢰도 boost + stale penalty)로 재정렬해 전/후 품질을 비교
+  - low-trust source top-k ratio, stale source top-k ratio, trust lift/stale drop 지표를 산출
+  - gate 모드에서 저신뢰/만료 source 상위노출 비율 과다, trust lift 저하, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_trust_rerank_integration.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TRUST_RERANK_INTEGRATION=1 ./scripts/test.sh`

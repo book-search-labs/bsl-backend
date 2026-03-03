@@ -1655,6 +1655,31 @@ python scripts/eval/chat_source_trust_registry.py \
 - CI 옵션:
   - `RUN_CHAT_SOURCE_TRUST_REGISTRY=1 ./scripts/test.sh`
 
+## Trust rerank integration gate (B-0368, Bundle 2)
+- trust-aware 점수(신뢰도 boost + stale penalty)가 top-k 노출 품질을 개선하는지 검증:
+```bash
+python scripts/eval/chat_trust_rerank_integration.py \
+  --events-jsonl var/chat_trust/retrieval_events.jsonl \
+  --window-hours 24 \
+  --top-k 3 \
+  --low-trust-threshold 0.5 \
+  --trust-boost-scale 0.3 \
+  --stale-penalty 0.5 \
+  --default-freshness-ttl-sec 86400 \
+  --max-low-trust-topk-ratio 0.40 \
+  --max-stale-topk-ratio 0.20 \
+  --min-trust-lift-ratio 0.0 \
+  --min-stale-drop-ratio 0.0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - low-trust/stale source의 top-k before/after ratio
+  - trust lift ratio / stale drop ratio
+  - rerank shift query 비율
+- CI 옵션:
+  - `RUN_CHAT_TRUST_RERANK_INTEGRATION=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
