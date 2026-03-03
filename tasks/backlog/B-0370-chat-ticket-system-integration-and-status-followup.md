@@ -69,3 +69,14 @@ Integrate chat with support tickets:
   - `scripts/eval/test_chat_ticket_status_sync.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TICKET_STATUS_SYNC=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Ticket follow-up prompt gate 추가
+  - `scripts/eval/chat_ticket_followup_prompt.py`
+  - `WAITING_USER` 상태 전이 대비 follow-up prompt 제공률과 리마인드 필요 케이스 커버리지를 집계
+  - prompt payload에서 guidance/recommended_action 누락을 게이트화
+  - gate 모드에서 안내 누락, 리마인드 커버리지 저하, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_ticket_followup_prompt.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TICKET_FOLLOWUP_PROMPT=1 ./scripts/test.sh`

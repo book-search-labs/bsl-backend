@@ -1852,6 +1852,26 @@ python scripts/eval/chat_ticket_status_sync.py \
 - CI 옵션:
   - `RUN_CHAT_TICKET_STATUS_SYNC=1 ./scripts/test.sh`
 
+## Ticket follow-up prompt gate (B-0370, Bundle 3)
+- 상태 전이에 따른 후속 안내와 장기 `WAITING_USER` 리마인드 정책 준수 여부 검증:
+```bash
+python scripts/eval/chat_ticket_followup_prompt.py \
+  --events-jsonl var/chat_ticket/ticket_events.jsonl \
+  --window-hours 24 \
+  --reminder-threshold-hours 24 \
+  --max-prompt-missing-action-total 0 \
+  --min-waiting-user-prompt-coverage-ratio 0.95 \
+  --min-reminder-due-coverage-ratio 0.90 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - WAITING_USER 전이 대비 follow-up prompt coverage
+  - 리마인드 필요 케이스 대비 reminder sent coverage
+  - 후속 프롬프트 action/guidance 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_TICKET_FOLLOWUP_PROMPT=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
