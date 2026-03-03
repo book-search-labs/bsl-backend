@@ -1921,6 +1921,31 @@ python scripts/eval/chat_policy_dsl_lint.py \
 - CI 옵션:
   - `RUN_CHAT_POLICY_DSL_LINT=1 ./scripts/test.sh`
 
+## Policy eval trace gate (B-0371, Bundle 2)
+- 런타임 정책 평가 trace에서 결정 재현성/충돌 해결/감사 필드 완전성을 검증:
+```bash
+python scripts/eval/chat_policy_eval_trace.py \
+  --events-jsonl var/chat_policy/policy_eval_audit.jsonl \
+  --window-hours 24 \
+  --min-window 10 \
+  --max-missing-request-id-total 0 \
+  --max-missing-policy-version-total 0 \
+  --max-missing-matched-rule-total 0 \
+  --max-unknown-final-action-total 0 \
+  --max-non-deterministic-key-total 0 \
+  --max-conflict-unresolved-total 0 \
+  --max-latency-p95-ms 2000 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - policy eval 총량과 request_id/policy_version/matched_rule_ids 누락 건수
+  - 동일 decision key의 비결정성(상충 action) 건수
+  - conflict 감지 대비 unresolved 건수
+  - policy eval latency p95, evidence freshness
+- CI 옵션:
+  - `RUN_CHAT_POLICY_EVAL_TRACE=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
