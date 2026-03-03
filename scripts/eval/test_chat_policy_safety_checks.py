@@ -99,3 +99,37 @@ def test_evaluate_gate_allows_empty_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_policy_safety_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "contradictory_rule_pair_total": 0,
+                "duplicate_condition_total": 0,
+                "missing_sensitive_guard_intent_total": 0,
+                "unsafe_high_risk_allow_total": 0,
+                "missing_reason_code_total": 0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "contradictory_rule_pair_total": 1,
+            "duplicate_condition_total": 1,
+            "missing_sensitive_guard_intent_total": 1,
+            "unsafe_high_risk_allow_total": 1,
+            "missing_reason_code_total": 1,
+            "stale_minutes": 40.0,
+        },
+        max_contradictory_rule_pair_total_increase=0,
+        max_duplicate_condition_total_increase=0,
+        max_missing_sensitive_guard_intent_total_increase=0,
+        max_unsafe_high_risk_allow_total_increase=0,
+        max_missing_reason_code_total_increase=0,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 6

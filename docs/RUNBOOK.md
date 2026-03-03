@@ -2456,6 +2456,18 @@ python scripts/eval/chat_policy_dsl_lint.py \
   --max-invalid-locale-total 0 \
   --max-invalid-effective-window-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_policy_dsl_lint_baseline_v1.json \
+  --max-missing-rule-id-total-increase 0 \
+  --max-duplicate-rule-id-total-increase 0 \
+  --max-invalid-priority-total-increase 0 \
+  --max-invalid-action-total-increase 0 \
+  --max-empty-condition-total-increase 0 \
+  --max-unknown-condition-key-total-increase 0 \
+  --max-invalid-risk-level-total-increase 0 \
+  --max-invalid-reliability-level-total-increase 0 \
+  --max-invalid-locale-total-increase 0 \
+  --max-invalid-effective-window-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2465,6 +2477,18 @@ python scripts/eval/chat_policy_dsl_lint.py \
   - bundle 최신성(stale minutes)
 - CI 옵션:
   - `RUN_CHAT_POLICY_DSL_LINT=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_POLICY_DSL_MAX_MISSING_RULE_ID_INCREASE`
+    - `CHAT_POLICY_DSL_MAX_DUPLICATE_RULE_ID_INCREASE`
+    - `CHAT_POLICY_DSL_MAX_INVALID_PRIORITY_INCREASE`
+    - `CHAT_POLICY_DSL_MAX_INVALID_ACTION_INCREASE`
+    - `CHAT_POLICY_DSL_MAX_EMPTY_CONDITION_INCREASE`
+    - `CHAT_POLICY_DSL_MAX_UNKNOWN_CONDITION_KEY_INCREASE`
+    - `CHAT_POLICY_DSL_MAX_INVALID_RISK_LEVEL_INCREASE`
+    - `CHAT_POLICY_DSL_MAX_INVALID_RELIABILITY_LEVEL_INCREASE`
+    - `CHAT_POLICY_DSL_MAX_INVALID_LOCALE_INCREASE`
+    - `CHAT_POLICY_DSL_MAX_INVALID_EFFECTIVE_WINDOW_INCREASE`
+    - `CHAT_POLICY_DSL_MAX_STALE_MINUTES_INCREASE`
 
 ## Policy eval trace gate (B-0371, Bundle 2)
 - 런타임 정책 평가 trace에서 결정 재현성/충돌 해결/감사 필드 완전성을 검증:
@@ -2481,6 +2505,15 @@ python scripts/eval/chat_policy_eval_trace.py \
   --max-conflict-unresolved-total 0 \
   --max-latency-p95-ms 2000 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_policy_eval_trace_baseline_v1.json \
+  --max-missing-request-id-total-increase 0 \
+  --max-missing-policy-version-total-increase 0 \
+  --max-missing-matched-rule-total-increase 0 \
+  --max-unknown-final-action-total-increase 0 \
+  --max-non-deterministic-key-total-increase 0 \
+  --max-conflict-unresolved-total-increase 0 \
+  --max-latency-p95-ms-increase 300 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2490,6 +2523,15 @@ python scripts/eval/chat_policy_eval_trace.py \
   - policy eval latency p95, evidence freshness
 - CI 옵션:
   - `RUN_CHAT_POLICY_EVAL_TRACE=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_POLICY_EVAL_MAX_MISSING_REQUEST_ID_INCREASE`
+    - `CHAT_POLICY_EVAL_MAX_MISSING_POLICY_VERSION_INCREASE`
+    - `CHAT_POLICY_EVAL_MAX_MISSING_MATCHED_RULE_INCREASE`
+    - `CHAT_POLICY_EVAL_MAX_UNKNOWN_FINAL_ACTION_INCREASE`
+    - `CHAT_POLICY_EVAL_MAX_NON_DETERMINISTIC_KEY_INCREASE`
+    - `CHAT_POLICY_EVAL_MAX_CONFLICT_UNRESOLVED_INCREASE`
+    - `CHAT_POLICY_EVAL_MAX_LATENCY_P95_INCREASE`
+    - `CHAT_POLICY_EVAL_MAX_STALE_MINUTES_INCREASE`
 
 ## Policy rollout rollback gate (B-0371, Bundle 3)
 - 정책 번들 버전 교체/롤백 이벤트의 승인/무결성/활성버전 충돌 여부를 검증:
@@ -2505,6 +2547,14 @@ python scripts/eval/chat_policy_rollout_rollback.py \
   --max-active-version-conflict-total 0 \
   --max-rollout-failure-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_policy_rollout_rollback_baseline_v1.json \
+  --max-missing-policy-version-total-increase 0 \
+  --max-promote-without-approval-total-increase 0 \
+  --max-checksum-missing-total-increase 0 \
+  --max-rollback-to-unknown-version-total-increase 0 \
+  --max-active-version-conflict-total-increase 0 \
+  --max-rollout-failure-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2514,6 +2564,14 @@ python scripts/eval/chat_policy_rollout_rollback.py \
   - rollout evidence freshness(stale minutes)
 - CI 옵션:
   - `RUN_CHAT_POLICY_ROLLOUT_ROLLBACK=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_POLICY_ROLLOUT_MAX_MISSING_POLICY_VERSION_INCREASE`
+    - `CHAT_POLICY_ROLLOUT_MAX_PROMOTE_WITHOUT_APPROVAL_INCREASE`
+    - `CHAT_POLICY_ROLLOUT_MAX_CHECKSUM_MISSING_INCREASE`
+    - `CHAT_POLICY_ROLLOUT_MAX_ROLLBACK_UNKNOWN_VERSION_INCREASE`
+    - `CHAT_POLICY_ROLLOUT_MAX_ACTIVE_VERSION_CONFLICT_INCREASE`
+    - `CHAT_POLICY_ROLLOUT_MAX_ROLLOUT_FAILURE_INCREASE`
+    - `CHAT_POLICY_ROLLOUT_MAX_STALE_MINUTES_INCREASE`
 
 ## Policy safety checks gate (B-0371, Bundle 4)
 - 정책 번들 정적 안전성(모순 규칙/중복 조건/민감 인텐트 가드 누락/고위험 allow)을 검증:
@@ -2529,6 +2587,13 @@ python scripts/eval/chat_policy_safety_checks.py \
   --max-unsafe-high-risk-allow-total 0 \
   --max-missing-reason-code-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_policy_safety_checks_baseline_v1.json \
+  --max-contradictory-rule-pair-total-increase 0 \
+  --max-duplicate-condition-total-increase 0 \
+  --max-missing-sensitive-guard-intent-total-increase 0 \
+  --max-unsafe-high-risk-allow-total-increase 0 \
+  --max-missing-reason-code-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2538,6 +2603,13 @@ python scripts/eval/chat_policy_safety_checks.py \
   - 고위험(`HIGH/WRITE_SENSITIVE` 및 민감 intent) ALLOW 규칙 건수
 - CI 옵션:
   - `RUN_CHAT_POLICY_SAFETY_CHECKS=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_POLICY_SAFETY_MAX_CONTRADICTORY_RULE_PAIR_INCREASE`
+    - `CHAT_POLICY_SAFETY_MAX_DUPLICATE_CONDITION_INCREASE`
+    - `CHAT_POLICY_SAFETY_MAX_MISSING_SENSITIVE_GUARD_INTENT_INCREASE`
+    - `CHAT_POLICY_SAFETY_MAX_UNSAFE_HIGH_RISK_ALLOW_INCREASE`
+    - `CHAT_POLICY_SAFETY_MAX_MISSING_REASON_CODE_INCREASE`
+    - `CHAT_POLICY_SAFETY_MAX_STALE_MINUTES_INCREASE`
 
 ## Tool cache strategy gate (B-0372, Bundle 1)
 - 툴 결과 캐시 key/TTL 정책과 hit/bypass 품질을 검증:

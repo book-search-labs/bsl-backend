@@ -108,3 +108,40 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_rollout_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "missing_policy_version_total": 0,
+                "promote_without_approval_total": 0,
+                "checksum_missing_total": 0,
+                "rollback_to_unknown_version_total": 0,
+                "active_version_conflict_total": 0,
+                "rollout_failure_total": 0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "missing_policy_version_total": 1,
+            "promote_without_approval_total": 1,
+            "checksum_missing_total": 1,
+            "rollback_to_unknown_version_total": 1,
+            "active_version_conflict_total": 1,
+            "rollout_failure_total": 1,
+            "stale_minutes": 40.0,
+        },
+        max_missing_policy_version_total_increase=0,
+        max_promote_without_approval_total_increase=0,
+        max_checksum_missing_total_increase=0,
+        max_rollback_to_unknown_version_total_increase=0,
+        max_active_version_conflict_total_increase=0,
+        max_rollout_failure_total_increase=0,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 7

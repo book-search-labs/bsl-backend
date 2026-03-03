@@ -126,3 +126,52 @@ def test_evaluate_gate_passes_clean_summary():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_dsl_lint_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "missing_rule_id_total": 0,
+                "duplicate_rule_id_total": 0,
+                "invalid_priority_total": 0,
+                "invalid_action_total": 0,
+                "empty_condition_total": 0,
+                "unknown_condition_key_total": 0,
+                "invalid_risk_level_total": 0,
+                "invalid_reliability_level_total": 0,
+                "invalid_locale_total": 0,
+                "invalid_effective_window_total": 0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "missing_rule_id_total": 1,
+            "duplicate_rule_id_total": 1,
+            "invalid_priority_total": 1,
+            "invalid_action_total": 1,
+            "empty_condition_total": 1,
+            "unknown_condition_key_total": 1,
+            "invalid_risk_level_total": 1,
+            "invalid_reliability_level_total": 1,
+            "invalid_locale_total": 1,
+            "invalid_effective_window_total": 1,
+            "stale_minutes": 40.0,
+        },
+        max_missing_rule_id_total_increase=0,
+        max_duplicate_rule_id_total_increase=0,
+        max_invalid_priority_total_increase=0,
+        max_invalid_action_total_increase=0,
+        max_empty_condition_total_increase=0,
+        max_unknown_condition_key_total_increase=0,
+        max_invalid_risk_level_total_increase=0,
+        max_invalid_reliability_level_total_increase=0,
+        max_invalid_locale_total_increase=0,
+        max_invalid_effective_window_total_increase=0,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 11

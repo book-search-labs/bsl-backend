@@ -110,3 +110,24 @@ Build a declarative chat policy engine:
   - `scripts/eval/test_chat_policy_safety_checks.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_POLICY_SAFETY_CHECKS=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Baseline drift governance 추가 (B-0371 전체)
+  - `scripts/eval/chat_policy_dsl_lint.py`
+  - `scripts/eval/chat_policy_eval_trace.py`
+  - `scripts/eval/chat_policy_rollout_rollback.py`
+  - `scripts/eval/chat_policy_safety_checks.py`
+  - 공통으로 `--baseline-report` + drift threshold 인자를 지원하고, `gate.pass`를 `failures + baseline_failures` 결합 기준으로 계산
+  - payload에 `source`, `derived.summary`를 추가해 baseline 비교 입력 스키마를 고정
+- [x] Baseline 회귀 단위테스트 추가
+  - `scripts/eval/test_chat_policy_dsl_lint.py`
+  - `scripts/eval/test_chat_policy_eval_trace.py`
+  - `scripts/eval/test_chat_policy_rollout_rollback.py`
+  - `scripts/eval/test_chat_policy_safety_checks.py`
+- [x] CI baseline wiring 추가
+  - `scripts/test.sh` 60~63단계에 baseline fixture 자동 연결 + drift env 노출
+- [x] Baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_policy_dsl_lint_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_policy_eval_trace_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_policy_rollout_rollback_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_policy_safety_checks_baseline_v1.json`

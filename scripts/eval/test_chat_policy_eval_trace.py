@@ -109,3 +109,43 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_eval_trace_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "missing_request_id_total": 0,
+                "missing_policy_version_total": 0,
+                "missing_matched_rule_total": 0,
+                "unknown_final_action_total": 0,
+                "non_deterministic_key_total": 0,
+                "conflict_unresolved_total": 0,
+                "latency_p95_ms": 100.0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "missing_request_id_total": 1,
+            "missing_policy_version_total": 1,
+            "missing_matched_rule_total": 1,
+            "unknown_final_action_total": 1,
+            "non_deterministic_key_total": 1,
+            "conflict_unresolved_total": 1,
+            "latency_p95_ms": 500.0,
+            "stale_minutes": 40.0,
+        },
+        max_missing_request_id_total_increase=0,
+        max_missing_policy_version_total_increase=0,
+        max_missing_matched_rule_total_increase=0,
+        max_unknown_final_action_total_increase=0,
+        max_non_deterministic_key_total_increase=0,
+        max_conflict_unresolved_total_increase=0,
+        max_latency_p95_ms_increase=100.0,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 8
