@@ -4229,6 +4229,29 @@ python scripts/eval/chat_dialog_planner_core_guard.py \
 - CI 옵션:
   - `RUN_CHAT_DIALOG_PLANNER_CORE_GUARD=1 ./scripts/test.sh`
 
+## Chat escalation trigger engine guard gate (B-0397, Bundle 2)
+- 반복 실패/고위험 reason/user 불만 기반 자동 이관과 cooldown/hysteresis 억제를 검증:
+```bash
+python scripts/eval/chat_escalation_trigger_engine_guard.py \
+  --events-jsonl var/dialog_planner/escalation_events.jsonl \
+  --window-hours 24 \
+  --failure-threshold 3 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-trigger-recall 0.90 \
+  --max-trigger-missed-total 5 \
+  --max-false-positive-rate 0.10 \
+  --max-threshold-version-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - trigger recall / false positive rate
+  - cooldown/hysteresis suppression 건수
+  - trigger missed 건수 및 threshold version 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_ESCALATION_TRIGGER_ENGINE_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

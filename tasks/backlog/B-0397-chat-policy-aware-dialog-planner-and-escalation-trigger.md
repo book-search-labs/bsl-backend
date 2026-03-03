@@ -62,3 +62,14 @@ Implement a policy-aware dialog planner for production chat:
   - `scripts/eval/test_chat_dialog_planner_core_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_DIALOG_PLANNER_CORE_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 2)
+- [x] Escalation trigger engine guard gate 추가
+  - `scripts/eval/chat_escalation_trigger_engine_guard.py`
+  - 반복 실패/고위험 reason/사용자 불만 신호 기반 trigger recall 검증
+  - cooldown/hysteresis 억제 경로와 false positive 비율 검증
+  - threshold version 누락 및 trigger missed 건수 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_escalation_trigger_engine_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_ESCALATION_TRIGGER_ENGINE_GUARD=1 ./scripts/test.sh`
