@@ -1724,6 +1724,28 @@ python scripts/eval/chat_low_reliability_guardrail.py \
 - CI 옵션:
   - `RUN_CHAT_LOW_RELIABILITY_GUARDRAIL=1 ./scripts/test.sh`
 
+## Sensitive action risk classification gate (B-0369, Bundle 1)
+- 민감 액션 리스크 분류 품질과 고위험 step-up 정책(추가 인증 요구) 준수 여부를 검증:
+```bash
+python scripts/eval/chat_sensitive_action_risk_classification.py \
+  --events-jsonl var/chat_actions/sensitive_action_events.jsonl \
+  --window-hours 24 \
+  --max-unknown-risk-total 0 \
+  --max-high-risk-without-stepup-total 0 \
+  --max-irreversible-not-high-risk-total 0 \
+  --max-missing-actor-total 0 \
+  --max-missing-target-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - risk level 분포(`LOW/MEDIUM/HIGH/UNKNOWN`)
+  - high risk step-up 미요구 건수
+  - irreversible action의 HIGH 미분류 건수
+  - actor/target 감사 필드 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_SENSITIVE_ACTION_RISK_CLASSIFICATION=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

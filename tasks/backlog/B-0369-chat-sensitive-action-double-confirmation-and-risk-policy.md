@@ -47,3 +47,14 @@ Harden sensitive chat actions:
 - Add risk-based two-step confirmation and optional step-up authentication.
 - Require one-time confirmation tokens before execution.
 - Provide undo window where applicable and persist full audit trails.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Sensitive action risk classification gate 추가
+  - `scripts/eval/chat_sensitive_action_risk_classification.py`
+  - 민감 액션 이벤트를 `LOW/MEDIUM/HIGH` 리스크로 집계하고 unknown risk 유입을 차단
+  - HIGH 리스크에서 step-up auth 요구 누락 건수, irreversible 액션의 HIGH 미분류 건수를 게이트화
+  - actor/target 감사 필드 누락 및 stale evidence 위반을 운영 차단 조건으로 추가
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_sensitive_action_risk_classification.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_SENSITIVE_ACTION_RISK_CLASSIFICATION=1 ./scripts/test.sh`
