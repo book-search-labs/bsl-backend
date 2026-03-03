@@ -4103,6 +4103,31 @@ python scripts/eval/chat_plan_persistence_resume_guard.py \
 - CI 옵션:
   - `RUN_CHAT_PLAN_PERSISTENCE_RESUME_GUARD=1 ./scripts/test.sh`
 
+## Chat actionability scorer guard gate (B-0396, Bundle 1)
+- 답변이 실행 가능한 다음 행동을 충분히 포함하는지(intent별 컷라인 포함) 검증:
+```bash
+python scripts/eval/chat_actionability_scorer_guard.py \
+  --events-jsonl var/actionability/scorer_events.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-average-actionability-score 0.75 \
+  --max-low-actionability-ratio 0.20 \
+  --max-low-actionability-total 10 \
+  --max-missing-current-state-ratio 0.15 \
+  --max-missing-next-action-ratio 0.10 \
+  --max-missing-expected-outcome-ratio 0.20 \
+  --max-missing-fallback-alternative-ratio 0.25 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - average actionability score / low actionability ratio
+  - intent별 low actionability 분포
+  - current-state/next-action/expected-outcome/fallback 누락 비율
+- CI 옵션:
+  - `RUN_CHAT_ACTIONABILITY_SCORER_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

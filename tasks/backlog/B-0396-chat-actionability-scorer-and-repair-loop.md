@@ -51,3 +51,13 @@ Add actionability guarantees for production chat:
 - Score whether responses provide executable next actions.
 - Auto-repair low-actionability responses with slot completion.
 - Fail closed to safe handoff when repairs cannot meet policy/tool constraints.
+
+## Implementation Update (2026-03-04, Bundle 1)
+- [x] Actionability scorer guard gate 추가
+  - `scripts/eval/chat_actionability_scorer_guard.py`
+  - actionability score 평균/intent별 컷라인 미달/핵심 구성요소 누락 비율 검증
+  - 현재상태/다음행동/예상결과/실패시 대안 구성요소 충족 여부 검사
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_actionability_scorer_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_ACTIONABILITY_SCORER_GUARD=1 ./scripts/test.sh`
