@@ -302,14 +302,27 @@ if [ "${RUN_CHAT_LEGACY_DECOMMISSION_CHECK:-0}" = "1" ]; then
     CHAT_LEGACY_DECOMMISSION_MAX_COUNT="${CHAT_LEGACY_DECOMMISSION_MAX_COUNT:-0}"
     CHAT_LEGACY_DECOMMISSION_MAX_RATIO="${CHAT_LEGACY_DECOMMISSION_MAX_RATIO:-0.0}"
     CHAT_LEGACY_DECOMMISSION_ALLOW_REASONS="${CHAT_LEGACY_DECOMMISSION_ALLOW_REASONS:-legacy_emergency_recovery,auto_rollback_override}"
+    CHAT_LEGACY_DECOMMISSION_OUT_DIR="${CHAT_LEGACY_DECOMMISSION_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_LEGACY_DECOMMISSION_BASELINE_PATH="${CHAT_LEGACY_DECOMMISSION_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_legacy_decommission_baseline_v1.json}"
+    CHAT_LEGACY_DECOMMISSION_MAX_COUNT_INCREASE="${CHAT_LEGACY_DECOMMISSION_MAX_COUNT_INCREASE:-0}"
+    CHAT_LEGACY_DECOMMISSION_MAX_RATIO_INCREASE="${CHAT_LEGACY_DECOMMISSION_MAX_RATIO_INCREASE:-0.0}"
+    CHAT_LEGACY_DECOMMISSION_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_legacy_decommission_check.py"
+      --limit "$CHAT_LEGACY_DECOMMISSION_LIMIT"
+      --min-window "$CHAT_LEGACY_DECOMMISSION_MIN_WINDOW"
+      --max-legacy-count "$CHAT_LEGACY_DECOMMISSION_MAX_COUNT"
+      --max-legacy-ratio "$CHAT_LEGACY_DECOMMISSION_MAX_RATIO"
+      --allow-legacy-reasons "$CHAT_LEGACY_DECOMMISSION_ALLOW_REASONS"
+      --max-legacy-count-increase "$CHAT_LEGACY_DECOMMISSION_MAX_COUNT_INCREASE"
+      --max-legacy-ratio-increase "$CHAT_LEGACY_DECOMMISSION_MAX_RATIO_INCREASE"
+      --out "$CHAT_LEGACY_DECOMMISSION_OUT_DIR"
+      --gate
+    )
+    if [ -f "$CHAT_LEGACY_DECOMMISSION_BASELINE_PATH" ]; then
+      CHAT_LEGACY_DECOMMISSION_ARGS+=(--baseline-report "$CHAT_LEGACY_DECOMMISSION_BASELINE_PATH")
+    fi
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_legacy_decommission_check.py" \
-      --limit "$CHAT_LEGACY_DECOMMISSION_LIMIT" \
-      --min-window "$CHAT_LEGACY_DECOMMISSION_MIN_WINDOW" \
-      --max-legacy-count "$CHAT_LEGACY_DECOMMISSION_MAX_COUNT" \
-      --max-legacy-ratio "$CHAT_LEGACY_DECOMMISSION_MAX_RATIO" \
-      --allow-legacy-reasons "$CHAT_LEGACY_DECOMMISSION_ALLOW_REASONS" \
-      --gate || exit 1
+    $PYTHON_BIN "${CHAT_LEGACY_DECOMMISSION_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat legacy decommission gate"
   fi

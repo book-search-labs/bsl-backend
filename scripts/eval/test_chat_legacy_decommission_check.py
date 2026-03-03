@@ -64,3 +64,27 @@ def test_evaluate_gate_detects_count_ratio_and_window_violation():
     assert any("insufficient routing samples" in item for item in failures)
     assert any("legacy count exceeded" in item for item in failures)
     assert any("legacy ratio exceeded" in item for item in failures)
+
+
+def test_compare_with_baseline_detects_legacy_regression():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "legacy_count": 0,
+                "legacy_ratio": 0.0,
+            }
+        }
+    }
+    current = {
+        "legacy_count": 2,
+        "legacy_ratio": 0.02,
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_legacy_count_increase=0,
+        max_legacy_ratio_increase=0.0,
+    )
+    assert any("legacy count regression" in item for item in failures)
+    assert any("legacy ratio regression" in item for item in failures)

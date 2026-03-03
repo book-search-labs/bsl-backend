@@ -917,10 +917,14 @@ python scripts/eval/chat_legacy_decommission_check.py \
   --max-legacy-count 0 \
   --max-legacy-ratio 0.0 \
   --allow-legacy-reasons legacy_emergency_recovery,auto_rollback_override \
+  --baseline-report services/query-service/tests/fixtures/chat_legacy_decommission_baseline_v1.json \
   --gate
 ```
 - CI 옵션:
   - `RUN_CHAT_LEGACY_DECOMMISSION_CHECK=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_LEGACY_DECOMMISSION_MAX_COUNT_INCREASE`
+    - `CHAT_LEGACY_DECOMMISSION_MAX_RATIO_INCREASE`
 
 ## Production launch readiness gate (B-0391-lite)
 - 통합 gate 스크립트:

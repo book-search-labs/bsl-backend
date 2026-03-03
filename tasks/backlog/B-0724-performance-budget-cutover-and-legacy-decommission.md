@@ -65,3 +65,17 @@ Complete rewrite rollout with performance/cost safeguards:
 - `scripts/test.sh` 연동 강화:
   - `RUN_CHAT_CUTOVER_GATE=1` 실행 시 `--gate` 기본 적용
   - `CHAT_CUTOVER_REQUIRE_PROMOTE=1`로 strict promote 모드 지원
+
+## Implementation Update (Bundle 2)
+
+- `chat_legacy_decommission_check.py`를 리포트/베이스라인 비교형 게이트로 확장:
+  - report JSON/Markdown 생성 + 표준 출력(`report_json`, `report_md`, `gate_pass`)
+  - `--baseline-report` + drift 임계치(`--max-legacy-count-increase`, `--max-legacy-ratio-increase`) 지원
+  - gate 실패 시 fail-fast(exit 2) 및 baseline 실패 원인 분리 출력
+- baseline 비교 로직 추가:
+  - `compare_with_baseline(...)`로 legacy_count/legacy_ratio 회귀 감지
+- 테스트/운영 연동:
+  - `scripts/eval/test_chat_legacy_decommission_check.py`에 baseline 회귀 테스트 추가
+  - baseline fixture 추가:
+    - `services/query-service/tests/fixtures/chat_legacy_decommission_baseline_v1.json`
+  - `scripts/test.sh`의 `RUN_CHAT_LEGACY_DECOMMISSION_CHECK=1` 경로에 baseline/diff threshold 인자 연결
