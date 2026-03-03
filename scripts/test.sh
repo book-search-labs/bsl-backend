@@ -4268,7 +4268,7 @@ else
   echo "  - set RUN_CHAT_KOREAN_GOVERNANCE_LOOP_GUARD=1 to enable"
 fi
 
-echo "[116/121] Chat ticket knowledge candidate selection gate (optional)"
+echo "[116/122] Chat ticket knowledge candidate selection gate (optional)"
 if [ "${RUN_CHAT_TICKET_KNOWLEDGE_CANDIDATE_SELECTION:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TICKET_KNOWLEDGE_CANDIDATE_EVENTS_JSONL="${CHAT_TICKET_KNOWLEDGE_CANDIDATE_EVENTS_JSONL:-$ROOT_DIR/var/chat_ticket_knowledge/candidate_events.jsonl}"
@@ -4311,7 +4311,7 @@ else
   echo "  - set RUN_CHAT_TICKET_KNOWLEDGE_CANDIDATE_SELECTION=1 to enable"
 fi
 
-echo "[117/121] Chat ticket knowledge privacy scrub guard gate (optional)"
+echo "[117/122] Chat ticket knowledge privacy scrub guard gate (optional)"
 if [ "${RUN_CHAT_TICKET_KNOWLEDGE_PRIVACY_SCRUB_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TICKET_KNOWLEDGE_PRIVACY_EVENTS_JSONL="${CHAT_TICKET_KNOWLEDGE_PRIVACY_EVENTS_JSONL:-$ROOT_DIR/var/chat_ticket_knowledge/privacy_scrub_events.jsonl}"
@@ -4348,7 +4348,7 @@ else
   echo "  - set RUN_CHAT_TICKET_KNOWLEDGE_PRIVACY_SCRUB_GUARD=1 to enable"
 fi
 
-echo "[118/121] Chat ticket knowledge approval rollback guard gate (optional)"
+echo "[118/122] Chat ticket knowledge approval rollback guard gate (optional)"
 if [ "${RUN_CHAT_TICKET_KNOWLEDGE_APPROVAL_ROLLBACK_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TICKET_KNOWLEDGE_APPROVAL_EVENTS_JSONL="${CHAT_TICKET_KNOWLEDGE_APPROVAL_EVENTS_JSONL:-$ROOT_DIR/var/chat_ticket_knowledge/approval_pipeline_events.jsonl}"
@@ -4393,7 +4393,46 @@ else
   echo "  - set RUN_CHAT_TICKET_KNOWLEDGE_APPROVAL_ROLLBACK_GUARD=1 to enable"
 fi
 
-echo "[119/121] Canonical quality checks (optional)"
+echo "[119/122] Chat ticket knowledge retrieval impact guard gate (optional)"
+if [ "${RUN_CHAT_TICKET_KNOWLEDGE_RETRIEVAL_IMPACT_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TICKET_KNOWLEDGE_RETRIEVAL_EVENTS_JSONL="${CHAT_TICKET_KNOWLEDGE_RETRIEVAL_EVENTS_JSONL:-$ROOT_DIR/var/chat_ticket_knowledge/retrieval_integration_events.jsonl}"
+    CHAT_TICKET_KNOWLEDGE_RETRIEVAL_WINDOW_HOURS="${CHAT_TICKET_KNOWLEDGE_RETRIEVAL_WINDOW_HOURS:-24}"
+    CHAT_TICKET_KNOWLEDGE_RETRIEVAL_LIMIT="${CHAT_TICKET_KNOWLEDGE_RETRIEVAL_LIMIT:-50000}"
+    CHAT_TICKET_KNOWLEDGE_RETRIEVAL_OUT_DIR="${CHAT_TICKET_KNOWLEDGE_RETRIEVAL_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MIN_WINDOW="${CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MIN_WINDOW:-0}"
+    CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MIN_QUERY_TOTAL="${CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MIN_QUERY_TOTAL:-0}"
+    CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MIN_KNOWLEDGE_HIT_RATIO="${CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MIN_KNOWLEDGE_HIT_RATIO:-0.0}"
+    CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MIN_RESOLVED_WITH_KNOWLEDGE_RATIO="${CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MIN_RESOLVED_WITH_KNOWLEDGE_RATIO:-0.0}"
+    CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MIN_REPEAT_ISSUE_RESOLUTION_RATIO="${CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MIN_REPEAT_ISSUE_RESOLUTION_RATIO:-0.0}"
+    CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MAX_STALE_KNOWLEDGE_HIT_TOTAL="${CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MAX_STALE_KNOWLEDGE_HIT_TOTAL:-1000000}"
+    CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MAX_ROLLBACK_KNOWLEDGE_HIT_TOTAL="${CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MAX_ROLLBACK_KNOWLEDGE_HIT_TOTAL:-1000000}"
+    CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MAX_KNOWLEDGE_CONFLICT_TOTAL="${CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MAX_KNOWLEDGE_CONFLICT_TOTAL:-1000000}"
+    CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MAX_STALE_MINUTES="${CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_ticket_knowledge_retrieval_impact_guard.py" \
+      --events-jsonl "$CHAT_TICKET_KNOWLEDGE_RETRIEVAL_EVENTS_JSONL" \
+      --window-hours "$CHAT_TICKET_KNOWLEDGE_RETRIEVAL_WINDOW_HOURS" \
+      --limit "$CHAT_TICKET_KNOWLEDGE_RETRIEVAL_LIMIT" \
+      --out "$CHAT_TICKET_KNOWLEDGE_RETRIEVAL_OUT_DIR" \
+      --min-window "$CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MIN_WINDOW" \
+      --min-query-total "$CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MIN_QUERY_TOTAL" \
+      --min-knowledge-hit-ratio "$CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MIN_KNOWLEDGE_HIT_RATIO" \
+      --min-resolved-with-knowledge-ratio "$CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MIN_RESOLVED_WITH_KNOWLEDGE_RATIO" \
+      --min-repeat-issue-resolution-ratio "$CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MIN_REPEAT_ISSUE_RESOLUTION_RATIO" \
+      --max-stale-knowledge-hit-total "$CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MAX_STALE_KNOWLEDGE_HIT_TOTAL" \
+      --max-rollback-knowledge-hit-total "$CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MAX_ROLLBACK_KNOWLEDGE_HIT_TOTAL" \
+      --max-knowledge-conflict-total "$CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MAX_KNOWLEDGE_CONFLICT_TOTAL" \
+      --max-stale-minutes "$CHAT_TICKET_KNOWLEDGE_RETRIEVAL_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat ticket knowledge retrieval impact guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TICKET_KNOWLEDGE_RETRIEVAL_IMPACT_GUARD=1 to enable"
+fi
+
+echo "[120/122] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -4404,7 +4443,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[120/121] E2E tests (optional)"
+echo "[121/122] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -4415,4 +4454,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[121/121] Done"
+echo "[122/122] Done"

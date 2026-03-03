@@ -76,3 +76,12 @@ Close the loop from support tickets to chat knowledge:
   - `scripts/eval/test_chat_ticket_knowledge_approval_rollback_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TICKET_KNOWLEDGE_APPROVAL_ROLLBACK_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Ticket knowledge retrieval impact guard gate 추가
+  - `scripts/eval/chat_ticket_knowledge_retrieval_impact_guard.py`
+  - knowledge hit/resolution ratio 및 stale/rollback/conflict hit 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_ticket_knowledge_retrieval_impact_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TICKET_KNOWLEDGE_RETRIEVAL_IMPACT_GUARD=1 ./scripts/test.sh`

@@ -3319,6 +3319,29 @@ python scripts/eval/chat_ticket_knowledge_approval_rollback_guard.py \
 - CI 옵션:
   - `RUN_CHAT_TICKET_KNOWLEDGE_APPROVAL_ROLLBACK_GUARD=1 ./scripts/test.sh`
 
+## Chat ticket knowledge retrieval impact guard gate (B-0385, Bundle 4)
+- 티켓 지식 리트리벌 통합 이후 해결효과와 만료/롤백/충돌 리스크를 검증:
+```bash
+python scripts/eval/chat_ticket_knowledge_retrieval_impact_guard.py \
+  --events-jsonl var/chat_ticket_knowledge/retrieval_integration_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-query-total 20 \
+  --min-knowledge-hit-ratio 0.30 \
+  --min-resolved-with-knowledge-ratio 0.50 \
+  --min-repeat-issue-resolution-ratio 0.50 \
+  --max-stale-knowledge-hit-total 0 \
+  --max-rollback-knowledge-hit-total 0 \
+  --max-knowledge-conflict-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - knowledge hit/resolved-with-knowledge/repeat-issue resolution 비율
+  - stale/rollback/conflict hit 건수
+- CI 옵션:
+  - `RUN_CHAT_TICKET_KNOWLEDGE_RETRIEVAL_IMPACT_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
