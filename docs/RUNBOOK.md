@@ -2672,6 +2672,29 @@ python scripts/eval/chat_privacy_dlp_filter.py \
 - CI 옵션:
   - `RUN_CHAT_PRIVACY_DLP_FILTER=1 ./scripts/test.sh`
 
+## Chat privacy retention enforcement gate (B-0379, Bundle 2)
+- 대화/요약/증거 데이터의 만료 후 삭제와 법적보존 예외를 검증:
+```bash
+python scripts/eval/chat_privacy_retention_enforcement.py \
+  --events-jsonl var/chat_privacy/retention_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-expired-total 10 \
+  --min-purge-coverage-ratio 0.95 \
+  --max-purge-miss-total 0 \
+  --max-hold-violation-total 0 \
+  --max-invalid-retention-policy-total 0 \
+  --max-delete-audit-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - expired/purge due/purged/purge miss 집계
+  - legal hold exempt/violation 집계
+  - retention policy 누락 및 purge 감사로그 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_PRIVACY_RETENTION_ENFORCEMENT=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

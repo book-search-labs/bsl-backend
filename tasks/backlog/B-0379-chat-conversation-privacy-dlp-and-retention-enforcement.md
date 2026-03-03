@@ -61,3 +61,14 @@ Harden chat privacy controls:
   - `scripts/eval/test_chat_privacy_dlp_filter.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_PRIVACY_DLP_FILTER=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Retention enforcement gate 추가
+  - `scripts/eval/chat_privacy_retention_enforcement.py`
+  - 만료(expired)/삭제(purged)/미삭제(purge miss) 검증
+  - legal hold 예외 및 hold violation 검증
+  - retention policy 누락 및 purge 감사로그 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_privacy_retention_enforcement.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_PRIVACY_RETENTION_ENFORCEMENT=1 ./scripts/test.sh`
