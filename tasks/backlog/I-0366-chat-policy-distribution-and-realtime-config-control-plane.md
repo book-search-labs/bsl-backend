@@ -46,3 +46,14 @@ Build a realtime control plane for chat policy/config rollout:
 - Distribute signed config bundles with staged rollout and drift tracking.
 - Add guardrails, auto-stop, and rollback on quality/SLO/cost anomalies.
 - Preserve immutable audit trails and reproducible config snapshots.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Realtime config distribution rollout gate 추가
+  - `scripts/eval/chat_config_distribution_rollout.py`
+  - 배포 이벤트(`bundle/stage/result/signature_valid/desired_version/applied_version`)를 집계해 success ratio, signature 위반, stage regression, drift ratio를 계산
+  - bundle별 required stage(1/10/50/100) 누락 여부와 서비스별 drift 분포를 리포팅
+  - gate 모드에서 success 저하, drift 증가, 서명 위반, stage regression, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_config_distribution_rollout.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_CONFIG_DISTRIBUTION_ROLLOUT=1 ./scripts/test.sh`

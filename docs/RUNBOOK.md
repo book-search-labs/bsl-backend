@@ -1470,6 +1470,27 @@ python scripts/eval/chat_finops_tradeoff_report.py \
 - CI 옵션:
   - `RUN_CHAT_FINOPS_TRADEOFF_REPORT=1 ./scripts/test.sh`
 
+## Config distribution rollout gate (I-0366, Bundle 1)
+- 실시간 정책 번들 배포 이벤트를 집계해 서명/단계 롤아웃/드리프트 상태를 검증:
+```bash
+python scripts/eval/chat_config_distribution_rollout.py \
+  --events-jsonl var/chat_control/config_rollout_events.jsonl \
+  --window-hours 24 \
+  --required-stages 1,10,50,100 \
+  --min-success-ratio 0.95 \
+  --max-drift-ratio 0.02 \
+  --max-signature-invalid-total 0 \
+  --max-stage-regression-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - rollout success ratio, signature invalid total
+  - config drift ratio 및 서비스별 drift 집계
+  - bundle별 stage progress와 missing required stage
+- CI 옵션:
+  - `RUN_CHAT_CONFIG_DISTRIBUTION_ROLLOUT=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
