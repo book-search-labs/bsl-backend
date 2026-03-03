@@ -1872,6 +1872,27 @@ python scripts/eval/chat_ticket_followup_prompt.py \
 - CI 옵션:
   - `RUN_CHAT_TICKET_FOLLOWUP_PROMPT=1 ./scripts/test.sh`
 
+## Ticket security ownership gate (B-0370, Bundle 4)
+- 티켓 조회에서 본인 소유권 검증, PII/첨부 링크 마스킹 준수, evidence freshness를 검증:
+```bash
+python scripts/eval/chat_ticket_security_ownership.py \
+  --events-jsonl var/chat_ticket/ticket_events.jsonl \
+  --window-hours 24 \
+  --max-ownership-violation-total 0 \
+  --max-missing-owner-check-total 0 \
+  --max-pii-unmasked-total 0 \
+  --max-attachment-unmasked-link-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - status lookup 대비 authz denied/ownership violation 건수
+  - owner_match 누락 건수
+  - 응답 텍스트/첨부 URL의 PII 비마스킹 건수
+  - 최신 보안 이벤트 기준 stale minutes
+- CI 옵션:
+  - `RUN_CHAT_TICKET_SECURITY_OWNERSHIP=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

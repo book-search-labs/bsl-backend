@@ -80,3 +80,14 @@ Integrate chat with support tickets:
   - `scripts/eval/test_chat_ticket_followup_prompt.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TICKET_FOLLOWUP_PROMPT=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Ticket security ownership gate 추가
+  - `scripts/eval/chat_ticket_security_ownership.py`
+  - status lookup 이벤트에서 본인 소유권 검증(`owner_match`) 및 authz deny 비율을 집계
+  - 응답 텍스트/첨부 링크의 PII 비마스킹(email/phone/http attachment URL) 건수를 게이트화
+  - gate 모드에서 ownership violation, owner_check 누락, PII/첨부 비마스킹, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_ticket_security_ownership.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TICKET_SECURITY_OWNERSHIP=1 ./scripts/test.sh`
