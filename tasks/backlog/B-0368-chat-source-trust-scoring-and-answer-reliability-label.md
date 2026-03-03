@@ -92,3 +92,14 @@ Add trust-aware chat grounding:
   - `scripts/eval/test_chat_answer_reliability_label.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_ANSWER_RELIABILITY_LABEL=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] LOW 신뢰도 Guardrail 정책 게이트 추가
+  - `scripts/eval/chat_low_reliability_guardrail.py`
+  - `LOW reliability + sensitive intent` 이벤트에서 execute/block/escalate 결정을 집계하고 무단 실행을 탐지
+  - trust policy version/reason_code 누락 및 비정상 decision 타입을 운영 게이트로 검증
+  - gate 모드에서 LOW+민감 액션 실행, guardrail ratio 저하, 감사 필드 누락, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_low_reliability_guardrail.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_LOW_RELIABILITY_GUARDRAIL=1 ./scripts/test.sh`

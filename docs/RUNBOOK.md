@@ -1702,6 +1702,28 @@ python scripts/eval/chat_answer_reliability_label.py \
 - CI 옵션:
   - `RUN_CHAT_ANSWER_RELIABILITY_LABEL=1 ./scripts/test.sh`
 
+## Low reliability guardrail gate (B-0368, Bundle 4)
+- LOW 신뢰도 + 민감 액션 조합에서 실행 차단/상담전환 정책이 강제되는지 검증:
+```bash
+python scripts/eval/chat_low_reliability_guardrail.py \
+  --events-jsonl var/chat_trust/guardrail_events.jsonl \
+  --window-hours 24 \
+  --sensitive-intents CANCEL_ORDER,REFUND_REQUEST,ADDRESS_CHANGE,PAYMENT_CHANGE \
+  --max-low-sensitive-execute-total 0 \
+  --min-low-sensitive-guardrail-ratio 1.0 \
+  --max-invalid-decision-total 0 \
+  --max-missing-policy-version-total 0 \
+  --max-missing-reason-code-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - LOW+민감 intent의 block/escalate/execute 집계
+  - guardrail enforcement ratio
+  - 정책 버전 누락/결정 타입 비정상/reason_code 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_LOW_RELIABILITY_GUARDRAIL=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
