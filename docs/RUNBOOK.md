@@ -3467,6 +3467,32 @@ python scripts/eval/chat_intent_confidence_calibration_guard.py \
 - CI 옵션:
   - `RUN_CHAT_INTENT_CONFIDENCE_CALIBRATION_GUARD=1 ./scripts/test.sh`
 
+## Chat intent confidence routing guard gate (B-0387, Bundle 2)
+- calibrated confidence 기준 라우팅 분기(TOOL/CLARIFY/HANDOFF) 품질을 검증:
+```bash
+python scripts/eval/chat_intent_confidence_routing_guard.py \
+  --events-jsonl var/intent_calibration/routing_decisions.jsonl \
+  --window-hours 24 \
+  --tool-route-threshold 0.75 \
+  --clarify-route-threshold 0.45 \
+  --repeat-low-confidence-threshold 3 \
+  --min-window 50 \
+  --min-decision-total 50 \
+  --max-routing-mismatch-ratio 0.10 \
+  --max-unsafe-tool-route-total 0 \
+  --min-low-confidence-clarification-ratio 0.60 \
+  --min-repeat-low-confidence-handoff-ratio 0.80 \
+  --max-repeat-low-confidence-unescalated-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - 라우팅 mismatch ratio, unsafe tool route 건수
+  - 저신뢰 구간 clarification/handoff 비율
+  - 반복 저신뢰 케이스의 handoff 승격 비율
+- CI 옵션:
+  - `RUN_CHAT_INTENT_CONFIDENCE_ROUTING_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

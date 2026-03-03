@@ -4643,7 +4643,50 @@ else
   echo "  - set RUN_CHAT_INTENT_CONFIDENCE_CALIBRATION_GUARD=1 to enable"
 fi
 
-echo "[125/127] Canonical quality checks (optional)"
+echo "[125/128] Chat intent confidence routing guard gate (optional)"
+if [ "${RUN_CHAT_INTENT_CONFIDENCE_ROUTING_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_INTENT_ROUTING_EVENTS_JSONL="${CHAT_INTENT_ROUTING_EVENTS_JSONL:-$ROOT_DIR/var/intent_calibration/routing_decisions.jsonl}"
+    CHAT_INTENT_ROUTING_WINDOW_HOURS="${CHAT_INTENT_ROUTING_WINDOW_HOURS:-24}"
+    CHAT_INTENT_ROUTING_LIMIT="${CHAT_INTENT_ROUTING_LIMIT:-50000}"
+    CHAT_INTENT_ROUTING_OUT_DIR="${CHAT_INTENT_ROUTING_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_INTENT_ROUTING_TOOL_THRESHOLD="${CHAT_INTENT_ROUTING_TOOL_THRESHOLD:-0.75}"
+    CHAT_INTENT_ROUTING_CLARIFY_THRESHOLD="${CHAT_INTENT_ROUTING_CLARIFY_THRESHOLD:-0.45}"
+    CHAT_INTENT_ROUTING_REPEAT_LOW_CONF_THRESHOLD="${CHAT_INTENT_ROUTING_REPEAT_LOW_CONF_THRESHOLD:-3}"
+    CHAT_INTENT_ROUTING_MIN_WINDOW="${CHAT_INTENT_ROUTING_MIN_WINDOW:-0}"
+    CHAT_INTENT_ROUTING_MIN_DECISION_TOTAL="${CHAT_INTENT_ROUTING_MIN_DECISION_TOTAL:-0}"
+    CHAT_INTENT_ROUTING_MAX_MISMATCH_RATIO="${CHAT_INTENT_ROUTING_MAX_MISMATCH_RATIO:-1000000}"
+    CHAT_INTENT_ROUTING_MAX_UNSAFE_TOOL_TOTAL="${CHAT_INTENT_ROUTING_MAX_UNSAFE_TOOL_TOTAL:-1000000}"
+    CHAT_INTENT_ROUTING_MIN_LOW_CONF_CLARIFY_RATIO="${CHAT_INTENT_ROUTING_MIN_LOW_CONF_CLARIFY_RATIO:-0.0}"
+    CHAT_INTENT_ROUTING_MIN_REPEAT_LOW_CONF_HANDOFF_RATIO="${CHAT_INTENT_ROUTING_MIN_REPEAT_LOW_CONF_HANDOFF_RATIO:-0.0}"
+    CHAT_INTENT_ROUTING_MAX_REPEAT_LOW_CONF_UNESCALATED_TOTAL="${CHAT_INTENT_ROUTING_MAX_REPEAT_LOW_CONF_UNESCALATED_TOTAL:-1000000}"
+    CHAT_INTENT_ROUTING_MAX_STALE_MINUTES="${CHAT_INTENT_ROUTING_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_intent_confidence_routing_guard.py" \
+      --events-jsonl "$CHAT_INTENT_ROUTING_EVENTS_JSONL" \
+      --window-hours "$CHAT_INTENT_ROUTING_WINDOW_HOURS" \
+      --limit "$CHAT_INTENT_ROUTING_LIMIT" \
+      --out "$CHAT_INTENT_ROUTING_OUT_DIR" \
+      --tool-route-threshold "$CHAT_INTENT_ROUTING_TOOL_THRESHOLD" \
+      --clarify-route-threshold "$CHAT_INTENT_ROUTING_CLARIFY_THRESHOLD" \
+      --repeat-low-confidence-threshold "$CHAT_INTENT_ROUTING_REPEAT_LOW_CONF_THRESHOLD" \
+      --min-window "$CHAT_INTENT_ROUTING_MIN_WINDOW" \
+      --min-decision-total "$CHAT_INTENT_ROUTING_MIN_DECISION_TOTAL" \
+      --max-routing-mismatch-ratio "$CHAT_INTENT_ROUTING_MAX_MISMATCH_RATIO" \
+      --max-unsafe-tool-route-total "$CHAT_INTENT_ROUTING_MAX_UNSAFE_TOOL_TOTAL" \
+      --min-low-confidence-clarification-ratio "$CHAT_INTENT_ROUTING_MIN_LOW_CONF_CLARIFY_RATIO" \
+      --min-repeat-low-confidence-handoff-ratio "$CHAT_INTENT_ROUTING_MIN_REPEAT_LOW_CONF_HANDOFF_RATIO" \
+      --max-repeat-low-confidence-unescalated-total "$CHAT_INTENT_ROUTING_MAX_REPEAT_LOW_CONF_UNESCALATED_TOTAL" \
+      --max-stale-minutes "$CHAT_INTENT_ROUTING_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat intent confidence routing guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_INTENT_CONFIDENCE_ROUTING_GUARD=1 to enable"
+fi
+
+echo "[126/128] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -4654,7 +4697,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[126/127] E2E tests (optional)"
+echo "[127/128] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -4665,4 +4708,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[127/127] Done"
+echo "[128/128] Done"
