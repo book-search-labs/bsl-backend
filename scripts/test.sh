@@ -3495,7 +3495,46 @@ else
   echo "  - set RUN_CHAT_TEMPORAL_METADATA_MODEL=1 to enable"
 fi
 
-echo "[97/99] Canonical quality checks (optional)"
+echo "[97/100] Chat temporal query filtering gate (optional)"
+if [ "${RUN_CHAT_TEMPORAL_QUERY_FILTERING:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TEMPORAL_QUERY_EVENTS_JSONL="${CHAT_TEMPORAL_QUERY_EVENTS_JSONL:-$ROOT_DIR/var/chat_policy/temporal_resolution_audit.jsonl}"
+    CHAT_TEMPORAL_QUERY_WINDOW_HOURS="${CHAT_TEMPORAL_QUERY_WINDOW_HOURS:-24}"
+    CHAT_TEMPORAL_QUERY_LIMIT="${CHAT_TEMPORAL_QUERY_LIMIT:-50000}"
+    CHAT_TEMPORAL_QUERY_OUT_DIR="${CHAT_TEMPORAL_QUERY_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TEMPORAL_QUERY_MIN_WINDOW="${CHAT_TEMPORAL_QUERY_MIN_WINDOW:-0}"
+    CHAT_TEMPORAL_QUERY_MIN_REQUEST_TOTAL="${CHAT_TEMPORAL_QUERY_MIN_REQUEST_TOTAL:-0}"
+    CHAT_TEMPORAL_QUERY_MIN_MATCH_OR_SAFE_RATIO="${CHAT_TEMPORAL_QUERY_MIN_MATCH_OR_SAFE_RATIO:-0.0}"
+    CHAT_TEMPORAL_QUERY_MAX_PARSE_ERROR_TOTAL="${CHAT_TEMPORAL_QUERY_MAX_PARSE_ERROR_TOTAL:-1000000}"
+    CHAT_TEMPORAL_QUERY_MAX_MISSING_REFERENCE_TIME_TOTAL="${CHAT_TEMPORAL_QUERY_MAX_MISSING_REFERENCE_TIME_TOTAL:-1000000}"
+    CHAT_TEMPORAL_QUERY_MAX_INVALID_MATCH_REQUEST_TOTAL="${CHAT_TEMPORAL_QUERY_MAX_INVALID_MATCH_REQUEST_TOTAL:-1000000}"
+    CHAT_TEMPORAL_QUERY_MAX_CONFLICT_UNHANDLED_TOTAL="${CHAT_TEMPORAL_QUERY_MAX_CONFLICT_UNHANDLED_TOTAL:-1000000}"
+    CHAT_TEMPORAL_QUERY_MAX_P95_RESOLVE_LATENCY_MS="${CHAT_TEMPORAL_QUERY_MAX_P95_RESOLVE_LATENCY_MS:-1000000}"
+    CHAT_TEMPORAL_QUERY_MAX_STALE_MINUTES="${CHAT_TEMPORAL_QUERY_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_temporal_query_filtering.py" \
+      --events-jsonl "$CHAT_TEMPORAL_QUERY_EVENTS_JSONL" \
+      --window-hours "$CHAT_TEMPORAL_QUERY_WINDOW_HOURS" \
+      --limit "$CHAT_TEMPORAL_QUERY_LIMIT" \
+      --out "$CHAT_TEMPORAL_QUERY_OUT_DIR" \
+      --min-window "$CHAT_TEMPORAL_QUERY_MIN_WINDOW" \
+      --min-request-total "$CHAT_TEMPORAL_QUERY_MIN_REQUEST_TOTAL" \
+      --min-match-or-safe-ratio "$CHAT_TEMPORAL_QUERY_MIN_MATCH_OR_SAFE_RATIO" \
+      --max-parse-error-total "$CHAT_TEMPORAL_QUERY_MAX_PARSE_ERROR_TOTAL" \
+      --max-missing-reference-time-total "$CHAT_TEMPORAL_QUERY_MAX_MISSING_REFERENCE_TIME_TOTAL" \
+      --max-invalid-match-request-total "$CHAT_TEMPORAL_QUERY_MAX_INVALID_MATCH_REQUEST_TOTAL" \
+      --max-conflict-unhandled-total "$CHAT_TEMPORAL_QUERY_MAX_CONFLICT_UNHANDLED_TOTAL" \
+      --max-p95-resolve-latency-ms "$CHAT_TEMPORAL_QUERY_MAX_P95_RESOLVE_LATENCY_MS" \
+      --max-stale-minutes "$CHAT_TEMPORAL_QUERY_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat temporal query filtering gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TEMPORAL_QUERY_FILTERING=1 to enable"
+fi
+
+echo "[98/100] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -3506,7 +3545,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[98/99] E2E tests (optional)"
+echo "[99/100] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -3517,4 +3556,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[99/99] Done"
+echo "[100/100] Done"

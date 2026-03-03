@@ -74,3 +74,14 @@ Add temporal reasoning to policy answers:
   - `scripts/eval/test_chat_temporal_metadata_model.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TEMPORAL_METADATA_MODEL=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Query-time temporal filtering gate 추가
+  - `scripts/eval/chat_temporal_query_filtering.py`
+  - 기준시각 파싱 오류/누락 검증
+  - 유효기간 밖 문서 매칭(invalid match) 검증
+  - conflict unhandled 및 safe fallback 비율 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_temporal_query_filtering.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TEMPORAL_QUERY_FILTERING=1 ./scripts/test.sh`

@@ -2769,6 +2769,31 @@ python scripts/eval/chat_temporal_metadata_model.py \
 - CI 옵션:
   - `RUN_CHAT_TEMPORAL_METADATA_MODEL=1 ./scripts/test.sh`
 
+## Chat temporal query filtering gate (B-0380, Bundle 2)
+- 질문 시점(reference time) 파싱과 유효기간 기반 필터링 정합성을 검증:
+```bash
+python scripts/eval/chat_temporal_query_filtering.py \
+  --events-jsonl var/chat_policy/temporal_resolution_audit.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-request-total 20 \
+  --min-match-or-safe-ratio 0.95 \
+  --max-parse-error-total 0 \
+  --max-missing-reference-time-total 0 \
+  --max-invalid-match-request-total 0 \
+  --max-conflict-unhandled-total 0 \
+  --max-p95-resolve-latency-ms 500 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - reference parse error/missing reference time 건수
+  - 유효기간 밖 문서 매칭(invalid match) 건수
+  - conflict unhandled 건수와 match-or-safe 비율
+  - 기준시각 해석 p95 latency
+- CI 옵션:
+  - `RUN_CHAT_TEMPORAL_QUERY_FILTERING=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
