@@ -2465,6 +2465,29 @@ python scripts/eval/chat_ticket_evidence_integrity.py \
 - CI 옵션:
   - `RUN_CHAT_TICKET_EVIDENCE_INTEGRITY=1 ./scripts/test.sh`
 
+## Source conflict detection gate (B-0377, Bundle 1)
+- 다중 출처 상충 감지의 severity/type/source/evidence 완전성을 배포 전에 검증:
+```bash
+python scripts/eval/chat_source_conflict_detection.py \
+  --conflicts-jsonl var/chat_trust/source_conflicts.jsonl \
+  --window-hours 24 \
+  --min-window 100 \
+  --min-conflict-detected-total 10 \
+  --max-invalid-severity-total 0 \
+  --max-missing-topic-total 0 \
+  --max-missing-conflict-type-total 0 \
+  --max-missing-source-pair-total 0 \
+  --max-missing-evidence-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - conflict detected/high severity 분포
+  - topic/conflict type/source pair/evidence 누락 건수
+  - detection evidence freshness
+- CI 옵션:
+  - `RUN_CHAT_SOURCE_CONFLICT_DETECTION=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

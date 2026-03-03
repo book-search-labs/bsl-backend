@@ -47,3 +47,13 @@ Implement conflict-aware chat grounding:
 - Detect contradictory facts across sources and score conflict severity.
 - Apply safe abstention and official-source preference policies.
 - Route conflict cases to operators and track resolution outcomes.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Conflict detection gate 추가
+  - `scripts/eval/chat_source_conflict_detection.py`
+  - 충돌 강도(severity) 유효성 및 토픽/유형/source pair/evidence 완전성 검증
+  - gate 모드에서 감지 품질 임계치 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_source_conflict_detection.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_SOURCE_CONFLICT_DETECTION=1 ./scripts/test.sh`
