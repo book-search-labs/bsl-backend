@@ -51,3 +51,13 @@ Harden chat privacy controls:
 - Apply real-time DLP on chat input/output with policy-based actions.
 - Enforce retention and purge for conversation artifacts.
 - Integrate privacy incident signaling and auditability end-to-end.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Real-time DLP filter gate 추가
+  - `scripts/eval/chat_privacy_dlp_filter.py`
+  - pii type/action 정규화 및 detect/mask/block/review 집계
+  - unmasked violation/unknown pii type/false positive/missing reason 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_privacy_dlp_filter.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_PRIVACY_DLP_FILTER=1 ./scripts/test.sh`

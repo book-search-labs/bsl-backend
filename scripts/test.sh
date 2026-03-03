@@ -3298,7 +3298,46 @@ else
   echo "  - set RUN_CHAT_REPLAY_ARTIFACT_SHAREABILITY=1 to enable"
 fi
 
-echo "[92/94] Canonical quality checks (optional)"
+echo "[92/95] Chat privacy DLP filter gate (optional)"
+if [ "${RUN_CHAT_PRIVACY_DLP_FILTER:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_PRIVACY_DLP_EVENTS_JSONL="${CHAT_PRIVACY_DLP_EVENTS_JSONL:-$ROOT_DIR/var/chat_privacy/dlp_events.jsonl}"
+    CHAT_PRIVACY_DLP_WINDOW_HOURS="${CHAT_PRIVACY_DLP_WINDOW_HOURS:-24}"
+    CHAT_PRIVACY_DLP_LIMIT="${CHAT_PRIVACY_DLP_LIMIT:-50000}"
+    CHAT_PRIVACY_DLP_OUT_DIR="${CHAT_PRIVACY_DLP_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_PRIVACY_DLP_MIN_WINDOW="${CHAT_PRIVACY_DLP_MIN_WINDOW:-0}"
+    CHAT_PRIVACY_DLP_MIN_DETECTED_TOTAL="${CHAT_PRIVACY_DLP_MIN_DETECTED_TOTAL:-0}"
+    CHAT_PRIVACY_DLP_MIN_PROTECTED_ACTION_RATIO="${CHAT_PRIVACY_DLP_MIN_PROTECTED_ACTION_RATIO:-0.0}"
+    CHAT_PRIVACY_DLP_MAX_UNMASKED_VIOLATION_TOTAL="${CHAT_PRIVACY_DLP_MAX_UNMASKED_VIOLATION_TOTAL:-1000000}"
+    CHAT_PRIVACY_DLP_MAX_INVALID_ACTION_TOTAL="${CHAT_PRIVACY_DLP_MAX_INVALID_ACTION_TOTAL:-1000000}"
+    CHAT_PRIVACY_DLP_MAX_UNKNOWN_PII_TYPE_TOTAL="${CHAT_PRIVACY_DLP_MAX_UNKNOWN_PII_TYPE_TOTAL:-1000000}"
+    CHAT_PRIVACY_DLP_MAX_FALSE_POSITIVE_TOTAL="${CHAT_PRIVACY_DLP_MAX_FALSE_POSITIVE_TOTAL:-1000000}"
+    CHAT_PRIVACY_DLP_MAX_MISSING_REASON_TOTAL="${CHAT_PRIVACY_DLP_MAX_MISSING_REASON_TOTAL:-1000000}"
+    CHAT_PRIVACY_DLP_MAX_STALE_MINUTES="${CHAT_PRIVACY_DLP_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_privacy_dlp_filter.py" \
+      --events-jsonl "$CHAT_PRIVACY_DLP_EVENTS_JSONL" \
+      --window-hours "$CHAT_PRIVACY_DLP_WINDOW_HOURS" \
+      --limit "$CHAT_PRIVACY_DLP_LIMIT" \
+      --out "$CHAT_PRIVACY_DLP_OUT_DIR" \
+      --min-window "$CHAT_PRIVACY_DLP_MIN_WINDOW" \
+      --min-detected-total "$CHAT_PRIVACY_DLP_MIN_DETECTED_TOTAL" \
+      --min-protected-action-ratio "$CHAT_PRIVACY_DLP_MIN_PROTECTED_ACTION_RATIO" \
+      --max-unmasked-violation-total "$CHAT_PRIVACY_DLP_MAX_UNMASKED_VIOLATION_TOTAL" \
+      --max-invalid-action-total "$CHAT_PRIVACY_DLP_MAX_INVALID_ACTION_TOTAL" \
+      --max-unknown-pii-type-total "$CHAT_PRIVACY_DLP_MAX_UNKNOWN_PII_TYPE_TOTAL" \
+      --max-false-positive-total "$CHAT_PRIVACY_DLP_MAX_FALSE_POSITIVE_TOTAL" \
+      --max-missing-reason-total "$CHAT_PRIVACY_DLP_MAX_MISSING_REASON_TOTAL" \
+      --max-stale-minutes "$CHAT_PRIVACY_DLP_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat privacy DLP filter gate"
+  fi
+else
+  echo "  - set RUN_CHAT_PRIVACY_DLP_FILTER=1 to enable"
+fi
+
+echo "[93/95] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -3309,7 +3348,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[93/94] E2E tests (optional)"
+echo "[94/95] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -3320,4 +3359,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[94/94] Done"
+echo "[95/95] Done"

@@ -2648,6 +2648,30 @@ python scripts/eval/chat_replay_artifact_shareability.py \
 - CI 옵션:
   - `RUN_CHAT_REPLAY_ARTIFACT_SHAREABILITY=1 ./scripts/test.sh`
 
+## Chat privacy DLP filter gate (B-0379, Bundle 1)
+- 입력/출력 PII 탐지 후 보호 액션(mask/block/review) 적용 품질을 검증:
+```bash
+python scripts/eval/chat_privacy_dlp_filter.py \
+  --events-jsonl var/chat_privacy/dlp_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-detected-total 10 \
+  --min-protected-action-ratio 0.95 \
+  --max-unmasked-violation-total 0 \
+  --max-invalid-action-total 0 \
+  --max-unknown-pii-type-total 0 \
+  --max-false-positive-total 1 \
+  --max-missing-reason-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - detected/blocked/masked/review/allowed 건수
+  - unmasked violation/false positive/invalid action 건수
+  - pii type 분포와 보호 액션 비율(protected action ratio)
+- CI 옵션:
+  - `RUN_CHAT_PRIVACY_DLP_FILTER=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
