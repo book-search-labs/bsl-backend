@@ -304,6 +304,86 @@ def test_run_chat_graph_claim_verifier_blocks_unbacked_success_claim():
     assert result.response["reason_code"] == "OUTPUT_GUARD_FORBIDDEN_CLAIM"
 
 
+def test_run_chat_graph_claim_verifier_allows_success_claim_with_citations():
+    async def fake_legacy_executor(request, trace_id, request_id):
+        return {
+            "version": "v1",
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "status": "ok",
+            "reason_code": "OK",
+            "recoverable": False,
+            "next_action": "NONE",
+            "retry_after_ms": None,
+            "answer": {"role": "assistant", "content": "주문 상태 조회 완료했습니다."},
+            "sources": [{"doc_id": "order-policy", "title": "주문 정책", "snippet": "조회 정책"}],
+            "citations": ["order-policy#0"],
+            "fallback_count": 0,
+            "escalated": False,
+        }
+
+    result = _run(
+        run_chat_graph(
+            {"session_id": "u:109b:default", "message": {"role": "user", "content": "주문 상태 알려줘"}},
+            "trace_109b",
+            "req_109b",
+            legacy_executor=fake_legacy_executor,
+        )
+    )
+
+    assert result.response["status"] == "ok"
+    assert result.response["reason_code"] == "OK"
+
+
+def test_run_chat_graph_compose_sets_ui_hints_for_confirm():
+    confirm_fsm._CACHE = CacheClient(None)
+    authz_gate._CACHE = CacheClient(None)
+    called = {"count": 0}
+
+    async def fake_legacy_executor(request, trace_id, request_id):
+        called["count"] += 1
+        return {
+            "version": "v1",
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "status": "ok",
+            "reason_code": "OK",
+            "recoverable": False,
+            "next_action": "NONE",
+            "retry_after_ms": None,
+            "answer": {"role": "assistant", "content": "unused"},
+            "sources": [],
+            "citations": [],
+            "fallback_count": 0,
+            "escalated": False,
+        }
+
+    request = {
+        "session_id": "u:110c:default",
+        "message": {"role": "user", "content": "환불 요청 진행해줘"},
+        "client": {
+            "user_id": "110c",
+            "tenant_id": "default",
+            "auth_context": {"scopes": ["chat:write"], "assurance_level": "high"},
+        },
+    }
+    result = _run(run_chat_graph(request, "trace_110c", "req_110c", legacy_executor=fake_legacy_executor))
+
+    assert called["count"] == 0
+    assert result.state["route"] == "CONFIRM"
+    assert result.response["reason_code"] == "CONFIRMATION_REQUIRED"
+    tool_result = result.state.get("tool_result")
+    assert isinstance(tool_result, dict)
+    data = tool_result.get("data")
+    assert isinstance(data, dict)
+    ui_hints = data.get("ui_hints")
+    assert isinstance(ui_hints, dict)
+    buttons = ui_hints.get("buttons")
+    assert isinstance(buttons, list)
+    assert any(item.get("id") == "confirm" for item in buttons if isinstance(item, dict))
+    assert any(item.get("id") == "abort" for item in buttons if isinstance(item, dict))
+
+
 def test_run_chat_graph_compose_sets_ui_hints_for_options():
     domain_nodes._CACHE = CacheClient(None)
     domain_nodes.save_selection_memory(
@@ -337,6 +417,49 @@ def test_run_chat_graph_compose_sets_ui_hints_for_options():
     ui_hints = data.get("ui_hints")
     assert isinstance(ui_hints, dict)
     assert len(ui_hints.get("options") or []) >= 1
+
+
+def test_run_chat_graph_compose_sets_answer_cards_from_sources_when_selection_missing():
+    domain_nodes._CACHE = CacheClient(None)
+
+    async def fake_legacy_executor(request, trace_id, request_id):
+        return {
+            "version": "v1",
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "status": "ok",
+            "reason_code": "OK",
+            "recoverable": False,
+            "next_action": "NONE",
+            "retry_after_ms": None,
+            "answer": {"role": "assistant", "content": "추천 결과 안내"},
+            "sources": [
+                {"title": "정책 문서", "doc_id": "policy-1", "snippet": "요약"},
+                {"title": "도서 메타", "doc_id": "book-1", "snippet": "메타"},
+            ],
+            "citations": ["policy-1#0"],
+            "fallback_count": 0,
+            "escalated": False,
+        }
+
+    result = _run(
+        run_chat_graph(
+            {"session_id": "u:110d:default", "message": {"role": "user", "content": "환불 정책 알려줘"}},
+            "trace_110d",
+            "req_110d",
+            legacy_executor=fake_legacy_executor,
+        )
+    )
+
+    tool_result = result.state.get("tool_result")
+    assert isinstance(tool_result, dict)
+    data = tool_result.get("data")
+    assert isinstance(data, dict)
+    ui_hints = data.get("ui_hints")
+    assert isinstance(ui_hints, dict)
+    cards = ui_hints.get("cards")
+    assert isinstance(cards, list)
+    assert any(card.get("title") == "정책 문서" for card in cards if isinstance(card, dict))
 
 
 def test_run_chat_graph_records_perf_budget_sample():

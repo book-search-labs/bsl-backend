@@ -45,3 +45,13 @@ Split response composition and claim verification into dedicated graph nodes:
 - Generate structured UI hints per route.
 - Block or repair unsupported success claims.
 - Keep public response contract backward compatible.
+
+---
+
+## Implementation Update (Bundle 1)
+
+- Extended graph runtime regression tests for compose/claim-verifier behavior:
+  - success claim with citations is preserved (`status=ok`, `reason_code=OK`)
+  - `CONFIRM` route emits structured button hints (`confirm`, `abort`)
+  - `ANSWER` route generates card hints from `sources` when selection memory is empty
+- Coverage now spans `OPTIONS/CONFIRM/ANSWER` UI-hint rendering paths and claim false-positive boundary.
