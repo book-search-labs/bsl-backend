@@ -47,3 +47,13 @@ Strengthen multilingual chat retrieval with Korean priority:
 - Bridge cross-lingual queries through Korean pivot rewrites.
 - Preserve citation alignment across translated/re-written claims.
 - Apply safe fallbacks when translation confidence is low.
+
+## Implementation Update (2026-03-04, Bundle 1)
+- [x] Crosslingual query bridge guard gate 추가
+  - `scripts/eval/chat_crosslingual_query_bridge_guard.py`
+  - 언어쌍 기반 bridge 적용률, 병렬 retrieval 적용률 검증
+  - 도메인 키워드 보존률, low-confidence rewrite 총량 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_crosslingual_query_bridge_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_CROSSLINGUAL_QUERY_BRIDGE_GUARD=1 ./scripts/test.sh`

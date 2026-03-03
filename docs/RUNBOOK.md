@@ -3549,6 +3549,29 @@ python scripts/eval/chat_intent_recalibration_cycle_guard.py \
 - CI 옵션:
   - `RUN_CHAT_INTENT_RECALIBRATION_CYCLE_GUARD=1 ./scripts/test.sh`
 
+## Chat crosslingual query bridge guard gate (B-0388, Bundle 1)
+- 다국어 입력의 한국어 pivot rewrite 적용 품질을 검증:
+```bash
+python scripts/eval/chat_crosslingual_query_bridge_guard.py \
+  --events-jsonl var/crosslingual/query_bridge_events.jsonl \
+  --window-hours 24 \
+  --low-confidence-threshold 0.60 \
+  --min-window 50 \
+  --min-query-total 50 \
+  --min-bridge-applied-ratio 0.90 \
+  --min-parallel-retrieval-coverage-ratio 0.80 \
+  --min-keyword-preservation-ratio 0.85 \
+  --max-low-confidence-bridge-total 5 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - bridge applied ratio, parallel retrieval coverage ratio
+  - domain keyword preservation ratio
+  - low-confidence rewrite 건수
+- CI 옵션:
+  - `RUN_CHAT_CROSSLINGUAL_QUERY_BRIDGE_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

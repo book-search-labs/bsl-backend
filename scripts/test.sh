@@ -4786,7 +4786,44 @@ else
   echo "  - set RUN_CHAT_INTENT_RECALIBRATION_CYCLE_GUARD=1 to enable"
 fi
 
-echo "[128/130] Canonical quality checks (optional)"
+echo "[128/131] Chat crosslingual query bridge guard gate (optional)"
+if [ "${RUN_CHAT_CROSSLINGUAL_QUERY_BRIDGE_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_CROSSLINGUAL_BRIDGE_EVENTS_JSONL="${CHAT_CROSSLINGUAL_BRIDGE_EVENTS_JSONL:-$ROOT_DIR/var/crosslingual/query_bridge_events.jsonl}"
+    CHAT_CROSSLINGUAL_BRIDGE_WINDOW_HOURS="${CHAT_CROSSLINGUAL_BRIDGE_WINDOW_HOURS:-24}"
+    CHAT_CROSSLINGUAL_BRIDGE_LIMIT="${CHAT_CROSSLINGUAL_BRIDGE_LIMIT:-50000}"
+    CHAT_CROSSLINGUAL_BRIDGE_OUT_DIR="${CHAT_CROSSLINGUAL_BRIDGE_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_CROSSLINGUAL_BRIDGE_LOW_CONF_THRESHOLD="${CHAT_CROSSLINGUAL_BRIDGE_LOW_CONF_THRESHOLD:-0.6}"
+    CHAT_CROSSLINGUAL_BRIDGE_MIN_WINDOW="${CHAT_CROSSLINGUAL_BRIDGE_MIN_WINDOW:-0}"
+    CHAT_CROSSLINGUAL_BRIDGE_MIN_QUERY_TOTAL="${CHAT_CROSSLINGUAL_BRIDGE_MIN_QUERY_TOTAL:-0}"
+    CHAT_CROSSLINGUAL_BRIDGE_MIN_APPLIED_RATIO="${CHAT_CROSSLINGUAL_BRIDGE_MIN_APPLIED_RATIO:-0.0}"
+    CHAT_CROSSLINGUAL_BRIDGE_MIN_PARALLEL_RATIO="${CHAT_CROSSLINGUAL_BRIDGE_MIN_PARALLEL_RATIO:-0.0}"
+    CHAT_CROSSLINGUAL_BRIDGE_MIN_KEYWORD_RATIO="${CHAT_CROSSLINGUAL_BRIDGE_MIN_KEYWORD_RATIO:-0.0}"
+    CHAT_CROSSLINGUAL_BRIDGE_MAX_LOW_CONF_TOTAL="${CHAT_CROSSLINGUAL_BRIDGE_MAX_LOW_CONF_TOTAL:-1000000}"
+    CHAT_CROSSLINGUAL_BRIDGE_MAX_STALE_MINUTES="${CHAT_CROSSLINGUAL_BRIDGE_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_crosslingual_query_bridge_guard.py" \
+      --events-jsonl "$CHAT_CROSSLINGUAL_BRIDGE_EVENTS_JSONL" \
+      --window-hours "$CHAT_CROSSLINGUAL_BRIDGE_WINDOW_HOURS" \
+      --limit "$CHAT_CROSSLINGUAL_BRIDGE_LIMIT" \
+      --out "$CHAT_CROSSLINGUAL_BRIDGE_OUT_DIR" \
+      --low-confidence-threshold "$CHAT_CROSSLINGUAL_BRIDGE_LOW_CONF_THRESHOLD" \
+      --min-window "$CHAT_CROSSLINGUAL_BRIDGE_MIN_WINDOW" \
+      --min-query-total "$CHAT_CROSSLINGUAL_BRIDGE_MIN_QUERY_TOTAL" \
+      --min-bridge-applied-ratio "$CHAT_CROSSLINGUAL_BRIDGE_MIN_APPLIED_RATIO" \
+      --min-parallel-retrieval-coverage-ratio "$CHAT_CROSSLINGUAL_BRIDGE_MIN_PARALLEL_RATIO" \
+      --min-keyword-preservation-ratio "$CHAT_CROSSLINGUAL_BRIDGE_MIN_KEYWORD_RATIO" \
+      --max-low-confidence-bridge-total "$CHAT_CROSSLINGUAL_BRIDGE_MAX_LOW_CONF_TOTAL" \
+      --max-stale-minutes "$CHAT_CROSSLINGUAL_BRIDGE_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat crosslingual query bridge guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_CROSSLINGUAL_QUERY_BRIDGE_GUARD=1 to enable"
+fi
+
+echo "[129/131] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -4797,7 +4834,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[129/130] E2E tests (optional)"
+echo "[130/131] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -4808,4 +4845,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[130/130] Done"
+echo "[131/131] Done"
