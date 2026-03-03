@@ -79,3 +79,14 @@ Build deterministic replay tooling for chat agents:
   - `scripts/eval/test_chat_replay_diff_inspector.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_REPLAY_DIFF_INSPECTOR=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Replay artifact shareability gate 추가
+  - `scripts/eval/chat_replay_artifact_shareability.py`
+  - replay artifact 생성/공유 가능성 검증
+  - redaction 적용 여부 및 unmasked sensitive 탐지
+  - ticket reference 누락 및 invalid share scope 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_replay_artifact_shareability.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_REPLAY_ARTIFACT_SHAREABILITY=1 ./scripts/test.sh`

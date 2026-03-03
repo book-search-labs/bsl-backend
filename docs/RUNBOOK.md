@@ -2625,6 +2625,29 @@ python scripts/eval/chat_replay_diff_inspector.py \
 - CI 옵션:
   - `RUN_CHAT_REPLAY_DIFF_INSPECTOR=1 ./scripts/test.sh`
 
+## Replay artifact shareability gate (B-0378, Bundle 4)
+- RCA 첨부용 replay artifact의 생성/공유 가능성과 redaction 안전성을 검증:
+```bash
+python scripts/eval/chat_replay_artifact_shareability.py \
+  --events-jsonl var/chat_graph/replay/artifacts.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-artifact-created-total 10 \
+  --min-shareable-total 10 \
+  --max-missing-redaction-total 0 \
+  --max-unmasked-sensitive-total 0 \
+  --max-missing-ticket-reference-total 0 \
+  --max-invalid-share-scope-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - artifact 생성/공유 가능 건수
+  - redaction 적용 건수와 누락 건수
+  - unmasked sensitive / missing ticket reference / invalid share scope 건수
+- CI 옵션:
+  - `RUN_CHAT_REPLAY_ARTIFACT_SHAREABILITY=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

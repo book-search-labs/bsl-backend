@@ -3228,7 +3228,7 @@ else
   echo "  - set RUN_CHAT_REPLAY_SANDBOX_RUNTIME=1 to enable"
 fi
 
-echo "[90/93] Chat replay diff inspector gate (optional)"
+echo "[90/94] Chat replay diff inspector gate (optional)"
 if [ "${RUN_CHAT_REPLAY_DIFF_INSPECTOR:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_REPLAY_DIFF_EVENTS_JSONL="${CHAT_REPLAY_DIFF_EVENTS_JSONL:-$ROOT_DIR/var/chat_graph/replay/diff_inspector_runs.jsonl}"
@@ -3261,7 +3261,44 @@ else
   echo "  - set RUN_CHAT_REPLAY_DIFF_INSPECTOR=1 to enable"
 fi
 
-echo "[91/93] Canonical quality checks (optional)"
+echo "[91/94] Chat replay artifact shareability gate (optional)"
+if [ "${RUN_CHAT_REPLAY_ARTIFACT_SHAREABILITY:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_REPLAY_ARTIFACT_EVENTS_JSONL="${CHAT_REPLAY_ARTIFACT_EVENTS_JSONL:-$ROOT_DIR/var/chat_graph/replay/artifacts.jsonl}"
+    CHAT_REPLAY_ARTIFACT_WINDOW_HOURS="${CHAT_REPLAY_ARTIFACT_WINDOW_HOURS:-24}"
+    CHAT_REPLAY_ARTIFACT_LIMIT="${CHAT_REPLAY_ARTIFACT_LIMIT:-50000}"
+    CHAT_REPLAY_ARTIFACT_OUT_DIR="${CHAT_REPLAY_ARTIFACT_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_REPLAY_ARTIFACT_MIN_WINDOW="${CHAT_REPLAY_ARTIFACT_MIN_WINDOW:-0}"
+    CHAT_REPLAY_ARTIFACT_MIN_CREATED_TOTAL="${CHAT_REPLAY_ARTIFACT_MIN_CREATED_TOTAL:-0}"
+    CHAT_REPLAY_ARTIFACT_MIN_SHAREABLE_TOTAL="${CHAT_REPLAY_ARTIFACT_MIN_SHAREABLE_TOTAL:-0}"
+    CHAT_REPLAY_ARTIFACT_MAX_MISSING_REDACTION_TOTAL="${CHAT_REPLAY_ARTIFACT_MAX_MISSING_REDACTION_TOTAL:-1000000}"
+    CHAT_REPLAY_ARTIFACT_MAX_UNMASKED_SENSITIVE_TOTAL="${CHAT_REPLAY_ARTIFACT_MAX_UNMASKED_SENSITIVE_TOTAL:-1000000}"
+    CHAT_REPLAY_ARTIFACT_MAX_MISSING_TICKET_REFERENCE_TOTAL="${CHAT_REPLAY_ARTIFACT_MAX_MISSING_TICKET_REFERENCE_TOTAL:-1000000}"
+    CHAT_REPLAY_ARTIFACT_MAX_INVALID_SHARE_SCOPE_TOTAL="${CHAT_REPLAY_ARTIFACT_MAX_INVALID_SHARE_SCOPE_TOTAL:-1000000}"
+    CHAT_REPLAY_ARTIFACT_MAX_STALE_MINUTES="${CHAT_REPLAY_ARTIFACT_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_replay_artifact_shareability.py" \
+      --events-jsonl "$CHAT_REPLAY_ARTIFACT_EVENTS_JSONL" \
+      --window-hours "$CHAT_REPLAY_ARTIFACT_WINDOW_HOURS" \
+      --limit "$CHAT_REPLAY_ARTIFACT_LIMIT" \
+      --out "$CHAT_REPLAY_ARTIFACT_OUT_DIR" \
+      --min-window "$CHAT_REPLAY_ARTIFACT_MIN_WINDOW" \
+      --min-artifact-created-total "$CHAT_REPLAY_ARTIFACT_MIN_CREATED_TOTAL" \
+      --min-shareable-total "$CHAT_REPLAY_ARTIFACT_MIN_SHAREABLE_TOTAL" \
+      --max-missing-redaction-total "$CHAT_REPLAY_ARTIFACT_MAX_MISSING_REDACTION_TOTAL" \
+      --max-unmasked-sensitive-total "$CHAT_REPLAY_ARTIFACT_MAX_UNMASKED_SENSITIVE_TOTAL" \
+      --max-missing-ticket-reference-total "$CHAT_REPLAY_ARTIFACT_MAX_MISSING_TICKET_REFERENCE_TOTAL" \
+      --max-invalid-share-scope-total "$CHAT_REPLAY_ARTIFACT_MAX_INVALID_SHARE_SCOPE_TOTAL" \
+      --max-stale-minutes "$CHAT_REPLAY_ARTIFACT_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat replay artifact shareability gate"
+  fi
+else
+  echo "  - set RUN_CHAT_REPLAY_ARTIFACT_SHAREABILITY=1 to enable"
+fi
+
+echo "[92/94] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -3272,7 +3309,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[92/93] E2E tests (optional)"
+echo "[93/94] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -3283,4 +3320,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[93/93] Done"
+echo "[94/94] Done"
