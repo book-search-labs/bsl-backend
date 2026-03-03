@@ -4143,7 +4143,7 @@ else
   echo "  - set RUN_CHAT_KOREAN_TERMINOLOGY_DICTIONARY_GUARD=1 to enable"
 fi
 
-echo "[113/116] Chat korean style policy guard gate (optional)"
+echo "[113/117] Chat korean style policy guard gate (optional)"
 if [ "${RUN_CHAT_KOREAN_STYLE_POLICY_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_KO_STYLE_EVENTS_JSONL="${CHAT_KO_STYLE_EVENTS_JSONL:-$ROOT_DIR/var/chat_style/style_policy_events.jsonl}"
@@ -4184,7 +4184,48 @@ else
   echo "  - set RUN_CHAT_KOREAN_STYLE_POLICY_GUARD=1 to enable"
 fi
 
-echo "[114/116] Canonical quality checks (optional)"
+echo "[114/117] Chat korean runtime normalization guard gate (optional)"
+if [ "${RUN_CHAT_KOREAN_RUNTIME_NORMALIZATION_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_KO_RUNTIME_NORM_EVENTS_JSONL="${CHAT_KO_RUNTIME_NORM_EVENTS_JSONL:-$ROOT_DIR/var/chat_style/runtime_normalization_events.jsonl}"
+    CHAT_KO_RUNTIME_NORM_WINDOW_HOURS="${CHAT_KO_RUNTIME_NORM_WINDOW_HOURS:-24}"
+    CHAT_KO_RUNTIME_NORM_LIMIT="${CHAT_KO_RUNTIME_NORM_LIMIT:-50000}"
+    CHAT_KO_RUNTIME_NORM_OUT_DIR="${CHAT_KO_RUNTIME_NORM_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_KO_RUNTIME_NORM_MIN_WINDOW="${CHAT_KO_RUNTIME_NORM_MIN_WINDOW:-0}"
+    CHAT_KO_RUNTIME_NORM_MIN_RESPONSE_TOTAL="${CHAT_KO_RUNTIME_NORM_MIN_RESPONSE_TOTAL:-0}"
+    CHAT_KO_RUNTIME_NORM_MIN_CHECKED_RATIO="${CHAT_KO_RUNTIME_NORM_MIN_CHECKED_RATIO:-0.0}"
+    CHAT_KO_RUNTIME_NORM_MIN_FALLBACK_COVERAGE_RATIO="${CHAT_KO_RUNTIME_NORM_MIN_FALLBACK_COVERAGE_RATIO:-0.0}"
+    CHAT_KO_RUNTIME_NORM_MAX_BYPASS_TOTAL="${CHAT_KO_RUNTIME_NORM_MAX_BYPASS_TOTAL:-1000000}"
+    CHAT_KO_RUNTIME_NORM_MAX_MEANING_DRIFT_TOTAL="${CHAT_KO_RUNTIME_NORM_MAX_MEANING_DRIFT_TOTAL:-1000000}"
+    CHAT_KO_RUNTIME_NORM_MAX_EXCESSIVE_EDIT_WITHOUT_FALLBACK_TOTAL="${CHAT_KO_RUNTIME_NORM_MAX_EXCESSIVE_EDIT_WITHOUT_FALLBACK_TOTAL:-1000000}"
+    CHAT_KO_RUNTIME_NORM_MAX_REASON_CODE_MISSING_TOTAL="${CHAT_KO_RUNTIME_NORM_MAX_REASON_CODE_MISSING_TOTAL:-1000000}"
+    CHAT_KO_RUNTIME_NORM_MAX_P95_EDIT_RATIO="${CHAT_KO_RUNTIME_NORM_MAX_P95_EDIT_RATIO:-1.0}"
+    CHAT_KO_RUNTIME_NORM_MAX_STALE_MINUTES="${CHAT_KO_RUNTIME_NORM_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_korean_runtime_normalization_guard.py" \
+      --events-jsonl "$CHAT_KO_RUNTIME_NORM_EVENTS_JSONL" \
+      --window-hours "$CHAT_KO_RUNTIME_NORM_WINDOW_HOURS" \
+      --limit "$CHAT_KO_RUNTIME_NORM_LIMIT" \
+      --out "$CHAT_KO_RUNTIME_NORM_OUT_DIR" \
+      --min-window "$CHAT_KO_RUNTIME_NORM_MIN_WINDOW" \
+      --min-response-total "$CHAT_KO_RUNTIME_NORM_MIN_RESPONSE_TOTAL" \
+      --min-normalization-checked-ratio "$CHAT_KO_RUNTIME_NORM_MIN_CHECKED_RATIO" \
+      --min-fallback-coverage-ratio "$CHAT_KO_RUNTIME_NORM_MIN_FALLBACK_COVERAGE_RATIO" \
+      --max-normalization-bypass-total "$CHAT_KO_RUNTIME_NORM_MAX_BYPASS_TOTAL" \
+      --max-meaning-drift-total "$CHAT_KO_RUNTIME_NORM_MAX_MEANING_DRIFT_TOTAL" \
+      --max-excessive-edit-without-fallback-total "$CHAT_KO_RUNTIME_NORM_MAX_EXCESSIVE_EDIT_WITHOUT_FALLBACK_TOTAL" \
+      --max-reason-code-missing-total "$CHAT_KO_RUNTIME_NORM_MAX_REASON_CODE_MISSING_TOTAL" \
+      --max-p95-edit-ratio "$CHAT_KO_RUNTIME_NORM_MAX_P95_EDIT_RATIO" \
+      --max-stale-minutes "$CHAT_KO_RUNTIME_NORM_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat korean runtime normalization guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_KOREAN_RUNTIME_NORMALIZATION_GUARD=1 to enable"
+fi
+
+echo "[115/117] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -4195,7 +4236,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[115/116] E2E tests (optional)"
+echo "[116/117] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -4206,4 +4247,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[116/116] Done"
+echo "[117/117] Done"

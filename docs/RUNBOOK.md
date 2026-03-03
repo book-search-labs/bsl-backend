@@ -3193,6 +3193,31 @@ python scripts/eval/chat_korean_style_policy_guard.py \
 - CI 옵션:
   - `RUN_CHAT_KOREAN_STYLE_POLICY_GUARD=1 ./scripts/test.sh`
 
+## Chat korean runtime normalization guard gate (B-0384, Bundle 3)
+- 용어/문체 정규화 런타임에서 과도 수정과 의미 드리프트 fallback을 검증:
+```bash
+python scripts/eval/chat_korean_runtime_normalization_guard.py \
+  --events-jsonl var/chat_style/runtime_normalization_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-response-total 20 \
+  --min-normalization-checked-ratio 0.99 \
+  --min-fallback-coverage-ratio 1.0 \
+  --max-normalization-bypass-total 0 \
+  --max-meaning-drift-total 0 \
+  --max-excessive-edit-without-fallback-total 0 \
+  --max-reason-code-missing-total 0 \
+  --max-p95-edit-ratio 0.35 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - normalization checked/applied 비율
+  - excessive edit 및 fallback coverage 비율
+  - meaning drift/reason_code 누락/p95 edit ratio
+- CI 옵션:
+  - `RUN_CHAT_KOREAN_RUNTIME_NORMALIZATION_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
