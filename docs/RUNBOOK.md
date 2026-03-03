@@ -3269,6 +3269,29 @@ python scripts/eval/chat_ticket_knowledge_candidate_selection.py \
 - CI 옵션:
   - `RUN_CHAT_TICKET_KNOWLEDGE_CANDIDATE_SELECTION=1 ./scripts/test.sh`
 
+## Chat ticket knowledge privacy scrub guard gate (B-0385, Bundle 2)
+- 티켓 기반 지식후보의 PII 제거/보존정책/저장모드 안전성 검증:
+```bash
+python scripts/eval/chat_ticket_knowledge_privacy_scrub_guard.py \
+  --events-jsonl var/chat_ticket_knowledge/privacy_scrub_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-candidate-total 10 \
+  --min-scrub-coverage-ratio 0.99 \
+  --max-pii-leak-total 0 \
+  --max-redaction-rule-missing-total 0 \
+  --max-retention-policy-missing-total 0 \
+  --max-unsafe-storage-mode-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - scrub coverage ratio, pii leak 건수
+  - redaction rule/retention policy 누락 건수
+  - unsafe storage mode 건수
+- CI 옵션:
+  - `RUN_CHAT_TICKET_KNOWLEDGE_PRIVACY_SCRUB_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

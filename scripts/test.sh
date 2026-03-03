@@ -4268,7 +4268,7 @@ else
   echo "  - set RUN_CHAT_KOREAN_GOVERNANCE_LOOP_GUARD=1 to enable"
 fi
 
-echo "[116/119] Chat ticket knowledge candidate selection gate (optional)"
+echo "[116/120] Chat ticket knowledge candidate selection gate (optional)"
 if [ "${RUN_CHAT_TICKET_KNOWLEDGE_CANDIDATE_SELECTION:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TICKET_KNOWLEDGE_CANDIDATE_EVENTS_JSONL="${CHAT_TICKET_KNOWLEDGE_CANDIDATE_EVENTS_JSONL:-$ROOT_DIR/var/chat_ticket_knowledge/candidate_events.jsonl}"
@@ -4311,7 +4311,44 @@ else
   echo "  - set RUN_CHAT_TICKET_KNOWLEDGE_CANDIDATE_SELECTION=1 to enable"
 fi
 
-echo "[117/119] Canonical quality checks (optional)"
+echo "[117/120] Chat ticket knowledge privacy scrub guard gate (optional)"
+if [ "${RUN_CHAT_TICKET_KNOWLEDGE_PRIVACY_SCRUB_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TICKET_KNOWLEDGE_PRIVACY_EVENTS_JSONL="${CHAT_TICKET_KNOWLEDGE_PRIVACY_EVENTS_JSONL:-$ROOT_DIR/var/chat_ticket_knowledge/privacy_scrub_events.jsonl}"
+    CHAT_TICKET_KNOWLEDGE_PRIVACY_WINDOW_HOURS="${CHAT_TICKET_KNOWLEDGE_PRIVACY_WINDOW_HOURS:-24}"
+    CHAT_TICKET_KNOWLEDGE_PRIVACY_LIMIT="${CHAT_TICKET_KNOWLEDGE_PRIVACY_LIMIT:-50000}"
+    CHAT_TICKET_KNOWLEDGE_PRIVACY_OUT_DIR="${CHAT_TICKET_KNOWLEDGE_PRIVACY_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TICKET_KNOWLEDGE_PRIVACY_MIN_WINDOW="${CHAT_TICKET_KNOWLEDGE_PRIVACY_MIN_WINDOW:-0}"
+    CHAT_TICKET_KNOWLEDGE_PRIVACY_MIN_CANDIDATE_TOTAL="${CHAT_TICKET_KNOWLEDGE_PRIVACY_MIN_CANDIDATE_TOTAL:-0}"
+    CHAT_TICKET_KNOWLEDGE_PRIVACY_MIN_SCRUB_COVERAGE_RATIO="${CHAT_TICKET_KNOWLEDGE_PRIVACY_MIN_SCRUB_COVERAGE_RATIO:-0.0}"
+    CHAT_TICKET_KNOWLEDGE_PRIVACY_MAX_PII_LEAK_TOTAL="${CHAT_TICKET_KNOWLEDGE_PRIVACY_MAX_PII_LEAK_TOTAL:-1000000}"
+    CHAT_TICKET_KNOWLEDGE_PRIVACY_MAX_REDACTION_RULE_MISSING_TOTAL="${CHAT_TICKET_KNOWLEDGE_PRIVACY_MAX_REDACTION_RULE_MISSING_TOTAL:-1000000}"
+    CHAT_TICKET_KNOWLEDGE_PRIVACY_MAX_RETENTION_POLICY_MISSING_TOTAL="${CHAT_TICKET_KNOWLEDGE_PRIVACY_MAX_RETENTION_POLICY_MISSING_TOTAL:-1000000}"
+    CHAT_TICKET_KNOWLEDGE_PRIVACY_MAX_UNSAFE_STORAGE_MODE_TOTAL="${CHAT_TICKET_KNOWLEDGE_PRIVACY_MAX_UNSAFE_STORAGE_MODE_TOTAL:-1000000}"
+    CHAT_TICKET_KNOWLEDGE_PRIVACY_MAX_STALE_MINUTES="${CHAT_TICKET_KNOWLEDGE_PRIVACY_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_ticket_knowledge_privacy_scrub_guard.py" \
+      --events-jsonl "$CHAT_TICKET_KNOWLEDGE_PRIVACY_EVENTS_JSONL" \
+      --window-hours "$CHAT_TICKET_KNOWLEDGE_PRIVACY_WINDOW_HOURS" \
+      --limit "$CHAT_TICKET_KNOWLEDGE_PRIVACY_LIMIT" \
+      --out "$CHAT_TICKET_KNOWLEDGE_PRIVACY_OUT_DIR" \
+      --min-window "$CHAT_TICKET_KNOWLEDGE_PRIVACY_MIN_WINDOW" \
+      --min-candidate-total "$CHAT_TICKET_KNOWLEDGE_PRIVACY_MIN_CANDIDATE_TOTAL" \
+      --min-scrub-coverage-ratio "$CHAT_TICKET_KNOWLEDGE_PRIVACY_MIN_SCRUB_COVERAGE_RATIO" \
+      --max-pii-leak-total "$CHAT_TICKET_KNOWLEDGE_PRIVACY_MAX_PII_LEAK_TOTAL" \
+      --max-redaction-rule-missing-total "$CHAT_TICKET_KNOWLEDGE_PRIVACY_MAX_REDACTION_RULE_MISSING_TOTAL" \
+      --max-retention-policy-missing-total "$CHAT_TICKET_KNOWLEDGE_PRIVACY_MAX_RETENTION_POLICY_MISSING_TOTAL" \
+      --max-unsafe-storage-mode-total "$CHAT_TICKET_KNOWLEDGE_PRIVACY_MAX_UNSAFE_STORAGE_MODE_TOTAL" \
+      --max-stale-minutes "$CHAT_TICKET_KNOWLEDGE_PRIVACY_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat ticket knowledge privacy scrub guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TICKET_KNOWLEDGE_PRIVACY_SCRUB_GUARD=1 to enable"
+fi
+
+echo "[118/120] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -4322,7 +4359,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[118/119] E2E tests (optional)"
+echo "[119/120] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -4333,4 +4370,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[119/119] Done"
+echo "[120/120] Done"
