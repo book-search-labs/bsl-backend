@@ -993,8 +993,14 @@ if [ "${RUN_CHAT_DATA_RETENTION_GUARD:-0}" = "1" ]; then
     CHAT_RETENTION_MAX_STALE_MINUTES="${CHAT_RETENTION_MAX_STALE_MINUTES:-180}"
     CHAT_RETENTION_MIN_TRACE_COVERAGE="${CHAT_RETENTION_MIN_TRACE_COVERAGE:-1.0}"
     CHAT_RETENTION_MAX_MISSING_TRACE_TOTAL="${CHAT_RETENTION_MAX_MISSING_TRACE_TOTAL:-0}"
+    CHAT_RETENTION_BASELINE_PATH="${CHAT_RETENTION_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_data_retention_guard_baseline_v1.json}"
+    CHAT_RETENTION_MAX_OVERDUE_INCREASE="${CHAT_RETENTION_MAX_OVERDUE_INCREASE:-0}"
+    CHAT_RETENTION_MAX_UNAPPROVED_INCREASE="${CHAT_RETENTION_MAX_UNAPPROVED_INCREASE:-0}"
+    CHAT_RETENTION_MAX_MISSING_TRACE_INCREASE="${CHAT_RETENTION_MAX_MISSING_TRACE_INCREASE:-0}"
+    CHAT_RETENTION_MAX_TRACE_COVERAGE_DROP="${CHAT_RETENTION_MAX_TRACE_COVERAGE_DROP:-0.01}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_data_retention_guard.py" \
+    CHAT_RETENTION_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_data_retention_guard.py"
       --events-jsonl "$CHAT_RETENTION_EVENTS_JSONL" \
       --window-hours "$CHAT_RETENTION_WINDOW_HOURS" \
       --limit "$CHAT_RETENTION_LIMIT" \
@@ -1007,7 +1013,16 @@ if [ "${RUN_CHAT_DATA_RETENTION_GUARD:-0}" = "1" ]; then
       --max-stale-minutes "$CHAT_RETENTION_MAX_STALE_MINUTES" \
       --min-trace-coverage-ratio "$CHAT_RETENTION_MIN_TRACE_COVERAGE" \
       --max-missing-trace-total "$CHAT_RETENTION_MAX_MISSING_TRACE_TOTAL" \
-      --gate || exit 1
+      --max-overdue-total-increase "$CHAT_RETENTION_MAX_OVERDUE_INCREASE" \
+      --max-unapproved-exception-increase "$CHAT_RETENTION_MAX_UNAPPROVED_INCREASE" \
+      --max-missing-trace-increase "$CHAT_RETENTION_MAX_MISSING_TRACE_INCREASE" \
+      --max-trace-coverage-ratio-drop "$CHAT_RETENTION_MAX_TRACE_COVERAGE_DROP" \
+      --gate
+    )
+    if [ -f "$CHAT_RETENTION_BASELINE_PATH" ]; then
+      CHAT_RETENTION_ARGS+=(--baseline-report "$CHAT_RETENTION_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_RETENTION_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat data retention guard"
   fi
@@ -1031,8 +1046,15 @@ if [ "${RUN_CHAT_EGRESS_GUARDRAILS_GATE:-0}" = "1" ]; then
     CHAT_EGRESS_MAX_MISSING_TRACE_TOTAL="${CHAT_EGRESS_MAX_MISSING_TRACE_TOTAL:-0}"
     CHAT_EGRESS_MIN_ALERT_COVERAGE_RATIO="${CHAT_EGRESS_MIN_ALERT_COVERAGE_RATIO:-1.0}"
     CHAT_EGRESS_MAX_STALE_MINUTES="${CHAT_EGRESS_MAX_STALE_MINUTES:-180}"
+    CHAT_EGRESS_BASELINE_PATH="${CHAT_EGRESS_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_egress_guardrails_gate_baseline_v1.json}"
+    CHAT_EGRESS_MAX_VIOLATION_INCREASE="${CHAT_EGRESS_MAX_VIOLATION_INCREASE:-0}"
+    CHAT_EGRESS_MAX_UNMASKED_INCREASE="${CHAT_EGRESS_MAX_UNMASKED_INCREASE:-0}"
+    CHAT_EGRESS_MAX_UNKNOWN_DEST_INCREASE="${CHAT_EGRESS_MAX_UNKNOWN_DEST_INCREASE:-0}"
+    CHAT_EGRESS_MAX_ERROR_RATIO_INCREASE="${CHAT_EGRESS_MAX_ERROR_RATIO_INCREASE:-0.02}"
+    CHAT_EGRESS_MAX_ALERT_COVERAGE_DROP="${CHAT_EGRESS_MAX_ALERT_COVERAGE_DROP:-0.05}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_egress_guardrails_gate.py" \
+    CHAT_EGRESS_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_egress_guardrails_gate.py"
       --events-jsonl "$CHAT_EGRESS_EVENTS_JSONL" \
       --allow-destinations "$CHAT_EGRESS_ALLOW_DESTINATIONS" \
       --window-hours "$CHAT_EGRESS_WINDOW_HOURS" \
@@ -1046,7 +1068,17 @@ if [ "${RUN_CHAT_EGRESS_GUARDRAILS_GATE:-0}" = "1" ]; then
       --max-missing-trace-total "$CHAT_EGRESS_MAX_MISSING_TRACE_TOTAL" \
       --min-alert-coverage-ratio "$CHAT_EGRESS_MIN_ALERT_COVERAGE_RATIO" \
       --max-stale-minutes "$CHAT_EGRESS_MAX_STALE_MINUTES" \
-      --gate || exit 1
+      --max-violation-total-increase "$CHAT_EGRESS_MAX_VIOLATION_INCREASE" \
+      --max-unmasked-sensitive-increase "$CHAT_EGRESS_MAX_UNMASKED_INCREASE" \
+      --max-unknown-destination-increase "$CHAT_EGRESS_MAX_UNKNOWN_DEST_INCREASE" \
+      --max-error-ratio-increase "$CHAT_EGRESS_MAX_ERROR_RATIO_INCREASE" \
+      --max-alert-coverage-ratio-drop "$CHAT_EGRESS_MAX_ALERT_COVERAGE_DROP" \
+      --gate
+    )
+    if [ -f "$CHAT_EGRESS_BASELINE_PATH" ]; then
+      CHAT_EGRESS_ARGS+=(--baseline-report "$CHAT_EGRESS_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_EGRESS_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat egress guardrails gate"
   fi
@@ -1066,6 +1098,11 @@ if [ "${RUN_CHAT_DATA_GOV_EVIDENCE_GATE:-0}" = "1" ]; then
     CHAT_DATA_GOV_REQUIRE_REPORTS="${CHAT_DATA_GOV_REQUIRE_REPORTS:-0}"
     CHAT_DATA_GOV_REQUIRE_EVENTS="${CHAT_DATA_GOV_REQUIRE_EVENTS:-0}"
     CHAT_DATA_GOV_REQUIRE_READY="${CHAT_DATA_GOV_REQUIRE_READY:-0}"
+    CHAT_DATA_GOV_BASELINE_PATH="${CHAT_DATA_GOV_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_data_governance_evidence_baseline_v1.json}"
+    CHAT_DATA_GOV_MAX_STATUS_STEP_INCREASE="${CHAT_DATA_GOV_MAX_STATUS_STEP_INCREASE:-0}"
+    CHAT_DATA_GOV_MAX_SCORE_DROP="${CHAT_DATA_GOV_MAX_SCORE_DROP:-5.0}"
+    CHAT_DATA_GOV_MAX_TRACE_COVERAGE_DROP="${CHAT_DATA_GOV_MAX_TRACE_COVERAGE_DROP:-0.01}"
+    CHAT_DATA_GOV_MAX_BLOCKER_INCREASE="${CHAT_DATA_GOV_MAX_BLOCKER_INCREASE:-0}"
 
     CHAT_DATA_GOV_ARGS=(
       "$ROOT_DIR/scripts/eval/chat_data_governance_evidence.py"
@@ -1074,9 +1111,16 @@ if [ "${RUN_CHAT_DATA_GOV_EVIDENCE_GATE:-0}" = "1" ]; then
       --egress-prefix "$CHAT_DATA_GOV_EGRESS_PREFIX"
       --min-trace-coverage-ratio "$CHAT_DATA_GOV_MIN_TRACE_COVERAGE"
       --min-lifecycle-score "$CHAT_DATA_GOV_MIN_SCORE"
+      --max-status-step-increase "$CHAT_DATA_GOV_MAX_STATUS_STEP_INCREASE"
+      --max-lifecycle-score-drop "$CHAT_DATA_GOV_MAX_SCORE_DROP"
+      --max-trace-coverage-ratio-drop "$CHAT_DATA_GOV_MAX_TRACE_COVERAGE_DROP"
+      --max-blocker-count-increase "$CHAT_DATA_GOV_MAX_BLOCKER_INCREASE"
       --out "$CHAT_DATA_GOV_OUT_DIR"
       --gate
     )
+    if [ -f "$CHAT_DATA_GOV_BASELINE_PATH" ]; then
+      CHAT_DATA_GOV_ARGS+=(--baseline-report "$CHAT_DATA_GOV_BASELINE_PATH")
+    fi
     if [ "$CHAT_DATA_GOV_REQUIRE_REPORTS" = "1" ]; then
       CHAT_DATA_GOV_ARGS+=(--require-reports)
     fi

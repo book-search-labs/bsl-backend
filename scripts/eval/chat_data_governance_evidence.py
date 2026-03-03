@@ -7,6 +7,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
+STATUS_ORDER: dict[str, int] = {
+    "READY": 0,
+    "WATCH": 1,
+    "HOLD": 2,
+}
+
 
 def _safe_float(value: Any, default: float = 0.0) -> float:
     try:
@@ -31,6 +37,13 @@ def _safe_bool(value: Any, default: bool = False) -> bool:
             return True
         if normalized in {"0", "false", "no", "off"}:
             return False
+    return default
+
+
+def _safe_status(value: Any, default: str = "HOLD") -> str:
+    status = str(value or "").strip().upper()
+    if status in STATUS_ORDER:
+        return status
     return default
 
 
@@ -131,6 +144,60 @@ def evaluate_evidence(
     }
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_payload: Mapping[str, Any],
+    *,
+    max_status_step_increase: int,
+    max_lifecycle_score_drop: float,
+    max_trace_coverage_ratio_drop: float,
+    max_blocker_count_increase: int,
+) -> list[str]:
+    failures: list[str] = []
+    base_decision = baseline_report.get("decision") if isinstance(baseline_report.get("decision"), Mapping) else {}
+    cur_decision = current_payload.get("decision") if isinstance(current_payload.get("decision"), Mapping) else {}
+
+    base_status = _safe_status(base_decision.get("status"), "HOLD")
+    cur_status = _safe_status(cur_decision.get("status"), "HOLD")
+    status_step = max(0, STATUS_ORDER[cur_status] - STATUS_ORDER[base_status])
+    if status_step > max(0, int(max_status_step_increase)):
+        failures.append(
+            "status regression: "
+            f"baseline={base_status}, current={cur_status}, allowed_step={max(0, int(max_status_step_increase))}"
+        )
+
+    base_lifecycle_score = _safe_float(base_decision.get("lifecycle_score"), 0.0)
+    cur_lifecycle_score = _safe_float(cur_decision.get("lifecycle_score"), 0.0)
+    lifecycle_score_drop = max(0.0, base_lifecycle_score - cur_lifecycle_score)
+    if lifecycle_score_drop > max(0.0, float(max_lifecycle_score_drop)):
+        failures.append(
+            "lifecycle score regression: "
+            f"baseline={base_lifecycle_score:.6f}, current={cur_lifecycle_score:.6f}, "
+            f"allowed_drop={float(max_lifecycle_score_drop):.6f}"
+        )
+
+    base_trace_coverage = _safe_float(base_decision.get("trace_coverage_ratio"), 1.0)
+    cur_trace_coverage = _safe_float(cur_decision.get("trace_coverage_ratio"), 1.0)
+    trace_coverage_drop = max(0.0, base_trace_coverage - cur_trace_coverage)
+    if trace_coverage_drop > max(0.0, float(max_trace_coverage_ratio_drop)):
+        failures.append(
+            "trace coverage regression: "
+            f"baseline={base_trace_coverage:.6f}, current={cur_trace_coverage:.6f}, "
+            f"allowed_drop={float(max_trace_coverage_ratio_drop):.6f}"
+        )
+
+    base_blockers = base_decision.get("blockers") if isinstance(base_decision.get("blockers"), list) else []
+    cur_blockers = cur_decision.get("blockers") if isinstance(cur_decision.get("blockers"), list) else []
+    blocker_increase = max(0, len(cur_blockers) - len(base_blockers))
+    if blocker_increase > max(0, int(max_blocker_count_increase)):
+        failures.append(
+            "blocker count regression: "
+            f"baseline={len(base_blockers)}, current={len(cur_blockers)}, "
+            f"allowed_increase={max(0, int(max_blocker_count_increase))}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     decision = payload.get("decision") if isinstance(payload.get("decision"), Mapping) else {}
     signals = payload.get("signals") if isinstance(payload.get("signals"), Mapping) else {}
@@ -184,6 +251,21 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
             lines.append(f"- {item}")
     else:
         lines.append("- (none)")
+    lines.append("")
+    lines.append("## Gate")
+    lines.append("")
+    gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
+    failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
+    lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
+    if failures:
+        for item in failures:
+            lines.append(f"- failure: {item}")
+    if baseline_failures:
+        for item in baseline_failures:
+            lines.append(f"- baseline_failure: {item}")
+    if not failures and not baseline_failures:
+        lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -194,6 +276,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--egress-prefix", default="chat_egress_guardrails_gate")
     parser.add_argument("--min-trace-coverage-ratio", type=float, default=1.0)
     parser.add_argument("--min-lifecycle-score", type=float, default=80.0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-status-step-increase", type=int, default=0)
+    parser.add_argument("--max-lifecycle-score-drop", type=float, default=5.0)
+    parser.add_argument("--max-trace-coverage-ratio-drop", type=float, default=0.01)
+    parser.add_argument("--max-blocker-count-increase", type=int, default=0)
     parser.add_argument("--out", default="data/eval/reports")
     parser.add_argument("--prefix", default="chat_data_governance_evidence")
     parser.add_argument("--require-reports", action="store_true")
@@ -242,6 +329,12 @@ def main() -> int:
         missing_reports=missing_reports,
         require_reports=bool(args.require_reports),
     )
+    failures: list[str] = []
+    blockers = decision.get("blockers") if isinstance(decision.get("blockers"), list) else []
+    if blockers:
+        failures.extend([f"blocker: {item}" for item in blockers])
+    if args.require_ready and str(decision.get("status") or "").upper() != "READY":
+        failures.append(f"require_ready enabled but status={decision.get('status')}")
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -262,12 +355,48 @@ def main() -> int:
             "egress_report": str(egress_path) if egress_path else None,
         },
         "missing_reports": missing_reports,
+        "source": {
+            "reports_dir": str(reports_dir),
+            "retention_prefix": str(args.retention_prefix),
+            "egress_prefix": str(args.egress_prefix),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "inputs": {
             "reports_dir": str(reports_dir),
             "retention_prefix": str(args.retention_prefix),
             "egress_prefix": str(args.egress_prefix),
         },
+        "gate": {
+            "enabled": bool(args.gate),
+            "pass": True,
+            "failures": failures,
+            "baseline_failures": [],
+            "thresholds": {
+                "min_trace_coverage_ratio": float(args.min_trace_coverage_ratio),
+                "min_lifecycle_score": float(args.min_lifecycle_score),
+                "require_reports": bool(args.require_reports),
+                "require_events": bool(args.require_events),
+                "require_ready": bool(args.require_ready),
+                "max_status_step_increase": int(args.max_status_step_increase),
+                "max_lifecycle_score_drop": float(args.max_lifecycle_score_drop),
+                "max_trace_coverage_ratio_drop": float(args.max_trace_coverage_ratio_drop),
+                "max_blocker_count_increase": int(args.max_blocker_count_increase),
+            },
+        },
     }
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            payload,
+            max_status_step_increase=max(0, int(args.max_status_step_increase)),
+            max_lifecycle_score_drop=max(0.0, float(args.max_lifecycle_score_drop)),
+            max_trace_coverage_ratio_drop=max(0.0, float(args.max_trace_coverage_ratio_drop)),
+            max_blocker_count_increase=max(0, int(args.max_blocker_count_increase)),
+        )
+    payload["gate"]["baseline_failures"] = baseline_failures
+    payload["gate"]["pass"] = len(failures) == 0 and len(baseline_failures) == 0
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -281,15 +410,13 @@ def main() -> int:
     print(f"report_md={md_path}")
     print(f"status={decision.get('status')}")
     print(f"lifecycle_score={_safe_float(decision.get('lifecycle_score'), 0.0):.2f}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    failures: list[str] = []
-    blockers = decision.get("blockers") if isinstance(decision.get("blockers"), list) else []
-    if blockers:
-        failures.extend([f"blocker: {item}" for item in blockers])
-    if args.require_ready and str(decision.get("status") or "").upper() != "READY":
-        failures.append(f"require_ready enabled but status={decision.get('status')}")
-
-    if args.gate and failures:
+    if args.gate and not payload["gate"]["pass"]:
+        for item in failures:
+            print(f"[gate-failure] {item}")
+        for item in baseline_failures:
+            print(f"[baseline-failure] {item}")
         return 2
     return 0
 

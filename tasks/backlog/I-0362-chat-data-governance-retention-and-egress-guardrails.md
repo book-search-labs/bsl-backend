@@ -66,3 +66,23 @@ Harden chat data governance for production:
   - `scripts/eval/test_chat_data_governance_evidence.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_DATA_GOV_EVIDENCE_GATE=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 4)
+- [x] Retention/Egress/Evidence baseline 거버넌스 강화
+  - `scripts/eval/chat_data_retention_guard.py`
+    - `--baseline-report` 지원 및 overdue/unapproved/trace drift 비교 추가
+    - gate 결과에 `baseline_failures` 포함
+  - `scripts/eval/chat_egress_guardrails_gate.py`
+    - `--baseline-report` 지원 및 violation/unmasked/unknown/error/alert drift 비교 추가
+    - gate 결과에 `baseline_failures` 포함
+  - `scripts/eval/chat_data_governance_evidence.py`
+    - `--baseline-report` 지원 및 status/lifecycle score/trace/blocker drift 비교 추가
+    - gate 결과에 `baseline_failures` 포함
+- [x] baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_data_retention_guard_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_egress_guardrails_gate_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_data_governance_evidence_baseline_v1.json`
+- [x] CI 진입점 확장
+  - `scripts/test.sh`의 `RUN_CHAT_DATA_RETENTION_GUARD=1` 경로에 baseline/drift env 연결
+  - `scripts/test.sh`의 `RUN_CHAT_EGRESS_GUARDRAILS_GATE=1` 경로에 baseline/drift env 연결
+  - `scripts/test.sh`의 `RUN_CHAT_DATA_GOV_EVIDENCE_GATE=1` 경로에 baseline/drift env 연결

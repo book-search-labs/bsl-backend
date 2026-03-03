@@ -1302,7 +1302,7 @@ python scripts/eval/chat_gameday_readiness_packet.py \
     - `CHAT_PACKET_MAX_MISSING_REPORT_INCREASE`
 
 ## Data retention guard (I-0362, Bundle 1)
-- retention lifecycle 이벤트를 기준으로 TTL 만료/삭제/예외 승인 준수 여부를 게이트로 평가:
+- retention lifecycle 이벤트를 기준으로 TTL 만료/삭제/예외 승인 준수 여부를 게이트로 평가 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_data_retention_guard.py \
   --events-jsonl var/chat_governance/retention_events.jsonl \
@@ -1316,6 +1316,11 @@ python scripts/eval/chat_data_retention_guard.py \
   --max-stale-minutes 180 \
   --min-trace-coverage-ratio 1.0 \
   --max-missing-trace-total 0 \
+  --baseline-report services/query-service/tests/fixtures/chat_data_retention_guard_baseline_v1.json \
+  --max-overdue-total-increase 0 \
+  --max-unapproved-exception-increase 0 \
+  --max-missing-trace-increase 0 \
+  --max-trace-coverage-ratio-drop 0.01 \
   --gate
 ```
 - 산출물:
@@ -1324,9 +1329,14 @@ python scripts/eval/chat_data_retention_guard.py \
   - trace/request 연결 커버리지 및 stale window
 - CI 옵션:
   - `RUN_CHAT_DATA_RETENTION_GUARD=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_RETENTION_MAX_OVERDUE_INCREASE`
+    - `CHAT_RETENTION_MAX_UNAPPROVED_INCREASE`
+    - `CHAT_RETENTION_MAX_MISSING_TRACE_INCREASE`
+    - `CHAT_RETENTION_MAX_TRACE_COVERAGE_DROP`
 
 ## Egress guardrails gate (I-0362, Bundle 2)
-- outbound 전송 이벤트를 기준으로 allowlist 위반/민감필드 비마스킹/trace 누락을 게이트로 차단:
+- outbound 전송 이벤트를 기준으로 allowlist 위반/민감필드 비마스킹/trace 누락을 게이트로 차단 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_egress_guardrails_gate.py \
   --events-jsonl var/chat_governance/egress_events.jsonl \
@@ -1341,6 +1351,12 @@ python scripts/eval/chat_egress_guardrails_gate.py \
   --max-missing-trace-total 0 \
   --min-alert-coverage-ratio 1.0 \
   --max-stale-minutes 180 \
+  --baseline-report services/query-service/tests/fixtures/chat_egress_guardrails_gate_baseline_v1.json \
+  --max-violation-total-increase 0 \
+  --max-unmasked-sensitive-increase 0 \
+  --max-unknown-destination-increase 0 \
+  --max-error-ratio-increase 0.02 \
+  --max-alert-coverage-ratio-drop 0.05 \
   --gate
 ```
 - 산출물:
@@ -1349,9 +1365,15 @@ python scripts/eval/chat_egress_guardrails_gate.py \
   - violation 대비 alert coverage 비율
 - CI 옵션:
   - `RUN_CHAT_EGRESS_GUARDRAILS_GATE=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_EGRESS_MAX_VIOLATION_INCREASE`
+    - `CHAT_EGRESS_MAX_UNMASKED_INCREASE`
+    - `CHAT_EGRESS_MAX_UNKNOWN_DEST_INCREASE`
+    - `CHAT_EGRESS_MAX_ERROR_RATIO_INCREASE`
+    - `CHAT_EGRESS_MAX_ALERT_COVERAGE_DROP`
 
 ## Data governance evidence packet (I-0362, Bundle 3)
-- retention/egress 게이트 결과를 묶어 감사 대응용 증적 리포트와 최종 상태를 생성:
+- retention/egress 게이트 결과를 묶어 감사 대응용 증적 리포트와 최종 상태를 생성 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_data_governance_evidence.py \
   --reports-dir data/eval/reports \
@@ -1359,6 +1381,11 @@ python scripts/eval/chat_data_governance_evidence.py \
   --egress-prefix chat_egress_guardrails_gate \
   --min-trace-coverage-ratio 1.0 \
   --min-lifecycle-score 80 \
+  --baseline-report services/query-service/tests/fixtures/chat_data_governance_evidence_baseline_v1.json \
+  --max-status-step-increase 0 \
+  --max-lifecycle-score-drop 5.0 \
+  --max-trace-coverage-ratio-drop 0.01 \
+  --max-blocker-count-increase 0 \
   --require-reports \
   --require-events \
   --out data/eval/reports \
@@ -1370,6 +1397,11 @@ python scripts/eval/chat_data_governance_evidence.py \
   - retention/egress 근거 리포트 경로 및 blocker/warning 목록
 - CI 옵션:
   - `RUN_CHAT_DATA_GOV_EVIDENCE_GATE=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_DATA_GOV_MAX_STATUS_STEP_INCREASE`
+    - `CHAT_DATA_GOV_MAX_SCORE_DROP`
+    - `CHAT_DATA_GOV_MAX_TRACE_COVERAGE_DROP`
+    - `CHAT_DATA_GOV_MAX_BLOCKER_INCREASE`
 
 ## Load profile model gate (I-0363, Bundle 1)
 - 트래픽 이벤트에서 시간대/의도/툴사용/지연/오류를 시나리오별(`NORMAL|PROMOTION|INCIDENT`) 프로파일로 집계:

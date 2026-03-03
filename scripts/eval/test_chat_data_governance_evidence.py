@@ -85,3 +85,35 @@ def test_evaluate_evidence_watch_when_warnings_only():
     assert decision["recommended_action"] == "hold"
     assert not decision["blockers"]
     assert decision["warnings"]
+
+
+def test_compare_with_baseline_detects_status_lifecycle_trace_blocker_regression():
+    module = _load_module()
+    baseline = {
+        "decision": {
+            "status": "READY",
+            "lifecycle_score": 95.0,
+            "trace_coverage_ratio": 1.0,
+            "blockers": [],
+        }
+    }
+    current = {
+        "decision": {
+            "status": "HOLD",
+            "lifecycle_score": 50.0,
+            "trace_coverage_ratio": 0.3,
+            "blockers": ["a", "b"],
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_status_step_increase=0,
+        max_lifecycle_score_drop=0.0,
+        max_trace_coverage_ratio_drop=0.0,
+        max_blocker_count_increase=0,
+    )
+    assert any("status regression" in item for item in failures)
+    assert any("lifecycle score regression" in item for item in failures)
+    assert any("trace coverage regression" in item for item in failures)
+    assert any("blocker count regression" in item for item in failures)

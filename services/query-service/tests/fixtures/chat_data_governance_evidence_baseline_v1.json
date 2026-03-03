@@ -1,0 +1,55 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "decision": {
+    "status": "READY",
+    "recommended_action": "promote",
+    "blockers": [],
+    "warnings": [],
+    "lifecycle_score": 100.0,
+    "trace_coverage_ratio": 1.0
+  },
+  "signals": {
+    "retention_event_total": 0,
+    "egress_event_total": 0,
+    "retention_overdue_total": 0,
+    "retention_unapproved_exception_total": 0,
+    "egress_violation_total": 0,
+    "egress_unmasked_sensitive_total": 0,
+    "retention_trace_coverage_ratio": 1.0,
+    "egress_trace_coverage_ratio": 1.0,
+    "egress_alert_coverage_ratio": 1.0
+  },
+  "evidence": {
+    "retention_report": null,
+    "egress_report": null
+  },
+  "missing_reports": [],
+  "source": {
+    "reports_dir": "data/eval/reports",
+    "retention_prefix": "chat_data_retention_guard",
+    "egress_prefix": "chat_egress_guardrails_gate",
+    "baseline_report": null
+  },
+  "inputs": {
+    "reports_dir": "data/eval/reports",
+    "retention_prefix": "chat_data_retention_guard",
+    "egress_prefix": "chat_egress_guardrails_gate"
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_trace_coverage_ratio": 1.0,
+      "min_lifecycle_score": 80.0,
+      "require_reports": false,
+      "require_events": false,
+      "require_ready": false,
+      "max_status_step_increase": 0,
+      "max_lifecycle_score_drop": 5.0,
+      "max_trace_coverage_ratio_drop": 0.01,
+      "max_blocker_count_increase": 0
+    }
+  }
+}

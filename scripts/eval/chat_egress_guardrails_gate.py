@@ -300,6 +300,74 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_violation_total_increase: int,
+    max_unmasked_sensitive_increase: int,
+    max_unknown_destination_increase: int,
+    max_error_ratio_increase: float,
+    max_alert_coverage_ratio_drop: float,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_violation_total = int(base_summary.get("violation_total") or 0)
+    cur_violation_total = int(current_summary.get("violation_total") or 0)
+    violation_increase = max(0, cur_violation_total - base_violation_total)
+    if violation_increase > max(0, int(max_violation_total_increase)):
+        failures.append(
+            "violation regression: "
+            f"baseline={base_violation_total}, current={cur_violation_total}, "
+            f"allowed_increase={max(0, int(max_violation_total_increase))}"
+        )
+
+    base_unmasked_total = int(base_summary.get("unmasked_sensitive_total") or 0)
+    cur_unmasked_total = int(current_summary.get("unmasked_sensitive_total") or 0)
+    unmasked_increase = max(0, cur_unmasked_total - base_unmasked_total)
+    if unmasked_increase > max(0, int(max_unmasked_sensitive_increase)):
+        failures.append(
+            "unmasked sensitive regression: "
+            f"baseline={base_unmasked_total}, current={cur_unmasked_total}, "
+            f"allowed_increase={max(0, int(max_unmasked_sensitive_increase))}"
+        )
+
+    base_unknown_total = int(base_summary.get("unknown_destination_total") or 0)
+    cur_unknown_total = int(current_summary.get("unknown_destination_total") or 0)
+    unknown_increase = max(0, cur_unknown_total - base_unknown_total)
+    if unknown_increase > max(0, int(max_unknown_destination_increase)):
+        failures.append(
+            "unknown destination regression: "
+            f"baseline={base_unknown_total}, current={cur_unknown_total}, "
+            f"allowed_increase={max(0, int(max_unknown_destination_increase))}"
+        )
+
+    base_error_ratio = _safe_float(base_summary.get("error_ratio"), 0.0)
+    cur_error_ratio = _safe_float(current_summary.get("error_ratio"), 0.0)
+    error_ratio_increase = max(0.0, cur_error_ratio - base_error_ratio)
+    if error_ratio_increase > max(0.0, float(max_error_ratio_increase)):
+        failures.append(
+            "error ratio regression: "
+            f"baseline={base_error_ratio:.6f}, current={cur_error_ratio:.6f}, "
+            f"allowed_increase={float(max_error_ratio_increase):.6f}"
+        )
+
+    base_alert_coverage_ratio = _safe_float(base_summary.get("alert_coverage_ratio"), 1.0)
+    cur_alert_coverage_ratio = _safe_float(current_summary.get("alert_coverage_ratio"), 1.0)
+    alert_coverage_drop = max(0.0, base_alert_coverage_ratio - cur_alert_coverage_ratio)
+    if alert_coverage_drop > max(0.0, float(max_alert_coverage_ratio_drop)):
+        failures.append(
+            "alert coverage regression: "
+            f"baseline={base_alert_coverage_ratio:.6f}, current={cur_alert_coverage_ratio:.6f}, "
+            f"allowed_drop={float(max_alert_coverage_ratio_drop):.6f}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -337,11 +405,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -361,6 +434,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-missing-trace-total", type=int, default=0)
     parser.add_argument("--min-alert-coverage-ratio", type=float, default=1.0)
     parser.add_argument("--max-stale-minutes", type=float, default=180.0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-violation-total-increase", type=int, default=0)
+    parser.add_argument("--max-unmasked-sensitive-increase", type=int, default=0)
+    parser.add_argument("--max-unknown-destination-increase", type=int, default=0)
+    parser.add_argument("--max-error-ratio-increase", type=float, default=0.02)
+    parser.add_argument("--max-alert-coverage-ratio-drop", type=float, default=0.05)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -387,15 +466,40 @@ def main() -> int:
         min_alert_coverage_ratio=max(0.0, float(args.min_alert_coverage_ratio)),
         max_stale_minutes=max(0.0, float(args.max_stale_minutes)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_report = json.loads(Path(args.baseline_report).read_text(encoding="utf-8"))
+        if not isinstance(baseline_report, dict):
+            raise RuntimeError(f"expected JSON object from {args.baseline_report}")
+        baseline_failures = compare_with_baseline(
+            baseline_report,
+            summary,
+            max_violation_total_increase=max(0, int(args.max_violation_total_increase)),
+            max_unmasked_sensitive_increase=max(0, int(args.max_unmasked_sensitive_increase)),
+            max_unknown_destination_increase=max(0, int(args.max_unknown_destination_increase)),
+            max_error_ratio_increase=max(0.0, float(args.max_error_ratio_increase)),
+            max_alert_coverage_ratio_drop=max(0.0, float(args.max_alert_coverage_ratio_drop)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "events_jsonl": str(events_path),
+        "source": {
+            "events_jsonl": str(events_path),
+            "allow_destinations": sorted(allow_destinations),
+            "window_hours": max(1, int(args.window_hours)),
+            "limit": max(1, int(args.limit)),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "max_violation_total": int(args.max_violation_total),
@@ -405,6 +509,11 @@ def main() -> int:
                 "max_missing_trace_total": int(args.max_missing_trace_total),
                 "min_alert_coverage_ratio": float(args.min_alert_coverage_ratio),
                 "max_stale_minutes": float(args.max_stale_minutes),
+                "max_violation_total_increase": int(args.max_violation_total_increase),
+                "max_unmasked_sensitive_increase": int(args.max_unmasked_sensitive_increase),
+                "max_unknown_destination_increase": int(args.max_unknown_destination_increase),
+                "max_error_ratio_increase": float(args.max_error_ratio_increase),
+                "max_alert_coverage_ratio_drop": float(args.max_alert_coverage_ratio_drop),
             },
         },
     }
@@ -422,8 +531,13 @@ def main() -> int:
     print(f"window_size={int(summary.get('window_size') or 0)}")
     print(f"violation_total={int(summary.get('violation_total') or 0)}")
     print(f"alert_coverage_ratio={_safe_float(summary.get('alert_coverage_ratio'), 0.0):.4f}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and not payload["gate"]["pass"]:
+        for failure in failures:
+            print(f"[gate-failure] {failure}")
+        for failure in baseline_failures:
+            print(f"[baseline-failure] {failure}")
         return 2
     return 0
 

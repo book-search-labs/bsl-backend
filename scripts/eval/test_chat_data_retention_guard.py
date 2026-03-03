@@ -102,3 +102,33 @@ def test_evaluate_gate_passes_when_thresholds_met():
         max_missing_trace_total=0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_overdue_exception_trace_regression():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "overdue_total": 0,
+            "unapproved_exception_total": 0,
+            "missing_trace_total": 0,
+            "trace_coverage_ratio": 1.0,
+        }
+    }
+    current = {
+        "overdue_total": 5,
+        "unapproved_exception_total": 2,
+        "missing_trace_total": 3,
+        "trace_coverage_ratio": 0.5,
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_overdue_total_increase=0,
+        max_unapproved_exception_increase=0,
+        max_missing_trace_increase=0,
+        max_trace_coverage_ratio_drop=0.0,
+    )
+    assert any("overdue regression" in item for item in failures)
+    assert any("unapproved exception regression" in item for item in failures)
+    assert any("missing trace regression" in item for item in failures)
+    assert any("trace coverage regression" in item for item in failures)

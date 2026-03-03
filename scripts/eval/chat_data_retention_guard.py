@@ -257,6 +257,63 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_overdue_total_increase: int,
+    max_unapproved_exception_increase: int,
+    max_missing_trace_increase: int,
+    max_trace_coverage_ratio_drop: float,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_overdue_total = int(base_summary.get("overdue_total") or 0)
+    cur_overdue_total = int(current_summary.get("overdue_total") or 0)
+    overdue_increase = max(0, cur_overdue_total - base_overdue_total)
+    if overdue_increase > max(0, int(max_overdue_total_increase)):
+        failures.append(
+            "overdue regression: "
+            f"baseline={base_overdue_total}, current={cur_overdue_total}, "
+            f"allowed_increase={max(0, int(max_overdue_total_increase))}"
+        )
+
+    base_unapproved = int(base_summary.get("unapproved_exception_total") or 0)
+    cur_unapproved = int(current_summary.get("unapproved_exception_total") or 0)
+    unapproved_increase = max(0, cur_unapproved - base_unapproved)
+    if unapproved_increase > max(0, int(max_unapproved_exception_increase)):
+        failures.append(
+            "unapproved exception regression: "
+            f"baseline={base_unapproved}, current={cur_unapproved}, "
+            f"allowed_increase={max(0, int(max_unapproved_exception_increase))}"
+        )
+
+    base_missing_trace = int(base_summary.get("missing_trace_total") or 0)
+    cur_missing_trace = int(current_summary.get("missing_trace_total") or 0)
+    missing_trace_increase = max(0, cur_missing_trace - base_missing_trace)
+    if missing_trace_increase > max(0, int(max_missing_trace_increase)):
+        failures.append(
+            "missing trace regression: "
+            f"baseline={base_missing_trace}, current={cur_missing_trace}, "
+            f"allowed_increase={max(0, int(max_missing_trace_increase))}"
+        )
+
+    base_trace_coverage = _safe_float(base_summary.get("trace_coverage_ratio"), 1.0)
+    cur_trace_coverage = _safe_float(current_summary.get("trace_coverage_ratio"), 1.0)
+    trace_coverage_drop = max(0.0, base_trace_coverage - cur_trace_coverage)
+    if trace_coverage_drop > max(0.0, float(max_trace_coverage_ratio_drop)):
+        failures.append(
+            "trace coverage regression: "
+            f"baseline={base_trace_coverage:.6f}, current={cur_trace_coverage:.6f}, "
+            f"allowed_drop={float(max_trace_coverage_ratio_drop):.6f}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -295,11 +352,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -318,6 +380,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-stale-minutes", type=float, default=180.0)
     parser.add_argument("--min-trace-coverage-ratio", type=float, default=1.0)
     parser.add_argument("--max-missing-trace-total", type=int, default=0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-overdue-total-increase", type=int, default=0)
+    parser.add_argument("--max-unapproved-exception-increase", type=int, default=0)
+    parser.add_argument("--max-missing-trace-increase", type=int, default=0)
+    parser.add_argument("--max-trace-coverage-ratio-drop", type=float, default=0.01)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -342,15 +409,38 @@ def main() -> int:
         min_trace_coverage_ratio=max(0.0, float(args.min_trace_coverage_ratio)),
         max_missing_trace_total=max(0, int(args.max_missing_trace_total)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_report = json.loads(Path(args.baseline_report).read_text(encoding="utf-8"))
+        if not isinstance(baseline_report, dict):
+            raise RuntimeError(f"expected JSON object from {args.baseline_report}")
+        baseline_failures = compare_with_baseline(
+            baseline_report,
+            summary,
+            max_overdue_total_increase=max(0, int(args.max_overdue_total_increase)),
+            max_unapproved_exception_increase=max(0, int(args.max_unapproved_exception_increase)),
+            max_missing_trace_increase=max(0, int(args.max_missing_trace_increase)),
+            max_trace_coverage_ratio_drop=max(0.0, float(args.max_trace_coverage_ratio_drop)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "events_jsonl": str(events_path),
+        "source": {
+            "events_jsonl": str(events_path),
+            "window_hours": max(1, int(args.window_hours)),
+            "limit": max(1, int(args.limit)),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "max_overdue_total": int(args.max_overdue_total),
@@ -360,6 +450,10 @@ def main() -> int:
                 "max_stale_minutes": float(args.max_stale_minutes),
                 "min_trace_coverage_ratio": float(args.min_trace_coverage_ratio),
                 "max_missing_trace_total": int(args.max_missing_trace_total),
+                "max_overdue_total_increase": int(args.max_overdue_total_increase),
+                "max_unapproved_exception_increase": int(args.max_unapproved_exception_increase),
+                "max_missing_trace_increase": int(args.max_missing_trace_increase),
+                "max_trace_coverage_ratio_drop": float(args.max_trace_coverage_ratio_drop),
             },
         },
     }
@@ -377,8 +471,13 @@ def main() -> int:
     print(f"window_size={int(summary.get('window_size') or 0)}")
     print(f"overdue_total={int(summary.get('overdue_total') or 0)}")
     print(f"trace_coverage_ratio={_safe_float(summary.get('trace_coverage_ratio'), 0.0):.4f}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and not payload["gate"]["pass"]:
+        for failure in failures:
+            print(f"[gate-failure] {failure}")
+        for failure in baseline_failures:
+            print(f"[baseline-failure] {failure}")
         return 2
     return 0
 

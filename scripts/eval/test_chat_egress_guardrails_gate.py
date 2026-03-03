@@ -96,3 +96,37 @@ def test_evaluate_gate_passes_when_signals_are_clean():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_violation_unmasked_unknown_regression():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "violation_total": 0,
+            "unmasked_sensitive_total": 0,
+            "unknown_destination_total": 0,
+            "error_ratio": 0.0,
+            "alert_coverage_ratio": 1.0,
+        }
+    }
+    current = {
+        "violation_total": 5,
+        "unmasked_sensitive_total": 3,
+        "unknown_destination_total": 2,
+        "error_ratio": 0.4,
+        "alert_coverage_ratio": 0.2,
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_violation_total_increase=0,
+        max_unmasked_sensitive_increase=0,
+        max_unknown_destination_increase=0,
+        max_error_ratio_increase=0.0,
+        max_alert_coverage_ratio_drop=0.0,
+    )
+    assert any("violation regression" in item for item in failures)
+    assert any("unmasked sensitive regression" in item for item in failures)
+    assert any("unknown destination regression" in item for item in failures)
+    assert any("error ratio regression" in item for item in failures)
+    assert any("alert coverage regression" in item for item in failures)
