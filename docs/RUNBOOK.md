@@ -1811,6 +1811,26 @@ python scripts/eval/chat_sensitive_action_undo_audit.py \
 - CI 옵션:
   - `RUN_CHAT_SENSITIVE_ACTION_UNDO_AUDIT=1 ./scripts/test.sh`
 
+## Ticket creation integration gate (B-0370, Bundle 1)
+- 챗→지원티켓 생성 연동에서 요청 payload 완전성과 접수 응답(ticket_no/ETA)을 검증:
+```bash
+python scripts/eval/chat_ticket_creation_integration.py \
+  --events-jsonl var/chat_ticket/ticket_events.jsonl \
+  --window-hours 24 \
+  --min-create-success-ratio 0.95 \
+  --max-payload-missing-fields-total 0 \
+  --max-missing-ticket-no-total 0 \
+  --max-missing-eta-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - ticket create requested/success/failed 집계
+  - payload(summary/order/error_code) 누락 건수
+  - success 응답의 ticket_no/ETA 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_TICKET_CREATION_INTEGRATION=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

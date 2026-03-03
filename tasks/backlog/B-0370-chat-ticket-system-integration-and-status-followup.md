@@ -47,3 +47,14 @@ Integrate chat with support tickets:
 - Create tickets from unresolved chat sessions with structured context.
 - Expose secure ticket status lookups and follow-up guidance in chat.
 - Enforce ownership checks and ticket lifecycle observability.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Ticket creation integration gate 추가
+  - `scripts/eval/chat_ticket_creation_integration.py`
+  - ticket 생성 요청 payload의 필수 컨텍스트(summary/order/error_code) 누락을 집계
+  - 생성 성공 응답의 접수번호(`ticket_no`)와 예상 처리시간(`eta`) 누락을 게이트화
+  - gate 모드에서 생성 성공률 저하, payload 누락, 접수 응답 누락, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_ticket_creation_integration.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TICKET_CREATION_INTEGRATION=1 ./scripts/test.sh`
