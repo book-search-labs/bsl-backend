@@ -4010,6 +4010,28 @@ python scripts/eval/chat_intervention_recovery_feedback_guard.py \
 - CI 옵션:
   - `RUN_CHAT_INTERVENTION_RECOVERY_FEEDBACK_GUARD=1 ./scripts/test.sh`
 
+## Chat resolution plan compiler guard gate (B-0395, Bundle 1)
+- 다중 tool 증거 기반 해결 플랜 생성에서 필수 확인 항목 차단/근거부족 reroute를 검증:
+```bash
+python scripts/eval/chat_resolution_plan_compiler_guard.py \
+  --events-jsonl var/resolution_plan/plan_events.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-plan-creation-rate 0.70 \
+  --min-deterministic-plan-ratio 0.95 \
+  --max-missing-required-block-violation-total 0 \
+  --max-insufficient-evidence-reroute-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - plan creation rate / deterministic plan ratio
+  - missing-required block violation 건수
+  - insufficient evidence reroute 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_RESOLUTION_PLAN_COMPILER_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

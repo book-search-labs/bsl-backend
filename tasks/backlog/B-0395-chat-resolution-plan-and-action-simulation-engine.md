@@ -52,3 +52,13 @@ Implement a production chat resolution engine:
 - Compile deterministic resolution plans from multi-tool commerce evidence.
 - Simulate fee/shipping/outcome before executing user actions.
 - Enforce preflight safety checks, idempotent execution, and resumable plan state.
+
+## Implementation Update (2026-03-04, Bundle 1)
+- [x] Resolution plan compiler guard gate 추가
+  - `scripts/eval/chat_resolution_plan_compiler_guard.py`
+  - reason_code별 필수 확인 항목 누락 상태에서 executable plan 생성 차단 검증
+  - 근거 부족 항목의 follow-up reroute 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_resolution_plan_compiler_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_RESOLUTION_PLAN_COMPILER_GUARD=1 ./scripts/test.sh`

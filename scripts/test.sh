@@ -5528,7 +5528,42 @@ else
   echo "  - set RUN_CHAT_INTERVENTION_RECOVERY_FEEDBACK_GUARD=1 to enable"
 fi
 
-echo "[148/150] Canonical quality checks (optional)"
+echo "[148/151] Chat resolution plan compiler guard gate (optional)"
+if [ "${RUN_CHAT_RESOLUTION_PLAN_COMPILER_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_RESOLUTION_PLAN_EVENTS_JSONL="${CHAT_RESOLUTION_PLAN_EVENTS_JSONL:-$ROOT_DIR/var/resolution_plan/plan_events.jsonl}"
+    CHAT_RESOLUTION_PLAN_WINDOW_HOURS="${CHAT_RESOLUTION_PLAN_WINDOW_HOURS:-24}"
+    CHAT_RESOLUTION_PLAN_LIMIT="${CHAT_RESOLUTION_PLAN_LIMIT:-100000}"
+    CHAT_RESOLUTION_PLAN_OUT_DIR="${CHAT_RESOLUTION_PLAN_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_RESOLUTION_PLAN_MIN_WINDOW="${CHAT_RESOLUTION_PLAN_MIN_WINDOW:-0}"
+    CHAT_RESOLUTION_PLAN_MIN_EVENT_TOTAL="${CHAT_RESOLUTION_PLAN_MIN_EVENT_TOTAL:-0}"
+    CHAT_RESOLUTION_PLAN_MIN_CREATION_RATE="${CHAT_RESOLUTION_PLAN_MIN_CREATION_RATE:-0.0}"
+    CHAT_RESOLUTION_PLAN_MIN_DETERMINISTIC_RATIO="${CHAT_RESOLUTION_PLAN_MIN_DETERMINISTIC_RATIO:-0.0}"
+    CHAT_RESOLUTION_PLAN_MAX_MISSING_REQUIRED_BLOCK_VIOLATION_TOTAL="${CHAT_RESOLUTION_PLAN_MAX_MISSING_REQUIRED_BLOCK_VIOLATION_TOTAL:-1000000}"
+    CHAT_RESOLUTION_PLAN_MAX_INSUFF_EVIDENCE_REROUTE_MISSING_TOTAL="${CHAT_RESOLUTION_PLAN_MAX_INSUFF_EVIDENCE_REROUTE_MISSING_TOTAL:-1000000}"
+    CHAT_RESOLUTION_PLAN_MAX_STALE_MINUTES="${CHAT_RESOLUTION_PLAN_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_resolution_plan_compiler_guard.py" \
+      --events-jsonl "$CHAT_RESOLUTION_PLAN_EVENTS_JSONL" \
+      --window-hours "$CHAT_RESOLUTION_PLAN_WINDOW_HOURS" \
+      --limit "$CHAT_RESOLUTION_PLAN_LIMIT" \
+      --out "$CHAT_RESOLUTION_PLAN_OUT_DIR" \
+      --min-window "$CHAT_RESOLUTION_PLAN_MIN_WINDOW" \
+      --min-event-total "$CHAT_RESOLUTION_PLAN_MIN_EVENT_TOTAL" \
+      --min-plan-creation-rate "$CHAT_RESOLUTION_PLAN_MIN_CREATION_RATE" \
+      --min-deterministic-plan-ratio "$CHAT_RESOLUTION_PLAN_MIN_DETERMINISTIC_RATIO" \
+      --max-missing-required-block-violation-total "$CHAT_RESOLUTION_PLAN_MAX_MISSING_REQUIRED_BLOCK_VIOLATION_TOTAL" \
+      --max-insufficient-evidence-reroute-missing-total "$CHAT_RESOLUTION_PLAN_MAX_INSUFF_EVIDENCE_REROUTE_MISSING_TOTAL" \
+      --max-stale-minutes "$CHAT_RESOLUTION_PLAN_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat resolution plan compiler guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_RESOLUTION_PLAN_COMPILER_GUARD=1 to enable"
+fi
+
+echo "[149/151] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -5539,7 +5574,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[149/150] E2E tests (optional)"
+echo "[150/151] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -5550,4 +5585,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[150/150] Done"
+echo "[151/151] Done"
