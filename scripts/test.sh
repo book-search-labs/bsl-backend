@@ -4143,7 +4143,7 @@ else
   echo "  - set RUN_CHAT_KOREAN_TERMINOLOGY_DICTIONARY_GUARD=1 to enable"
 fi
 
-echo "[113/117] Chat korean style policy guard gate (optional)"
+echo "[113/118] Chat korean style policy guard gate (optional)"
 if [ "${RUN_CHAT_KOREAN_STYLE_POLICY_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_KO_STYLE_EVENTS_JSONL="${CHAT_KO_STYLE_EVENTS_JSONL:-$ROOT_DIR/var/chat_style/style_policy_events.jsonl}"
@@ -4184,7 +4184,7 @@ else
   echo "  - set RUN_CHAT_KOREAN_STYLE_POLICY_GUARD=1 to enable"
 fi
 
-echo "[114/117] Chat korean runtime normalization guard gate (optional)"
+echo "[114/118] Chat korean runtime normalization guard gate (optional)"
 if [ "${RUN_CHAT_KOREAN_RUNTIME_NORMALIZATION_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_KO_RUNTIME_NORM_EVENTS_JSONL="${CHAT_KO_RUNTIME_NORM_EVENTS_JSONL:-$ROOT_DIR/var/chat_style/runtime_normalization_events.jsonl}"
@@ -4225,7 +4225,50 @@ else
   echo "  - set RUN_CHAT_KOREAN_RUNTIME_NORMALIZATION_GUARD=1 to enable"
 fi
 
-echo "[115/117] Canonical quality checks (optional)"
+echo "[115/118] Chat korean governance loop guard gate (optional)"
+if [ "${RUN_CHAT_KOREAN_GOVERNANCE_LOOP_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_KO_GOV_EVENTS_JSONL="${CHAT_KO_GOV_EVENTS_JSONL:-$ROOT_DIR/var/chat_style/governance_events.jsonl}"
+    CHAT_KO_GOV_WINDOW_HOURS="${CHAT_KO_GOV_WINDOW_HOURS:-24}"
+    CHAT_KO_GOV_LIMIT="${CHAT_KO_GOV_LIMIT:-50000}"
+    CHAT_KO_GOV_OUT_DIR="${CHAT_KO_GOV_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_KO_GOV_PENDING_SLA_HOURS="${CHAT_KO_GOV_PENDING_SLA_HOURS:-24.0}"
+    CHAT_KO_GOV_MIN_WINDOW="${CHAT_KO_GOV_MIN_WINDOW:-0}"
+    CHAT_KO_GOV_MIN_UPDATE_EVENT_TOTAL="${CHAT_KO_GOV_MIN_UPDATE_EVENT_TOTAL:-0}"
+    CHAT_KO_GOV_MIN_FEEDBACK_EVENT_TOTAL="${CHAT_KO_GOV_MIN_FEEDBACK_EVENT_TOTAL:-0}"
+    CHAT_KO_GOV_MIN_FEEDBACK_TRIAGE_RATIO="${CHAT_KO_GOV_MIN_FEEDBACK_TRIAGE_RATIO:-0.0}"
+    CHAT_KO_GOV_MIN_FEEDBACK_CLOSURE_RATIO="${CHAT_KO_GOV_MIN_FEEDBACK_CLOSURE_RATIO:-0.0}"
+    CHAT_KO_GOV_MAX_UNAUDITED_DEPLOY_TOTAL="${CHAT_KO_GOV_MAX_UNAUDITED_DEPLOY_TOTAL:-1000000}"
+    CHAT_KO_GOV_MAX_APPROVAL_EVIDENCE_MISSING_TOTAL="${CHAT_KO_GOV_MAX_APPROVAL_EVIDENCE_MISSING_TOTAL:-1000000}"
+    CHAT_KO_GOV_MAX_PENDING_UPDATE_SLA_BREACH_TOTAL="${CHAT_KO_GOV_MAX_PENDING_UPDATE_SLA_BREACH_TOTAL:-1000000}"
+    CHAT_KO_GOV_MAX_REASON_CODE_MISSING_TOTAL="${CHAT_KO_GOV_MAX_REASON_CODE_MISSING_TOTAL:-1000000}"
+    CHAT_KO_GOV_MAX_STALE_MINUTES="${CHAT_KO_GOV_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_korean_governance_loop_guard.py" \
+      --events-jsonl "$CHAT_KO_GOV_EVENTS_JSONL" \
+      --window-hours "$CHAT_KO_GOV_WINDOW_HOURS" \
+      --limit "$CHAT_KO_GOV_LIMIT" \
+      --out "$CHAT_KO_GOV_OUT_DIR" \
+      --pending-sla-hours "$CHAT_KO_GOV_PENDING_SLA_HOURS" \
+      --min-window "$CHAT_KO_GOV_MIN_WINDOW" \
+      --min-update-event-total "$CHAT_KO_GOV_MIN_UPDATE_EVENT_TOTAL" \
+      --min-feedback-event-total "$CHAT_KO_GOV_MIN_FEEDBACK_EVENT_TOTAL" \
+      --min-feedback-triage-ratio "$CHAT_KO_GOV_MIN_FEEDBACK_TRIAGE_RATIO" \
+      --min-feedback-closure-ratio "$CHAT_KO_GOV_MIN_FEEDBACK_CLOSURE_RATIO" \
+      --max-unaudited-deploy-total "$CHAT_KO_GOV_MAX_UNAUDITED_DEPLOY_TOTAL" \
+      --max-approval-evidence-missing-total "$CHAT_KO_GOV_MAX_APPROVAL_EVIDENCE_MISSING_TOTAL" \
+      --max-pending-update-sla-breach-total "$CHAT_KO_GOV_MAX_PENDING_UPDATE_SLA_BREACH_TOTAL" \
+      --max-reason-code-missing-total "$CHAT_KO_GOV_MAX_REASON_CODE_MISSING_TOTAL" \
+      --max-stale-minutes "$CHAT_KO_GOV_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat korean governance loop guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_KOREAN_GOVERNANCE_LOOP_GUARD=1 to enable"
+fi
+
+echo "[116/118] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -4236,7 +4279,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[116/117] E2E tests (optional)"
+echo "[117/118] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -4247,4 +4290,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[117/117] Done"
+echo "[118/118] Done"

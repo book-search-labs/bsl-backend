@@ -77,3 +77,13 @@ Implement Korean terminology and style governance for chat:
   - `scripts/eval/test_chat_korean_runtime_normalization_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_KOREAN_RUNTIME_NORMALIZATION_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Korean governance loop guard gate 추가
+  - `scripts/eval/chat_korean_governance_loop_guard.py`
+  - 변경 승인 증적/무승인 배포/승인 대기 SLA breach 검증
+  - 스타일 위반 피드백 triage/closure ratio 및 reason_code 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_korean_governance_loop_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_KOREAN_GOVERNANCE_LOOP_GUARD=1 ./scripts/test.sh`

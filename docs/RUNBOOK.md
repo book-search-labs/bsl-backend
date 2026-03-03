@@ -3218,6 +3218,32 @@ python scripts/eval/chat_korean_runtime_normalization_guard.py \
 - CI 옵션:
   - `RUN_CHAT_KOREAN_RUNTIME_NORMALIZATION_GUARD=1 ./scripts/test.sh`
 
+## Chat korean governance loop guard gate (B-0384, Bundle 4)
+- 사전/스타일 정책 변경 승인 흐름과 위반 피드백 triage 루프를 검증:
+```bash
+python scripts/eval/chat_korean_governance_loop_guard.py \
+  --events-jsonl var/chat_style/governance_events.jsonl \
+  --window-hours 24 \
+  --pending-sla-hours 24 \
+  --min-window 20 \
+  --min-update-event-total 5 \
+  --min-feedback-event-total 5 \
+  --min-feedback-triage-ratio 0.95 \
+  --min-feedback-closure-ratio 0.90 \
+  --max-unaudited-deploy-total 0 \
+  --max-approval-evidence-missing-total 0 \
+  --max-pending-update-sla-breach-total 0 \
+  --max-reason-code-missing-total 0 \
+  --max-stale-minutes 120 \
+  --gate
+```
+- 산출물:
+  - unaudited deploy/approval evidence 누락/승인 대기 SLA breach 건수
+  - feedback triage 및 closure 비율
+  - governance reason_code 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_KOREAN_GOVERNANCE_LOOP_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
