@@ -83,3 +83,13 @@ Implement a production chat resolution engine:
   - `scripts/eval/test_chat_execution_safety_contract_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_EXECUTION_SAFETY_CONTRACT_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 4)
+- [x] Plan persistence/resume guard gate 추가
+  - `scripts/eval/chat_plan_persistence_resume_guard.py`
+  - 세션 재진입 시 plan state/checkpoint 복원 누락 검증
+  - failed step resume 누락 및 ticket handoff summary 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_plan_persistence_resume_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_PLAN_PERSISTENCE_RESUME_GUARD=1 ./scripts/test.sh`

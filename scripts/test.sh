@@ -5641,7 +5641,44 @@ else
   echo "  - set RUN_CHAT_EXECUTION_SAFETY_CONTRACT_GUARD=1 to enable"
 fi
 
-echo "[151/153] Canonical quality checks (optional)"
+echo "[151/154] Chat plan persistence resume guard gate (optional)"
+if [ "${RUN_CHAT_PLAN_PERSISTENCE_RESUME_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_PLAN_PERSISTENCE_EVENTS_JSONL="${CHAT_PLAN_PERSISTENCE_EVENTS_JSONL:-$ROOT_DIR/var/resolution_plan/plan_persistence_events.jsonl}"
+    CHAT_PLAN_PERSISTENCE_WINDOW_HOURS="${CHAT_PLAN_PERSISTENCE_WINDOW_HOURS:-24}"
+    CHAT_PLAN_PERSISTENCE_LIMIT="${CHAT_PLAN_PERSISTENCE_LIMIT:-100000}"
+    CHAT_PLAN_PERSISTENCE_OUT_DIR="${CHAT_PLAN_PERSISTENCE_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_PLAN_PERSISTENCE_MIN_WINDOW="${CHAT_PLAN_PERSISTENCE_MIN_WINDOW:-0}"
+    CHAT_PLAN_PERSISTENCE_MIN_EVENT_TOTAL="${CHAT_PLAN_PERSISTENCE_MIN_EVENT_TOTAL:-0}"
+    CHAT_PLAN_PERSISTENCE_MIN_RESUME_SUCCESS_RATE="${CHAT_PLAN_PERSISTENCE_MIN_RESUME_SUCCESS_RATE:-0.0}"
+    CHAT_PLAN_PERSISTENCE_MAX_CHECKPOINT_MISSING_TOTAL="${CHAT_PLAN_PERSISTENCE_MAX_CHECKPOINT_MISSING_TOTAL:-1000000}"
+    CHAT_PLAN_PERSISTENCE_MAX_PLAN_MISSING_TOTAL="${CHAT_PLAN_PERSISTENCE_MAX_PLAN_MISSING_TOTAL:-1000000}"
+    CHAT_PLAN_PERSISTENCE_MAX_FAILED_STEP_RESUME_MISSING_TOTAL="${CHAT_PLAN_PERSISTENCE_MAX_FAILED_STEP_RESUME_MISSING_TOTAL:-1000000}"
+    CHAT_PLAN_PERSISTENCE_MAX_HANDOFF_SUMMARY_MISSING_TOTAL="${CHAT_PLAN_PERSISTENCE_MAX_HANDOFF_SUMMARY_MISSING_TOTAL:-1000000}"
+    CHAT_PLAN_PERSISTENCE_MAX_STALE_MINUTES="${CHAT_PLAN_PERSISTENCE_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_plan_persistence_resume_guard.py" \
+      --events-jsonl "$CHAT_PLAN_PERSISTENCE_EVENTS_JSONL" \
+      --window-hours "$CHAT_PLAN_PERSISTENCE_WINDOW_HOURS" \
+      --limit "$CHAT_PLAN_PERSISTENCE_LIMIT" \
+      --out "$CHAT_PLAN_PERSISTENCE_OUT_DIR" \
+      --min-window "$CHAT_PLAN_PERSISTENCE_MIN_WINDOW" \
+      --min-event-total "$CHAT_PLAN_PERSISTENCE_MIN_EVENT_TOTAL" \
+      --min-resume-success-rate "$CHAT_PLAN_PERSISTENCE_MIN_RESUME_SUCCESS_RATE" \
+      --max-checkpoint-missing-total "$CHAT_PLAN_PERSISTENCE_MAX_CHECKPOINT_MISSING_TOTAL" \
+      --max-plan-persistence-missing-total "$CHAT_PLAN_PERSISTENCE_MAX_PLAN_MISSING_TOTAL" \
+      --max-resume-from-failed-step-missing-total "$CHAT_PLAN_PERSISTENCE_MAX_FAILED_STEP_RESUME_MISSING_TOTAL" \
+      --max-ticket-handoff-summary-missing-total "$CHAT_PLAN_PERSISTENCE_MAX_HANDOFF_SUMMARY_MISSING_TOTAL" \
+      --max-stale-minutes "$CHAT_PLAN_PERSISTENCE_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat plan persistence resume guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_PLAN_PERSISTENCE_RESUME_GUARD=1 to enable"
+fi
+
+echo "[152/154] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -5652,7 +5689,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[152/153] E2E tests (optional)"
+echo "[153/154] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -5663,4 +5700,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[153/153] Done"
+echo "[154/154] Done"

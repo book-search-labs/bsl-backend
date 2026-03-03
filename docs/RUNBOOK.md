@@ -4080,6 +4080,29 @@ python scripts/eval/chat_execution_safety_contract_guard.py \
 - CI 옵션:
   - `RUN_CHAT_EXECUTION_SAFETY_CONTRACT_GUARD=1 ./scripts/test.sh`
 
+## Chat plan persistence resume guard gate (B-0395, Bundle 4)
+- 세션 재진입 복원, 실패 단계 resume, 티켓 핸드오프 요약 전달을 검증:
+```bash
+python scripts/eval/chat_plan_persistence_resume_guard.py \
+  --events-jsonl var/resolution_plan/plan_persistence_events.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-resume-success-rate 0.95 \
+  --max-checkpoint-missing-total 0 \
+  --max-plan-persistence-missing-total 0 \
+  --max-resume-from-failed-step-missing-total 0 \
+  --max-ticket-handoff-summary-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - resume success rate
+  - checkpoint/plan persistence 누락 건수
+  - failed-step resume 누락 및 handoff summary 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_PLAN_PERSISTENCE_RESUME_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
