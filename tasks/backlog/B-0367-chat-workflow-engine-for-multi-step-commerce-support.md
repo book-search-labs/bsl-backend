@@ -84,3 +84,14 @@ Implement a stateful chat workflow engine for commerce support:
   - `scripts/eval/test_chat_workflow_confirmation_checkpoint.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_WORKFLOW_CONFIRM_CHECKPOINT=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Workflow recovery + audit gate 추가
+  - `scripts/eval/chat_workflow_recovery_audit.py`
+  - 중단(`INTERRUPTED`) 후 복원(`RECOVERED`) 성공률 및 복원 지연 p95를 계산
+  - 단계 감사로그에서 필수 필드(step/reason/tool) 누락과 WRITE 액션 idempotency key 누락을 점검
+  - gate 모드에서 recovery success 저하, 복원 지연 과다, audit 누락/멱등성 위반, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_workflow_recovery_audit.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_WORKFLOW_RECOVERY_AUDIT=1 ./scripts/test.sh`

@@ -1613,6 +1613,26 @@ python scripts/eval/chat_workflow_confirmation_checkpoint.py \
 - CI 옵션:
   - `RUN_CHAT_WORKFLOW_CONFIRM_CHECKPOINT=1 ./scripts/test.sh`
 
+## Workflow recovery audit gate (B-0367, Bundle 4)
+- 세션 중단 후 복원 성공률과 단계별 감사로그 완전성(멱등성 포함)을 검증:
+```bash
+python scripts/eval/chat_workflow_recovery_audit.py \
+  --events-jsonl var/chat_workflow/workflow_events.jsonl \
+  --window-hours 24 \
+  --min-recovery-success-ratio 0.95 \
+  --max-recovery-latency-p95-sec 600 \
+  --max-audit-missing-fields-total 0 \
+  --max-write-without-idempotency-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - interrupted/recovered 집계 및 recovery success ratio
+  - recovery latency p95
+  - audit missing fields / write without idempotency 건수
+- CI 옵션:
+  - `RUN_CHAT_WORKFLOW_RECOVERY_AUDIT=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
