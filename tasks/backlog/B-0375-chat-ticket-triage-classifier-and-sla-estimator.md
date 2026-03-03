@@ -65,3 +65,14 @@ Implement chat ticket triage intelligence:
 - Classify category and severity from chat/ticket context.
 - Estimate SLA risk and route low-confidence cases to manual review.
 - Track prediction quality and close the loop with real outcomes.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Triage taxonomy gate 추가
+  - `scripts/eval/chat_ticket_triage_taxonomy.py`
+  - 카테고리/심각도 필수 집합, 중복, severity rule 누락을 게이트화
+  - taxonomy version/staleness 검증 포함
+  - gate 모드에서 taxonomy 품질 임계치 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_ticket_triage_taxonomy.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TICKET_TRIAGE_TAXONOMY=1 ./scripts/test.sh`

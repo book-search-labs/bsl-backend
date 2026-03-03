@@ -2683,7 +2683,51 @@ else
   echo "  - set RUN_CHAT_REASONING_BUDGET_AUDIT_EXPLAINABILITY=1 to enable"
 fi
 
-echo "[76/78] Canonical quality checks (optional)"
+echo "[76/79] Chat ticket triage taxonomy gate (optional)"
+if [ "${RUN_CHAT_TICKET_TRIAGE_TAXONOMY:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TICKET_TRIAGE_TAXONOMY_JSON="${CHAT_TICKET_TRIAGE_TAXONOMY_JSON:-$ROOT_DIR/var/chat_ticket/triage_taxonomy.json}"
+    CHAT_TICKET_TRIAGE_REQUIRED_CATEGORIES="${CHAT_TICKET_TRIAGE_REQUIRED_CATEGORIES:-ORDER,PAYMENT,SHIPPING,REFUND,ACCOUNT,OTHER}"
+    CHAT_TICKET_TRIAGE_REQUIRED_SEVERITIES="${CHAT_TICKET_TRIAGE_REQUIRED_SEVERITIES:-S1,S2,S3,S4}"
+    CHAT_TICKET_TRIAGE_OUT_DIR="${CHAT_TICKET_TRIAGE_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TICKET_TRIAGE_MIN_CATEGORY_TOTAL="${CHAT_TICKET_TRIAGE_MIN_CATEGORY_TOTAL:-0}"
+    CHAT_TICKET_TRIAGE_MIN_SEVERITY_TOTAL="${CHAT_TICKET_TRIAGE_MIN_SEVERITY_TOTAL:-0}"
+    CHAT_TICKET_TRIAGE_REQUIRE_VERSION="${CHAT_TICKET_TRIAGE_REQUIRE_VERSION:-0}"
+    CHAT_TICKET_TRIAGE_MAX_MISSING_CATEGORY_TOTAL="${CHAT_TICKET_TRIAGE_MAX_MISSING_CATEGORY_TOTAL:-1000000}"
+    CHAT_TICKET_TRIAGE_MAX_MISSING_SEVERITY_TOTAL="${CHAT_TICKET_TRIAGE_MAX_MISSING_SEVERITY_TOTAL:-1000000}"
+    CHAT_TICKET_TRIAGE_MAX_DUPLICATE_CATEGORY_TOTAL="${CHAT_TICKET_TRIAGE_MAX_DUPLICATE_CATEGORY_TOTAL:-1000000}"
+    CHAT_TICKET_TRIAGE_MAX_DUPLICATE_SEVERITY_TOTAL="${CHAT_TICKET_TRIAGE_MAX_DUPLICATE_SEVERITY_TOTAL:-1000000}"
+    CHAT_TICKET_TRIAGE_MAX_MISSING_SEVERITY_RULE_TOTAL="${CHAT_TICKET_TRIAGE_MAX_MISSING_SEVERITY_RULE_TOTAL:-1000000}"
+    CHAT_TICKET_TRIAGE_MAX_STALE_MINUTES="${CHAT_TICKET_TRIAGE_MAX_STALE_MINUTES:-1000000}"
+
+    CHAT_TICKET_TRIAGE_REQUIRE_VERSION_FLAG=""
+    if [ "$CHAT_TICKET_TRIAGE_REQUIRE_VERSION" = "1" ]; then
+      CHAT_TICKET_TRIAGE_REQUIRE_VERSION_FLAG="--require-taxonomy-version"
+    fi
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_ticket_triage_taxonomy.py" \
+      --taxonomy-json "$CHAT_TICKET_TRIAGE_TAXONOMY_JSON" \
+      --required-categories "$CHAT_TICKET_TRIAGE_REQUIRED_CATEGORIES" \
+      --required-severities "$CHAT_TICKET_TRIAGE_REQUIRED_SEVERITIES" \
+      --out "$CHAT_TICKET_TRIAGE_OUT_DIR" \
+      --min-category-total "$CHAT_TICKET_TRIAGE_MIN_CATEGORY_TOTAL" \
+      --min-severity-total "$CHAT_TICKET_TRIAGE_MIN_SEVERITY_TOTAL" \
+      $CHAT_TICKET_TRIAGE_REQUIRE_VERSION_FLAG \
+      --max-missing-category-total "$CHAT_TICKET_TRIAGE_MAX_MISSING_CATEGORY_TOTAL" \
+      --max-missing-severity-total "$CHAT_TICKET_TRIAGE_MAX_MISSING_SEVERITY_TOTAL" \
+      --max-duplicate-category-total "$CHAT_TICKET_TRIAGE_MAX_DUPLICATE_CATEGORY_TOTAL" \
+      --max-duplicate-severity-total "$CHAT_TICKET_TRIAGE_MAX_DUPLICATE_SEVERITY_TOTAL" \
+      --max-missing-severity-rule-total "$CHAT_TICKET_TRIAGE_MAX_MISSING_SEVERITY_RULE_TOTAL" \
+      --max-stale-minutes "$CHAT_TICKET_TRIAGE_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat ticket triage taxonomy gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TICKET_TRIAGE_TAXONOMY=1 to enable"
+fi
+
+echo "[77/79] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -2694,7 +2738,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[77/78] E2E tests (optional)"
+echo "[78/79] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -2705,4 +2749,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[78/78] Done"
+echo "[79/79] Done"

@@ -2271,6 +2271,31 @@ python scripts/eval/chat_reasoning_budget_audit_explainability.py \
 - CI 옵션:
   - `RUN_CHAT_REASONING_BUDGET_AUDIT_EXPLAINABILITY=1 ./scripts/test.sh`
 
+## Ticket triage taxonomy gate (B-0375, Bundle 1)
+- 티켓 분류 taxonomy(카테고리/심각도)와 severity rule 정의 누락을 배포 전에 차단:
+```bash
+python scripts/eval/chat_ticket_triage_taxonomy.py \
+  --taxonomy-json var/chat_ticket/triage_taxonomy.json \
+  --required-categories ORDER,PAYMENT,SHIPPING,REFUND,ACCOUNT,OTHER \
+  --required-severities S1,S2,S3,S4 \
+  --min-category-total 6 \
+  --min-severity-total 4 \
+  --require-taxonomy-version \
+  --max-missing-category-total 0 \
+  --max-missing-severity-total 0 \
+  --max-duplicate-category-total 0 \
+  --max-duplicate-severity-total 0 \
+  --max-missing-severity-rule-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - category/severity 누락 및 duplicate 건수
+  - category별 severity rule 누락 건수
+  - taxonomy version/staleness 상태
+- CI 옵션:
+  - `RUN_CHAT_TICKET_TRIAGE_TAXONOMY=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
