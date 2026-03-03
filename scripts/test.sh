@@ -4981,7 +4981,42 @@ else
   echo "  - set RUN_CHAT_TOOL_HEALTH_SCORE_GUARD=1 to enable"
 fi
 
-echo "[133/135] Canonical quality checks (optional)"
+echo "[133/136] Chat tool capability routing guard gate (optional)"
+if [ "${RUN_CHAT_TOOL_CAPABILITY_ROUTING_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TOOL_CAP_ROUTING_EVENTS_JSONL="${CHAT_TOOL_CAP_ROUTING_EVENTS_JSONL:-$ROOT_DIR/var/tool_health/capability_routing_events.jsonl}"
+    CHAT_TOOL_CAP_ROUTING_WINDOW_HOURS="${CHAT_TOOL_CAP_ROUTING_WINDOW_HOURS:-24}"
+    CHAT_TOOL_CAP_ROUTING_LIMIT="${CHAT_TOOL_CAP_ROUTING_LIMIT:-100000}"
+    CHAT_TOOL_CAP_ROUTING_OUT_DIR="${CHAT_TOOL_CAP_ROUTING_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TOOL_CAP_ROUTING_MIN_WINDOW="${CHAT_TOOL_CAP_ROUTING_MIN_WINDOW:-0}"
+    CHAT_TOOL_CAP_ROUTING_MIN_EVENT_TOTAL="${CHAT_TOOL_CAP_ROUTING_MIN_EVENT_TOTAL:-0}"
+    CHAT_TOOL_CAP_ROUTING_MIN_MATCH_RATIO="${CHAT_TOOL_CAP_ROUTING_MIN_MATCH_RATIO:-0.0}"
+    CHAT_TOOL_CAP_ROUTING_MAX_MISS_TOTAL="${CHAT_TOOL_CAP_ROUTING_MAX_MISS_TOTAL:-1000000}"
+    CHAT_TOOL_CAP_ROUTING_MAX_BELOW_HEALTH_TOTAL="${CHAT_TOOL_CAP_ROUTING_MAX_BELOW_HEALTH_TOTAL:-1000000}"
+    CHAT_TOOL_CAP_ROUTING_MAX_NO_CANDIDATE_TOTAL="${CHAT_TOOL_CAP_ROUTING_MAX_NO_CANDIDATE_TOTAL:-1000000}"
+    CHAT_TOOL_CAP_ROUTING_MAX_STALE_MINUTES="${CHAT_TOOL_CAP_ROUTING_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_tool_capability_routing_guard.py" \
+      --events-jsonl "$CHAT_TOOL_CAP_ROUTING_EVENTS_JSONL" \
+      --window-hours "$CHAT_TOOL_CAP_ROUTING_WINDOW_HOURS" \
+      --limit "$CHAT_TOOL_CAP_ROUTING_LIMIT" \
+      --out "$CHAT_TOOL_CAP_ROUTING_OUT_DIR" \
+      --min-window "$CHAT_TOOL_CAP_ROUTING_MIN_WINDOW" \
+      --min-route-event-total "$CHAT_TOOL_CAP_ROUTING_MIN_EVENT_TOTAL" \
+      --min-capability-match-ratio "$CHAT_TOOL_CAP_ROUTING_MIN_MATCH_RATIO" \
+      --max-capability-miss-total "$CHAT_TOOL_CAP_ROUTING_MAX_MISS_TOTAL" \
+      --max-below-health-routed-total "$CHAT_TOOL_CAP_ROUTING_MAX_BELOW_HEALTH_TOTAL" \
+      --max-intent-without-candidate-total "$CHAT_TOOL_CAP_ROUTING_MAX_NO_CANDIDATE_TOTAL" \
+      --max-stale-minutes "$CHAT_TOOL_CAP_ROUTING_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat tool capability routing guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TOOL_CAPABILITY_ROUTING_GUARD=1 to enable"
+fi
+
+echo "[134/136] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -4992,7 +5027,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[134/135] E2E tests (optional)"
+echo "[135/136] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -5003,4 +5038,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[135/135] Done"
+echo "[136/136] Done"

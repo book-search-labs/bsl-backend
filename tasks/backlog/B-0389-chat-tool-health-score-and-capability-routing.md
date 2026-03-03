@@ -57,3 +57,13 @@ Add capability-aware tool routing for chat:
   - `scripts/eval/test_chat_tool_health_score_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TOOL_HEALTH_SCORE_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 2)
+- [x] Tool capability routing guard gate 추가
+  - `scripts/eval/chat_tool_capability_routing_guard.py`
+  - capability match ratio 및 capability miss 차단 검증
+  - below-health tool 라우팅 및 no-candidate 총량 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_tool_capability_routing_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TOOL_CAPABILITY_ROUTING_GUARD=1 ./scripts/test.sh`

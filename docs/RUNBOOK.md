@@ -3669,6 +3669,28 @@ python scripts/eval/chat_tool_health_score_guard.py \
 - CI 옵션:
   - `RUN_CHAT_TOOL_HEALTH_SCORE_GUARD=1 ./scripts/test.sh`
 
+## Chat tool capability routing guard gate (B-0389, Bundle 2)
+- 인텐트-툴 capability/건강도 기반 라우팅 품질을 검증:
+```bash
+python scripts/eval/chat_tool_capability_routing_guard.py \
+  --events-jsonl var/tool_health/capability_routing_events.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-route-event-total 100 \
+  --min-capability-match-ratio 0.95 \
+  --max-capability-miss-total 0 \
+  --max-below-health-routed-total 0 \
+  --max-intent-without-candidate-total 5 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - capability match ratio, capability miss 총량
+  - below-health routed 총량
+  - 후보 없음(intent-without-candidate) 총량
+- CI 옵션:
+  - `RUN_CHAT_TOOL_CAPABILITY_ROUTING_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
