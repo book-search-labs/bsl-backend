@@ -2086,6 +2086,28 @@ python scripts/eval/chat_tool_cache_safety_fallback.py \
 - CI 옵션:
   - `RUN_CHAT_TOOL_CACHE_SAFETY_FALLBACK=1 ./scripts/test.sh`
 
+## Adversarial dataset coverage gate (B-0373, Bundle 1)
+- 한국어 중심 adversarial 평가셋의 공격유형/언어/도메인 커버리지를 검증:
+```bash
+python scripts/eval/chat_adversarial_dataset_coverage.py \
+  --dataset-jsonl evaluation/chat_safety/adversarial_cases.jsonl \
+  --required-attack-types PROMPT_INJECTION,ROLE_CONFUSION,FAKE_POLICY,EMOTIONAL_PRESSURE \
+  --min-case-total 100 \
+  --max-missing-attack-type-total 0 \
+  --min-korean-case-ratio 0.40 \
+  --min-cjk-mixed-total 10 \
+  --min-commerce-case-total 20 \
+  --max-invalid-case-total 0 \
+  --gate
+```
+- 산출물:
+  - attack type 분포 및 필수 attack type 누락 건수
+  - Korean case ratio, CJK mixed case 수
+  - commerce 도메인 케이스 수
+  - invalid case(필수 필드 누락) 건수
+- CI 옵션:
+  - `RUN_CHAT_ADVERSARIAL_DATASET_COVERAGE=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

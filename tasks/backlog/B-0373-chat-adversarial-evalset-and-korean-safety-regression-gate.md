@@ -47,3 +47,14 @@ Strengthen Korean chat safety evaluation:
 - Build adversarial eval suites for injection, policy spoofing, and unsafe actions.
 - Gate PR/release on safety and false-refusal thresholds.
 - Continuously refresh datasets from real incident feedback.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Adversarial dataset coverage gate 추가
+  - `scripts/eval/chat_adversarial_dataset_coverage.py`
+  - 필수 공격유형(prompt injection/role confusion/fake policy/emotional pressure) 커버리지 검증
+  - Korean ratio, CJK mixed, commerce-domain 케이스 분포를 게이트화
+  - gate 모드에서 coverage 부족/invalid case 초과 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_adversarial_dataset_coverage.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_ADVERSARIAL_DATASET_COVERAGE=1 ./scripts/test.sh`
