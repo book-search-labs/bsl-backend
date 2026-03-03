@@ -2532,7 +2532,45 @@ else
   echo "  - set RUN_CHAT_ADVERSARIAL_DRIFT_TRACKING=1 to enable"
 fi
 
-echo "[72/74] Canonical quality checks (optional)"
+echo "[72/75] Chat reasoning budget model gate (optional)"
+if [ "${RUN_CHAT_REASONING_BUDGET_MODEL:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_REASONING_BUDGET_POLICY_JSON="${CHAT_REASONING_BUDGET_POLICY_JSON:-$ROOT_DIR/var/chat_budget/budget_policy.json}"
+    CHAT_REASONING_BUDGET_REQUIRED_SENSITIVE_INTENTS="${CHAT_REASONING_BUDGET_REQUIRED_SENSITIVE_INTENTS:-CANCEL_ORDER,REFUND_REQUEST,ADDRESS_CHANGE,PAYMENT_CHANGE}"
+    CHAT_REASONING_BUDGET_OUT_DIR="${CHAT_REASONING_BUDGET_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_REASONING_BUDGET_MIN_POLICY_TOTAL="${CHAT_REASONING_BUDGET_MIN_POLICY_TOTAL:-0}"
+    CHAT_REASONING_BUDGET_REQUIRE_POLICY_VERSION="${CHAT_REASONING_BUDGET_REQUIRE_POLICY_VERSION:-0}"
+    CHAT_REASONING_BUDGET_MAX_MISSING_BUDGET_FIELD_TOTAL="${CHAT_REASONING_BUDGET_MAX_MISSING_BUDGET_FIELD_TOTAL:-1000000}"
+    CHAT_REASONING_BUDGET_MAX_INVALID_LIMIT_TOTAL="${CHAT_REASONING_BUDGET_MAX_INVALID_LIMIT_TOTAL:-1000000}"
+    CHAT_REASONING_BUDGET_MAX_DUPLICATE_SCOPE_TOTAL="${CHAT_REASONING_BUDGET_MAX_DUPLICATE_SCOPE_TOTAL:-1000000}"
+    CHAT_REASONING_BUDGET_MAX_MISSING_SENSITIVE_INTENT_TOTAL="${CHAT_REASONING_BUDGET_MAX_MISSING_SENSITIVE_INTENT_TOTAL:-1000000}"
+    CHAT_REASONING_BUDGET_MAX_STALE_MINUTES="${CHAT_REASONING_BUDGET_MAX_STALE_MINUTES:-1000000}"
+
+    CHAT_REASONING_BUDGET_REQUIRE_VERSION_FLAG=""
+    if [ "$CHAT_REASONING_BUDGET_REQUIRE_POLICY_VERSION" = "1" ]; then
+      CHAT_REASONING_BUDGET_REQUIRE_VERSION_FLAG="--require-policy-version"
+    fi
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_reasoning_budget_model.py" \
+      --policy-json "$CHAT_REASONING_BUDGET_POLICY_JSON" \
+      --required-sensitive-intents "$CHAT_REASONING_BUDGET_REQUIRED_SENSITIVE_INTENTS" \
+      --out "$CHAT_REASONING_BUDGET_OUT_DIR" \
+      --min-policy-total "$CHAT_REASONING_BUDGET_MIN_POLICY_TOTAL" \
+      $CHAT_REASONING_BUDGET_REQUIRE_VERSION_FLAG \
+      --max-missing-budget-field-total "$CHAT_REASONING_BUDGET_MAX_MISSING_BUDGET_FIELD_TOTAL" \
+      --max-invalid-limit-total "$CHAT_REASONING_BUDGET_MAX_INVALID_LIMIT_TOTAL" \
+      --max-duplicate-scope-total "$CHAT_REASONING_BUDGET_MAX_DUPLICATE_SCOPE_TOTAL" \
+      --max-missing-sensitive-intent-total "$CHAT_REASONING_BUDGET_MAX_MISSING_SENSITIVE_INTENT_TOTAL" \
+      --max-stale-minutes "$CHAT_REASONING_BUDGET_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat reasoning budget model gate"
+  fi
+else
+  echo "  - set RUN_CHAT_REASONING_BUDGET_MODEL=1 to enable"
+fi
+
+echo "[73/75] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -2543,7 +2581,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[73/74] E2E tests (optional)"
+echo "[74/75] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -2554,4 +2592,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[74/74] Done"
+echo "[75/75] Done"

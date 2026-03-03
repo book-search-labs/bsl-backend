@@ -47,3 +47,14 @@ Implement reasoning budget controls for chat agents:
 - Enforce per-request limits on tokens, steps, and tool calls.
 - Apply graceful early-stop strategies before hard budget breach.
 - Track budget behavior and adaptive tuning outcomes with telemetry.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Budget model gate 추가
+  - `scripts/eval/chat_reasoning_budget_model.py`
+  - request/token/step/tool budget 필드 존재성, limit 유효성, duplicate scope 검증
+  - 민감 인텐트(`CANCEL_ORDER/REFUND_REQUEST/ADDRESS_CHANGE/PAYMENT_CHANGE`) 예산 커버리지 검증
+  - gate 모드에서 정책 버전 누락/필드 누락/중복/stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_reasoning_budget_model.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_REASONING_BUDGET_MODEL=1 ./scripts/test.sh`

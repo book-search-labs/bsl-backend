@@ -2179,6 +2179,28 @@ python scripts/eval/chat_adversarial_drift_tracking.py \
 - CI 옵션:
   - `RUN_CHAT_ADVERSARIAL_DRIFT_TRACKING=1 ./scripts/test.sh`
 
+## Reasoning budget model gate (B-0374, Bundle 1)
+- request/token/step/tool_call budget 정책 정의 누락/충돌을 배포 전에 차단:
+```bash
+python scripts/eval/chat_reasoning_budget_model.py \
+  --policy-json var/chat_budget/budget_policy.json \
+  --required-sensitive-intents CANCEL_ORDER,REFUND_REQUEST,ADDRESS_CHANGE,PAYMENT_CHANGE \
+  --min-policy-total 10 \
+  --require-policy-version \
+  --max-missing-budget-field-total 0 \
+  --max-invalid-limit-total 0 \
+  --max-duplicate-scope-total 0 \
+  --max-missing-sensitive-intent-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - policy/override 총량 및 version 누락 여부
+  - token/step/tool budget 필드 누락, invalid limit, duplicate scope 집계
+  - 민감 인텐트 예산 커버리지 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_REASONING_BUDGET_MODEL=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
