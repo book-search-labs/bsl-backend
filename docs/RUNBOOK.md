@@ -1831,6 +1831,27 @@ python scripts/eval/chat_ticket_creation_integration.py \
 - CI 옵션:
   - `RUN_CHAT_TICKET_CREATION_INTEGRATION=1 ./scripts/test.sh`
 
+## Ticket status sync gate (B-0370, Bundle 2)
+- 티켓 상태 조회(`RECEIVED/IN_PROGRESS/WAITING_USER/RESOLVED/CLOSED`) 동기화 품질과 최신성 검증:
+```bash
+python scripts/eval/chat_ticket_status_sync.py \
+  --events-jsonl var/chat_ticket/ticket_events.jsonl \
+  --window-hours 24 \
+  --max-status-age-hours 24 \
+  --min-lookup-ok-ratio 0.90 \
+  --max-invalid-status-total 0 \
+  --max-missing-ticket-ref-total 0 \
+  --max-stale-status-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - status lookup 결과 분포(ok/not_found/forbidden/error)
+  - invalid status / missing ticket reference 건수
+  - 상태 timestamp 기준 stale status 건수
+- CI 옵션:
+  - `RUN_CHAT_TICKET_STATUS_SYNC=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

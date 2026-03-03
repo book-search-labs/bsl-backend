@@ -58,3 +58,14 @@ Integrate chat with support tickets:
   - `scripts/eval/test_chat_ticket_creation_integration.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TICKET_CREATION_INTEGRATION=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Ticket status sync gate 추가
+  - `scripts/eval/chat_ticket_status_sync.py`
+  - 상태 조회 결과(ok/not_found/forbidden/error)와 상태값 유효성(`RECEIVED/IN_PROGRESS/WAITING_USER/RESOLVED/CLOSED`)을 검증
+  - 최신 상태 timestamp 기준 stale status 및 ticket reference 누락을 게이트화
+  - gate 모드에서 조회 성공률 저하, invalid status, reference 누락, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_ticket_status_sync.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TICKET_STATUS_SYNC=1 ./scripts/test.sh`
