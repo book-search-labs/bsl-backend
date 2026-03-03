@@ -58,3 +58,14 @@ Strengthen Korean chat safety evaluation:
   - `scripts/eval/test_chat_adversarial_dataset_coverage.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_ADVERSARIAL_DATASET_COVERAGE=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Safety metrics gate 추가
+  - `scripts/eval/chat_adversarial_safety_metrics.py`
+  - jailbreak success rate, unsafe action execution rate, abstain precision, false refusal rate를 동시 검증
+  - label 누락 및 stale evidence를 함께 게이트화
+  - gate 모드에서 임계치 초과/미달 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_adversarial_safety_metrics.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_ADVERSARIAL_SAFETY_METRICS=1 ./scripts/test.sh`
