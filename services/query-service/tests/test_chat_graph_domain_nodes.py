@@ -45,3 +45,23 @@ def test_policy_topic_cache_save_and_load(monkeypatch):
     loaded = domain_nodes.load_policy_topic_cache("RefundPolicy", locale="ko-KR")
     assert isinstance(loaded, dict)
     assert loaded["answer"]["content"] == "정책 안내"
+
+
+def test_is_policy_read_lane_true_for_read_only_policy_query():
+    assert domain_nodes.is_policy_read_lane("환불 정책 알려줘", intent=None) is True
+
+
+def test_is_policy_read_lane_false_for_write_like_policy_query():
+    assert domain_nodes.is_policy_read_lane("환불 정책이랑 환불해줘", intent="REFUND") is False
+
+
+def test_policy_topic_cache_isolated_by_policy_version(monkeypatch):
+    domain_nodes._CACHE = CacheClient(None)
+    response = {"status": "ok", "reason_code": "OK", "answer": {"role": "assistant", "content": "기준 v1"}}
+
+    monkeypatch.setenv("QS_CHAT_POLICY_TOPIC_VERSION", "v1")
+    domain_nodes.save_policy_topic_cache("RefundPolicy", response, locale="ko-KR")
+    assert domain_nodes.load_policy_topic_cache("RefundPolicy", locale="ko-KR") is not None
+
+    monkeypatch.setenv("QS_CHAT_POLICY_TOPIC_VERSION", "v2")
+    assert domain_nodes.load_policy_topic_cache("RefundPolicy", locale="ko-KR") is None

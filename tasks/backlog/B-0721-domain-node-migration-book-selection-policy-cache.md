@@ -43,3 +43,15 @@ Migrate domain logic into LangGraph nodes:
 - Port book normalization and selection memory flows.
 - Preserve policy-topic cache safety and version invalidation.
 - Keep lookup/write lanes isolated from low-risk caching paths.
+
+---
+
+## Implementation Update (Bundle 1)
+
+- Strengthened domain-node regression coverage for policy lane safety and versioned cache invalidation.
+  - Added read-lane vs write-like lane assertions:
+    - read-only policy query -> `is_policy_read_lane=True`
+    - write-like policy query -> `is_policy_read_lane=False`
+  - Added policy cache version isolation test:
+    - same topic/locale cache hit on `QS_CHAT_POLICY_TOPIC_VERSION=v1`
+    - cache miss after version bump to `v2` (stale cache exposure 방지)
