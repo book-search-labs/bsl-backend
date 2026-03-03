@@ -3877,6 +3877,28 @@ python scripts/eval/chat_korean_policy_template_routing_guard.py \
 - CI 옵션:
   - `RUN_CHAT_KOREAN_POLICY_TEMPLATE_ROUTING_GUARD=1 ./scripts/test.sh`
 
+## Chat policy uncertainty safe fallback guard gate (B-0393, Bundle 3)
+- 정책 불확실 응답에서 단정 문구 제거 + 안전 안내 + 다운그레이드 경로를 검증:
+```bash
+python scripts/eval/chat_policy_uncertainty_safe_fallback_guard.py \
+  --events-jsonl var/grounded_answer/policy_uncertainty_events.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-uncertainty-safe-ratio 0.98 \
+  --max-unsafe-definitive-total 0 \
+  --max-safe-guidance-missing-total 0 \
+  --max-fallback-downgrade-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - policy uncertain 구간의 safe fallback ratio
+  - 단정 문구(unsafe definitive) 검출 건수
+  - 안전 안내/다운그레이드 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_POLICY_UNCERTAINTY_SAFE_FALLBACK_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

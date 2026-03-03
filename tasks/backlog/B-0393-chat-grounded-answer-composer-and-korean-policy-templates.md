@@ -55,3 +55,13 @@ Implement a grounded answer composer:
   - `scripts/eval/test_chat_korean_policy_template_routing_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_KOREAN_POLICY_TEMPLATE_ROUTING_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 3)
+- [x] Policy uncertainty safe fallback guard gate 추가
+  - `scripts/eval/chat_policy_uncertainty_safe_fallback_guard.py`
+  - 정책 불확실 구간의 단정 문구(unsafe definitive) 검증
+  - 안전 안내 누락 및 fallback downgrade 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_policy_uncertainty_safe_fallback_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_POLICY_UNCERTAINTY_SAFE_FALLBACK_GUARD=1 ./scripts/test.sh`

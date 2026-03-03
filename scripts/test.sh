@@ -5316,7 +5316,42 @@ else
   echo "  - set RUN_CHAT_KOREAN_POLICY_TEMPLATE_ROUTING_GUARD=1 to enable"
 fi
 
-echo "[142/144] Canonical quality checks (optional)"
+echo "[142/145] Chat policy uncertainty safe fallback guard gate (optional)"
+if [ "${RUN_CHAT_POLICY_UNCERTAINTY_SAFE_FALLBACK_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_POLICY_UNCERTAINTY_EVENTS_JSONL="${CHAT_POLICY_UNCERTAINTY_EVENTS_JSONL:-$ROOT_DIR/var/grounded_answer/policy_uncertainty_events.jsonl}"
+    CHAT_POLICY_UNCERTAINTY_WINDOW_HOURS="${CHAT_POLICY_UNCERTAINTY_WINDOW_HOURS:-24}"
+    CHAT_POLICY_UNCERTAINTY_LIMIT="${CHAT_POLICY_UNCERTAINTY_LIMIT:-100000}"
+    CHAT_POLICY_UNCERTAINTY_OUT_DIR="${CHAT_POLICY_UNCERTAINTY_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_POLICY_UNCERTAINTY_MIN_WINDOW="${CHAT_POLICY_UNCERTAINTY_MIN_WINDOW:-0}"
+    CHAT_POLICY_UNCERTAINTY_MIN_EVENT_TOTAL="${CHAT_POLICY_UNCERTAINTY_MIN_EVENT_TOTAL:-0}"
+    CHAT_POLICY_UNCERTAINTY_MIN_SAFE_RATIO="${CHAT_POLICY_UNCERTAINTY_MIN_SAFE_RATIO:-0.0}"
+    CHAT_POLICY_UNCERTAINTY_MAX_UNSAFE_DEFINITIVE_TOTAL="${CHAT_POLICY_UNCERTAINTY_MAX_UNSAFE_DEFINITIVE_TOTAL:-1000000}"
+    CHAT_POLICY_UNCERTAINTY_MAX_SAFE_GUIDANCE_MISSING_TOTAL="${CHAT_POLICY_UNCERTAINTY_MAX_SAFE_GUIDANCE_MISSING_TOTAL:-1000000}"
+    CHAT_POLICY_UNCERTAINTY_MAX_FALLBACK_DOWNGRADE_MISSING_TOTAL="${CHAT_POLICY_UNCERTAINTY_MAX_FALLBACK_DOWNGRADE_MISSING_TOTAL:-1000000}"
+    CHAT_POLICY_UNCERTAINTY_MAX_STALE_MINUTES="${CHAT_POLICY_UNCERTAINTY_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_policy_uncertainty_safe_fallback_guard.py" \
+      --events-jsonl "$CHAT_POLICY_UNCERTAINTY_EVENTS_JSONL" \
+      --window-hours "$CHAT_POLICY_UNCERTAINTY_WINDOW_HOURS" \
+      --limit "$CHAT_POLICY_UNCERTAINTY_LIMIT" \
+      --out "$CHAT_POLICY_UNCERTAINTY_OUT_DIR" \
+      --min-window "$CHAT_POLICY_UNCERTAINTY_MIN_WINDOW" \
+      --min-event-total "$CHAT_POLICY_UNCERTAINTY_MIN_EVENT_TOTAL" \
+      --min-uncertainty-safe-ratio "$CHAT_POLICY_UNCERTAINTY_MIN_SAFE_RATIO" \
+      --max-unsafe-definitive-total "$CHAT_POLICY_UNCERTAINTY_MAX_UNSAFE_DEFINITIVE_TOTAL" \
+      --max-safe-guidance-missing-total "$CHAT_POLICY_UNCERTAINTY_MAX_SAFE_GUIDANCE_MISSING_TOTAL" \
+      --max-fallback-downgrade-missing-total "$CHAT_POLICY_UNCERTAINTY_MAX_FALLBACK_DOWNGRADE_MISSING_TOTAL" \
+      --max-stale-minutes "$CHAT_POLICY_UNCERTAINTY_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat policy uncertainty safe fallback guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_POLICY_UNCERTAINTY_SAFE_FALLBACK_GUARD=1 to enable"
+fi
+
+echo "[143/145] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -5327,7 +5362,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[143/144] E2E tests (optional)"
+echo "[144/145] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -5338,4 +5373,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[144/144] Done"
+echo "[145/145] Done"
