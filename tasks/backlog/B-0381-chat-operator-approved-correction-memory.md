@@ -61,3 +61,13 @@ Implement approved correction memory for chat:
   - `scripts/eval/test_chat_correction_memory_schema.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_CORRECTION_MEMORY_SCHEMA=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Correction approval workflow gate 추가
+  - `scripts/eval/chat_correction_approval_workflow.py`
+  - 작성/승인/활성화 전이 위반 및 reviewer/actor 누락 검증
+  - approval/activation 지연 p95 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_correction_approval_workflow.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_CORRECTION_APPROVAL_WORKFLOW=1 ./scripts/test.sh`

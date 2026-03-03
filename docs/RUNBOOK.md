@@ -2870,6 +2870,31 @@ python scripts/eval/chat_correction_memory_schema.py \
 - CI 옵션:
   - `RUN_CHAT_CORRECTION_MEMORY_SCHEMA=1 ./scripts/test.sh`
 
+## Chat correction approval workflow gate (B-0381, Bundle 2)
+- 운영자 작성→검토 승인→활성화 전이의 정합성과 지연(SLA) 위반 여부를 검증:
+```bash
+python scripts/eval/chat_correction_approval_workflow.py \
+  --events-jsonl var/chat_correction/correction_approval_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-correction-total 10 \
+  --min-submitted-total 10 \
+  --max-invalid-event-type-total 0 \
+  --max-invalid-transition-total 0 \
+  --max-missing-actor-total 0 \
+  --max-missing-reviewer-total 0 \
+  --max-p95-approval-latency-minutes 60 \
+  --max-p95-activation-latency-minutes 60 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - correction 단위 승인/활성화 전이 위반 건수
+  - reviewer/actor 누락 건수
+  - approval/activation p95 latency
+- CI 옵션:
+  - `RUN_CHAT_CORRECTION_APPROVAL_WORKFLOW=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
