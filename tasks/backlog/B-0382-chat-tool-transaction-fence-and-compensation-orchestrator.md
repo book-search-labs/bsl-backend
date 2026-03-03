@@ -68,3 +68,14 @@ Add transactional safety for multi-tool chat actions:
   - `scripts/eval/test_chat_tool_tx_idempotency_dedup.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TOOL_TX_IDEMPOTENCY_DEDUP=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Tool transaction compensation orchestrator gate 추가
+  - `scripts/eval/chat_tool_tx_compensation_orchestrator.py`
+  - partial failure 이후 compensation 누락/실패 검증
+  - compensation 실패 시 safe-stop/operator alert 누락 검증
+  - orphan compensation 및 failure→compensation/resolution latency 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_tool_tx_compensation_orchestrator.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TOOL_TX_COMPENSATION_ORCHESTRATOR=1 ./scripts/test.sh`

@@ -2991,6 +2991,33 @@ python scripts/eval/chat_tool_tx_idempotency_dedup.py \
 - CI 옵션:
   - `RUN_CHAT_TOOL_TX_IDEMPOTENCY_DEDUP=1 ./scripts/test.sh`
 
+## Chat tool transaction compensation orchestrator gate (B-0382, Bundle 3)
+- 부분실패 이후 보상 실행/실패 처리/안전정지·운영알림 누락을 검증:
+```bash
+python scripts/eval/chat_tool_tx_compensation_orchestrator.py \
+  --events-jsonl var/chat_tool_tx/tx_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-compensation-required-total 20 \
+  --min-compensation-success-ratio 0.99 \
+  --min-compensation-resolution-ratio 1.0 \
+  --max-compensation-failed-total 0 \
+  --max-compensation-missing-total 0 \
+  --max-safe-stop-missing-total 0 \
+  --max-operator-alert-missing-total 0 \
+  --max-orphan-compensation-total 0 \
+  --max-p95-failure-to-compensation-latency-ms 800 \
+  --max-p95-compensation-resolution-latency-ms 1200 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - compensation required/started/succeeded/failed 집계
+  - compensation 누락, safe-stop 누락, operator alert 누락 건수
+  - orphan compensation 및 failure→compensation/resolution p95 latency
+- CI 옵션:
+  - `RUN_CHAT_TOOL_TX_COMPENSATION_ORCHESTRATOR=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

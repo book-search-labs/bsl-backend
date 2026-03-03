@@ -3577,7 +3577,7 @@ else
   echo "  - set RUN_CHAT_TEMPORAL_ANSWER_RENDERING=1 to enable"
 fi
 
-echo "[99/108] Chat temporal conflict fallback gate (optional)"
+echo "[99/109] Chat temporal conflict fallback gate (optional)"
 if [ "${RUN_CHAT_TEMPORAL_CONFLICT_FALLBACK:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TEMPORAL_CONFLICT_EVENTS_JSONL="${CHAT_TEMPORAL_CONFLICT_EVENTS_JSONL:-$ROOT_DIR/var/chat_policy/temporal_conflict_events.jsonl}"
@@ -3616,7 +3616,7 @@ else
   echo "  - set RUN_CHAT_TEMPORAL_CONFLICT_FALLBACK=1 to enable"
 fi
 
-echo "[100/108] Chat correction memory schema gate (optional)"
+echo "[100/109] Chat correction memory schema gate (optional)"
 if [ "${RUN_CHAT_CORRECTION_MEMORY_SCHEMA:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CORRECTION_MEMORY_SCHEMA_JSONL="${CHAT_CORRECTION_MEMORY_SCHEMA_JSONL:-$ROOT_DIR/var/chat_correction/correction_memory_records.jsonl}"
@@ -3655,7 +3655,7 @@ else
   echo "  - set RUN_CHAT_CORRECTION_MEMORY_SCHEMA=1 to enable"
 fi
 
-echo "[101/108] Chat correction approval workflow gate (optional)"
+echo "[101/109] Chat correction approval workflow gate (optional)"
 if [ "${RUN_CHAT_CORRECTION_APPROVAL_WORKFLOW:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CORRECTION_APPROVAL_EVENTS_JSONL="${CHAT_CORRECTION_APPROVAL_EVENTS_JSONL:-$ROOT_DIR/var/chat_correction/correction_approval_events.jsonl}"
@@ -3696,7 +3696,7 @@ else
   echo "  - set RUN_CHAT_CORRECTION_APPROVAL_WORKFLOW=1 to enable"
 fi
 
-echo "[102/108] Chat correction retrieval integration gate (optional)"
+echo "[102/109] Chat correction retrieval integration gate (optional)"
 if [ "${RUN_CHAT_CORRECTION_RETRIEVAL_INTEGRATION:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CORRECTION_RETRIEVAL_EVENTS_JSONL="${CHAT_CORRECTION_RETRIEVAL_EVENTS_JSONL:-$ROOT_DIR/var/chat_correction/correction_retrieval_events.jsonl}"
@@ -3735,7 +3735,7 @@ else
   echo "  - set RUN_CHAT_CORRECTION_RETRIEVAL_INTEGRATION=1 to enable"
 fi
 
-echo "[103/108] Chat correction quality safeguards gate (optional)"
+echo "[103/109] Chat correction quality safeguards gate (optional)"
 if [ "${RUN_CHAT_CORRECTION_QUALITY_SAFEGUARDS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_CORRECTION_QUALITY_EVENTS_JSONL="${CHAT_CORRECTION_QUALITY_EVENTS_JSONL:-$ROOT_DIR/var/chat_correction/correction_quality_events.jsonl}"
@@ -3774,7 +3774,7 @@ else
   echo "  - set RUN_CHAT_CORRECTION_QUALITY_SAFEGUARDS=1 to enable"
 fi
 
-echo "[104/108] Chat tool transaction fence model gate (optional)"
+echo "[104/109] Chat tool transaction fence model gate (optional)"
 if [ "${RUN_CHAT_TOOL_TX_FENCE_MODEL:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_TX_FENCE_EVENTS_JSONL="${CHAT_TOOL_TX_FENCE_EVENTS_JSONL:-$ROOT_DIR/var/chat_tool_tx/tx_events.jsonl}"
@@ -3813,7 +3813,7 @@ else
   echo "  - set RUN_CHAT_TOOL_TX_FENCE_MODEL=1 to enable"
 fi
 
-echo "[105/108] Chat tool transaction idempotency dedup gate (optional)"
+echo "[105/109] Chat tool transaction idempotency dedup gate (optional)"
 if [ "${RUN_CHAT_TOOL_TX_IDEMPOTENCY_DEDUP:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_TX_IDEMPOTENCY_EVENTS_JSONL="${CHAT_TOOL_TX_IDEMPOTENCY_EVENTS_JSONL:-$ROOT_DIR/var/chat_tool_tx/tx_events.jsonl}"
@@ -3850,7 +3850,52 @@ else
   echo "  - set RUN_CHAT_TOOL_TX_IDEMPOTENCY_DEDUP=1 to enable"
 fi
 
-echo "[106/108] Canonical quality checks (optional)"
+echo "[106/109] Chat tool transaction compensation orchestrator gate (optional)"
+if [ "${RUN_CHAT_TOOL_TX_COMPENSATION_ORCHESTRATOR:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TOOL_TX_COMP_EVENTS_JSONL="${CHAT_TOOL_TX_COMP_EVENTS_JSONL:-$ROOT_DIR/var/chat_tool_tx/tx_events.jsonl}"
+    CHAT_TOOL_TX_COMP_WINDOW_HOURS="${CHAT_TOOL_TX_COMP_WINDOW_HOURS:-24}"
+    CHAT_TOOL_TX_COMP_LIMIT="${CHAT_TOOL_TX_COMP_LIMIT:-50000}"
+    CHAT_TOOL_TX_COMP_OUT_DIR="${CHAT_TOOL_TX_COMP_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TOOL_TX_COMP_MIN_WINDOW="${CHAT_TOOL_TX_COMP_MIN_WINDOW:-0}"
+    CHAT_TOOL_TX_COMP_MIN_REQUIRED_TOTAL="${CHAT_TOOL_TX_COMP_MIN_REQUIRED_TOTAL:-0}"
+    CHAT_TOOL_TX_COMP_MIN_SUCCESS_RATIO="${CHAT_TOOL_TX_COMP_MIN_SUCCESS_RATIO:-0.0}"
+    CHAT_TOOL_TX_COMP_MIN_RESOLUTION_RATIO="${CHAT_TOOL_TX_COMP_MIN_RESOLUTION_RATIO:-0.0}"
+    CHAT_TOOL_TX_COMP_MAX_FAILED_TOTAL="${CHAT_TOOL_TX_COMP_MAX_FAILED_TOTAL:-1000000}"
+    CHAT_TOOL_TX_COMP_MAX_MISSING_TOTAL="${CHAT_TOOL_TX_COMP_MAX_MISSING_TOTAL:-1000000}"
+    CHAT_TOOL_TX_COMP_MAX_SAFE_STOP_MISSING_TOTAL="${CHAT_TOOL_TX_COMP_MAX_SAFE_STOP_MISSING_TOTAL:-1000000}"
+    CHAT_TOOL_TX_COMP_MAX_OPERATOR_ALERT_MISSING_TOTAL="${CHAT_TOOL_TX_COMP_MAX_OPERATOR_ALERT_MISSING_TOTAL:-1000000}"
+    CHAT_TOOL_TX_COMP_MAX_ORPHAN_TOTAL="${CHAT_TOOL_TX_COMP_MAX_ORPHAN_TOTAL:-1000000}"
+    CHAT_TOOL_TX_COMP_MAX_P95_FAILURE_TO_COMP_LATENCY_MS="${CHAT_TOOL_TX_COMP_MAX_P95_FAILURE_TO_COMP_LATENCY_MS:-1000000}"
+    CHAT_TOOL_TX_COMP_MAX_P95_RESOLUTION_LATENCY_MS="${CHAT_TOOL_TX_COMP_MAX_P95_RESOLUTION_LATENCY_MS:-1000000}"
+    CHAT_TOOL_TX_COMP_MAX_STALE_MINUTES="${CHAT_TOOL_TX_COMP_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_tool_tx_compensation_orchestrator.py" \
+      --events-jsonl "$CHAT_TOOL_TX_COMP_EVENTS_JSONL" \
+      --window-hours "$CHAT_TOOL_TX_COMP_WINDOW_HOURS" \
+      --limit "$CHAT_TOOL_TX_COMP_LIMIT" \
+      --out "$CHAT_TOOL_TX_COMP_OUT_DIR" \
+      --min-window "$CHAT_TOOL_TX_COMP_MIN_WINDOW" \
+      --min-compensation-required-total "$CHAT_TOOL_TX_COMP_MIN_REQUIRED_TOTAL" \
+      --min-compensation-success-ratio "$CHAT_TOOL_TX_COMP_MIN_SUCCESS_RATIO" \
+      --min-compensation-resolution-ratio "$CHAT_TOOL_TX_COMP_MIN_RESOLUTION_RATIO" \
+      --max-compensation-failed-total "$CHAT_TOOL_TX_COMP_MAX_FAILED_TOTAL" \
+      --max-compensation-missing-total "$CHAT_TOOL_TX_COMP_MAX_MISSING_TOTAL" \
+      --max-safe-stop-missing-total "$CHAT_TOOL_TX_COMP_MAX_SAFE_STOP_MISSING_TOTAL" \
+      --max-operator-alert-missing-total "$CHAT_TOOL_TX_COMP_MAX_OPERATOR_ALERT_MISSING_TOTAL" \
+      --max-orphan-compensation-total "$CHAT_TOOL_TX_COMP_MAX_ORPHAN_TOTAL" \
+      --max-p95-failure-to-compensation-latency-ms "$CHAT_TOOL_TX_COMP_MAX_P95_FAILURE_TO_COMP_LATENCY_MS" \
+      --max-p95-compensation-resolution-latency-ms "$CHAT_TOOL_TX_COMP_MAX_P95_RESOLUTION_LATENCY_MS" \
+      --max-stale-minutes "$CHAT_TOOL_TX_COMP_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat tool transaction compensation orchestrator gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TOOL_TX_COMPENSATION_ORCHESTRATOR=1 to enable"
+fi
+
+echo "[107/109] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -3861,7 +3906,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[107/108] E2E tests (optional)"
+echo "[108/109] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -3872,4 +3917,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[108/108] Done"
+echo "[109/109] Done"
