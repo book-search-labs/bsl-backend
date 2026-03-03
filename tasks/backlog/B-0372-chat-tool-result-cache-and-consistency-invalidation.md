@@ -79,3 +79,14 @@ Add safe caching for chat tool results:
   - `scripts/eval/test_chat_tool_cache_staleness_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TOOL_CACHE_STALENESS_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Tool cache safety fallback gate 추가
+  - `scripts/eval/chat_tool_cache_safety_fallback.py`
+  - cache corruption 감지 후 origin fallback/cache disable 처리 여부를 incident 단위로 검증
+  - fail-open 및 unhandled corruption incident를 게이트화
+  - gate 모드에서 recovery success ratio 저하, fail-open, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_tool_cache_safety_fallback.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TOOL_CACHE_SAFETY_FALLBACK=1 ./scripts/test.sh`

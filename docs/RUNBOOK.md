@@ -2064,6 +2064,28 @@ python scripts/eval/chat_tool_cache_staleness_guard.py \
 - CI 옵션:
   - `RUN_CHAT_TOOL_CACHE_STALENESS_GUARD=1 ./scripts/test.sh`
 
+## Tool cache safety fallback gate (B-0372, Bundle 4)
+- 캐시 손상 감지 시 fail-open 없이 원본 fallback/캐시 비활성화로 복구되는지 검증:
+```bash
+python scripts/eval/chat_tool_cache_safety_fallback.py \
+  --events-jsonl var/chat_tool/cache_events.jsonl \
+  --window-hours 24 \
+  --min-window 10 \
+  --max-corruption-unhandled-total 0 \
+  --max-fail-open-total 0 \
+  --min-recovery-success-ratio 0.95 \
+  --max-recovery-failed-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - corruption detected 대비 unhandled incident 수
+  - fail-open 발생 건수
+  - origin fallback/cache disable 기반 recovery success ratio
+  - safety evidence freshness(stale minutes)
+- CI 옵션:
+  - `RUN_CHAT_TOOL_CACHE_SAFETY_FALLBACK=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
