@@ -71,3 +71,13 @@ Add actionability guarantees for production chat:
   - `scripts/eval/test_chat_actionability_repair_loop_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_ACTIONABILITY_REPAIR_LOOP_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 3)
+- [x] Claim-to-action consistency guard gate 추가
+  - `scripts/eval/chat_claim_action_consistency_guard.py`
+  - 제시 액션과 tool/policy 실행 가능 상태 불일치(mismatch) 검증
+  - 실행 불가 액션 제거 누락 및 mismatch warning(reason_code) 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_claim_action_consistency_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_CLAIM_ACTION_CONSISTENCY_GUARD=1 ./scripts/test.sh`

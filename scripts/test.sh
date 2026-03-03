@@ -5528,7 +5528,7 @@ else
   echo "  - set RUN_CHAT_INTERVENTION_RECOVERY_FEEDBACK_GUARD=1 to enable"
 fi
 
-echo "[148/156] Chat resolution plan compiler guard gate (optional)"
+echo "[148/157] Chat resolution plan compiler guard gate (optional)"
 if [ "${RUN_CHAT_RESOLUTION_PLAN_COMPILER_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_RESOLUTION_PLAN_EVENTS_JSONL="${CHAT_RESOLUTION_PLAN_EVENTS_JSONL:-$ROOT_DIR/var/resolution_plan/plan_events.jsonl}"
@@ -5563,7 +5563,7 @@ else
   echo "  - set RUN_CHAT_RESOLUTION_PLAN_COMPILER_GUARD=1 to enable"
 fi
 
-echo "[149/156] Chat action simulation guard gate (optional)"
+echo "[149/157] Chat action simulation guard gate (optional)"
 if [ "${RUN_CHAT_ACTION_SIMULATION_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_ACTION_SIM_EVENTS_JSONL="${CHAT_ACTION_SIM_EVENTS_JSONL:-$ROOT_DIR/var/resolution_plan/simulation_events.jsonl}"
@@ -5600,7 +5600,7 @@ else
   echo "  - set RUN_CHAT_ACTION_SIMULATION_GUARD=1 to enable"
 fi
 
-echo "[150/156] Chat execution safety contract guard gate (optional)"
+echo "[150/157] Chat execution safety contract guard gate (optional)"
 if [ "${RUN_CHAT_EXECUTION_SAFETY_CONTRACT_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_EXEC_SAFETY_EVENTS_JSONL="${CHAT_EXEC_SAFETY_EVENTS_JSONL:-$ROOT_DIR/var/resolution_plan/execution_safety_events.jsonl}"
@@ -5641,7 +5641,7 @@ else
   echo "  - set RUN_CHAT_EXECUTION_SAFETY_CONTRACT_GUARD=1 to enable"
 fi
 
-echo "[151/156] Chat plan persistence resume guard gate (optional)"
+echo "[151/157] Chat plan persistence resume guard gate (optional)"
 if [ "${RUN_CHAT_PLAN_PERSISTENCE_RESUME_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_PLAN_PERSISTENCE_EVENTS_JSONL="${CHAT_PLAN_PERSISTENCE_EVENTS_JSONL:-$ROOT_DIR/var/resolution_plan/plan_persistence_events.jsonl}"
@@ -5678,7 +5678,7 @@ else
   echo "  - set RUN_CHAT_PLAN_PERSISTENCE_RESUME_GUARD=1 to enable"
 fi
 
-echo "[152/156] Chat actionability scorer guard gate (optional)"
+echo "[152/157] Chat actionability scorer guard gate (optional)"
 if [ "${RUN_CHAT_ACTIONABILITY_SCORER_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_ACTIONABILITY_SCORER_EVENTS_JSONL="${CHAT_ACTIONABILITY_SCORER_EVENTS_JSONL:-$ROOT_DIR/var/actionability/scorer_events.jsonl}"
@@ -5719,7 +5719,7 @@ else
   echo "  - set RUN_CHAT_ACTIONABILITY_SCORER_GUARD=1 to enable"
 fi
 
-echo "[153/156] Chat actionability repair loop guard gate (optional)"
+echo "[153/157] Chat actionability repair loop guard gate (optional)"
 if [ "${RUN_CHAT_ACTIONABILITY_REPAIR_LOOP_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_ACTIONABILITY_REPAIR_EVENTS_JSONL="${CHAT_ACTIONABILITY_REPAIR_EVENTS_JSONL:-$ROOT_DIR/var/actionability/repair_loop_events.jsonl}"
@@ -5762,7 +5762,46 @@ else
   echo "  - set RUN_CHAT_ACTIONABILITY_REPAIR_LOOP_GUARD=1 to enable"
 fi
 
-echo "[154/156] Canonical quality checks (optional)"
+echo "[154/157] Chat claim-action consistency guard gate (optional)"
+if [ "${RUN_CHAT_CLAIM_ACTION_CONSISTENCY_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_CLAIM_ACTION_EVENTS_JSONL="${CHAT_CLAIM_ACTION_EVENTS_JSONL:-$ROOT_DIR/var/actionability/claim_action_events.jsonl}"
+    CHAT_CLAIM_ACTION_WINDOW_HOURS="${CHAT_CLAIM_ACTION_WINDOW_HOURS:-24}"
+    CHAT_CLAIM_ACTION_LIMIT="${CHAT_CLAIM_ACTION_LIMIT:-100000}"
+    CHAT_CLAIM_ACTION_OUT_DIR="${CHAT_CLAIM_ACTION_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_CLAIM_ACTION_MIN_WINDOW="${CHAT_CLAIM_ACTION_MIN_WINDOW:-0}"
+    CHAT_CLAIM_ACTION_MIN_EVENT_TOTAL="${CHAT_CLAIM_ACTION_MIN_EVENT_TOTAL:-0}"
+    CHAT_CLAIM_ACTION_MIN_PASS_RATIO="${CHAT_CLAIM_ACTION_MIN_PASS_RATIO:-0.0}"
+    CHAT_CLAIM_ACTION_MIN_WARNING_COVERAGE_RATIO="${CHAT_CLAIM_ACTION_MIN_WARNING_COVERAGE_RATIO:-0.0}"
+    CHAT_CLAIM_ACTION_MIN_INFEASIBLE_REMOVAL_RATIO="${CHAT_CLAIM_ACTION_MIN_INFEASIBLE_REMOVAL_RATIO:-0.0}"
+    CHAT_CLAIM_ACTION_MAX_MISMATCH_TOTAL="${CHAT_CLAIM_ACTION_MAX_MISMATCH_TOTAL:-1000000}"
+    CHAT_CLAIM_ACTION_MAX_WARNING_MISSING_TOTAL="${CHAT_CLAIM_ACTION_MAX_WARNING_MISSING_TOTAL:-1000000}"
+    CHAT_CLAIM_ACTION_MAX_INFEASIBLE_REMOVAL_MISSING_TOTAL="${CHAT_CLAIM_ACTION_MAX_INFEASIBLE_REMOVAL_MISSING_TOTAL:-1000000}"
+    CHAT_CLAIM_ACTION_MAX_STALE_MINUTES="${CHAT_CLAIM_ACTION_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_claim_action_consistency_guard.py" \
+      --events-jsonl "$CHAT_CLAIM_ACTION_EVENTS_JSONL" \
+      --window-hours "$CHAT_CLAIM_ACTION_WINDOW_HOURS" \
+      --limit "$CHAT_CLAIM_ACTION_LIMIT" \
+      --out "$CHAT_CLAIM_ACTION_OUT_DIR" \
+      --min-window "$CHAT_CLAIM_ACTION_MIN_WINDOW" \
+      --min-event-total "$CHAT_CLAIM_ACTION_MIN_EVENT_TOTAL" \
+      --min-consistency-pass-ratio "$CHAT_CLAIM_ACTION_MIN_PASS_RATIO" \
+      --min-mismatch-warning-coverage-ratio "$CHAT_CLAIM_ACTION_MIN_WARNING_COVERAGE_RATIO" \
+      --min-infeasible-action-removal-ratio "$CHAT_CLAIM_ACTION_MIN_INFEASIBLE_REMOVAL_RATIO" \
+      --max-mismatch-total "$CHAT_CLAIM_ACTION_MAX_MISMATCH_TOTAL" \
+      --max-mismatch-warning-missing-total "$CHAT_CLAIM_ACTION_MAX_WARNING_MISSING_TOTAL" \
+      --max-infeasible-action-removal-missing-total "$CHAT_CLAIM_ACTION_MAX_INFEASIBLE_REMOVAL_MISSING_TOTAL" \
+      --max-stale-minutes "$CHAT_CLAIM_ACTION_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat claim-action consistency guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_CLAIM_ACTION_CONSISTENCY_GUARD=1 to enable"
+fi
+
+echo "[155/157] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -5773,7 +5812,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[155/156] E2E tests (optional)"
+echo "[156/157] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -5784,4 +5823,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[156/156] Done"
+echo "[157/157] Done"

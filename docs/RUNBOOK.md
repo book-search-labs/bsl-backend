@@ -4155,6 +4155,31 @@ python scripts/eval/chat_actionability_repair_loop_guard.py \
 - CI 옵션:
   - `RUN_CHAT_ACTIONABILITY_REPAIR_LOOP_GUARD=1 ./scripts/test.sh`
 
+## Chat claim-action consistency guard gate (B-0396, Bundle 3)
+- 제시 액션이 tool/policy 실행 가능 상태와 일치하는지 및 불가 액션 제거를 검증:
+```bash
+python scripts/eval/chat_claim_action_consistency_guard.py \
+  --events-jsonl var/actionability/claim_action_events.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-consistency-pass-ratio 0.90 \
+  --min-mismatch-warning-coverage-ratio 1.0 \
+  --min-infeasible-action-removal-ratio 1.0 \
+  --max-mismatch-total 5 \
+  --max-mismatch-warning-missing-total 0 \
+  --max-infeasible-action-removal-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - consistency pass ratio
+  - mismatch warning coverage ratio
+  - infeasible action removal ratio
+  - mismatch total / removal 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_CLAIM_ACTION_CONSISTENCY_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
