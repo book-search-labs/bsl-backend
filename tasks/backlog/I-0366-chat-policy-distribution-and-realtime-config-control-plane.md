@@ -79,3 +79,14 @@ Build a realtime control plane for chat policy/config rollout:
   - `scripts/eval/test_chat_config_audit_reproducibility.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_CONFIG_AUDIT_REPRO_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Config ops runbook integration gate 추가
+  - `scripts/eval/chat_config_ops_runbook_integration.py`
+  - incident 이벤트에서 runbook/recommended action/bundle version/impacted services 포함 여부를 점검
+  - payload 완전성 비율(`payload_complete_ratio`)과 필수 필드 누락 건수를 운영 게이트로 검증
+  - stale evidence 및 알림 payload 미완전 사례를 배포 차단 조건으로 명시
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_config_ops_runbook_integration.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_CONFIG_OPS_RUNBOOK_INTEGRATION=1 ./scripts/test.sh`

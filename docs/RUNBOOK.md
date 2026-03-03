@@ -1534,6 +1534,27 @@ python scripts/eval/chat_config_audit_reproducibility.py \
 - CI 옵션:
   - `RUN_CHAT_CONFIG_AUDIT_REPRO_GUARD=1 ./scripts/test.sh`
 
+## Config ops runbook integration gate (I-0366, Bundle 4)
+- 실패 유형별 플레이북 연결과 온콜 알림 payload(버전/영향서비스/권장조치) 완전성을 검증:
+```bash
+python scripts/eval/chat_config_ops_runbook_integration.py \
+  --events-jsonl var/chat_control/config_ops_events.jsonl \
+  --window-hours 24 \
+  --min-payload-complete-ratio 0.95 \
+  --max-missing-runbook-total 0 \
+  --max-missing-recommended-action-total 0 \
+  --max-missing-bundle-version-total 0 \
+  --max-missing-impacted-services-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - payload complete ratio
+  - runbook/recommended_action/bundle_version/impacted_services 누락 건수
+  - incident type별 분포
+- CI 옵션:
+  - `RUN_CHAT_CONFIG_OPS_RUNBOOK_INTEGRATION=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
