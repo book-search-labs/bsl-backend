@@ -2488,6 +2488,30 @@ python scripts/eval/chat_source_conflict_detection.py \
 - CI 옵션:
   - `RUN_CHAT_SOURCE_CONFLICT_DETECTION=1 ./scripts/test.sh`
 
+## Source conflict resolution policy gate (B-0377, Bundle 2)
+- 고충돌 안전결정과 공식출처 우선 적용률을 배포 전에 검증:
+```bash
+python scripts/eval/chat_source_conflict_resolution_policy.py \
+  --events-jsonl var/chat_trust/source_conflict_resolution_events.jsonl \
+  --window-hours 24 \
+  --min-window 100 \
+  --min-conflict-total 10 \
+  --max-high-conflict-unsafe-total 0 \
+  --min-official-preference-ratio 0.90 \
+  --min-resolution-rate 0.80 \
+  --max-invalid-strategy-total 0 \
+  --max-missing-policy-version-total 0 \
+  --max-missing-reason-code-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - high conflict 안전/비안전 결정 건수
+  - official source available 대비 preferred 적용 비율
+  - resolution rate, 정책 버전/reason_code 누락, freshness
+- CI 옵션:
+  - `RUN_CHAT_SOURCE_CONFLICT_RESOLUTION_POLICY=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

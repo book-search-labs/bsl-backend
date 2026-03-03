@@ -57,3 +57,14 @@ Implement conflict-aware chat grounding:
   - `scripts/eval/test_chat_source_conflict_detection.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_SOURCE_CONFLICT_DETECTION=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Conflict resolution policy gate 추가
+  - `scripts/eval/chat_source_conflict_resolution_policy.py`
+  - HIGH 충돌에서 unsafe 결정(단정/실행) 차단 여부 검증
+  - official source available 시 공식출처 우선 적용률 검증
+  - resolution rate/strategy 유효성/policy_version/reason_code 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_source_conflict_resolution_policy.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_SOURCE_CONFLICT_RESOLUTION_POLICY=1 ./scripts/test.sh`
