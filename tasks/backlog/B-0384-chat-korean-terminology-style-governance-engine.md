@@ -47,3 +47,13 @@ Implement Korean terminology and style governance for chat:
 - Enforce approved term dictionary and response style policies.
 - Normalize generated outputs while preserving meaning.
 - Operate dictionary updates through audited approvals and metrics.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Korean terminology dictionary guard gate 추가
+  - `scripts/eval/chat_korean_terminology_dictionary_guard.py`
+  - 금칙어/권장어/충돌 용어 위반 검증
+  - dictionary version presence 및 normalization ratio 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_korean_terminology_dictionary_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_KOREAN_TERMINOLOGY_DICTIONARY_GUARD=1 ./scripts/test.sh`

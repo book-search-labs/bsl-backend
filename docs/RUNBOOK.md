@@ -3145,6 +3145,29 @@ python scripts/eval/chat_output_guard_failure_handling.py \
 - CI 옵션:
   - `RUN_CHAT_OUTPUT_GUARD_FAILURE_HANDLING=1 ./scripts/test.sh`
 
+## Chat korean terminology dictionary guard gate (B-0384, Bundle 1)
+- 금칙어/권장어/정규화 적용률/사전 버전 표기를 검증:
+```bash
+python scripts/eval/chat_korean_terminology_dictionary_guard.py \
+  --events-jsonl var/chat_style/terminology_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-response-total 20 \
+  --min-dictionary-version-presence-ratio 0.99 \
+  --min-normalization-ratio 0.90 \
+  --max-banned-term-violation-total 0 \
+  --max-preferred-term-miss-total 0 \
+  --max-conflict-term-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - dictionary version presence ratio
+  - banned/preferred/conflict term 위반 건수
+  - terminology/synonym normalization 적용 비율
+- CI 옵션:
+  - `RUN_CHAT_KOREAN_TERMINOLOGY_DICTIONARY_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
