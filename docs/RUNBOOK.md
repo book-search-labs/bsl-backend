@@ -2968,6 +2968,29 @@ python scripts/eval/chat_tool_tx_fence_model.py \
 - CI 옵션:
   - `RUN_CHAT_TOOL_TX_FENCE_MODEL=1 ./scripts/test.sh`
 
+## Chat tool transaction idempotency dedup gate (B-0382, Bundle 2)
+- tool call 재시도에서 idempotency key 누락, dedup 실패, 중복 side-effect를 검증:
+```bash
+python scripts/eval/chat_tool_tx_idempotency_dedup.py \
+  --events-jsonl var/chat_tool_tx/tx_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-write-call-total 20 \
+  --min-retry-safe-ratio 0.99 \
+  --max-missing-idempotency-key-total 0 \
+  --max-duplicate-side-effect-total 0 \
+  --max-key-reuse-cross-payload-total 0 \
+  --max-p95-retry-resolution-latency-ms 600 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - write call 기준 idempotency key 누락 건수
+  - retry safe ratio(dedup hit 비율)
+  - duplicate side-effect 및 key 재사용 충돌 건수
+- CI 옵션:
+  - `RUN_CHAT_TOOL_TX_IDEMPOTENCY_DEDUP=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
