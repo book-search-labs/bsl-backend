@@ -1,0 +1,61 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "events_jsonl": "var/chat_tool/cache_events.jsonl",
+  "source": {
+    "events_jsonl": "var/chat_tool/cache_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": null
+  },
+  "summary": {
+    "window_size": 0,
+    "lookup_total": 0,
+    "cache_hit_total": 0,
+    "cache_miss_total": 0,
+    "cache_bypass_total": 0,
+    "hit_ratio": 1.0,
+    "bypass_ratio": 0.0,
+    "key_missing_field_total": 0,
+    "ttl_class_unknown_total": 0,
+    "ttl_out_of_policy_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "lookup_total": 0,
+      "cache_hit_total": 0,
+      "cache_miss_total": 0,
+      "cache_bypass_total": 0,
+      "hit_ratio": 1.0,
+      "bypass_ratio": 0.0,
+      "key_missing_field_total": 0,
+      "ttl_class_unknown_total": 0,
+      "ttl_out_of_policy_total": 0,
+      "latest_event_time": null,
+      "stale_minutes": 0.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_hit_ratio": 0.5,
+      "max_bypass_ratio": 0.3,
+      "max_key_missing_field_total": 0,
+      "max_ttl_class_unknown_total": 0,
+      "max_ttl_out_of_policy_total": 0,
+      "max_stale_minutes": 60.0,
+      "max_hit_ratio_drop": 0.05,
+      "max_bypass_ratio_increase": 0.05,
+      "max_key_missing_field_total_increase": 0,
+      "max_ttl_class_unknown_total_increase": 0,
+      "max_ttl_out_of_policy_total_increase": 0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

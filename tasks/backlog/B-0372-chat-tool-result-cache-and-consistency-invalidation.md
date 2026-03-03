@@ -90,3 +90,26 @@ Add safe caching for chat tool results:
   - `scripts/eval/test_chat_tool_cache_safety_fallback.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TOOL_CACHE_SAFETY_FALLBACK=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Baseline drift governance 추가
+  - `scripts/eval/chat_tool_cache_strategy.py`
+  - `scripts/eval/chat_tool_cache_invalidation.py`
+  - `scripts/eval/chat_tool_cache_staleness_guard.py`
+  - `scripts/eval/chat_tool_cache_safety_fallback.py`
+  - 공통 baseline 비교(`derived.summary` fallback 포함) + drift threshold 게이트 연동
+  - gate pass 조건을 `failures + baseline_failures` 모두 0으로 강화
+- [x] 회귀 테스트 확장
+  - `scripts/eval/test_chat_tool_cache_strategy.py`
+  - `scripts/eval/test_chat_tool_cache_invalidation.py`
+  - `scripts/eval/test_chat_tool_cache_staleness_guard.py`
+  - `scripts/eval/test_chat_tool_cache_safety_fallback.py`
+  - baseline 대비 품질 저하 케이스를 고정 테스트로 추가
+- [x] CI 진입점 baseline wiring
+  - `scripts/test.sh` (step 64~67)
+  - baseline fixture 자동 주입(`--baseline-report`) + drift env 인자 전달
+- [x] Baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_tool_cache_strategy_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_tool_cache_invalidation_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_tool_cache_staleness_guard_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_tool_cache_safety_fallback_baseline_v1.json`

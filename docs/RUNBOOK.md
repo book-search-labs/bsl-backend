@@ -2624,6 +2624,13 @@ python scripts/eval/chat_tool_cache_strategy.py \
   --max-ttl-class-unknown-total 0 \
   --max-ttl-out-of-policy-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_tool_cache_strategy_baseline_v1.json \
+  --max-hit-ratio-drop 0.05 \
+  --max-bypass-ratio-increase 0.05 \
+  --max-key-missing-field-total-increase 0 \
+  --max-ttl-class-unknown-total-increase 0 \
+  --max-ttl-out-of-policy-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2633,6 +2640,13 @@ python scripts/eval/chat_tool_cache_strategy.py \
   - cache evidence freshness(stale minutes)
 - CI 옵션:
   - `RUN_CHAT_TOOL_CACHE_STRATEGY=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TOOL_CACHE_MAX_HIT_RATIO_DROP`
+    - `CHAT_TOOL_CACHE_MAX_BYPASS_RATIO_INCREASE`
+    - `CHAT_TOOL_CACHE_MAX_KEY_MISSING_FIELD_TOTAL_INCREASE`
+    - `CHAT_TOOL_CACHE_MAX_TTL_CLASS_UNKNOWN_TOTAL_INCREASE`
+    - `CHAT_TOOL_CACHE_MAX_TTL_OUT_OF_POLICY_TOTAL_INCREASE`
+    - `CHAT_TOOL_CACHE_MAX_STALE_MINUTES_INCREASE`
 
 ## Tool cache invalidation gate (B-0372, Bundle 2)
 - 주문/배송 도메인 이벤트 대비 캐시 무효화 커버리지와 지연을 검증:
@@ -2648,6 +2662,13 @@ python scripts/eval/chat_tool_cache_invalidation.py \
   --max-missing-invalidate-total 0 \
   --max-late-invalidate-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_tool_cache_invalidation_baseline_v1.json \
+  --max-coverage-ratio-drop 0.05 \
+  --max-domain-key-missing-total-increase 0 \
+  --max-invalidation-reason-missing-total-increase 0 \
+  --max-missing-invalidate-total-increase 0 \
+  --max-late-invalidate-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2657,6 +2678,13 @@ python scripts/eval/chat_tool_cache_invalidation.py \
   - invalidation evidence freshness(stale minutes)
 - CI 옵션:
   - `RUN_CHAT_TOOL_CACHE_INVALIDATION=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TOOL_INVALIDATION_MAX_COVERAGE_RATIO_DROP`
+    - `CHAT_TOOL_INVALIDATION_MAX_DOMAIN_KEY_MISSING_TOTAL_INCREASE`
+    - `CHAT_TOOL_INVALIDATION_MAX_REASON_MISSING_TOTAL_INCREASE`
+    - `CHAT_TOOL_INVALIDATION_MAX_MISSING_INVALIDATE_TOTAL_INCREASE`
+    - `CHAT_TOOL_INVALIDATION_MAX_LATE_INVALIDATE_TOTAL_INCREASE`
+    - `CHAT_TOOL_INVALIDATION_MAX_STALE_MINUTES_INCREASE`
 
 ## Tool cache staleness guard gate (B-0372, Bundle 3)
 - stale threshold 초과 응답의 차단/원본 fallback 및 freshness stamp 준수 여부를 검증:
@@ -2671,6 +2699,12 @@ python scripts/eval/chat_tool_cache_staleness_guard.py \
   --max-freshness-stamp-missing-total 0 \
   --min-forced-origin-fetch-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_tool_cache_staleness_guard_baseline_v1.json \
+  --max-stale-leak-total-increase 0 \
+  --max-stale-block-ratio-drop 0.05 \
+  --max-freshness-stamp-missing-total-increase 0 \
+  --max-forced-origin-fetch-total-drop 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2680,6 +2714,12 @@ python scripts/eval/chat_tool_cache_staleness_guard.py \
   - staleness evidence freshness(stale minutes)
 - CI 옵션:
   - `RUN_CHAT_TOOL_CACHE_STALENESS_GUARD=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TOOL_STALENESS_MAX_STALE_LEAK_TOTAL_INCREASE`
+    - `CHAT_TOOL_STALENESS_MAX_BLOCK_RATIO_DROP`
+    - `CHAT_TOOL_STALENESS_MAX_FRESHNESS_STAMP_MISSING_TOTAL_INCREASE`
+    - `CHAT_TOOL_STALENESS_MAX_FORCED_ORIGIN_FETCH_TOTAL_DROP`
+    - `CHAT_TOOL_STALENESS_MAX_STALE_MINUTES_INCREASE`
 
 ## Tool cache safety fallback gate (B-0372, Bundle 4)
 - 캐시 손상 감지 시 fail-open 없이 원본 fallback/캐시 비활성화로 복구되는지 검증:
@@ -2693,6 +2733,12 @@ python scripts/eval/chat_tool_cache_safety_fallback.py \
   --min-recovery-success-ratio 0.95 \
   --max-recovery-failed-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_tool_cache_safety_fallback_baseline_v1.json \
+  --max-corruption-unhandled-total-increase 0 \
+  --max-fail-open-total-increase 0 \
+  --max-recovery-success-ratio-drop 0.05 \
+  --max-recovery-failed-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2702,6 +2748,12 @@ python scripts/eval/chat_tool_cache_safety_fallback.py \
   - safety evidence freshness(stale minutes)
 - CI 옵션:
   - `RUN_CHAT_TOOL_CACHE_SAFETY_FALLBACK=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TOOL_SAFETY_MAX_CORRUPTION_UNHANDLED_TOTAL_INCREASE`
+    - `CHAT_TOOL_SAFETY_MAX_FAIL_OPEN_TOTAL_INCREASE`
+    - `CHAT_TOOL_SAFETY_MAX_RECOVERY_SUCCESS_RATIO_DROP`
+    - `CHAT_TOOL_SAFETY_MAX_RECOVERY_FAILED_TOTAL_INCREASE`
+    - `CHAT_TOOL_SAFETY_MAX_STALE_MINUTES_INCREASE`
 
 ## Adversarial dataset coverage gate (B-0373, Bundle 1)
 - 한국어 중심 adversarial 평가셋의 공격유형/언어/도메인 커버리지를 검증:

@@ -90,3 +90,34 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_cache_staleness_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "stale_leak_total": 0,
+                "stale_block_ratio": 1.0,
+                "freshness_stamp_missing_total": 0,
+                "forced_origin_fetch_total": 5,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "stale_leak_total": 2,
+            "stale_block_ratio": 0.6,
+            "freshness_stamp_missing_total": 1,
+            "forced_origin_fetch_total": 1,
+            "stale_minutes": 42.0,
+        },
+        max_stale_leak_total_increase=0,
+        max_stale_block_ratio_drop=0.05,
+        max_freshness_stamp_missing_total_increase=0,
+        max_forced_origin_fetch_total_drop=0,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 5

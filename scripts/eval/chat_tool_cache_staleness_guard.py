@@ -106,6 +106,13 @@ def read_events(path: Path, *, window_hours: int, limit: int, now: datetime | No
     return filtered
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, Mapping):
+        raise RuntimeError(f"expected JSON object from {path}")
+    return {str(k): v for k, v in payload.items()}
+
+
 def summarize_staleness_guard(
     events: list[Mapping[str, Any]],
     *,
@@ -217,6 +224,77 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_stale_leak_total_increase: int,
+    max_stale_block_ratio_drop: float,
+    max_freshness_stamp_missing_total_increase: int,
+    max_forced_origin_fetch_total_drop: int,
+    max_stale_minutes_increase: float,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_stale_leak_total = _safe_int(base_summary.get("stale_leak_total"), 0)
+    cur_stale_leak_total = _safe_int(current_summary.get("stale_leak_total"), 0)
+    stale_leak_total_increase = max(0, cur_stale_leak_total - base_stale_leak_total)
+    if stale_leak_total_increase > max(0, int(max_stale_leak_total_increase)):
+        failures.append(
+            "stale leak total regression: "
+            f"baseline={base_stale_leak_total}, current={cur_stale_leak_total}, "
+            f"allowed_increase={max(0, int(max_stale_leak_total_increase))}"
+        )
+
+    base_stale_block_ratio = _safe_float(base_summary.get("stale_block_ratio"), 1.0)
+    cur_stale_block_ratio = _safe_float(current_summary.get("stale_block_ratio"), 1.0)
+    stale_block_ratio_drop = max(0.0, base_stale_block_ratio - cur_stale_block_ratio)
+    if stale_block_ratio_drop > max(0.0, float(max_stale_block_ratio_drop)):
+        failures.append(
+            "stale block ratio regression: "
+            f"baseline={base_stale_block_ratio:.6f}, current={cur_stale_block_ratio:.6f}, "
+            f"allowed_drop={float(max_stale_block_ratio_drop):.6f}"
+        )
+
+    base_freshness_stamp_missing_total = _safe_int(base_summary.get("freshness_stamp_missing_total"), 0)
+    cur_freshness_stamp_missing_total = _safe_int(current_summary.get("freshness_stamp_missing_total"), 0)
+    freshness_stamp_missing_total_increase = max(
+        0,
+        cur_freshness_stamp_missing_total - base_freshness_stamp_missing_total,
+    )
+    if freshness_stamp_missing_total_increase > max(0, int(max_freshness_stamp_missing_total_increase)):
+        failures.append(
+            "freshness stamp missing total regression: "
+            f"baseline={base_freshness_stamp_missing_total}, current={cur_freshness_stamp_missing_total}, "
+            f"allowed_increase={max(0, int(max_freshness_stamp_missing_total_increase))}"
+        )
+
+    base_forced_origin_fetch_total = _safe_int(base_summary.get("forced_origin_fetch_total"), 0)
+    cur_forced_origin_fetch_total = _safe_int(current_summary.get("forced_origin_fetch_total"), 0)
+    forced_origin_fetch_total_drop = max(0, base_forced_origin_fetch_total - cur_forced_origin_fetch_total)
+    if forced_origin_fetch_total_drop > max(0, int(max_forced_origin_fetch_total_drop)):
+        failures.append(
+            "forced origin fetch total regression: "
+            f"baseline={base_forced_origin_fetch_total}, current={cur_forced_origin_fetch_total}, "
+            f"allowed_drop={max(0, int(max_forced_origin_fetch_total_drop))}"
+        )
+
+    base_stale_minutes = _safe_float(base_summary.get("stale_minutes"), 0.0)
+    cur_stale_minutes = _safe_float(current_summary.get("stale_minutes"), 0.0)
+    stale_minutes_increase = max(0.0, cur_stale_minutes - base_stale_minutes)
+    if stale_minutes_increase > max(0.0, float(max_stale_minutes_increase)):
+        failures.append(
+            "stale minutes regression: "
+            f"baseline={base_stale_minutes:.6f}, current={cur_stale_minutes:.6f}, "
+            f"allowed_increase={float(max_stale_minutes_increase):.6f}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -236,11 +314,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -258,6 +341,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-freshness-stamp-missing-total", type=int, default=0)
     parser.add_argument("--min-forced-origin-fetch-total", type=int, default=0)
     parser.add_argument("--max-stale-minutes", type=float, default=60.0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-stale-leak-total-increase", type=int, default=0)
+    parser.add_argument("--max-stale-block-ratio-drop", type=float, default=0.05)
+    parser.add_argument("--max-freshness-stamp-missing-total-increase", type=int, default=0)
+    parser.add_argument("--max-forced-origin-fetch-total-drop", type=int, default=0)
+    parser.add_argument("--max-stale-minutes-increase", type=float, default=30.0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -283,15 +372,40 @@ def main() -> int:
         min_forced_origin_fetch_total=max(0, int(args.min_forced_origin_fetch_total)),
         max_stale_minutes=max(0.0, float(args.max_stale_minutes)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            summary,
+            max_stale_leak_total_increase=max(0, int(args.max_stale_leak_total_increase)),
+            max_stale_block_ratio_drop=max(0.0, float(args.max_stale_block_ratio_drop)),
+            max_freshness_stamp_missing_total_increase=max(
+                0, int(args.max_freshness_stamp_missing_total_increase)
+            ),
+            max_forced_origin_fetch_total_drop=max(0, int(args.max_forced_origin_fetch_total_drop)),
+            max_stale_minutes_increase=max(0.0, float(args.max_stale_minutes_increase)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "events_jsonl": str(events_path),
+        "source": {
+            "events_jsonl": str(events_path),
+            "window_hours": max(1, int(args.window_hours)),
+            "limit": max(1, int(args.limit)),
+            "stale_threshold_seconds": max(0, int(args.stale_threshold_seconds)),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "max_stale_leak_total": int(args.max_stale_leak_total),
@@ -299,6 +413,11 @@ def main() -> int:
                 "max_freshness_stamp_missing_total": int(args.max_freshness_stamp_missing_total),
                 "min_forced_origin_fetch_total": int(args.min_forced_origin_fetch_total),
                 "max_stale_minutes": float(args.max_stale_minutes),
+                "max_stale_leak_total_increase": int(args.max_stale_leak_total_increase),
+                "max_stale_block_ratio_drop": float(args.max_stale_block_ratio_drop),
+                "max_freshness_stamp_missing_total_increase": int(args.max_freshness_stamp_missing_total_increase),
+                "max_forced_origin_fetch_total_drop": int(args.max_forced_origin_fetch_total_drop),
+                "max_stale_minutes_increase": float(args.max_stale_minutes_increase),
             },
         },
     }
@@ -315,8 +434,9 @@ def main() -> int:
     print(f"report_md={md_path}")
     print(f"stale_response_total={_safe_int(summary.get('stale_response_total'), 0)}")
     print(f"stale_leak_total={_safe_int(summary.get('stale_leak_total'), 0)}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and (failures or baseline_failures):
         return 2
     return 0
 

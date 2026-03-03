@@ -92,3 +92,37 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_cache_invalidation_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "coverage_ratio": 0.98,
+                "domain_key_missing_total": 0,
+                "invalidation_reason_missing_total": 0,
+                "missing_invalidate_total": 0,
+                "late_invalidate_total": 0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "coverage_ratio": 0.70,
+            "domain_key_missing_total": 1,
+            "invalidation_reason_missing_total": 2,
+            "missing_invalidate_total": 1,
+            "late_invalidate_total": 3,
+            "stale_minutes": 45.0,
+        },
+        max_coverage_ratio_drop=0.05,
+        max_domain_key_missing_total_increase=0,
+        max_invalidation_reason_missing_total_increase=0,
+        max_missing_invalidate_total_increase=0,
+        max_late_invalidate_total_increase=0,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 6

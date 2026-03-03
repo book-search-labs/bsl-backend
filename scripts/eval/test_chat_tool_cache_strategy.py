@@ -94,3 +94,37 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_cache_strategy_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "hit_ratio": 0.90,
+                "bypass_ratio": 0.10,
+                "key_missing_field_total": 0,
+                "ttl_class_unknown_total": 0,
+                "ttl_out_of_policy_total": 0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "hit_ratio": 0.60,
+            "bypass_ratio": 0.35,
+            "key_missing_field_total": 2,
+            "ttl_class_unknown_total": 1,
+            "ttl_out_of_policy_total": 3,
+            "stale_minutes": 40.0,
+        },
+        max_hit_ratio_drop=0.05,
+        max_bypass_ratio_increase=0.05,
+        max_key_missing_field_total_increase=0,
+        max_ttl_class_unknown_total_increase=0,
+        max_ttl_out_of_policy_total_increase=0,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 6
