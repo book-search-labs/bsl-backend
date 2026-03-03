@@ -2557,6 +2557,28 @@ python scripts/eval/chat_source_conflict_operator_feedback.py \
 - CI 옵션:
   - `RUN_CHAT_SOURCE_CONFLICT_OPERATOR_FEEDBACK=1 ./scripts/test.sh`
 
+## Replay snapshot format gate (B-0378, Bundle 1)
+- replay 스냅샷의 필수 필드(request/policy/prompt/tool I/O/budget/seed) 완전성을 검증:
+```bash
+python scripts/eval/chat_replay_snapshot_format.py \
+  --replay-dir var/chat_graph/replay \
+  --window-hours 24 \
+  --min-window 20 \
+  --max-missing-request-payload-total 0 \
+  --max-missing-policy-version-total 0 \
+  --max-missing-prompt-template-total 0 \
+  --max-missing-tool-io-total 0 \
+  --max-missing-budget-state-total 0 \
+  --max-missing-seed-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - snapshot 필수 필드 누락 건수
+  - snapshot 최신성(stale minutes)
+- CI 옵션:
+  - `RUN_CHAT_REPLAY_SNAPSHOT_FORMAT=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

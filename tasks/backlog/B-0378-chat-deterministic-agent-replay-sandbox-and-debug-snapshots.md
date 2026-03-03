@@ -47,3 +47,13 @@ Build deterministic replay tooling for chat agents:
 - Snapshot request, policy, prompts, tool I/O, and budgets for replay.
 - Run sandboxed executions with mock/real tool modes.
 - Provide diff-based divergence inspection and shareable redacted artifacts.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Replay snapshot format gate 추가
+  - `scripts/eval/chat_replay_snapshot_format.py`
+  - request payload/policy version/prompt template/tool I/O/budget state/seed 필수 필드 검증
+  - snapshot stale 여부 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_replay_snapshot_format.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_REPLAY_SNAPSHOT_FORMAT=1 ./scripts/test.sh`
