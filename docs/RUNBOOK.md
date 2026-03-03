@@ -3292,6 +3292,33 @@ python scripts/eval/chat_ticket_knowledge_privacy_scrub_guard.py \
 - CI 옵션:
   - `RUN_CHAT_TICKET_KNOWLEDGE_PRIVACY_SCRUB_GUARD=1 ./scripts/test.sh`
 
+## Chat ticket knowledge approval rollback guard gate (B-0385, Bundle 3)
+- 후보 승인/인덱싱/롤백 파이프라인의 무승인 반영 및 SLA 위반을 검증:
+```bash
+python scripts/eval/chat_ticket_knowledge_approval_rollback_guard.py \
+  --events-jsonl var/chat_ticket_knowledge/approval_pipeline_events.jsonl \
+  --window-hours 24 \
+  --pending-sla-hours 24 \
+  --min-window 20 \
+  --min-candidate-total 10 \
+  --min-approved-total 5 \
+  --min-indexed-total 5 \
+  --max-unapproved-index-total 0 \
+  --max-approval-evidence-missing-total 0 \
+  --max-pending-sla-breach-total 0 \
+  --max-rollback-without-reason-total 0 \
+  --max-p95-candidate-to-approval-minutes 120 \
+  --max-p95-approval-to-index-minutes 60 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - 승인/인덱싱 건수와 unapproved index 건수
+  - approval evidence 누락, pending SLA breach, rollback without reason
+  - p95 candidate->approval / approval->index latency
+- CI 옵션:
+  - `RUN_CHAT_TICKET_KNOWLEDGE_APPROVAL_ROLLBACK_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
