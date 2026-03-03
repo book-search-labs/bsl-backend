@@ -3807,6 +3807,32 @@ python scripts/eval/chat_answer_band_policy_guard.py \
 - CI 옵션:
   - `RUN_CHAT_ANSWER_BAND_POLICY_GUARD=1 ./scripts/test.sh`
 
+## Chat answer risk misband feedback guard gate (B-0390, Bundle 4)
+- 리스크 밴드 감사로그/오분류 피드백 루프/해결 지연을 검증:
+```bash
+python scripts/eval/chat_answer_risk_misband_feedback_guard.py \
+  --events-jsonl var/risk_banding/misband_feedback_events.jsonl \
+  --window-hours 24 \
+  --unresolved-sla-minutes 60 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-feedback-total 20 \
+  --min-feedback-linkage-ratio 0.95 \
+  --min-misband-resolution-ratio 0.90 \
+  --max-reason-missing-total 0 \
+  --max-audit-context-missing-total 0 \
+  --max-unresolved-feedback-total 0 \
+  --max-p95-feedback-latency-minutes 30 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - feedback linkage ratio, misband resolution ratio
+  - reason/audit-context 누락 및 unresolved feedback 건수
+  - feedback 처리 p95 latency
+- CI 옵션:
+  - `RUN_CHAT_ANSWER_RISK_MISBAND_FEEDBACK_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

@@ -76,3 +76,13 @@ Introduce risk-banded response controls:
   - `scripts/eval/test_chat_answer_band_policy_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_ANSWER_BAND_POLICY_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 4)
+- [x] Risk misband feedback guard gate 추가
+  - `scripts/eval/chat_answer_risk_misband_feedback_guard.py`
+  - 리스크 밴드 감사 필드(reason/audit context) 누락 검증
+  - misband feedback linkage/resolution 비율 및 unresolved/p95 latency 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_answer_risk_misband_feedback_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_ANSWER_RISK_MISBAND_FEEDBACK_GUARD=1 ./scripts/test.sh`
