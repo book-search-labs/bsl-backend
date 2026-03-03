@@ -4276,6 +4276,29 @@ python scripts/eval/chat_case_handover_payload_guard.py \
 - CI 옵션:
   - `RUN_CHAT_CASE_HANDOVER_PAYLOAD_GUARD=1 ./scripts/test.sh`
 
+## Chat planner evaluation gate guard (B-0397, Bundle 4)
+- 플래너 경로 이탈/단계 누락/오이관률과 릴리스 차단 신호 연동을 검증:
+```bash
+python scripts/eval/chat_planner_evaluation_gate_guard.py \
+  --events-jsonl var/dialog_planner/planner_eval_events.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --max-path-deviation-rate 0.10 \
+  --max-stage-omission-rate 0.05 \
+  --max-wrong-escalation-rate 0.03 \
+  --max-missed-release-block-total 0 \
+  --max-false-release-block-total 5 \
+  --max-partial-rollback-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - path deviation/stage omission/wrong escalation rate
+  - missed release block / false block / partial rollback missing 건수
+- CI 옵션:
+  - `RUN_CHAT_PLANNER_EVAL_GATE_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

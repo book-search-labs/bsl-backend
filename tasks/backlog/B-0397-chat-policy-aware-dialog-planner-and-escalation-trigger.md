@@ -84,3 +84,14 @@ Implement a policy-aware dialog planner for production chat:
   - `scripts/eval/test_chat_case_handover_payload_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_CASE_HANDOVER_PAYLOAD_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 4)
+- [x] Planner evaluation gate guard 추가
+  - `scripts/eval/chat_planner_evaluation_gate_guard.py`
+  - 경로 이탈률/단계 누락률/오이관률 기반 릴리스 차단 조건 검증
+  - 기준 초과인데 차단 미발행(missed block) 및 false block 검증
+  - intent 단위 partial rollback 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_planner_evaluation_gate_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_PLANNER_EVAL_GATE_GUARD=1 ./scripts/test.sh`
