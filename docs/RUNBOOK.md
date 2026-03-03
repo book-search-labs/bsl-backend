@@ -3168,6 +3168,31 @@ python scripts/eval/chat_korean_terminology_dictionary_guard.py \
 - CI 옵션:
   - `RUN_CHAT_KOREAN_TERMINOLOGY_DICTIONARY_GUARD=1 ./scripts/test.sh`
 
+## Chat korean style policy guard gate (B-0384, Bundle 2)
+- 존댓말/문장 길이/숫자 표기/상황별 톤 정책 위반을 검증:
+```bash
+python scripts/eval/chat_korean_style_policy_guard.py \
+  --events-jsonl var/chat_style/style_policy_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-response-total 20 \
+  --min-style-checked-ratio 0.99 \
+  --min-style-compliance-ratio 0.95 \
+  --max-style-bypass-total 0 \
+  --max-politeness-violation-total 0 \
+  --max-sentence-length-violation-total 0 \
+  --max-numeric-format-violation-total 0 \
+  --max-tone-violation-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - style checked/compliance ratio
+  - politeness/sentence length/numeric/tone 위반 건수
+  - style bypass 건수
+- CI 옵션:
+  - `RUN_CHAT_KOREAN_STYLE_POLICY_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
