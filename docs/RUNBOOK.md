@@ -2320,6 +2320,31 @@ python scripts/eval/chat_ticket_classifier_pipeline.py \
 - CI 옵션:
   - `RUN_CHAT_TICKET_CLASSIFIER_PIPELINE=1 ./scripts/test.sh`
 
+## Ticket SLA estimator gate (B-0375, Bundle 3)
+- 티켓 SLA 예측의 오차/고위험 알림 누락/근거 필드 누락을 배포 전에 차단:
+```bash
+python scripts/eval/chat_ticket_sla_estimator.py \
+  --estimates-jsonl var/chat_ticket/sla_estimates.jsonl \
+  --outcomes-jsonl var/chat_ticket/sla_outcomes.jsonl \
+  --window-hours 24 \
+  --breach-risk-threshold 0.70 \
+  --min-window 100 \
+  --max-high-risk-unalerted-total 0 \
+  --max-missing-features-snapshot-total 0 \
+  --max-missing-model-version-total 0 \
+  --max-predicted-minutes-invalid-total 0 \
+  --max-mae-minutes 30 \
+  --min-breach-recall 0.70 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - high-risk alert coverage(알림 누락 건수)
+  - MAE(minutes), breach recall, invalid prediction 건수
+  - features snapshot/model_version 누락 및 evidence freshness
+- CI 옵션:
+  - `RUN_CHAT_TICKET_SLA_ESTIMATOR=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

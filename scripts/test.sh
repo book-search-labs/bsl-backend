@@ -2683,7 +2683,7 @@ else
   echo "  - set RUN_CHAT_REASONING_BUDGET_AUDIT_EXPLAINABILITY=1 to enable"
 fi
 
-echo "[76/79] Chat ticket triage taxonomy gate (optional)"
+echo "[76/81] Chat ticket triage taxonomy gate (optional)"
 if [ "${RUN_CHAT_TICKET_TRIAGE_TAXONOMY:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TICKET_TRIAGE_TAXONOMY_JSON="${CHAT_TICKET_TRIAGE_TAXONOMY_JSON:-$ROOT_DIR/var/chat_ticket/triage_taxonomy.json}"
@@ -2727,7 +2727,7 @@ else
   echo "  - set RUN_CHAT_TICKET_TRIAGE_TAXONOMY=1 to enable"
 fi
 
-echo "[77/80] Chat ticket classifier pipeline gate (optional)"
+echo "[77/81] Chat ticket classifier pipeline gate (optional)"
 if [ "${RUN_CHAT_TICKET_CLASSIFIER_PIPELINE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TICKET_CLASSIFIER_EVENTS_JSONL="${CHAT_TICKET_CLASSIFIER_EVENTS_JSONL:-$ROOT_DIR/var/chat_ticket/triage_predictions.jsonl}"
@@ -2766,7 +2766,48 @@ else
   echo "  - set RUN_CHAT_TICKET_CLASSIFIER_PIPELINE=1 to enable"
 fi
 
-echo "[78/80] Canonical quality checks (optional)"
+echo "[78/81] Chat ticket SLA estimator gate (optional)"
+if [ "${RUN_CHAT_TICKET_SLA_ESTIMATOR:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TICKET_SLA_ESTIMATES_JSONL="${CHAT_TICKET_SLA_ESTIMATES_JSONL:-$ROOT_DIR/var/chat_ticket/sla_estimates.jsonl}"
+    CHAT_TICKET_SLA_OUTCOMES_JSONL="${CHAT_TICKET_SLA_OUTCOMES_JSONL:-$ROOT_DIR/var/chat_ticket/sla_outcomes.jsonl}"
+    CHAT_TICKET_SLA_WINDOW_HOURS="${CHAT_TICKET_SLA_WINDOW_HOURS:-24}"
+    CHAT_TICKET_SLA_LIMIT="${CHAT_TICKET_SLA_LIMIT:-50000}"
+    CHAT_TICKET_SLA_BREACH_RISK_THRESHOLD="${CHAT_TICKET_SLA_BREACH_RISK_THRESHOLD:-0.7}"
+    CHAT_TICKET_SLA_OUT_DIR="${CHAT_TICKET_SLA_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TICKET_SLA_MIN_WINDOW="${CHAT_TICKET_SLA_MIN_WINDOW:-0}"
+    CHAT_TICKET_SLA_MAX_HIGH_RISK_UNALERTED_TOTAL="${CHAT_TICKET_SLA_MAX_HIGH_RISK_UNALERTED_TOTAL:-1000000}"
+    CHAT_TICKET_SLA_MAX_MISSING_FEATURES_SNAPSHOT_TOTAL="${CHAT_TICKET_SLA_MAX_MISSING_FEATURES_SNAPSHOT_TOTAL:-1000000}"
+    CHAT_TICKET_SLA_MAX_MISSING_MODEL_VERSION_TOTAL="${CHAT_TICKET_SLA_MAX_MISSING_MODEL_VERSION_TOTAL:-1000000}"
+    CHAT_TICKET_SLA_MAX_PREDICTED_MINUTES_INVALID_TOTAL="${CHAT_TICKET_SLA_MAX_PREDICTED_MINUTES_INVALID_TOTAL:-1000000}"
+    CHAT_TICKET_SLA_MAX_MAE_MINUTES="${CHAT_TICKET_SLA_MAX_MAE_MINUTES:-1000000}"
+    CHAT_TICKET_SLA_MIN_BREACH_RECALL="${CHAT_TICKET_SLA_MIN_BREACH_RECALL:-0.0}"
+    CHAT_TICKET_SLA_MAX_STALE_MINUTES="${CHAT_TICKET_SLA_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_ticket_sla_estimator.py" \
+      --estimates-jsonl "$CHAT_TICKET_SLA_ESTIMATES_JSONL" \
+      --outcomes-jsonl "$CHAT_TICKET_SLA_OUTCOMES_JSONL" \
+      --window-hours "$CHAT_TICKET_SLA_WINDOW_HOURS" \
+      --limit "$CHAT_TICKET_SLA_LIMIT" \
+      --breach-risk-threshold "$CHAT_TICKET_SLA_BREACH_RISK_THRESHOLD" \
+      --out "$CHAT_TICKET_SLA_OUT_DIR" \
+      --min-window "$CHAT_TICKET_SLA_MIN_WINDOW" \
+      --max-high-risk-unalerted-total "$CHAT_TICKET_SLA_MAX_HIGH_RISK_UNALERTED_TOTAL" \
+      --max-missing-features-snapshot-total "$CHAT_TICKET_SLA_MAX_MISSING_FEATURES_SNAPSHOT_TOTAL" \
+      --max-missing-model-version-total "$CHAT_TICKET_SLA_MAX_MISSING_MODEL_VERSION_TOTAL" \
+      --max-predicted-minutes-invalid-total "$CHAT_TICKET_SLA_MAX_PREDICTED_MINUTES_INVALID_TOTAL" \
+      --max-mae-minutes "$CHAT_TICKET_SLA_MAX_MAE_MINUTES" \
+      --min-breach-recall "$CHAT_TICKET_SLA_MIN_BREACH_RECALL" \
+      --max-stale-minutes "$CHAT_TICKET_SLA_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat ticket SLA estimator gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TICKET_SLA_ESTIMATOR=1 to enable"
+fi
+
+echo "[79/81] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -2777,7 +2818,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[79/80] E2E tests (optional)"
+echo "[80/81] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -2788,4 +2829,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[80/80] Done"
+echo "[81/81] Done"

@@ -87,3 +87,14 @@ Implement chat ticket triage intelligence:
   - `scripts/eval/test_chat_ticket_classifier_pipeline.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TICKET_CLASSIFIER_PIPELINE=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] SLA estimator gate 추가
+  - `scripts/eval/chat_ticket_sla_estimator.py`
+  - high-risk 티켓의 alert 누락 건수 및 estimator 근거 누락(features/model_version) 검증
+  - 예측 오차(MAE)와 SLA breach recall을 게이트화
+  - gate 모드에서 SLA estimator 품질 임계치 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_ticket_sla_estimator.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TICKET_SLA_ESTIMATOR=1 ./scripts/test.sh`
