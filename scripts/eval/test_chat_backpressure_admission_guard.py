@@ -76,3 +76,37 @@ def test_evaluate_gate_passes_when_within_thresholds():
         max_stale_minutes=60,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_drop_core_latency_guidance_regression():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "drop_ratio": 0.05,
+            "critical_drop_total": 0,
+            "core_protected_ratio": 1.0,
+            "p95_queue_latency_ms": 500.0,
+            "guidance_missing_total": 0,
+        }
+    }
+    current = {
+        "drop_ratio": 0.4,
+        "critical_drop_total": 3,
+        "core_protected_ratio": 0.5,
+        "p95_queue_latency_ms": 4000.0,
+        "guidance_missing_total": 2,
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_drop_ratio_increase=0.0,
+        max_critical_drop_total_increase=0,
+        max_core_protected_ratio_drop=0.0,
+        max_p95_queue_latency_ms_increase=0.0,
+        max_guidance_missing_total_increase=0,
+    )
+    assert any("drop ratio regression" in item for item in failures)
+    assert any("critical drop regression" in item for item in failures)
+    assert any("core protected ratio regression" in item for item in failures)
+    assert any("p95 queue latency regression" in item for item in failures)
+    assert any("guidance missing regression" in item for item in failures)

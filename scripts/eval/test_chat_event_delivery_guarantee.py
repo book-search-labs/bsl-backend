@@ -78,3 +78,37 @@ def test_evaluate_gate_passes_when_healthy():
         max_stale_minutes=60,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_delivery_order_duplicate_ack_ttl_regression():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "delivery_success_ratio": 1.0,
+            "order_violation_total": 0,
+            "duplicate_ratio": 0.0,
+            "ack_missing_ratio": 0.0,
+            "ttl_drop_total": 0,
+        }
+    }
+    current = {
+        "delivery_success_ratio": 0.8,
+        "order_violation_total": 5,
+        "duplicate_ratio": 0.2,
+        "ack_missing_ratio": 0.3,
+        "ttl_drop_total": 2,
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_delivery_success_ratio_drop=0.0,
+        max_order_violation_total_increase=0,
+        max_duplicate_ratio_increase=0.0,
+        max_ack_missing_ratio_increase=0.0,
+        max_ttl_drop_total_increase=0,
+    )
+    assert any("delivery success regression" in item for item in failures)
+    assert any("order violation regression" in item for item in failures)
+    assert any("duplicate ratio regression" in item for item in failures)
+    assert any("ack missing ratio regression" in item for item in failures)
+    assert any("ttl drop regression" in item for item in failures)

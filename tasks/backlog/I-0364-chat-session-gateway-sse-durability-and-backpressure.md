@@ -88,3 +88,28 @@ Harden chat realtime session infrastructure:
   - `scripts/eval/test_chat_session_resilience_drill_report.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_SESSION_RESILIENCE_DRILL_REPORT=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Session/Event/Backpressure/Drill baseline 거버넌스 강화
+  - `scripts/eval/chat_session_gateway_durability.py`
+    - `--baseline-report` 지원 및 reconnect/resume/heartbeat/affinity drift 비교 추가
+    - gate 결과에 `baseline_failures` 포함
+  - `scripts/eval/chat_event_delivery_guarantee.py`
+    - `--baseline-report` 지원 및 delivery/order/duplicate/ack/ttl drift 비교 추가
+    - gate 결과에 `baseline_failures` 포함
+  - `scripts/eval/chat_backpressure_admission_guard.py`
+    - `--baseline-report` 지원 및 drop/core-protection/latency/guidance drift 비교 추가
+    - gate 결과에 `baseline_failures` 포함
+  - `scripts/eval/chat_session_resilience_drill_report.py`
+    - `--baseline-report` 지원 및 open drill/RTO/loss/required-scenario drift 비교 추가
+    - gate 결과에 `baseline_failures` 포함
+- [x] baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_session_gateway_durability_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_event_delivery_guarantee_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_backpressure_admission_guard_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_session_resilience_drill_report_baseline_v1.json`
+- [x] CI 진입점 확장
+  - `scripts/test.sh`의 `RUN_CHAT_SESSION_DURABILITY_GATE=1` 경로에 baseline/drift env 연결
+  - `scripts/test.sh`의 `RUN_CHAT_EVENT_DELIVERY_GUARANTEE=1` 경로에 baseline/drift env 연결
+  - `scripts/test.sh`의 `RUN_CHAT_BACKPRESSURE_ADMISSION_GUARD=1` 경로에 baseline/drift env 연결
+  - `scripts/test.sh`의 `RUN_CHAT_SESSION_RESILIENCE_DRILL_REPORT=1` 경로에 baseline/drift env 연결

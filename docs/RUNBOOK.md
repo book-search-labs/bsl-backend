@@ -1506,7 +1506,7 @@ python scripts/eval/chat_autoscaling_calibration.py \
     - `CHAT_AUTOSCALE_MAX_CANARY_INCREASE`
 
 ## Session gateway durability gate (I-0364, Bundle 1)
-- 세션 연결/재연결/resume/heartbeat 이벤트를 분석해 SSE 세션 복구 안정성을 게이트로 검증:
+- 세션 연결/재연결/resume/heartbeat 이벤트를 분석해 SSE 세션 복구 안정성을 게이트로 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_session_gateway_durability.py \
   --events-jsonl var/chat_governance/session_gateway_events.jsonl \
@@ -1517,6 +1517,11 @@ python scripts/eval/chat_session_gateway_durability.py \
   --max-heartbeat-miss-ratio 0.05 \
   --max-affinity-miss-ratio 0.02 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_session_gateway_durability_baseline_v1.json \
+  --max-reconnect-success-rate-drop 0.02 \
+  --max-resume-success-rate-drop 0.02 \
+  --max-heartbeat-miss-ratio-increase 0.02 \
+  --max-affinity-miss-ratio-increase 0.01 \
   --gate
 ```
 - 산출물:
@@ -1525,9 +1530,14 @@ python scripts/eval/chat_session_gateway_durability.py \
   - active connection/세션 규모와 stale window
 - CI 옵션:
   - `RUN_CHAT_SESSION_DURABILITY_GATE=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_SESSION_DURABILITY_MAX_RECONNECT_DROP`
+    - `CHAT_SESSION_DURABILITY_MAX_RESUME_DROP`
+    - `CHAT_SESSION_DURABILITY_MAX_HEARTBEAT_INCREASE`
+    - `CHAT_SESSION_DURABILITY_MAX_AFFINITY_INCREASE`
 
 ## Event delivery guarantee gate (I-0364, Bundle 2)
-- turn/event 전달 로그를 기반으로 ordered delivery, duplicate, ACK 누락, redelivery TTL 드롭을 검증:
+- turn/event 전달 로그를 기반으로 ordered delivery, duplicate, ACK 누락, redelivery TTL 드롭을 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_event_delivery_guarantee.py \
   --events-jsonl var/chat_governance/event_delivery_events.jsonl \
@@ -1539,6 +1549,12 @@ python scripts/eval/chat_event_delivery_guarantee.py \
   --max-sync-gap 5 \
   --max-ttl-drop-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_event_delivery_guarantee_baseline_v1.json \
+  --max-delivery-success-ratio-drop 0.01 \
+  --max-order-violation-total-increase 0 \
+  --max-duplicate-ratio-increase 0.01 \
+  --max-ack-missing-ratio-increase 0.01 \
+  --max-ttl-drop-total-increase 0 \
   --gate
 ```
 - 산출물:
@@ -1547,9 +1563,15 @@ python scripts/eval/chat_event_delivery_guarantee.py \
   - reconnect 이후 sync gap 최대치
 - CI 옵션:
   - `RUN_CHAT_EVENT_DELIVERY_GUARANTEE=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_EVENT_DELIVERY_MAX_SUCCESS_DROP`
+    - `CHAT_EVENT_DELIVERY_MAX_ORDER_INCREASE`
+    - `CHAT_EVENT_DELIVERY_MAX_DUPLICATE_INCREASE`
+    - `CHAT_EVENT_DELIVERY_MAX_ACK_INCREASE`
+    - `CHAT_EVENT_DELIVERY_MAX_TTL_INCREASE`
 
 ## Backpressure admission guard (I-0364, Bundle 3)
-- backpressure 이벤트에서 우선순위별 drop/큐 지표/핵심 인텐트 보호율/사용자 안내 누락을 검증:
+- backpressure 이벤트에서 우선순위별 drop/큐 지표/핵심 인텐트 보호율/사용자 안내 누락을 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_backpressure_admission_guard.py \
   --events-jsonl var/chat_governance/backpressure_events.jsonl \
@@ -1561,6 +1583,12 @@ python scripts/eval/chat_backpressure_admission_guard.py \
   --max-p95-queue-latency-ms 3000 \
   --max-guidance-missing-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_backpressure_admission_guard_baseline_v1.json \
+  --max-drop-ratio-increase 0.05 \
+  --max-critical-drop-total-increase 0 \
+  --max-core-protected-ratio-drop 0.02 \
+  --max-p95-queue-latency-ms-increase 500 \
+  --max-guidance-missing-total-increase 0 \
   --gate
 ```
 - 산출물:
@@ -1569,9 +1597,15 @@ python scripts/eval/chat_backpressure_admission_guard.py \
   - queue p95(depth/latency) 및 circuit-open 안내 누락
 - CI 옵션:
   - `RUN_CHAT_BACKPRESSURE_ADMISSION_GUARD=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_BACKPRESSURE_MAX_DROP_INCREASE`
+    - `CHAT_BACKPRESSURE_MAX_CRITICAL_DROP_INCREASE`
+    - `CHAT_BACKPRESSURE_MAX_CORE_PROTECTED_DROP`
+    - `CHAT_BACKPRESSURE_MAX_P95_LATENCY_INCREASE`
+    - `CHAT_BACKPRESSURE_MAX_GUIDANCE_INCREASE`
 
 ## Session resilience drill report gate (I-0364, Bundle 4)
-- connection storm/partial region fail/broker delay 게임데이 결과를 집계해 RTO/손실률/커버리지를 검증:
+- connection storm/partial region fail/broker delay 게임데이 결과를 집계해 RTO/손실률/커버리지를 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_session_resilience_drill_report.py \
   --events-jsonl var/chat_governance/session_resilience_drills.jsonl \
@@ -1581,6 +1615,11 @@ python scripts/eval/chat_session_resilience_drill_report.py \
   --max-avg-rto-sec 900 \
   --max-message-loss-ratio 0.001 \
   --max-stale-days 35 \
+  --baseline-report services/query-service/tests/fixtures/chat_session_resilience_drill_report_baseline_v1.json \
+  --max-open-drill-total-increase 0 \
+  --max-avg-rto-sec-increase 60 \
+  --max-message-loss-ratio-increase 0.0005 \
+  --max-missing-required-scenario-increase 0 \
   --require-scenarios \
   --gate
 ```
@@ -1590,6 +1629,11 @@ python scripts/eval/chat_session_resilience_drill_report.py \
   - 필수 시나리오 누락 여부
 - CI 옵션:
   - `RUN_CHAT_SESSION_RESILIENCE_DRILL_REPORT=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_SESSION_DRILL_MAX_OPEN_INCREASE`
+    - `CHAT_SESSION_DRILL_MAX_AVG_RTO_INCREASE`
+    - `CHAT_SESSION_DRILL_MAX_LOSS_RATIO_INCREASE`
+    - `CHAT_SESSION_DRILL_MAX_MISSING_SCENARIO_INCREASE`
 
 ## Unit economics SLO gate (I-0365, Bundle 1)
 - 세션 비용 이벤트에서 cost-to-resolve와 unresolved burn을 계산해 FinOps SLO를 게이트로 검증:

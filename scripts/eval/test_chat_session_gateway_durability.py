@@ -74,3 +74,33 @@ def test_evaluate_gate_passes_for_healthy_summary():
         max_stale_minutes=60,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_reconnect_resume_heartbeat_affinity_regression():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "reconnect_success_rate": 1.0,
+            "resume_success_rate": 1.0,
+            "heartbeat_miss_ratio": 0.0,
+            "affinity_miss_ratio": 0.0,
+        }
+    }
+    current = {
+        "reconnect_success_rate": 0.6,
+        "resume_success_rate": 0.5,
+        "heartbeat_miss_ratio": 0.3,
+        "affinity_miss_ratio": 0.2,
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_reconnect_success_rate_drop=0.0,
+        max_resume_success_rate_drop=0.0,
+        max_heartbeat_miss_ratio_increase=0.0,
+        max_affinity_miss_ratio_increase=0.0,
+    )
+    assert any("reconnect success regression" in item for item in failures)
+    assert any("resume success regression" in item for item in failures)
+    assert any("heartbeat miss regression" in item for item in failures)
+    assert any("affinity miss regression" in item for item in failures)

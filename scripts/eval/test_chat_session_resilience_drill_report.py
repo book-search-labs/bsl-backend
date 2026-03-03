@@ -82,3 +82,33 @@ def test_evaluate_gate_passes_when_healthy():
         max_stale_days=35,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_open_rto_loss_and_coverage_regression():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "open_drill_total": 0,
+            "avg_rto_sec": 300.0,
+            "message_loss_ratio": 0.0,
+            "missing_required_scenarios": [],
+        }
+    }
+    current = {
+        "open_drill_total": 2,
+        "avg_rto_sec": 1800.0,
+        "message_loss_ratio": 0.02,
+        "missing_required_scenarios": ["BROKER_DELAY", "PARTIAL_REGION_FAIL"],
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_open_drill_total_increase=0,
+        max_avg_rto_sec_increase=0.0,
+        max_message_loss_ratio_increase=0.0,
+        max_missing_required_scenario_increase=0,
+    )
+    assert any("open drill regression" in item for item in failures)
+    assert any("average rto regression" in item for item in failures)
+    assert any("message loss regression" in item for item in failures)
+    assert any("required scenario coverage regression" in item for item in failures)
