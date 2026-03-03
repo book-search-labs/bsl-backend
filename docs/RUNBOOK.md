@@ -3417,6 +3417,30 @@ python scripts/eval/chat_prompt_signing_key_rotation_guard.py \
 - CI 옵션:
   - `RUN_CHAT_PROMPT_SIGNING_KEY_ROTATION_GUARD=1 ./scripts/test.sh`
 
+## Chat prompt tamper incident flow guard gate (B-0386, Bundle 4)
+- 변조 의심 이벤트의 알림/incident triage/자동 격리 흐름을 검증:
+```bash
+python scripts/eval/chat_prompt_tamper_incident_flow_guard.py \
+  --events-jsonl var/chat_prompt_supply/tamper_incident_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-tamper-event-total 5 \
+  --min-alert-coverage-ratio 1.0 \
+  --min-incident-coverage-ratio 1.0 \
+  --min-quarantine-coverage-ratio 1.0 \
+  --max-alert-latency-p95-sec 30 \
+  --max-uncontained-tamper-total 0 \
+  --max-reason-code-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - alert/incident/quarantine coverage 비율
+  - alert latency p95, uncontained tamper 건수
+  - reason_code 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_PROMPT_TAMPER_INCIDENT_FLOW_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

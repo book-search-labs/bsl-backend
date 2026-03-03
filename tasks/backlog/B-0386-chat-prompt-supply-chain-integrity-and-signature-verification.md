@@ -76,3 +76,13 @@ Secure the prompt supply chain for chat:
   - `scripts/eval/test_chat_prompt_signing_key_rotation_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_PROMPT_SIGNING_KEY_ROTATION_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 4)
+- [x] Prompt tamper incident flow guard gate 추가
+  - `scripts/eval/chat_prompt_tamper_incident_flow_guard.py`
+  - tamper 이벤트 alert/incident/quarantine coverage 및 latency 검증
+  - uncontained tamper 및 reason_code 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_prompt_tamper_incident_flow_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_PROMPT_TAMPER_INCIDENT_FLOW_GUARD=1 ./scripts/test.sh`

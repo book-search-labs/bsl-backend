@@ -4512,7 +4512,7 @@ else
   echo "  - set RUN_CHAT_PROMPT_RUNTIME_INTEGRITY_FALLBACK_GUARD=1 to enable"
 fi
 
-echo "[122/125] Chat prompt signing key rotation guard gate (optional)"
+echo "[122/126] Chat prompt signing key rotation guard gate (optional)"
 if [ "${RUN_CHAT_PROMPT_SIGNING_KEY_ROTATION_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_PROMPT_KEY_ROTATION_EVENTS_JSONL="${CHAT_PROMPT_KEY_ROTATION_EVENTS_JSONL:-$ROOT_DIR/var/chat_prompt_supply/key_rotation_events.jsonl}"
@@ -4557,7 +4557,46 @@ else
   echo "  - set RUN_CHAT_PROMPT_SIGNING_KEY_ROTATION_GUARD=1 to enable"
 fi
 
-echo "[123/125] Canonical quality checks (optional)"
+echo "[123/126] Chat prompt tamper incident flow guard gate (optional)"
+if [ "${RUN_CHAT_PROMPT_TAMPER_INCIDENT_FLOW_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_PROMPT_TAMPER_EVENTS_JSONL="${CHAT_PROMPT_TAMPER_EVENTS_JSONL:-$ROOT_DIR/var/chat_prompt_supply/tamper_incident_events.jsonl}"
+    CHAT_PROMPT_TAMPER_WINDOW_HOURS="${CHAT_PROMPT_TAMPER_WINDOW_HOURS:-24}"
+    CHAT_PROMPT_TAMPER_LIMIT="${CHAT_PROMPT_TAMPER_LIMIT:-50000}"
+    CHAT_PROMPT_TAMPER_OUT_DIR="${CHAT_PROMPT_TAMPER_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_PROMPT_TAMPER_MIN_WINDOW="${CHAT_PROMPT_TAMPER_MIN_WINDOW:-0}"
+    CHAT_PROMPT_TAMPER_MIN_EVENT_TOTAL="${CHAT_PROMPT_TAMPER_MIN_EVENT_TOTAL:-0}"
+    CHAT_PROMPT_TAMPER_MIN_ALERT_COVERAGE_RATIO="${CHAT_PROMPT_TAMPER_MIN_ALERT_COVERAGE_RATIO:-0.0}"
+    CHAT_PROMPT_TAMPER_MIN_INCIDENT_COVERAGE_RATIO="${CHAT_PROMPT_TAMPER_MIN_INCIDENT_COVERAGE_RATIO:-0.0}"
+    CHAT_PROMPT_TAMPER_MIN_QUARANTINE_COVERAGE_RATIO="${CHAT_PROMPT_TAMPER_MIN_QUARANTINE_COVERAGE_RATIO:-0.0}"
+    CHAT_PROMPT_TAMPER_MAX_ALERT_LATENCY_P95_SEC="${CHAT_PROMPT_TAMPER_MAX_ALERT_LATENCY_P95_SEC:-1000000}"
+    CHAT_PROMPT_TAMPER_MAX_UNCONTAINED_TOTAL="${CHAT_PROMPT_TAMPER_MAX_UNCONTAINED_TOTAL:-1000000}"
+    CHAT_PROMPT_TAMPER_MAX_REASON_CODE_MISSING_TOTAL="${CHAT_PROMPT_TAMPER_MAX_REASON_CODE_MISSING_TOTAL:-1000000}"
+    CHAT_PROMPT_TAMPER_MAX_STALE_MINUTES="${CHAT_PROMPT_TAMPER_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_prompt_tamper_incident_flow_guard.py" \
+      --events-jsonl "$CHAT_PROMPT_TAMPER_EVENTS_JSONL" \
+      --window-hours "$CHAT_PROMPT_TAMPER_WINDOW_HOURS" \
+      --limit "$CHAT_PROMPT_TAMPER_LIMIT" \
+      --out "$CHAT_PROMPT_TAMPER_OUT_DIR" \
+      --min-window "$CHAT_PROMPT_TAMPER_MIN_WINDOW" \
+      --min-tamper-event-total "$CHAT_PROMPT_TAMPER_MIN_EVENT_TOTAL" \
+      --min-alert-coverage-ratio "$CHAT_PROMPT_TAMPER_MIN_ALERT_COVERAGE_RATIO" \
+      --min-incident-coverage-ratio "$CHAT_PROMPT_TAMPER_MIN_INCIDENT_COVERAGE_RATIO" \
+      --min-quarantine-coverage-ratio "$CHAT_PROMPT_TAMPER_MIN_QUARANTINE_COVERAGE_RATIO" \
+      --max-alert-latency-p95-sec "$CHAT_PROMPT_TAMPER_MAX_ALERT_LATENCY_P95_SEC" \
+      --max-uncontained-tamper-total "$CHAT_PROMPT_TAMPER_MAX_UNCONTAINED_TOTAL" \
+      --max-reason-code-missing-total "$CHAT_PROMPT_TAMPER_MAX_REASON_CODE_MISSING_TOTAL" \
+      --max-stale-minutes "$CHAT_PROMPT_TAMPER_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat prompt tamper incident flow guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_PROMPT_TAMPER_INCIDENT_FLOW_GUARD=1 to enable"
+fi
+
+echo "[124/126] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -4568,7 +4607,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[124/125] E2E tests (optional)"
+echo "[125/126] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -4579,4 +4618,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[125/125] Done"
+echo "[126/126] Done"
