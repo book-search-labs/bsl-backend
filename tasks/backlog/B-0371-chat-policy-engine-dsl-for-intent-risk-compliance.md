@@ -88,3 +88,14 @@ Build a declarative chat policy engine:
   - `scripts/eval/test_chat_policy_eval_trace.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_POLICY_EVAL_TRACE=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Policy rollout rollback gate 추가
+  - `scripts/eval/chat_policy_rollout_rollback.py`
+  - 정책 버전 이벤트(publish/promote/rollback/activate/failure)에서 승인/체크섬/대상버전 무결성 검증
+  - rollback 대상 버전 미등록, 다중 active version 충돌, rollout failure 건수 게이트화
+  - gate 모드에서 governance 위반과 stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_policy_rollout_rollback.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_POLICY_ROLLOUT_ROLLBACK=1 ./scripts/test.sh`

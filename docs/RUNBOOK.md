@@ -1946,6 +1946,30 @@ python scripts/eval/chat_policy_eval_trace.py \
 - CI 옵션:
   - `RUN_CHAT_POLICY_EVAL_TRACE=1 ./scripts/test.sh`
 
+## Policy rollout rollback gate (B-0371, Bundle 3)
+- 정책 번들 버전 교체/롤백 이벤트의 승인/무결성/활성버전 충돌 여부를 검증:
+```bash
+python scripts/eval/chat_policy_rollout_rollback.py \
+  --events-jsonl var/chat_policy/policy_rollout_events.jsonl \
+  --window-hours 24 \
+  --min-window 10 \
+  --max-missing-policy-version-total 0 \
+  --max-promote-without-approval-total 0 \
+  --max-checksum-missing-total 0 \
+  --max-rollback-to-unknown-version-total 0 \
+  --max-active-version-conflict-total 0 \
+  --max-rollout-failure-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - publish/promote/rollback/activate/failure 이벤트 분포
+  - approve 누락 promote, checksum 누락, rollback 대상 버전 누락 건수
+  - 다중 active version 충돌 건수
+  - rollout evidence freshness(stale minutes)
+- CI 옵션:
+  - `RUN_CHAT_POLICY_ROLLOUT_ROLLBACK=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
