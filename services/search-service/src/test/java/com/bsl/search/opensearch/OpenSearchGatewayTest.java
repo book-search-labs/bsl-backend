@@ -162,6 +162,43 @@ class OpenSearchGatewayTest {
     }
 
     @Test
+    void authorFallbackUsesV2AuthorFieldsWithoutWildcard() throws Exception {
+        RestTemplate restTemplate = new RestTemplate();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        OpenSearchGateway gateway = new OpenSearchGateway(restTemplate, objectMapper, properties());
+
+        server.expect(requestTo("http://localhost:9200/books_doc_read/_search"))
+            .andExpect(method(POST))
+            .andExpect(request -> {
+                String body = ((MockClientHttpRequest) request).getBodyAsString(StandardCharsets.UTF_8);
+                JsonNode root = objectMapper.readTree(body);
+                JsonNode boolNode = root.path("query").path("bool");
+                JsonNode filter = boolNode.path("filter");
+                JsonNode must = boolNode.path("must");
+                JsonNode should = must.get(0).path("bool").path("should");
+
+                assertThat(root.path("track_total_hits").asBoolean()).isFalse();
+                assertThat(filter.toString()).contains("\"is_hidden\":false");
+                assertThat(filter.toString()).contains("\"language_code\":\"ko\"");
+
+                assertThat(should.toString()).contains("author_names_ko.exact");
+                assertThat(should.toString()).contains("author_names_ko.compact");
+                assertThat(should.toString()).contains("author_names_ko.auto^6");
+                assertThat(should.toString()).doesNotContain("wildcard");
+            })
+            .andRespond(withSuccess("{\"hits\":{\"hits\":[]}}", MediaType.APPLICATION_JSON));
+
+        gateway.searchAuthorContainsFallbackDetailed(
+            "혜경",
+            10,
+            null,
+            List.of(Map.of("term", Map.of("language_code", "ko"))),
+            false
+        );
+        server.verify();
+    }
+
+    @Test
     void vectorQueryAddsVisibilityFilterAndDocIdSource() throws Exception {
         RestTemplate restTemplate = new RestTemplate();
         MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();

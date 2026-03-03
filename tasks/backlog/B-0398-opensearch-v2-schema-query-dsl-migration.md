@@ -174,3 +174,24 @@ Implement OpenSearch v2 migration pack:
 - Update ingest transformers for `series_name`, `author_names_*`, and vector filter fields.
 - Update autocomplete query template to `bool_prefix + function_score` on v2 fields.
 - Add tests, runbook updates, and blue/green alias cutover support.
+
+---
+
+## Implementation Update (Bundle 1)
+
+- Removed legacy wildcard usage from lexical fallback query in `OpenSearchGateway`.
+  - `searchAuthorContainsFallbackDetailed` now builds v2-safe author-focused clauses using:
+    - `author_names_*.exact` (`term`)
+    - `author_names_*` / `author_names_*.compact` (`match`)
+    - `author_names_*.auto` (`multi_match` + `bool_prefix`)
+  - Global constraints remain enforced:
+    - `filter` includes `term is_hidden:false`
+    - language preference should clauses appended
+- Aligned autocomplete `function_score` with v2 spec ranking signals:
+  - added `gauss(last_seen_at, origin=now, scale=14d, decay=0.5)`
+  - enabled `track_total_hits:false` in suggestion/trending paths
+- Added/updated tests:
+  - `services/search-service/.../OpenSearchGatewayTest.java`
+    - verifies author fallback query uses v2 author fields without wildcard
+  - `services/autocomplete-service/.../OpenSearchGatewayTest.java` (new)
+    - verifies suggestion/trending DSL include gauss decay and visibility contract

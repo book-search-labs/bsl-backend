@@ -435,37 +435,8 @@ public class OpenSearchGateway {
             return new OpenSearchQueryResult(List.of(), null, Map.of());
         }
 
-        String wildcardValue = "*" + escapeWildcardValue(trimmed) + "*";
         Map<String, Object> boolQuery = new LinkedHashMap<>();
-        boolQuery.put(
-            "must",
-            List.of(
-                Map.of(
-                    "bool",
-                    Map.of(
-                        "should",
-                        List.of(
-                            Map.of(
-                                "wildcard",
-                                Map.of(
-                                    "author_names_ko.exact",
-                                    Map.of("value", wildcardValue, "boost", 12.0d, "case_insensitive", true)
-                                )
-                            ),
-                            Map.of(
-                                "wildcard",
-                                Map.of(
-                                    "author_names_en.exact",
-                                    Map.of("value", wildcardValue, "boost", 8.0d, "case_insensitive", true)
-                                )
-                            )
-                        ),
-                        "minimum_should_match",
-                        1
-                    )
-                )
-            )
-        );
+        boolQuery.put("must", List.of(buildAuthorFallbackClause(trimmed)));
         boolQuery.put("filter", buildBooleanFilterClauses(filters, true));
         applyLanguagePreferenceShould(boolQuery);
 
@@ -481,10 +452,36 @@ public class OpenSearchGateway {
         return new OpenSearchQueryResult(extractDocIds(response), body, extractScoresByDocId(response));
     }
 
-    private String escapeWildcardValue(String value) {
-        String escaped = value.replace("\\", "\\\\");
-        escaped = escaped.replace("*", "\\*");
-        return escaped.replace("?", "\\?");
+    private Map<String, Object> buildAuthorFallbackClause(String query) {
+        return Map.of(
+            "bool",
+            Map.of(
+                "should",
+                List.of(
+                    Map.of("term", Map.of("author_names_ko.exact", Map.of("value", query, "boost", 24.0d))),
+                    Map.of("term", Map.of("author_names_en.exact", Map.of("value", query, "boost", 14.0d))),
+                    Map.of("match", Map.of("author_names_ko", Map.of("query", query, "boost", 5.0d))),
+                    Map.of("match", Map.of("author_names_en", Map.of("query", query, "boost", 3.2d))),
+                    Map.of("match", Map.of("author_names_ko.compact", Map.of("query", query, "boost", 2.6d))),
+                    Map.of("match", Map.of("author_names_en.compact", Map.of("query", query, "boost", 1.8d))),
+                    Map.of(
+                        "multi_match",
+                        Map.of(
+                            "query",
+                            query,
+                            "type",
+                            "bool_prefix",
+                            "fields",
+                            List.of("author_names_ko.auto^6", "author_names_en.auto^3"),
+                            "lenient",
+                            true
+                        )
+                    )
+                ),
+                "minimum_should_match",
+                1
+            )
+        );
     }
 
     private Map<String, Object> applyGlobalConstraints(

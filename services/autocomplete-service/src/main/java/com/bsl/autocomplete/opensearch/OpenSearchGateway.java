@@ -95,12 +95,14 @@ public class OpenSearchGateway {
             List.of(
                 Map.of("field_value_factor", Map.of("field", "weight", "factor", WEIGHT_FACTOR, "missing", 0)),
                 Map.of("field_value_factor", Map.of("field", "ctr_7d", "factor", CTR_FACTOR, "missing", 0)),
-                Map.of("field_value_factor", Map.of("field", "popularity_7d", "factor", POPULARITY_FACTOR, "missing", 0))
+                Map.of("field_value_factor", Map.of("field", "popularity_7d", "factor", POPULARITY_FACTOR, "missing", 0)),
+                Map.of("gauss", Map.of("last_seen_at", Map.of("origin", "now", "scale", "14d", "decay", 0.5d)))
             )
         );
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("size", size);
+        body.put("track_total_hits", false);
         body.put("query", Map.of("function_score", functionScore));
         body.put("_source", List.of(
             "suggest_id",
@@ -139,12 +141,14 @@ public class OpenSearchGateway {
             List.of(
                 Map.of("field_value_factor", Map.of("field", "weight", "factor", WEIGHT_FACTOR, "missing", 0)),
                 Map.of("field_value_factor", Map.of("field", "ctr_7d", "factor", CTR_FACTOR, "missing", 0)),
-                Map.of("field_value_factor", Map.of("field", "popularity_7d", "factor", POPULARITY_FACTOR, "missing", 0))
+                Map.of("field_value_factor", Map.of("field", "popularity_7d", "factor", POPULARITY_FACTOR, "missing", 0)),
+                Map.of("gauss", Map.of("last_seen_at", Map.of("origin", "now", "scale", "14d", "decay", 0.5d)))
             )
         );
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("size", size);
+        body.put("track_total_hits", false);
         body.put("query", Map.of("function_score", functionScore));
         body.put("sort", List.of(
             Map.of("_score", Map.of("order", "desc")),
