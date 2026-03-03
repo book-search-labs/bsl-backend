@@ -84,3 +84,34 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_ticket_status_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "lookup_ok_ratio": 1.0,
+                "invalid_status_total": 0,
+                "missing_ticket_ref_total": 0,
+                "stale_status_total": 0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "lookup_ok_ratio": 0.6,
+            "invalid_status_total": 1,
+            "missing_ticket_ref_total": 1,
+            "stale_status_total": 1,
+            "stale_minutes": 40.0,
+        },
+        max_lookup_ok_ratio_drop=0.05,
+        max_invalid_status_total_increase=0,
+        max_missing_ticket_ref_total_increase=0,
+        max_stale_status_total_increase=0,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 5

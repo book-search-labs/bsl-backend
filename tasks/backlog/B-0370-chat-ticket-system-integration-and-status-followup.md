@@ -91,3 +91,24 @@ Integrate chat with support tickets:
   - `scripts/eval/test_chat_ticket_security_ownership.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TICKET_SECURITY_OWNERSHIP=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Baseline drift governance 추가 (B-0370 전체)
+  - `scripts/eval/chat_ticket_creation_integration.py`
+  - `scripts/eval/chat_ticket_status_sync.py`
+  - `scripts/eval/chat_ticket_followup_prompt.py`
+  - `scripts/eval/chat_ticket_security_ownership.py`
+  - 공통으로 `--baseline-report` + drift threshold 인자를 지원하고, `gate.pass`를 `failures + baseline_failures` 결합 기준으로 계산
+  - payload에 `source`, `derived.summary`를 추가해 baseline 비교 입력 스키마를 고정
+- [x] Baseline 회귀 단위테스트 추가
+  - `scripts/eval/test_chat_ticket_creation_integration.py`
+  - `scripts/eval/test_chat_ticket_status_sync.py`
+  - `scripts/eval/test_chat_ticket_followup_prompt.py`
+  - `scripts/eval/test_chat_ticket_security_ownership.py`
+- [x] CI baseline wiring 추가
+  - `scripts/test.sh` 56~59단계에 baseline fixture 자동 연결 + drift env 노출
+- [x] Baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_ticket_creation_integration_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_ticket_status_sync_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_ticket_followup_prompt_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_ticket_security_ownership_baseline_v1.json`

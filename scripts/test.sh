@@ -2621,19 +2621,36 @@ if [ "${RUN_CHAT_TICKET_CREATION_INTEGRATION:-0}" = "1" ]; then
     CHAT_TICKET_CREATE_MAX_MISSING_TICKET_NO_TOTAL="${CHAT_TICKET_CREATE_MAX_MISSING_TICKET_NO_TOTAL:-0}"
     CHAT_TICKET_CREATE_MAX_MISSING_ETA_TOTAL="${CHAT_TICKET_CREATE_MAX_MISSING_ETA_TOTAL:-0}"
     CHAT_TICKET_CREATE_MAX_STALE_MINUTES="${CHAT_TICKET_CREATE_MAX_STALE_MINUTES:-60}"
+    CHAT_TICKET_CREATE_BASELINE_PATH="${CHAT_TICKET_CREATE_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_ticket_creation_integration_baseline_v1.json}"
+    CHAT_TICKET_CREATE_MAX_SUCCESS_RATIO_DROP="${CHAT_TICKET_CREATE_MAX_SUCCESS_RATIO_DROP:-0.05}"
+    CHAT_TICKET_CREATE_MAX_PAYLOAD_MISSING_INCREASE="${CHAT_TICKET_CREATE_MAX_PAYLOAD_MISSING_INCREASE:-0}"
+    CHAT_TICKET_CREATE_MAX_MISSING_TICKET_NO_INCREASE="${CHAT_TICKET_CREATE_MAX_MISSING_TICKET_NO_INCREASE:-0}"
+    CHAT_TICKET_CREATE_MAX_MISSING_ETA_INCREASE="${CHAT_TICKET_CREATE_MAX_MISSING_ETA_INCREASE:-0}"
+    CHAT_TICKET_CREATE_MAX_STALE_MINUTES_INCREASE="${CHAT_TICKET_CREATE_MAX_STALE_MINUTES_INCREASE:-30}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_ticket_creation_integration.py" \
-      --events-jsonl "$CHAT_TICKET_CREATE_EVENTS_JSONL" \
-      --window-hours "$CHAT_TICKET_CREATE_WINDOW_HOURS" \
-      --limit "$CHAT_TICKET_CREATE_LIMIT" \
-      --out "$CHAT_TICKET_CREATE_OUT_DIR" \
-      --min-window "$CHAT_TICKET_CREATE_MIN_WINDOW" \
-      --min-create-success-ratio "$CHAT_TICKET_CREATE_MIN_SUCCESS_RATIO" \
-      --max-payload-missing-fields-total "$CHAT_TICKET_CREATE_MAX_PAYLOAD_MISSING_TOTAL" \
-      --max-missing-ticket-no-total "$CHAT_TICKET_CREATE_MAX_MISSING_TICKET_NO_TOTAL" \
-      --max-missing-eta-total "$CHAT_TICKET_CREATE_MAX_MISSING_ETA_TOTAL" \
-      --max-stale-minutes "$CHAT_TICKET_CREATE_MAX_STALE_MINUTES" \
-      --gate || exit 1
+    CHAT_TICKET_CREATE_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_ticket_creation_integration.py"
+      --events-jsonl "$CHAT_TICKET_CREATE_EVENTS_JSONL"
+      --window-hours "$CHAT_TICKET_CREATE_WINDOW_HOURS"
+      --limit "$CHAT_TICKET_CREATE_LIMIT"
+      --out "$CHAT_TICKET_CREATE_OUT_DIR"
+      --min-window "$CHAT_TICKET_CREATE_MIN_WINDOW"
+      --min-create-success-ratio "$CHAT_TICKET_CREATE_MIN_SUCCESS_RATIO"
+      --max-payload-missing-fields-total "$CHAT_TICKET_CREATE_MAX_PAYLOAD_MISSING_TOTAL"
+      --max-missing-ticket-no-total "$CHAT_TICKET_CREATE_MAX_MISSING_TICKET_NO_TOTAL"
+      --max-missing-eta-total "$CHAT_TICKET_CREATE_MAX_MISSING_ETA_TOTAL"
+      --max-stale-minutes "$CHAT_TICKET_CREATE_MAX_STALE_MINUTES"
+      --max-create-success-ratio-drop "$CHAT_TICKET_CREATE_MAX_SUCCESS_RATIO_DROP"
+      --max-payload-missing-fields-total-increase "$CHAT_TICKET_CREATE_MAX_PAYLOAD_MISSING_INCREASE"
+      --max-missing-ticket-no-total-increase "$CHAT_TICKET_CREATE_MAX_MISSING_TICKET_NO_INCREASE"
+      --max-missing-eta-total-increase "$CHAT_TICKET_CREATE_MAX_MISSING_ETA_INCREASE"
+      --max-stale-minutes-increase "$CHAT_TICKET_CREATE_MAX_STALE_MINUTES_INCREASE"
+      --gate
+    )
+    if [ -f "$CHAT_TICKET_CREATE_BASELINE_PATH" ]; then
+      CHAT_TICKET_CREATE_ARGS+=(--baseline-report "$CHAT_TICKET_CREATE_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_TICKET_CREATE_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat ticket creation integration gate"
   fi
@@ -2655,20 +2672,37 @@ if [ "${RUN_CHAT_TICKET_STATUS_SYNC:-0}" = "1" ]; then
     CHAT_TICKET_STATUS_MAX_MISSING_REF_TOTAL="${CHAT_TICKET_STATUS_MAX_MISSING_REF_TOTAL:-0}"
     CHAT_TICKET_STATUS_MAX_STALE_STATUS_TOTAL="${CHAT_TICKET_STATUS_MAX_STALE_STATUS_TOTAL:-0}"
     CHAT_TICKET_STATUS_MAX_STALE_MINUTES="${CHAT_TICKET_STATUS_MAX_STALE_MINUTES:-60}"
+    CHAT_TICKET_STATUS_BASELINE_PATH="${CHAT_TICKET_STATUS_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_ticket_status_sync_baseline_v1.json}"
+    CHAT_TICKET_STATUS_MAX_OK_RATIO_DROP="${CHAT_TICKET_STATUS_MAX_OK_RATIO_DROP:-0.05}"
+    CHAT_TICKET_STATUS_MAX_INVALID_STATUS_INCREASE="${CHAT_TICKET_STATUS_MAX_INVALID_STATUS_INCREASE:-0}"
+    CHAT_TICKET_STATUS_MAX_MISSING_REF_INCREASE="${CHAT_TICKET_STATUS_MAX_MISSING_REF_INCREASE:-0}"
+    CHAT_TICKET_STATUS_MAX_STALE_STATUS_INCREASE="${CHAT_TICKET_STATUS_MAX_STALE_STATUS_INCREASE:-0}"
+    CHAT_TICKET_STATUS_MAX_STALE_MINUTES_INCREASE="${CHAT_TICKET_STATUS_MAX_STALE_MINUTES_INCREASE:-30}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_ticket_status_sync.py" \
-      --events-jsonl "$CHAT_TICKET_STATUS_EVENTS_JSONL" \
-      --window-hours "$CHAT_TICKET_STATUS_WINDOW_HOURS" \
-      --limit "$CHAT_TICKET_STATUS_LIMIT" \
-      --max-status-age-hours "$CHAT_TICKET_STATUS_MAX_AGE_HOURS" \
-      --out "$CHAT_TICKET_STATUS_OUT_DIR" \
-      --min-window "$CHAT_TICKET_STATUS_MIN_WINDOW" \
-      --min-lookup-ok-ratio "$CHAT_TICKET_STATUS_MIN_OK_RATIO" \
-      --max-invalid-status-total "$CHAT_TICKET_STATUS_MAX_INVALID_STATUS_TOTAL" \
-      --max-missing-ticket-ref-total "$CHAT_TICKET_STATUS_MAX_MISSING_REF_TOTAL" \
-      --max-stale-status-total "$CHAT_TICKET_STATUS_MAX_STALE_STATUS_TOTAL" \
-      --max-stale-minutes "$CHAT_TICKET_STATUS_MAX_STALE_MINUTES" \
-      --gate || exit 1
+    CHAT_TICKET_STATUS_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_ticket_status_sync.py"
+      --events-jsonl "$CHAT_TICKET_STATUS_EVENTS_JSONL"
+      --window-hours "$CHAT_TICKET_STATUS_WINDOW_HOURS"
+      --limit "$CHAT_TICKET_STATUS_LIMIT"
+      --max-status-age-hours "$CHAT_TICKET_STATUS_MAX_AGE_HOURS"
+      --out "$CHAT_TICKET_STATUS_OUT_DIR"
+      --min-window "$CHAT_TICKET_STATUS_MIN_WINDOW"
+      --min-lookup-ok-ratio "$CHAT_TICKET_STATUS_MIN_OK_RATIO"
+      --max-invalid-status-total "$CHAT_TICKET_STATUS_MAX_INVALID_STATUS_TOTAL"
+      --max-missing-ticket-ref-total "$CHAT_TICKET_STATUS_MAX_MISSING_REF_TOTAL"
+      --max-stale-status-total "$CHAT_TICKET_STATUS_MAX_STALE_STATUS_TOTAL"
+      --max-stale-minutes "$CHAT_TICKET_STATUS_MAX_STALE_MINUTES"
+      --max-lookup-ok-ratio-drop "$CHAT_TICKET_STATUS_MAX_OK_RATIO_DROP"
+      --max-invalid-status-total-increase "$CHAT_TICKET_STATUS_MAX_INVALID_STATUS_INCREASE"
+      --max-missing-ticket-ref-total-increase "$CHAT_TICKET_STATUS_MAX_MISSING_REF_INCREASE"
+      --max-stale-status-total-increase "$CHAT_TICKET_STATUS_MAX_STALE_STATUS_INCREASE"
+      --max-stale-minutes-increase "$CHAT_TICKET_STATUS_MAX_STALE_MINUTES_INCREASE"
+      --gate
+    )
+    if [ -f "$CHAT_TICKET_STATUS_BASELINE_PATH" ]; then
+      CHAT_TICKET_STATUS_ARGS+=(--baseline-report "$CHAT_TICKET_STATUS_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_TICKET_STATUS_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat ticket status sync gate"
   fi
@@ -2689,19 +2723,34 @@ if [ "${RUN_CHAT_TICKET_FOLLOWUP_PROMPT:-0}" = "1" ]; then
     CHAT_TICKET_FOLLOWUP_MIN_WAITING_PROMPT_RATIO="${CHAT_TICKET_FOLLOWUP_MIN_WAITING_PROMPT_RATIO:-0.95}"
     CHAT_TICKET_FOLLOWUP_MIN_REMINDER_RATIO="${CHAT_TICKET_FOLLOWUP_MIN_REMINDER_RATIO:-0.90}"
     CHAT_TICKET_FOLLOWUP_MAX_STALE_MINUTES="${CHAT_TICKET_FOLLOWUP_MAX_STALE_MINUTES:-60}"
+    CHAT_TICKET_FOLLOWUP_BASELINE_PATH="${CHAT_TICKET_FOLLOWUP_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_ticket_followup_prompt_baseline_v1.json}"
+    CHAT_TICKET_FOLLOWUP_MAX_MISSING_ACTION_INCREASE="${CHAT_TICKET_FOLLOWUP_MAX_MISSING_ACTION_INCREASE:-0}"
+    CHAT_TICKET_FOLLOWUP_MAX_WAITING_PROMPT_RATIO_DROP="${CHAT_TICKET_FOLLOWUP_MAX_WAITING_PROMPT_RATIO_DROP:-0.05}"
+    CHAT_TICKET_FOLLOWUP_MAX_REMINDER_RATIO_DROP="${CHAT_TICKET_FOLLOWUP_MAX_REMINDER_RATIO_DROP:-0.05}"
+    CHAT_TICKET_FOLLOWUP_MAX_STALE_MINUTES_INCREASE="${CHAT_TICKET_FOLLOWUP_MAX_STALE_MINUTES_INCREASE:-30}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_ticket_followup_prompt.py" \
-      --events-jsonl "$CHAT_TICKET_FOLLOWUP_EVENTS_JSONL" \
-      --window-hours "$CHAT_TICKET_FOLLOWUP_WINDOW_HOURS" \
-      --limit "$CHAT_TICKET_FOLLOWUP_LIMIT" \
-      --reminder-threshold-hours "$CHAT_TICKET_FOLLOWUP_REMINDER_THRESHOLD_HOURS" \
-      --out "$CHAT_TICKET_FOLLOWUP_OUT_DIR" \
-      --min-window "$CHAT_TICKET_FOLLOWUP_MIN_WINDOW" \
-      --max-prompt-missing-action-total "$CHAT_TICKET_FOLLOWUP_MAX_MISSING_ACTION_TOTAL" \
-      --min-waiting-user-prompt-coverage-ratio "$CHAT_TICKET_FOLLOWUP_MIN_WAITING_PROMPT_RATIO" \
-      --min-reminder-due-coverage-ratio "$CHAT_TICKET_FOLLOWUP_MIN_REMINDER_RATIO" \
-      --max-stale-minutes "$CHAT_TICKET_FOLLOWUP_MAX_STALE_MINUTES" \
-      --gate || exit 1
+    CHAT_TICKET_FOLLOWUP_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_ticket_followup_prompt.py"
+      --events-jsonl "$CHAT_TICKET_FOLLOWUP_EVENTS_JSONL"
+      --window-hours "$CHAT_TICKET_FOLLOWUP_WINDOW_HOURS"
+      --limit "$CHAT_TICKET_FOLLOWUP_LIMIT"
+      --reminder-threshold-hours "$CHAT_TICKET_FOLLOWUP_REMINDER_THRESHOLD_HOURS"
+      --out "$CHAT_TICKET_FOLLOWUP_OUT_DIR"
+      --min-window "$CHAT_TICKET_FOLLOWUP_MIN_WINDOW"
+      --max-prompt-missing-action-total "$CHAT_TICKET_FOLLOWUP_MAX_MISSING_ACTION_TOTAL"
+      --min-waiting-user-prompt-coverage-ratio "$CHAT_TICKET_FOLLOWUP_MIN_WAITING_PROMPT_RATIO"
+      --min-reminder-due-coverage-ratio "$CHAT_TICKET_FOLLOWUP_MIN_REMINDER_RATIO"
+      --max-stale-minutes "$CHAT_TICKET_FOLLOWUP_MAX_STALE_MINUTES"
+      --max-prompt-missing-action-total-increase "$CHAT_TICKET_FOLLOWUP_MAX_MISSING_ACTION_INCREASE"
+      --max-waiting-user-prompt-coverage-ratio-drop "$CHAT_TICKET_FOLLOWUP_MAX_WAITING_PROMPT_RATIO_DROP"
+      --max-reminder-due-coverage-ratio-drop "$CHAT_TICKET_FOLLOWUP_MAX_REMINDER_RATIO_DROP"
+      --max-stale-minutes-increase "$CHAT_TICKET_FOLLOWUP_MAX_STALE_MINUTES_INCREASE"
+      --gate
+    )
+    if [ -f "$CHAT_TICKET_FOLLOWUP_BASELINE_PATH" ]; then
+      CHAT_TICKET_FOLLOWUP_ARGS+=(--baseline-report "$CHAT_TICKET_FOLLOWUP_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_TICKET_FOLLOWUP_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat ticket follow-up prompt gate"
   fi
@@ -2722,19 +2771,36 @@ if [ "${RUN_CHAT_TICKET_SECURITY_OWNERSHIP:-0}" = "1" ]; then
     CHAT_TICKET_SECURITY_MAX_PII_UNMASKED_TOTAL="${CHAT_TICKET_SECURITY_MAX_PII_UNMASKED_TOTAL:-0}"
     CHAT_TICKET_SECURITY_MAX_ATTACHMENT_UNMASKED_LINK_TOTAL="${CHAT_TICKET_SECURITY_MAX_ATTACHMENT_UNMASKED_LINK_TOTAL:-0}"
     CHAT_TICKET_SECURITY_MAX_STALE_MINUTES="${CHAT_TICKET_SECURITY_MAX_STALE_MINUTES:-60}"
+    CHAT_TICKET_SECURITY_BASELINE_PATH="${CHAT_TICKET_SECURITY_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_ticket_security_ownership_baseline_v1.json}"
+    CHAT_TICKET_SECURITY_MAX_OWNERSHIP_VIOLATION_INCREASE="${CHAT_TICKET_SECURITY_MAX_OWNERSHIP_VIOLATION_INCREASE:-0}"
+    CHAT_TICKET_SECURITY_MAX_MISSING_OWNER_CHECK_INCREASE="${CHAT_TICKET_SECURITY_MAX_MISSING_OWNER_CHECK_INCREASE:-0}"
+    CHAT_TICKET_SECURITY_MAX_PII_UNMASKED_INCREASE="${CHAT_TICKET_SECURITY_MAX_PII_UNMASKED_INCREASE:-0}"
+    CHAT_TICKET_SECURITY_MAX_ATTACHMENT_UNMASKED_LINK_INCREASE="${CHAT_TICKET_SECURITY_MAX_ATTACHMENT_UNMASKED_LINK_INCREASE:-0}"
+    CHAT_TICKET_SECURITY_MAX_STALE_MINUTES_INCREASE="${CHAT_TICKET_SECURITY_MAX_STALE_MINUTES_INCREASE:-30}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_ticket_security_ownership.py" \
-      --events-jsonl "$CHAT_TICKET_SECURITY_EVENTS_JSONL" \
-      --window-hours "$CHAT_TICKET_SECURITY_WINDOW_HOURS" \
-      --limit "$CHAT_TICKET_SECURITY_LIMIT" \
-      --out "$CHAT_TICKET_SECURITY_OUT_DIR" \
-      --min-window "$CHAT_TICKET_SECURITY_MIN_WINDOW" \
-      --max-ownership-violation-total "$CHAT_TICKET_SECURITY_MAX_OWNERSHIP_VIOLATION_TOTAL" \
-      --max-missing-owner-check-total "$CHAT_TICKET_SECURITY_MAX_MISSING_OWNER_CHECK_TOTAL" \
-      --max-pii-unmasked-total "$CHAT_TICKET_SECURITY_MAX_PII_UNMASKED_TOTAL" \
-      --max-attachment-unmasked-link-total "$CHAT_TICKET_SECURITY_MAX_ATTACHMENT_UNMASKED_LINK_TOTAL" \
-      --max-stale-minutes "$CHAT_TICKET_SECURITY_MAX_STALE_MINUTES" \
-      --gate || exit 1
+    CHAT_TICKET_SECURITY_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_ticket_security_ownership.py"
+      --events-jsonl "$CHAT_TICKET_SECURITY_EVENTS_JSONL"
+      --window-hours "$CHAT_TICKET_SECURITY_WINDOW_HOURS"
+      --limit "$CHAT_TICKET_SECURITY_LIMIT"
+      --out "$CHAT_TICKET_SECURITY_OUT_DIR"
+      --min-window "$CHAT_TICKET_SECURITY_MIN_WINDOW"
+      --max-ownership-violation-total "$CHAT_TICKET_SECURITY_MAX_OWNERSHIP_VIOLATION_TOTAL"
+      --max-missing-owner-check-total "$CHAT_TICKET_SECURITY_MAX_MISSING_OWNER_CHECK_TOTAL"
+      --max-pii-unmasked-total "$CHAT_TICKET_SECURITY_MAX_PII_UNMASKED_TOTAL"
+      --max-attachment-unmasked-link-total "$CHAT_TICKET_SECURITY_MAX_ATTACHMENT_UNMASKED_LINK_TOTAL"
+      --max-stale-minutes "$CHAT_TICKET_SECURITY_MAX_STALE_MINUTES"
+      --max-ownership-violation-total-increase "$CHAT_TICKET_SECURITY_MAX_OWNERSHIP_VIOLATION_INCREASE"
+      --max-missing-owner-check-total-increase "$CHAT_TICKET_SECURITY_MAX_MISSING_OWNER_CHECK_INCREASE"
+      --max-pii-unmasked-total-increase "$CHAT_TICKET_SECURITY_MAX_PII_UNMASKED_INCREASE"
+      --max-attachment-unmasked-link-total-increase "$CHAT_TICKET_SECURITY_MAX_ATTACHMENT_UNMASKED_LINK_INCREASE"
+      --max-stale-minutes-increase "$CHAT_TICKET_SECURITY_MAX_STALE_MINUTES_INCREASE"
+      --gate
+    )
+    if [ -f "$CHAT_TICKET_SECURITY_BASELINE_PATH" ]; then
+      CHAT_TICKET_SECURITY_ARGS+=(--baseline-report "$CHAT_TICKET_SECURITY_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_TICKET_SECURITY_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat ticket security ownership gate"
   fi

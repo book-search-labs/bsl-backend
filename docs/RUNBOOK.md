@@ -2311,7 +2311,7 @@ python scripts/eval/chat_sensitive_action_undo_audit.py \
     - `CHAT_SENSITIVE_UNDO_MAX_STALE_MINUTES_INCREASE`
 
 ## Ticket creation integration gate (B-0370, Bundle 1)
-- 챗→지원티켓 생성 연동에서 요청 payload 완전성과 접수 응답(ticket_no/ETA)을 검증:
+- 챗→지원티켓 생성 연동에서 요청 payload 완전성과 접수 응답(ticket_no/ETA)을 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_ticket_creation_integration.py \
   --events-jsonl var/chat_ticket/ticket_events.jsonl \
@@ -2321,6 +2321,12 @@ python scripts/eval/chat_ticket_creation_integration.py \
   --max-missing-ticket-no-total 0 \
   --max-missing-eta-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_ticket_creation_integration_baseline_v1.json \
+  --max-create-success-ratio-drop 0.05 \
+  --max-payload-missing-fields-total-increase 0 \
+  --max-missing-ticket-no-total-increase 0 \
+  --max-missing-eta-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2329,9 +2335,15 @@ python scripts/eval/chat_ticket_creation_integration.py \
   - success 응답의 ticket_no/ETA 누락 건수
 - CI 옵션:
   - `RUN_CHAT_TICKET_CREATION_INTEGRATION=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TICKET_CREATE_MAX_SUCCESS_RATIO_DROP`
+    - `CHAT_TICKET_CREATE_MAX_PAYLOAD_MISSING_INCREASE`
+    - `CHAT_TICKET_CREATE_MAX_MISSING_TICKET_NO_INCREASE`
+    - `CHAT_TICKET_CREATE_MAX_MISSING_ETA_INCREASE`
+    - `CHAT_TICKET_CREATE_MAX_STALE_MINUTES_INCREASE`
 
 ## Ticket status sync gate (B-0370, Bundle 2)
-- 티켓 상태 조회(`RECEIVED/IN_PROGRESS/WAITING_USER/RESOLVED/CLOSED`) 동기화 품질과 최신성 검증:
+- 티켓 상태 조회(`RECEIVED/IN_PROGRESS/WAITING_USER/RESOLVED/CLOSED`) 동기화 품질과 최신성 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_ticket_status_sync.py \
   --events-jsonl var/chat_ticket/ticket_events.jsonl \
@@ -2342,6 +2354,12 @@ python scripts/eval/chat_ticket_status_sync.py \
   --max-missing-ticket-ref-total 0 \
   --max-stale-status-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_ticket_status_sync_baseline_v1.json \
+  --max-lookup-ok-ratio-drop 0.05 \
+  --max-invalid-status-total-increase 0 \
+  --max-missing-ticket-ref-total-increase 0 \
+  --max-stale-status-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2350,9 +2368,15 @@ python scripts/eval/chat_ticket_status_sync.py \
   - 상태 timestamp 기준 stale status 건수
 - CI 옵션:
   - `RUN_CHAT_TICKET_STATUS_SYNC=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TICKET_STATUS_MAX_OK_RATIO_DROP`
+    - `CHAT_TICKET_STATUS_MAX_INVALID_STATUS_INCREASE`
+    - `CHAT_TICKET_STATUS_MAX_MISSING_REF_INCREASE`
+    - `CHAT_TICKET_STATUS_MAX_STALE_STATUS_INCREASE`
+    - `CHAT_TICKET_STATUS_MAX_STALE_MINUTES_INCREASE`
 
 ## Ticket follow-up prompt gate (B-0370, Bundle 3)
-- 상태 전이에 따른 후속 안내와 장기 `WAITING_USER` 리마인드 정책 준수 여부 검증:
+- 상태 전이에 따른 후속 안내와 장기 `WAITING_USER` 리마인드 정책 준수 여부 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_ticket_followup_prompt.py \
   --events-jsonl var/chat_ticket/ticket_events.jsonl \
@@ -2362,6 +2386,11 @@ python scripts/eval/chat_ticket_followup_prompt.py \
   --min-waiting-user-prompt-coverage-ratio 0.95 \
   --min-reminder-due-coverage-ratio 0.90 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_ticket_followup_prompt_baseline_v1.json \
+  --max-prompt-missing-action-total-increase 0 \
+  --max-waiting-user-prompt-coverage-ratio-drop 0.05 \
+  --max-reminder-due-coverage-ratio-drop 0.05 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2370,9 +2399,14 @@ python scripts/eval/chat_ticket_followup_prompt.py \
   - 후속 프롬프트 action/guidance 누락 건수
 - CI 옵션:
   - `RUN_CHAT_TICKET_FOLLOWUP_PROMPT=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TICKET_FOLLOWUP_MAX_MISSING_ACTION_INCREASE`
+    - `CHAT_TICKET_FOLLOWUP_MAX_WAITING_PROMPT_RATIO_DROP`
+    - `CHAT_TICKET_FOLLOWUP_MAX_REMINDER_RATIO_DROP`
+    - `CHAT_TICKET_FOLLOWUP_MAX_STALE_MINUTES_INCREASE`
 
 ## Ticket security ownership gate (B-0370, Bundle 4)
-- 티켓 조회에서 본인 소유권 검증, PII/첨부 링크 마스킹 준수, evidence freshness를 검증:
+- 티켓 조회에서 본인 소유권 검증, PII/첨부 링크 마스킹 준수, evidence freshness를 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_ticket_security_ownership.py \
   --events-jsonl var/chat_ticket/ticket_events.jsonl \
@@ -2382,6 +2416,12 @@ python scripts/eval/chat_ticket_security_ownership.py \
   --max-pii-unmasked-total 0 \
   --max-attachment-unmasked-link-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_ticket_security_ownership_baseline_v1.json \
+  --max-ownership-violation-total-increase 0 \
+  --max-missing-owner-check-total-increase 0 \
+  --max-pii-unmasked-total-increase 0 \
+  --max-attachment-unmasked-link-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2391,6 +2431,12 @@ python scripts/eval/chat_ticket_security_ownership.py \
   - 최신 보안 이벤트 기준 stale minutes
 - CI 옵션:
   - `RUN_CHAT_TICKET_SECURITY_OWNERSHIP=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TICKET_SECURITY_MAX_OWNERSHIP_VIOLATION_INCREASE`
+    - `CHAT_TICKET_SECURITY_MAX_MISSING_OWNER_CHECK_INCREASE`
+    - `CHAT_TICKET_SECURITY_MAX_PII_UNMASKED_INCREASE`
+    - `CHAT_TICKET_SECURITY_MAX_ATTACHMENT_UNMASKED_LINK_INCREASE`
+    - `CHAT_TICKET_SECURITY_MAX_STALE_MINUTES_INCREASE`
 
 ## Policy DSL lint gate (B-0371, Bundle 1)
 - 선언형 정책 번들의 DSL 정합성(조건/액션/우선순위/버전/유효기간)을 검증:

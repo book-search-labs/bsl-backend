@@ -86,3 +86,34 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_ticket_security_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "ownership_violation_total": 0,
+                "missing_owner_check_total": 0,
+                "pii_unmasked_total": 0,
+                "attachment_unmasked_link_total": 0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "ownership_violation_total": 1,
+            "missing_owner_check_total": 1,
+            "pii_unmasked_total": 1,
+            "attachment_unmasked_link_total": 1,
+            "stale_minutes": 40.0,
+        },
+        max_ownership_violation_total_increase=0,
+        max_missing_owner_check_total_increase=0,
+        max_pii_unmasked_total_increase=0,
+        max_attachment_unmasked_link_total_increase=0,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 5

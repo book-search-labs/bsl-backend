@@ -77,3 +77,34 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_ticket_creation_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "create_success_ratio": 1.0,
+                "payload_missing_fields_total": 0,
+                "missing_ticket_no_total": 0,
+                "missing_eta_total": 0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "create_success_ratio": 0.6,
+            "payload_missing_fields_total": 2,
+            "missing_ticket_no_total": 1,
+            "missing_eta_total": 1,
+            "stale_minutes": 40.0,
+        },
+        max_create_success_ratio_drop=0.05,
+        max_payload_missing_fields_total_increase=0,
+        max_missing_ticket_no_total_increase=0,
+        max_missing_eta_total_increase=0,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 5

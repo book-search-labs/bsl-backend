@@ -99,3 +99,31 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_followup_prompt_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "prompt_missing_action_total": 0,
+                "waiting_user_prompt_coverage_ratio": 1.0,
+                "reminder_due_coverage_ratio": 1.0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "prompt_missing_action_total": 1,
+            "waiting_user_prompt_coverage_ratio": 0.6,
+            "reminder_due_coverage_ratio": 0.6,
+            "stale_minutes": 40.0,
+        },
+        max_prompt_missing_action_total_increase=0,
+        max_waiting_user_prompt_coverage_ratio_drop=0.05,
+        max_reminder_due_coverage_ratio_drop=0.05,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 4
