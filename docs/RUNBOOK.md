@@ -2579,6 +2579,31 @@ python scripts/eval/chat_replay_snapshot_format.py \
 - CI 옵션:
   - `RUN_CHAT_REPLAY_SNAPSHOT_FORMAT=1 ./scripts/test.sh`
 
+## Replay sandbox runtime gate (B-0378, Bundle 2)
+- mock/real 모드 전환과 동일 시드 재현성(비결정성)을 검증:
+```bash
+python scripts/eval/chat_replay_sandbox_runtime.py \
+  --events-jsonl var/chat_graph/replay/sandbox_runs.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-mock-total 10 \
+  --min-real-total 10 \
+  --max-parity-mismatch-total 0 \
+  --max-non-deterministic-total 0 \
+  --max-missing-mode-total 0 \
+  --max-invalid-result-total 0 \
+  --max-missing-seed-total 0 \
+  --max-missing-response-hash-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - mock/real 실행량 및 parity mismatch 건수
+  - 동일 seed 비결정성 건수
+  - mode/result/seed/response hash 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_REPLAY_SANDBOX_RUNTIME=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
