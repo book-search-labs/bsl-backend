@@ -2396,6 +2396,28 @@ python scripts/eval/chat_ticket_evidence_pack_schema.py \
 - CI 옵션:
   - `RUN_CHAT_TICKET_EVIDENCE_PACK_SCHEMA=1 ./scripts/test.sh`
 
+## Ticket evidence pack assembly gate (B-0376, Bundle 2)
+- 티켓 생성 대비 evidence pack 자동 조립률과 누락필드 보완가이드 생성 여부를 검증:
+```bash
+python scripts/eval/chat_ticket_evidence_pack_assembly.py \
+  --tickets-jsonl var/chat_ticket/ticket_events.jsonl \
+  --packs-jsonl var/chat_ticket/evidence_packs.jsonl \
+  --window-hours 24 \
+  --min-window 100 \
+  --max-missing-pack-total 0 \
+  --min-pack-coverage-ratio 0.99 \
+  --max-missing-field-guidance-missing-total 0 \
+  --max-p95-assembly-latency-seconds 120 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - ticket created 대비 evidence pack coverage ratio
+  - 누락필드 존재 시 보완질문/가이드 누락 건수
+  - assembly p95 latency와 evidence freshness
+- CI 옵션:
+  - `RUN_CHAT_TICKET_EVIDENCE_PACK_ASSEMBLY=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

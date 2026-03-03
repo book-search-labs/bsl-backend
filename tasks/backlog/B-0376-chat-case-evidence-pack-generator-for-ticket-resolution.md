@@ -58,3 +58,14 @@ Generate structured chat evidence packs for support tickets:
   - `scripts/eval/test_chat_ticket_evidence_pack_schema.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TICKET_EVIDENCE_PACK_SCHEMA=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Evidence pack assembly gate 추가
+  - `scripts/eval/chat_ticket_evidence_pack_assembly.py`
+  - ticket created 대비 evidence pack 자동 생성 누락(missing pack) 검증
+  - missing_fields 존재 시 보완가이드(followup_prompt 등) 누락 검증
+  - assembly p95 latency와 stale evidence 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_ticket_evidence_pack_assembly.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TICKET_EVIDENCE_PACK_ASSEMBLY=1 ./scripts/test.sh`
