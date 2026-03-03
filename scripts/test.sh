@@ -4823,7 +4823,44 @@ else
   echo "  - set RUN_CHAT_CROSSLINGUAL_QUERY_BRIDGE_GUARD=1 to enable"
 fi
 
-echo "[129/131] Canonical quality checks (optional)"
+echo "[129/132] Chat korean priority ranking guard gate (optional)"
+if [ "${RUN_CHAT_KOREAN_PRIORITY_RANKING_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_KOREAN_PRIORITY_EVENTS_JSONL="${CHAT_KOREAN_PRIORITY_EVENTS_JSONL:-$ROOT_DIR/var/crosslingual/korean_priority_ranking_events.jsonl}"
+    CHAT_KOREAN_PRIORITY_WINDOW_HOURS="${CHAT_KOREAN_PRIORITY_WINDOW_HOURS:-24}"
+    CHAT_KOREAN_PRIORITY_LIMIT="${CHAT_KOREAN_PRIORITY_LIMIT:-100000}"
+    CHAT_KOREAN_PRIORITY_OUT_DIR="${CHAT_KOREAN_PRIORITY_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_KOREAN_PRIORITY_TOP_K="${CHAT_KOREAN_PRIORITY_TOP_K:-3}"
+    CHAT_KOREAN_PRIORITY_MIN_WINDOW="${CHAT_KOREAN_PRIORITY_MIN_WINDOW:-0}"
+    CHAT_KOREAN_PRIORITY_MIN_QUERY_TOTAL="${CHAT_KOREAN_PRIORITY_MIN_QUERY_TOTAL:-0}"
+    CHAT_KOREAN_PRIORITY_MIN_TOP1_RATIO="${CHAT_KOREAN_PRIORITY_MIN_TOP1_RATIO:-0.0}"
+    CHAT_KOREAN_PRIORITY_MIN_TOPK_COVERAGE_RATIO="${CHAT_KOREAN_PRIORITY_MIN_TOPK_COVERAGE_RATIO:-0.0}"
+    CHAT_KOREAN_PRIORITY_MIN_BOOST_RATIO="${CHAT_KOREAN_PRIORITY_MIN_BOOST_RATIO:-0.0}"
+    CHAT_KOREAN_PRIORITY_MAX_NON_KO_TOP1_TOTAL="${CHAT_KOREAN_PRIORITY_MAX_NON_KO_TOP1_TOTAL:-1000000}"
+    CHAT_KOREAN_PRIORITY_MAX_STALE_MINUTES="${CHAT_KOREAN_PRIORITY_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_korean_priority_ranking_guard.py" \
+      --events-jsonl "$CHAT_KOREAN_PRIORITY_EVENTS_JSONL" \
+      --window-hours "$CHAT_KOREAN_PRIORITY_WINDOW_HOURS" \
+      --limit "$CHAT_KOREAN_PRIORITY_LIMIT" \
+      --out "$CHAT_KOREAN_PRIORITY_OUT_DIR" \
+      --top-k "$CHAT_KOREAN_PRIORITY_TOP_K" \
+      --min-window "$CHAT_KOREAN_PRIORITY_MIN_WINDOW" \
+      --min-query-total "$CHAT_KOREAN_PRIORITY_MIN_QUERY_TOTAL" \
+      --min-korean-top1-ratio "$CHAT_KOREAN_PRIORITY_MIN_TOP1_RATIO" \
+      --min-korean-topk-coverage-ratio "$CHAT_KOREAN_PRIORITY_MIN_TOPK_COVERAGE_RATIO" \
+      --min-priority-boost-applied-ratio "$CHAT_KOREAN_PRIORITY_MIN_BOOST_RATIO" \
+      --max-non-korean-top1-when-korean-available-total "$CHAT_KOREAN_PRIORITY_MAX_NON_KO_TOP1_TOTAL" \
+      --max-stale-minutes "$CHAT_KOREAN_PRIORITY_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat korean priority ranking guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_KOREAN_PRIORITY_RANKING_GUARD=1 to enable"
+fi
+
+echo "[130/132] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -4834,7 +4871,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[130/131] E2E tests (optional)"
+echo "[131/132] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -4845,4 +4882,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[131/131] Done"
+echo "[132/132] Done"

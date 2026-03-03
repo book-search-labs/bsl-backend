@@ -3572,6 +3572,29 @@ python scripts/eval/chat_crosslingual_query_bridge_guard.py \
 - CI 옵션:
   - `RUN_CHAT_CROSSLINGUAL_QUERY_BRIDGE_GUARD=1 ./scripts/test.sh`
 
+## Chat korean priority ranking guard gate (B-0388, Bundle 2)
+- 한국어 후보가 존재할 때 한국어 우선 노출(Top1/TopK) 품질을 검증:
+```bash
+python scripts/eval/chat_korean_priority_ranking_guard.py \
+  --events-jsonl var/crosslingual/korean_priority_ranking_events.jsonl \
+  --window-hours 24 \
+  --top-k 3 \
+  --min-window 50 \
+  --min-query-total 50 \
+  --min-korean-top1-ratio 0.80 \
+  --min-korean-topk-coverage-ratio 0.95 \
+  --min-priority-boost-applied-ratio 0.80 \
+  --max-non-korean-top1-when-korean-available-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - korean top1 ratio, korean top-k coverage ratio
+  - priority boost 적용률
+  - 한국어 후보가 있는데 non-KO top1 노출된 위반 건수
+- CI 옵션:
+  - `RUN_CHAT_KOREAN_PRIORITY_RANKING_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

@@ -57,3 +57,13 @@ Strengthen multilingual chat retrieval with Korean priority:
   - `scripts/eval/test_chat_crosslingual_query_bridge_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_CROSSLINGUAL_QUERY_BRIDGE_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 2)
+- [x] Korean priority ranking guard gate 추가
+  - `scripts/eval/chat_korean_priority_ranking_guard.py`
+  - 한국어 후보 존재 시 Top1/TopK 노출 정책 준수 검증
+  - priority boost 적용률 및 non-KO top1 위반 건수 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_korean_priority_ranking_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_KOREAN_PRIORITY_RANKING_GUARD=1 ./scripts/test.sh`
