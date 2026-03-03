@@ -57,3 +57,12 @@ Secure the prompt supply chain for chat:
   - `scripts/eval/test_chat_prompt_signature_verification_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_PROMPT_SIGNATURE_VERIFICATION_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 2)
+- [x] Prompt runtime integrity fallback guard gate 추가
+  - `scripts/eval/chat_prompt_runtime_integrity_fallback_guard.py`
+  - 런타임 무결성 mismatch 시 fallback coverage/success 및 unsafe load 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_prompt_runtime_integrity_fallback_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_PROMPT_RUNTIME_INTEGRITY_FALLBACK_GUARD=1 ./scripts/test.sh`

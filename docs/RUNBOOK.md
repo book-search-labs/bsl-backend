@@ -3366,6 +3366,30 @@ python scripts/eval/chat_prompt_signature_verification_guard.py \
 - CI 옵션:
   - `RUN_CHAT_PROMPT_SIGNATURE_VERIFICATION_GUARD=1 ./scripts/test.sh`
 
+## Chat prompt runtime integrity fallback guard gate (B-0386, Bundle 2)
+- 런타임 해시/무결성 mismatch 발생 시 trusted fallback 강제 여부를 검증:
+```bash
+python scripts/eval/chat_prompt_runtime_integrity_fallback_guard.py \
+  --events-jsonl var/chat_prompt_supply/runtime_integrity_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-runtime-load-total 20 \
+  --min-integrity-checked-ratio 0.99 \
+  --min-fallback-coverage-ratio 1.0 \
+  --min-fallback-success-ratio 1.0 \
+  --max-fallback-missing-total 0 \
+  --max-unsafe-load-total 0 \
+  --max-reason-code-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - integrity checked ratio, fallback coverage/success ratio
+  - mismatch 후 fallback 누락 건수와 unsafe load 건수
+  - reason_code 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_PROMPT_RUNTIME_INTEGRITY_FALLBACK_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

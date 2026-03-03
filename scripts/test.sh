@@ -4432,7 +4432,7 @@ else
   echo "  - set RUN_CHAT_TICKET_KNOWLEDGE_RETRIEVAL_IMPACT_GUARD=1 to enable"
 fi
 
-echo "[120/123] Chat prompt signature verification guard gate (optional)"
+echo "[120/124] Chat prompt signature verification guard gate (optional)"
 if [ "${RUN_CHAT_PROMPT_SIGNATURE_VERIFICATION_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_PROMPT_SIGNATURE_EVENTS_JSONL="${CHAT_PROMPT_SIGNATURE_EVENTS_JSONL:-$ROOT_DIR/var/chat_prompt_supply/signature_events.jsonl}"
@@ -4473,7 +4473,46 @@ else
   echo "  - set RUN_CHAT_PROMPT_SIGNATURE_VERIFICATION_GUARD=1 to enable"
 fi
 
-echo "[121/123] Canonical quality checks (optional)"
+echo "[121/124] Chat prompt runtime integrity fallback guard gate (optional)"
+if [ "${RUN_CHAT_PROMPT_RUNTIME_INTEGRITY_FALLBACK_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_PROMPT_RUNTIME_INTEGRITY_EVENTS_JSONL="${CHAT_PROMPT_RUNTIME_INTEGRITY_EVENTS_JSONL:-$ROOT_DIR/var/chat_prompt_supply/runtime_integrity_events.jsonl}"
+    CHAT_PROMPT_RUNTIME_INTEGRITY_WINDOW_HOURS="${CHAT_PROMPT_RUNTIME_INTEGRITY_WINDOW_HOURS:-24}"
+    CHAT_PROMPT_RUNTIME_INTEGRITY_LIMIT="${CHAT_PROMPT_RUNTIME_INTEGRITY_LIMIT:-50000}"
+    CHAT_PROMPT_RUNTIME_INTEGRITY_OUT_DIR="${CHAT_PROMPT_RUNTIME_INTEGRITY_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_PROMPT_RUNTIME_INTEGRITY_MIN_WINDOW="${CHAT_PROMPT_RUNTIME_INTEGRITY_MIN_WINDOW:-0}"
+    CHAT_PROMPT_RUNTIME_INTEGRITY_MIN_RUNTIME_LOAD_TOTAL="${CHAT_PROMPT_RUNTIME_INTEGRITY_MIN_RUNTIME_LOAD_TOTAL:-0}"
+    CHAT_PROMPT_RUNTIME_INTEGRITY_MIN_CHECKED_RATIO="${CHAT_PROMPT_RUNTIME_INTEGRITY_MIN_CHECKED_RATIO:-0.0}"
+    CHAT_PROMPT_RUNTIME_INTEGRITY_MIN_FALLBACK_COVERAGE_RATIO="${CHAT_PROMPT_RUNTIME_INTEGRITY_MIN_FALLBACK_COVERAGE_RATIO:-0.0}"
+    CHAT_PROMPT_RUNTIME_INTEGRITY_MIN_FALLBACK_SUCCESS_RATIO="${CHAT_PROMPT_RUNTIME_INTEGRITY_MIN_FALLBACK_SUCCESS_RATIO:-0.0}"
+    CHAT_PROMPT_RUNTIME_INTEGRITY_MAX_FALLBACK_MISSING_TOTAL="${CHAT_PROMPT_RUNTIME_INTEGRITY_MAX_FALLBACK_MISSING_TOTAL:-1000000}"
+    CHAT_PROMPT_RUNTIME_INTEGRITY_MAX_UNSAFE_LOAD_TOTAL="${CHAT_PROMPT_RUNTIME_INTEGRITY_MAX_UNSAFE_LOAD_TOTAL:-1000000}"
+    CHAT_PROMPT_RUNTIME_INTEGRITY_MAX_REASON_CODE_MISSING_TOTAL="${CHAT_PROMPT_RUNTIME_INTEGRITY_MAX_REASON_CODE_MISSING_TOTAL:-1000000}"
+    CHAT_PROMPT_RUNTIME_INTEGRITY_MAX_STALE_MINUTES="${CHAT_PROMPT_RUNTIME_INTEGRITY_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_prompt_runtime_integrity_fallback_guard.py" \
+      --events-jsonl "$CHAT_PROMPT_RUNTIME_INTEGRITY_EVENTS_JSONL" \
+      --window-hours "$CHAT_PROMPT_RUNTIME_INTEGRITY_WINDOW_HOURS" \
+      --limit "$CHAT_PROMPT_RUNTIME_INTEGRITY_LIMIT" \
+      --out "$CHAT_PROMPT_RUNTIME_INTEGRITY_OUT_DIR" \
+      --min-window "$CHAT_PROMPT_RUNTIME_INTEGRITY_MIN_WINDOW" \
+      --min-runtime-load-total "$CHAT_PROMPT_RUNTIME_INTEGRITY_MIN_RUNTIME_LOAD_TOTAL" \
+      --min-integrity-checked-ratio "$CHAT_PROMPT_RUNTIME_INTEGRITY_MIN_CHECKED_RATIO" \
+      --min-fallback-coverage-ratio "$CHAT_PROMPT_RUNTIME_INTEGRITY_MIN_FALLBACK_COVERAGE_RATIO" \
+      --min-fallback-success-ratio "$CHAT_PROMPT_RUNTIME_INTEGRITY_MIN_FALLBACK_SUCCESS_RATIO" \
+      --max-fallback-missing-total "$CHAT_PROMPT_RUNTIME_INTEGRITY_MAX_FALLBACK_MISSING_TOTAL" \
+      --max-unsafe-load-total "$CHAT_PROMPT_RUNTIME_INTEGRITY_MAX_UNSAFE_LOAD_TOTAL" \
+      --max-reason-code-missing-total "$CHAT_PROMPT_RUNTIME_INTEGRITY_MAX_REASON_CODE_MISSING_TOTAL" \
+      --max-stale-minutes "$CHAT_PROMPT_RUNTIME_INTEGRITY_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat prompt runtime integrity fallback guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_PROMPT_RUNTIME_INTEGRITY_FALLBACK_GUARD=1 to enable"
+fi
+
+echo "[122/124] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -4484,7 +4523,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[122/123] E2E tests (optional)"
+echo "[123/124] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -4495,4 +4534,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[123/123] Done"
+echo "[124/124] Done"
