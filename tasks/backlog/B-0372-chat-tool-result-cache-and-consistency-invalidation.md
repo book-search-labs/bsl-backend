@@ -46,3 +46,14 @@ Add safe caching for chat tool results:
 - Cache read-heavy tool responses with per-tool TTL policies.
 - Invalidate via order/shipping domain events and staleness guards.
 - Ensure stale/corrupt cache never bypasses correctness checks.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Tool cache strategy gate 추가
+  - `scripts/eval/chat_tool_cache_strategy.py`
+  - lookup 대비 hit/miss/bypass 비율, cache key 필수 필드(user/tool/params hash) 누락 검증
+  - ttl class(`SHORT/MEDIUM/LONG`) 미정의 및 정책 범위 벗어난 TTL을 게이트화
+  - gate 모드에서 hit ratio 저하, bypass 과다, key/TTL 정책 위반, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_tool_cache_strategy.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TOOL_CACHE_STRATEGY=1 ./scripts/test.sh`

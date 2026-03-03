@@ -1994,6 +1994,29 @@ python scripts/eval/chat_policy_safety_checks.py \
 - CI 옵션:
   - `RUN_CHAT_POLICY_SAFETY_CHECKS=1 ./scripts/test.sh`
 
+## Tool cache strategy gate (B-0372, Bundle 1)
+- 툴 결과 캐시 key/TTL 정책과 hit/bypass 품질을 검증:
+```bash
+python scripts/eval/chat_tool_cache_strategy.py \
+  --events-jsonl var/chat_tool/cache_events.jsonl \
+  --window-hours 24 \
+  --min-window 10 \
+  --min-hit-ratio 0.50 \
+  --max-bypass-ratio 0.30 \
+  --max-key-missing-field-total 0 \
+  --max-ttl-class-unknown-total 0 \
+  --max-ttl-out-of-policy-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - lookup 대비 cache hit/miss/bypass 비율
+  - cache key 필수 필드(user_id/tool/params_hash) 누락 건수
+  - ttl class 미정의/정책 범위 벗어남 건수
+  - cache evidence freshness(stale minutes)
+- CI 옵션:
+  - `RUN_CHAT_TOOL_CACHE_STRATEGY=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
