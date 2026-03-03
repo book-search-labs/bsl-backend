@@ -99,3 +99,14 @@ Build a declarative chat policy engine:
   - `scripts/eval/test_chat_policy_rollout_rollback.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_POLICY_ROLLOUT_ROLLBACK=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Policy safety checks gate 추가
+  - `scripts/eval/chat_policy_safety_checks.py`
+  - 동일 조건/우선순위 상충 action, 동일 조건+action 중복 정의 정적 검사
+  - 민감 인텐트 가드 누락 및 고위험/민감 intent ALLOW 규칙을 게이트화
+  - gate 모드에서 contradiction/guard gap/unsafe allow/stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_policy_safety_checks.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_POLICY_SAFETY_CHECKS=1 ./scripts/test.sh`

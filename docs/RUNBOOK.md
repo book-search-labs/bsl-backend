@@ -1970,6 +1970,30 @@ python scripts/eval/chat_policy_rollout_rollback.py \
 - CI 옵션:
   - `RUN_CHAT_POLICY_ROLLOUT_ROLLBACK=1 ./scripts/test.sh`
 
+## Policy safety checks gate (B-0371, Bundle 4)
+- 정책 번들 정적 안전성(모순 규칙/중복 조건/민감 인텐트 가드 누락/고위험 allow)을 검증:
+```bash
+python scripts/eval/chat_policy_safety_checks.py \
+  --bundle-json var/chat_policy/policy_bundle.json \
+  --sensitive-intents CANCEL_ORDER,REFUND_REQUEST,ADDRESS_CHANGE,PAYMENT_CHANGE \
+  --guard-actions DENY,REQUIRE_CONFIRMATION,HANDOFF \
+  --min-rule-total 1 \
+  --max-contradictory-rule-pair-total 0 \
+  --max-duplicate-condition-total 0 \
+  --max-missing-sensitive-guard-intent-total 0 \
+  --max-unsafe-high-risk-allow-total 0 \
+  --max-missing-reason-code-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - 동일 조건/우선순위에서 상충 action이 발생한 rule pair 수
+  - 동일 조건+action 중복 정의 건수
+  - 민감 인텐트별 guard action 누락 건수
+  - 고위험(`HIGH/WRITE_SENSITIVE` 및 민감 intent) ALLOW 규칙 건수
+- CI 옵션:
+  - `RUN_CHAT_POLICY_SAFETY_CHECKS=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
