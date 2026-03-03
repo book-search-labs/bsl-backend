@@ -3523,6 +3523,32 @@ python scripts/eval/chat_intent_calibration_drift_guard.py \
 - CI 옵션:
   - `RUN_CHAT_INTENT_CALIBRATION_DRIFT_GUARD=1 ./scripts/test.sh`
 
+## Chat intent recalibration cycle guard gate (B-0387, Bundle 4)
+- 월간 재보정 운영 루프(성공률/커버리지/주기 위반)를 검증:
+```bash
+python scripts/eval/chat_intent_recalibration_cycle_guard.py \
+  --events-jsonl var/intent_calibration/recalibration_runs.jsonl \
+  --window-hours 2160 \
+  --required-intents ORDER_STATUS,DELIVERY_TRACKING,REFUND_REQUEST,POLICY_QA \
+  --max-recalibration-age-days 35 \
+  --min-window 20 \
+  --min-run-total 10 \
+  --min-success-ratio 0.90 \
+  --min-required-intent-coverage-ratio 1.0 \
+  --max-failed-run-total 0 \
+  --max-stale-intent-total 0 \
+  --max-cadence-violation-total 0 \
+  --min-threshold-update-total 1 \
+  --max-stale-minutes 180 \
+  --gate
+```
+- 산출물:
+  - run total, success ratio, threshold update total
+  - required intent coverage ratio, stale intent 목록
+  - cadence violation 집계
+- CI 옵션:
+  - `RUN_CHAT_INTENT_RECALIBRATION_CYCLE_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

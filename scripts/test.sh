@@ -4743,7 +4743,50 @@ else
   echo "  - set RUN_CHAT_INTENT_CALIBRATION_DRIFT_GUARD=1 to enable"
 fi
 
-echo "[127/129] Canonical quality checks (optional)"
+echo "[127/130] Chat intent recalibration cycle guard gate (optional)"
+if [ "${RUN_CHAT_INTENT_RECALIBRATION_CYCLE_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_INTENT_RECAL_EVENTS_JSONL="${CHAT_INTENT_RECAL_EVENTS_JSONL:-$ROOT_DIR/var/intent_calibration/recalibration_runs.jsonl}"
+    CHAT_INTENT_RECAL_WINDOW_HOURS="${CHAT_INTENT_RECAL_WINDOW_HOURS:-2160}"
+    CHAT_INTENT_RECAL_LIMIT="${CHAT_INTENT_RECAL_LIMIT:-200000}"
+    CHAT_INTENT_RECAL_OUT_DIR="${CHAT_INTENT_RECAL_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_INTENT_RECAL_REQUIRED_INTENTS="${CHAT_INTENT_RECAL_REQUIRED_INTENTS:-ORDER_STATUS,DELIVERY_TRACKING,REFUND_REQUEST,POLICY_QA}"
+    CHAT_INTENT_RECAL_MAX_AGE_DAYS="${CHAT_INTENT_RECAL_MAX_AGE_DAYS:-35}"
+    CHAT_INTENT_RECAL_MIN_WINDOW="${CHAT_INTENT_RECAL_MIN_WINDOW:-0}"
+    CHAT_INTENT_RECAL_MIN_RUN_TOTAL="${CHAT_INTENT_RECAL_MIN_RUN_TOTAL:-0}"
+    CHAT_INTENT_RECAL_MIN_SUCCESS_RATIO="${CHAT_INTENT_RECAL_MIN_SUCCESS_RATIO:-0.0}"
+    CHAT_INTENT_RECAL_MIN_REQUIRED_COVERAGE_RATIO="${CHAT_INTENT_RECAL_MIN_REQUIRED_COVERAGE_RATIO:-0.0}"
+    CHAT_INTENT_RECAL_MAX_FAILED_TOTAL="${CHAT_INTENT_RECAL_MAX_FAILED_TOTAL:-1000000}"
+    CHAT_INTENT_RECAL_MAX_STALE_INTENT_TOTAL="${CHAT_INTENT_RECAL_MAX_STALE_INTENT_TOTAL:-1000000}"
+    CHAT_INTENT_RECAL_MAX_CADENCE_VIOLATION_TOTAL="${CHAT_INTENT_RECAL_MAX_CADENCE_VIOLATION_TOTAL:-1000000}"
+    CHAT_INTENT_RECAL_MIN_THRESHOLD_UPDATE_TOTAL="${CHAT_INTENT_RECAL_MIN_THRESHOLD_UPDATE_TOTAL:-0}"
+    CHAT_INTENT_RECAL_MAX_STALE_MINUTES="${CHAT_INTENT_RECAL_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_intent_recalibration_cycle_guard.py" \
+      --events-jsonl "$CHAT_INTENT_RECAL_EVENTS_JSONL" \
+      --window-hours "$CHAT_INTENT_RECAL_WINDOW_HOURS" \
+      --limit "$CHAT_INTENT_RECAL_LIMIT" \
+      --out "$CHAT_INTENT_RECAL_OUT_DIR" \
+      --required-intents "$CHAT_INTENT_RECAL_REQUIRED_INTENTS" \
+      --max-recalibration-age-days "$CHAT_INTENT_RECAL_MAX_AGE_DAYS" \
+      --min-window "$CHAT_INTENT_RECAL_MIN_WINDOW" \
+      --min-run-total "$CHAT_INTENT_RECAL_MIN_RUN_TOTAL" \
+      --min-success-ratio "$CHAT_INTENT_RECAL_MIN_SUCCESS_RATIO" \
+      --min-required-intent-coverage-ratio "$CHAT_INTENT_RECAL_MIN_REQUIRED_COVERAGE_RATIO" \
+      --max-failed-run-total "$CHAT_INTENT_RECAL_MAX_FAILED_TOTAL" \
+      --max-stale-intent-total "$CHAT_INTENT_RECAL_MAX_STALE_INTENT_TOTAL" \
+      --max-cadence-violation-total "$CHAT_INTENT_RECAL_MAX_CADENCE_VIOLATION_TOTAL" \
+      --min-threshold-update-total "$CHAT_INTENT_RECAL_MIN_THRESHOLD_UPDATE_TOTAL" \
+      --max-stale-minutes "$CHAT_INTENT_RECAL_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat intent recalibration cycle guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_INTENT_RECALIBRATION_CYCLE_GUARD=1 to enable"
+fi
+
+echo "[128/130] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -4754,7 +4797,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[128/129] E2E tests (optional)"
+echo "[129/130] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -4765,4 +4808,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[129/129] Done"
+echo "[130/130] Done"

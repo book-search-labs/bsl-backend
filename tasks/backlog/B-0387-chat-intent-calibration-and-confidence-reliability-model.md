@@ -77,3 +77,13 @@ Improve intent confidence reliability:
   - `scripts/eval/test_chat_intent_calibration_drift_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_INTENT_CALIBRATION_DRIFT_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 4)
+- [x] Intent recalibration cycle guard gate 추가
+  - `scripts/eval/chat_intent_recalibration_cycle_guard.py`
+  - 월간 재보정 성공률/required intent 커버리지/주기 위반 검증
+  - stale intent 및 실패 run 총량 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_intent_recalibration_cycle_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_INTENT_RECALIBRATION_CYCLE_GUARD=1 ./scripts/test.sh`
