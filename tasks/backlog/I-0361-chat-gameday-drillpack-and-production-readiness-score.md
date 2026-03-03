@@ -90,3 +90,18 @@ Operationalize chat reliability with gamedays:
 - [x] CI 진입점 확장
   - `scripts/test.sh`의 `RUN_CHAT_READINESS_SCORE=1` 경로에 baseline/drift env 연결
   - `scripts/test.sh`의 `RUN_CHAT_READINESS_TREND=1` 경로에 baseline/drift env 연결
+
+## Implementation Update (2026-03-04, Bundle 7)
+- [x] Incident feedback binding baseline 거버넌스 강화
+  - `scripts/eval/chat_incident_feedback_binding.py`
+    - `--baseline-report` 지원 및 bound category/incident reason/OTHER drift 비교 추가
+    - gate 결과에 `baseline_failures` 포함
+  - `services/query-service/tests/fixtures/chat_incident_feedback_binding_baseline_v1.json`
+- [x] Gameday readiness packet baseline 거버넌스 강화
+  - `scripts/eval/chat_gameday_readiness_packet.py`
+    - `--baseline-report` 지원 및 status/readiness score/dr open/missing report drift 비교 추가
+    - gate 결과에 `baseline_failures` 포함
+  - `services/query-service/tests/fixtures/chat_gameday_readiness_packet_baseline_v1.json`
+- [x] CI 진입점 확장
+  - `scripts/test.sh`의 `RUN_CHAT_INCIDENT_FEEDBACK_BINDING=1` 경로에 baseline/drift env 연결
+  - `scripts/test.sh`의 `RUN_CHAT_GAMEDAY_PACKET=1` 경로에 baseline/drift env 연결

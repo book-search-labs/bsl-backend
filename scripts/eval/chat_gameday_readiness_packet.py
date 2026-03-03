@@ -7,6 +7,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
+STATUS_ORDER: dict[str, int] = {
+    "READY": 0,
+    "WATCH": 1,
+    "HOLD": 2,
+}
+
 
 def resolve_latest_report(reports_dir: Path, *, prefix: str) -> Path | None:
     rows = sorted(reports_dir.glob(f"{prefix}_*.json"), key=lambda item: item.stat().st_mtime)
@@ -38,6 +44,13 @@ def _safe_bool(value: Any, default: bool = False) -> bool:
             return True
         if normalized in {"0", "false", "no", "off"}:
             return False
+    return default
+
+
+def _safe_status(value: Any, default: str = "HOLD") -> str:
+    status = str(value or "").strip().upper()
+    if status in STATUS_ORDER:
+        return status
     return default
 
 
@@ -85,6 +98,65 @@ def evaluate_packet(
     }
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_payload: Mapping[str, Any],
+    *,
+    max_status_step_increase: int,
+    max_readiness_score_drop: float,
+    max_dr_open_increase: int,
+    max_missing_report_increase: int,
+) -> list[str]:
+    failures: list[str] = []
+    base_decision = baseline_report.get("decision") if isinstance(baseline_report.get("decision"), Mapping) else {}
+    base_signals = baseline_report.get("signals") if isinstance(baseline_report.get("signals"), Mapping) else {}
+    base_missing = baseline_report.get("missing_reports") if isinstance(baseline_report.get("missing_reports"), list) else []
+
+    current_decision = (
+        current_payload.get("decision") if isinstance(current_payload.get("decision"), Mapping) else {}
+    )
+    current_signals = current_payload.get("signals") if isinstance(current_payload.get("signals"), Mapping) else {}
+    current_missing = (
+        current_payload.get("missing_reports") if isinstance(current_payload.get("missing_reports"), list) else []
+    )
+
+    base_status = _safe_status(base_decision.get("status"), "HOLD")
+    cur_status = _safe_status(current_decision.get("status"), "HOLD")
+    status_step = max(0, STATUS_ORDER[cur_status] - STATUS_ORDER[base_status])
+    if status_step > max(0, int(max_status_step_increase)):
+        failures.append(
+            "status regression: "
+            f"baseline={base_status}, current={cur_status}, allowed_step={max(0, int(max_status_step_increase))}"
+        )
+
+    base_score = _safe_float(base_signals.get("readiness_score"), 0.0)
+    cur_score = _safe_float(current_signals.get("readiness_score"), 0.0)
+    score_drop = max(0.0, base_score - cur_score)
+    if score_drop > max(0.0, float(max_readiness_score_drop)):
+        failures.append(
+            "readiness score regression: "
+            f"baseline={base_score:.6f}, current={cur_score:.6f}, allowed_drop={float(max_readiness_score_drop):.6f}"
+        )
+
+    base_dr_open = int(base_signals.get("dr_open_total") or 0)
+    cur_dr_open = int(current_signals.get("dr_open_total") or 0)
+    dr_open_increase = max(0, cur_dr_open - base_dr_open)
+    if dr_open_increase > max(0, int(max_dr_open_increase)):
+        failures.append(
+            "dr open regression: "
+            f"baseline={base_dr_open}, current={cur_dr_open}, allowed_increase={max(0, int(max_dr_open_increase))}"
+        )
+
+    missing_increase = max(0, len(current_missing) - len(base_missing))
+    if missing_increase > max(0, int(max_missing_report_increase)):
+        failures.append(
+            "missing report regression: "
+            f"baseline={len(base_missing)}, current={len(current_missing)}, "
+            f"allowed_increase={max(0, int(max_missing_report_increase))}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     decision = payload.get("decision") if isinstance(payload.get("decision"), Mapping) else {}
     lines: list[str] = []
@@ -117,6 +189,21 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
             lines.append(f"- {item}")
     else:
         lines.append("- (none)")
+    lines.append("")
+    lines.append("## Gate")
+    lines.append("")
+    gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
+    failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
+    lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
+    if failures:
+        for item in failures:
+            lines.append(f"- failure: {item}")
+    if baseline_failures:
+        for item in baseline_failures:
+            lines.append(f"- baseline_failure: {item}")
+    if not failures and not baseline_failures:
+        lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -130,6 +217,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--feedback-prefix", default="chat_incident_feedback_binding")
     parser.add_argument("--min-readiness-score", type=float, default=80.0)
     parser.add_argument("--min-week-avg", type=float, default=80.0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-status-step-increase", type=int, default=0)
+    parser.add_argument("--max-readiness-score-drop", type=float, default=5.0)
+    parser.add_argument("--max-dr-open-increase", type=int, default=0)
+    parser.add_argument("--max-missing-report-increase", type=int, default=0)
     parser.add_argument("--out", default="data/eval/reports")
     parser.add_argument("--prefix", default="chat_gameday_readiness_packet")
     parser.add_argument("--require-all", action="store_true")
@@ -183,9 +275,20 @@ def main() -> int:
         min_week_avg=max(0.0, float(args.min_week_avg)),
     )
 
+    failures: list[str] = []
+    if args.require_all and missing:
+        failures.append(f"missing required reports: {', '.join(missing)}")
+    blockers = decision.get("blockers") if isinstance(decision.get("blockers"), list) else []
+    if blockers:
+        failures.extend([f"blocker: {item}" for item in blockers])
+
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "decision": decision,
+        "source": {
+            "reports_dir": str(reports_dir),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "evidence": {
             "readiness_report": str(readiness_path) if readiness_path else None,
             "trend_report": str(trend_path) if trend_path else None,
@@ -204,7 +307,35 @@ def main() -> int:
             "feedback_bound_category_total": int(feedback_summary.get("bound_category_total") or 0),
         },
         "missing_reports": missing,
+        "gate": {
+            "enabled": bool(args.gate),
+            "pass": True,
+            "failures": failures,
+            "baseline_failures": [],
+            "thresholds": {
+                "min_readiness_score": float(args.min_readiness_score),
+                "min_week_avg": float(args.min_week_avg),
+                "require_all": bool(args.require_all),
+                "max_status_step_increase": int(args.max_status_step_increase),
+                "max_readiness_score_drop": float(args.max_readiness_score_drop),
+                "max_dr_open_increase": int(args.max_dr_open_increase),
+                "max_missing_report_increase": int(args.max_missing_report_increase),
+            },
+        },
     }
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            payload,
+            max_status_step_increase=max(0, int(args.max_status_step_increase)),
+            max_readiness_score_drop=max(0.0, float(args.max_readiness_score_drop)),
+            max_dr_open_increase=max(0, int(args.max_dr_open_increase)),
+            max_missing_report_increase=max(0, int(args.max_missing_report_increase)),
+        )
+    payload["gate"]["baseline_failures"] = baseline_failures
+    payload["gate"]["pass"] = len(failures) == 0 and len(baseline_failures) == 0
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -218,14 +349,13 @@ def main() -> int:
     print(f"report_md={md_path}")
     print(f"status={decision.get('status')}")
     print(f"recommended_action={decision.get('recommended_action')}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    failures: list[str] = []
-    if args.require_all and missing:
-        failures.append(f"missing required reports: {', '.join(missing)}")
-    blockers = decision.get("blockers") if isinstance(decision.get("blockers"), list) else []
-    if blockers:
-        failures.extend([f"blocker: {item}" for item in blockers])
-    if args.gate and failures:
+    if args.gate and not payload["gate"]["pass"]:
+        for item in failures:
+            print(f"[gate-failure] {item}")
+        for item in baseline_failures:
+            print(f"[baseline-failure] {item}")
         return 2
     return 0
 

@@ -45,3 +45,33 @@ def test_build_recommendations_returns_non_empty():
     recommendations = module.build_recommendations(summary, top_n=2)
     assert len(recommendations) == 2
     assert "LLM timeout" in recommendations[0] or "Tool outage" in recommendations[0]
+
+
+def test_compare_with_baseline_detects_category_and_other_regression():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "incident_reason_total": 2,
+            "bound_category_total": 3,
+            "categories": [
+                {"category": "OTHER", "total": 0},
+            ],
+        }
+    }
+    current = {
+        "incident_reason_total": 10,
+        "bound_category_total": 1,
+        "categories": [
+            {"category": "OTHER", "total": 5},
+        ],
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_bound_category_drop=0,
+        max_incident_reason_increase=0,
+        max_other_category_increase=0,
+    )
+    assert any("bound category regression" in item for item in failures)
+    assert any("incident reason regression" in item for item in failures)
+    assert any("OTHER category regression" in item for item in failures)

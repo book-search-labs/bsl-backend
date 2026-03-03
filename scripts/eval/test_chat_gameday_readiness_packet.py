@@ -61,3 +61,35 @@ def test_evaluate_packet_watch_on_warning_only():
     assert decision["recommended_action"] == "hold"
     assert not decision["blockers"]
     assert decision["warnings"]
+
+
+def test_compare_with_baseline_detects_status_and_signal_regression():
+    module = _load_module()
+    baseline = {
+        "decision": {"status": "READY"},
+        "signals": {
+            "readiness_score": 95.0,
+            "dr_open_total": 0,
+        },
+        "missing_reports": [],
+    }
+    current = {
+        "decision": {"status": "HOLD"},
+        "signals": {
+            "readiness_score": 70.0,
+            "dr_open_total": 2,
+        },
+        "missing_reports": ["trend", "feedback"],
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_status_step_increase=0,
+        max_readiness_score_drop=2.0,
+        max_dr_open_increase=0,
+        max_missing_report_increase=0,
+    )
+    assert any("status regression" in item for item in failures)
+    assert any("readiness score regression" in item for item in failures)
+    assert any("dr open regression" in item for item in failures)
+    assert any("missing report regression" in item for item in failures)

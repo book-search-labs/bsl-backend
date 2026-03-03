@@ -1242,7 +1242,7 @@ python scripts/eval/chat_gameday_drillpack.py \
   - `RUN_CHAT_GAMEDAY_DRILLPACK=1 ./scripts/test.sh`
 
 ## Incident feedback binding (I-0361, Bundle 3)
-- 실제 incident와 triage reason을 drill taxonomy로 자동 매핑:
+- 실제 incident와 triage reason을 drill taxonomy로 자동 매핑 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_incident_feedback_binding.py \
   --reports-dir data/eval/reports \
@@ -1252,6 +1252,10 @@ python scripts/eval/chat_incident_feedback_binding.py \
   --top-n 5 \
   --out data/eval/reports \
   --min-bound-categories 1 \
+  --baseline-report services/query-service/tests/fixtures/chat_incident_feedback_binding_baseline_v1.json \
+  --max-bound-category-drop 1 \
+  --max-incident-reason-increase 3 \
+  --max-other-category-increase 1 \
   --gate
 ```
 - 산출물:
@@ -1259,14 +1263,23 @@ python scripts/eval/chat_incident_feedback_binding.py \
   - 다음 drillpack 반영 권고안
 - CI 옵션:
   - `RUN_CHAT_INCIDENT_FEEDBACK_BINDING=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_FEEDBACK_MAX_BOUND_CATEGORY_DROP`
+    - `CHAT_FEEDBACK_MAX_INCIDENT_REASON_INCREASE`
+    - `CHAT_FEEDBACK_MAX_OTHER_CATEGORY_INCREASE`
 
 ## Gameday readiness packet (I-0361, Bundle 5)
-- readiness/trend/drill/feedback 산출물을 하나의 배포 판단 패킷으로 결합:
+- readiness/trend/drill/feedback 산출물을 하나의 배포 판단 패킷으로 결합 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_gameday_readiness_packet.py \
   --reports-dir data/eval/reports \
   --min-readiness-score 80 \
   --min-week-avg 80 \
+  --baseline-report services/query-service/tests/fixtures/chat_gameday_readiness_packet_baseline_v1.json \
+  --max-status-step-increase 0 \
+  --max-readiness-score-drop 5.0 \
+  --max-dr-open-increase 0 \
+  --max-missing-report-increase 0 \
   --out data/eval/reports \
   --gate
 ```
@@ -1274,6 +1287,11 @@ python scripts/eval/chat_gameday_readiness_packet.py \
   - `--require-all` (필수 리포트 누락 시 실패)
 - CI 옵션:
   - `RUN_CHAT_GAMEDAY_PACKET=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_PACKET_MAX_STATUS_STEP_INCREASE`
+    - `CHAT_PACKET_MAX_SCORE_DROP`
+    - `CHAT_PACKET_MAX_DR_OPEN_INCREASE`
+    - `CHAT_PACKET_MAX_MISSING_REPORT_INCREASE`
 
 ## Data retention guard (I-0362, Bundle 1)
 - retention lifecycle 이벤트를 기준으로 TTL 만료/삭제/예외 승인 준수 여부를 게이트로 평가:

@@ -1,0 +1,39 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "source": {
+    "reports_dir": "data/eval/reports",
+    "cycle_prefix": "chat_liveops_cycle",
+    "cycle_limit": 40,
+    "triage_file": "var/chat_graph/triage/chat_launch_failure_cases.jsonl",
+    "baseline_report": null
+  },
+  "summary": {
+    "incident_reason_total": 0,
+    "triage_reason_total": 0,
+    "bound_category_total": 0,
+    "categories": []
+  },
+  "derived": {
+    "summary": {
+      "incident_reason_total": 0,
+      "triage_reason_total": 0,
+      "bound_category_total": 0,
+      "categories": []
+    }
+  },
+  "recommendations": [
+    "피드백 바인딩 데이터가 부족해 기존 drillpack 유지 후 다음 주기 데이터를 수집합니다."
+  ],
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_bound_categories": 0,
+      "max_bound_category_drop": 1,
+      "max_incident_reason_increase": 3,
+      "max_other_category_increase": 1
+    }
+  }
+}

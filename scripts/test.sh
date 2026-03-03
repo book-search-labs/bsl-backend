@@ -898,6 +898,10 @@ if [ "${RUN_CHAT_INCIDENT_FEEDBACK_BINDING:-0}" = "1" ]; then
     CHAT_FEEDBACK_TOP_N="${CHAT_FEEDBACK_TOP_N:-5}"
     CHAT_FEEDBACK_OUT_DIR="${CHAT_FEEDBACK_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
     CHAT_FEEDBACK_MIN_BOUND="${CHAT_FEEDBACK_MIN_BOUND:-0}"
+    CHAT_FEEDBACK_BASELINE_PATH="${CHAT_FEEDBACK_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_incident_feedback_binding_baseline_v1.json}"
+    CHAT_FEEDBACK_MAX_BOUND_CATEGORY_DROP="${CHAT_FEEDBACK_MAX_BOUND_CATEGORY_DROP:-1}"
+    CHAT_FEEDBACK_MAX_INCIDENT_REASON_INCREASE="${CHAT_FEEDBACK_MAX_INCIDENT_REASON_INCREASE:-3}"
+    CHAT_FEEDBACK_MAX_OTHER_CATEGORY_INCREASE="${CHAT_FEEDBACK_MAX_OTHER_CATEGORY_INCREASE:-1}"
 
     CHAT_FEEDBACK_ARGS=(
       "$ROOT_DIR/scripts/eval/chat_incident_feedback_binding.py"
@@ -908,8 +912,14 @@ if [ "${RUN_CHAT_INCIDENT_FEEDBACK_BINDING:-0}" = "1" ]; then
       --top-n "$CHAT_FEEDBACK_TOP_N"
       --out "$CHAT_FEEDBACK_OUT_DIR"
       --min-bound-categories "$CHAT_FEEDBACK_MIN_BOUND"
+      --max-bound-category-drop "$CHAT_FEEDBACK_MAX_BOUND_CATEGORY_DROP"
+      --max-incident-reason-increase "$CHAT_FEEDBACK_MAX_INCIDENT_REASON_INCREASE"
+      --max-other-category-increase "$CHAT_FEEDBACK_MAX_OTHER_CATEGORY_INCREASE"
       --gate
     )
+    if [ -f "$CHAT_FEEDBACK_BASELINE_PATH" ]; then
+      CHAT_FEEDBACK_ARGS+=(--baseline-report "$CHAT_FEEDBACK_BASELINE_PATH")
+    fi
     $PYTHON_BIN "${CHAT_FEEDBACK_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat incident feedback binding"
@@ -926,15 +936,27 @@ if [ "${RUN_CHAT_GAMEDAY_PACKET:-0}" = "1" ]; then
     CHAT_PACKET_MIN_WEEK_AVG="${CHAT_PACKET_MIN_WEEK_AVG:-80}"
     CHAT_PACKET_OUT_DIR="${CHAT_PACKET_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
     CHAT_PACKET_REQUIRE_ALL="${CHAT_PACKET_REQUIRE_ALL:-0}"
+    CHAT_PACKET_BASELINE_PATH="${CHAT_PACKET_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_gameday_readiness_packet_baseline_v1.json}"
+    CHAT_PACKET_MAX_STATUS_STEP_INCREASE="${CHAT_PACKET_MAX_STATUS_STEP_INCREASE:-0}"
+    CHAT_PACKET_MAX_SCORE_DROP="${CHAT_PACKET_MAX_SCORE_DROP:-5.0}"
+    CHAT_PACKET_MAX_DR_OPEN_INCREASE="${CHAT_PACKET_MAX_DR_OPEN_INCREASE:-0}"
+    CHAT_PACKET_MAX_MISSING_REPORT_INCREASE="${CHAT_PACKET_MAX_MISSING_REPORT_INCREASE:-0}"
 
     CHAT_PACKET_ARGS=(
       "$ROOT_DIR/scripts/eval/chat_gameday_readiness_packet.py"
       --reports-dir "$CHAT_PACKET_REPORTS_DIR"
       --min-readiness-score "$CHAT_PACKET_MIN_READINESS"
       --min-week-avg "$CHAT_PACKET_MIN_WEEK_AVG"
+      --max-status-step-increase "$CHAT_PACKET_MAX_STATUS_STEP_INCREASE"
+      --max-readiness-score-drop "$CHAT_PACKET_MAX_SCORE_DROP"
+      --max-dr-open-increase "$CHAT_PACKET_MAX_DR_OPEN_INCREASE"
+      --max-missing-report-increase "$CHAT_PACKET_MAX_MISSING_REPORT_INCREASE"
       --out "$CHAT_PACKET_OUT_DIR"
       --gate
     )
+    if [ -f "$CHAT_PACKET_BASELINE_PATH" ]; then
+      CHAT_PACKET_ARGS+=(--baseline-report "$CHAT_PACKET_BASELINE_PATH")
+    fi
     if [ "$CHAT_PACKET_REQUIRE_ALL" = "1" ]; then
       CHAT_PACKET_ARGS+=(--require-all)
     fi

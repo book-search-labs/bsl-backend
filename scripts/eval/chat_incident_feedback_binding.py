@@ -131,6 +131,63 @@ def build_recommendations(summary: Mapping[str, Any], *, top_n: int) -> list[str
     return recommendations
 
 
+def _category_total(summary: Mapping[str, Any], category: str) -> int:
+    rows = summary.get("categories") if isinstance(summary.get("categories"), list) else []
+    target = str(category or "").strip().upper()
+    for row in rows:
+        if not isinstance(row, Mapping):
+            continue
+        if str(row.get("category") or "").strip().upper() == target:
+            return int(row.get("total") or 0)
+    return 0
+
+
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_bound_category_drop: int,
+    max_incident_reason_increase: int,
+    max_other_category_increase: int,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_bound_total = int(base_summary.get("bound_category_total") or 0)
+    cur_bound_total = int(current_summary.get("bound_category_total") or 0)
+    bound_drop = max(0, base_bound_total - cur_bound_total)
+    if bound_drop > max(0, int(max_bound_category_drop)):
+        failures.append(
+            "bound category regression: "
+            f"baseline={base_bound_total}, current={cur_bound_total}, allowed_drop={max(0, int(max_bound_category_drop))}"
+        )
+
+    base_incident_total = int(base_summary.get("incident_reason_total") or 0)
+    cur_incident_total = int(current_summary.get("incident_reason_total") or 0)
+    incident_increase = max(0, cur_incident_total - base_incident_total)
+    if incident_increase > max(0, int(max_incident_reason_increase)):
+        failures.append(
+            "incident reason regression: "
+            f"baseline={base_incident_total}, current={cur_incident_total}, "
+            f"allowed_increase={max(0, int(max_incident_reason_increase))}"
+        )
+
+    base_other_total = _category_total(base_summary, "OTHER")
+    cur_other_total = _category_total(current_summary, "OTHER")
+    other_increase = max(0, cur_other_total - base_other_total)
+    if other_increase > max(0, int(max_other_category_increase)):
+        failures.append(
+            "OTHER category regression: "
+            f"baseline={base_other_total}, current={cur_other_total}, "
+            f"allowed_increase={max(0, int(max_other_category_increase))}"
+        )
+
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     categories = summary.get("categories") if isinstance(summary.get("categories"), list) else []
@@ -160,6 +217,21 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append("")
     for idx, recommendation in enumerate(recommendations, start=1):
         lines.append(f"{idx}. {recommendation}")
+    lines.append("")
+    lines.append("## Gate")
+    lines.append("")
+    gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
+    failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
+    lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
+    if failures:
+        for failure in failures:
+            lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
+    if not failures and not baseline_failures:
+        lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -173,6 +245,10 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--out", default="data/eval/reports")
     parser.add_argument("--prefix", default="chat_incident_feedback_binding")
     parser.add_argument("--min-bound-categories", type=int, default=1)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-bound-category-drop", type=int, default=1)
+    parser.add_argument("--max-incident-reason-increase", type=int, default=3)
+    parser.add_argument("--max-other-category-increase", type=int, default=1)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -185,13 +261,47 @@ def main() -> int:
     triage_reasons = [str(row.get("reason_code") or "unknown") for row in triage_rows]
     summary = build_binding_summary(incident_reasons, triage_reasons)
     recommendations = build_recommendations(summary, top_n=max(1, int(args.top_n)))
+    failures: list[str] = []
+    if int(summary.get("bound_category_total") or 0) < max(0, int(args.min_bound_categories)):
+        failures.append(
+            f"bound categories below threshold: {int(summary.get('bound_category_total') or 0)} < {int(args.min_bound_categories)}"
+        )
+
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_report = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_report,
+            summary,
+            max_bound_category_drop=max(0, int(args.max_bound_category_drop)),
+            max_incident_reason_increase=max(0, int(args.max_incident_reason_increase)),
+            max_other_category_increase=max(0, int(args.max_other_category_increase)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "reports_dir": str(args.reports_dir),
-        "triage_file": str(args.triage_file),
+        "source": {
+            "reports_dir": str(args.reports_dir),
+            "cycle_prefix": str(args.cycle_prefix),
+            "cycle_limit": max(1, int(args.cycle_limit)),
+            "triage_file": str(args.triage_file),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {"summary": summary},
         "recommendations": recommendations,
+        "gate": {
+            "enabled": bool(args.gate),
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
+            "failures": failures,
+            "baseline_failures": baseline_failures,
+            "thresholds": {
+                "min_bound_categories": int(args.min_bound_categories),
+                "max_bound_category_drop": int(args.max_bound_category_drop),
+                "max_incident_reason_increase": int(args.max_incident_reason_increase),
+                "max_other_category_increase": int(args.max_other_category_increase),
+            },
+        },
     }
 
     out_dir = Path(args.out)
@@ -205,13 +315,12 @@ def main() -> int:
     print(f"report_json={json_path}")
     print(f"report_md={md_path}")
     print(f"bound_category_total={int(summary.get('bound_category_total') or 0)}")
-
-    failures: list[str] = []
-    if int(summary.get("bound_category_total") or 0) < max(0, int(args.min_bound_categories)):
-        failures.append(
-            f"bound categories below threshold: {int(summary.get('bound_category_total') or 0)} < {int(args.min_bound_categories)}"
-        )
-    if args.gate and failures:
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
+    if args.gate and not payload["gate"]["pass"]:
+        for failure in failures:
+            print(f"[gate-failure] {failure}")
+        for failure in baseline_failures:
+            print(f"[baseline-failure] {failure}")
         return 2
     return 0
 

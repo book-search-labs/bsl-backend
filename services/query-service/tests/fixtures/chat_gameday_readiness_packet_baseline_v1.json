@@ -1,0 +1,44 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "decision": {
+    "status": "READY",
+    "recommended_action": "promote",
+    "blockers": [],
+    "warnings": []
+  },
+  "source": {
+    "reports_dir": "data/eval/reports",
+    "baseline_report": null
+  },
+  "evidence": {
+    "readiness_report": null,
+    "trend_report": null,
+    "dr_report": null,
+    "drillpack_report": null,
+    "feedback_report": null
+  },
+  "signals": {
+    "readiness_score": 100.0,
+    "readiness_tier": "READY",
+    "trend_week_avg": 100.0,
+    "dr_open_total": 0,
+    "drillpack_scenario_total": 0,
+    "feedback_bound_category_total": 0
+  },
+  "missing_reports": [],
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_readiness_score": 80.0,
+      "min_week_avg": 80.0,
+      "require_all": false,
+      "max_status_step_increase": 0,
+      "max_readiness_score_drop": 5.0,
+      "max_dr_open_increase": 0,
+      "max_missing_report_increase": 0
+    }
+  }
+}
