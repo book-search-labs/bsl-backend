@@ -1789,6 +1789,28 @@ python scripts/eval/chat_sensitive_action_stepup_auth.py \
 - CI 옵션:
   - `RUN_CHAT_SENSITIVE_ACTION_STEPUP_AUTH=1 ./scripts/test.sh`
 
+## Sensitive action undo-audit gate (B-0369, Bundle 4)
+- 민감 액션 undo window 정책과 전 단계 감사로그(request/confirm/execute/undo)의 완전성을 검증:
+```bash
+python scripts/eval/chat_sensitive_action_undo_audit.py \
+  --events-jsonl var/chat_actions/sensitive_action_events.jsonl \
+  --window-hours 24 \
+  --max-execute-without-request-total 0 \
+  --max-undo-after-window-total 0 \
+  --min-undo-success-ratio 0.80 \
+  --max-audit-trail-incomplete-total 0 \
+  --max-missing-audit-fields-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - undo requested/executed 및 undo success ratio
+  - undo window 초과 요청 건수
+  - execute 전 request 누락 건수
+  - 감사 필수 필드(actor/target/reason/trace/request) 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_SENSITIVE_ACTION_UNDO_AUDIT=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

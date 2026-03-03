@@ -80,3 +80,14 @@ Harden sensitive chat actions:
   - `scripts/eval/test_chat_sensitive_action_stepup_auth.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_SENSITIVE_ACTION_STEPUP_AUTH=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Undo window + audit trail 게이트 추가
+  - `scripts/eval/chat_sensitive_action_undo_audit.py`
+  - undo 지원 액션에서 undo 요청/실행 비율과 undo window 초과 요청을 집계
+  - 실행 경로의 request/confirm 누락과 감사 필드(actor/target/reason/trace/request) 누락을 게이트화
+  - gate 모드에서 undo window 위반, 감사 전이 불완전, 감사 필드 누락, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_sensitive_action_undo_audit.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_SENSITIVE_ACTION_UNDO_AUDIT=1 ./scripts/test.sh`
