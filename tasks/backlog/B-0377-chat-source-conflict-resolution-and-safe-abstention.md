@@ -79,3 +79,14 @@ Implement conflict-aware chat grounding:
   - `scripts/eval/test_chat_source_conflict_safe_abstention.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_SOURCE_CONFLICT_SAFE_ABSTENTION=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Operator feedback gate 추가
+  - `scripts/eval/chat_source_conflict_operator_feedback.py`
+  - high severity conflict의 operator queue 누락 여부 검증
+  - queue coverage/resolved ratio/ack latency 검증
+  - operator note 누락 및 stale feedback 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_source_conflict_operator_feedback.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_SOURCE_CONFLICT_OPERATOR_FEEDBACK=1 ./scripts/test.sh`

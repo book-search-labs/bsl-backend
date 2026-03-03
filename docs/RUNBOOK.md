@@ -2535,6 +2535,28 @@ python scripts/eval/chat_source_conflict_safe_abstention.py \
 - CI 옵션:
   - `RUN_CHAT_SOURCE_CONFLICT_SAFE_ABSTENTION=1 ./scripts/test.sh`
 
+## Source conflict operator feedback gate (B-0377, Bundle 4)
+- 상충 케이스가 운영 큐로 전달되고 처리 루프로 닫히는지 검증:
+```bash
+python scripts/eval/chat_source_conflict_operator_feedback.py \
+  --events-jsonl var/chat_trust/source_conflict_operator_queue.jsonl \
+  --window-hours 24 \
+  --min-window 100 \
+  --max-high-conflict-unqueued-total 0 \
+  --min-high-queue-coverage-ratio 0.95 \
+  --min-resolved-ratio 0.70 \
+  --max-p95-ack-latency-minutes 30 \
+  --max-missing-operator-note-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - high severity queue coverage/unqueued 건수
+  - resolved ratio, operator ack p95 latency
+  - operator note 누락 건수와 feedback freshness
+- CI 옵션:
+  - `RUN_CHAT_SOURCE_CONFLICT_OPERATOR_FEEDBACK=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
