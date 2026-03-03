@@ -57,3 +57,14 @@ Add safe caching for chat tool results:
   - `scripts/eval/test_chat_tool_cache_strategy.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TOOL_CACHE_STRATEGY=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Tool cache invalidation gate 추가
+  - `scripts/eval/chat_tool_cache_invalidation.py`
+  - 도메인 이벤트(order/shipping) 대비 invalidate 커버리지/지연(lag) 검증
+  - resource key 누락, invalidation reason 누락, missing/late invalidate 건수 게이트화
+  - gate 모드에서 커버리지 저하, 무효화 누락/지연, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_tool_cache_invalidation.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TOOL_CACHE_INVALIDATION=1 ./scripts/test.sh`

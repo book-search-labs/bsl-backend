@@ -2017,6 +2017,30 @@ python scripts/eval/chat_tool_cache_strategy.py \
 - CI 옵션:
   - `RUN_CHAT_TOOL_CACHE_STRATEGY=1 ./scripts/test.sh`
 
+## Tool cache invalidation gate (B-0372, Bundle 2)
+- 주문/배송 도메인 이벤트 대비 캐시 무효화 커버리지와 지연을 검증:
+```bash
+python scripts/eval/chat_tool_cache_invalidation.py \
+  --events-jsonl var/chat_tool/cache_events.jsonl \
+  --window-hours 24 \
+  --max-invalidate-lag-minutes 5 \
+  --min-window 10 \
+  --min-coverage-ratio 0.95 \
+  --max-domain-key-missing-total 0 \
+  --max-invalidation-reason-missing-total 0 \
+  --max-missing-invalidate-total 0 \
+  --max-late-invalidate-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - 도메인 이벤트 대비 invalidate 커버리지 비율
+  - domain key 누락/무효화 사유 누락 건수
+  - 무효화 누락 및 지연(late invalidate) 건수
+  - invalidation evidence freshness(stale minutes)
+- CI 옵션:
+  - `RUN_CHAT_TOOL_CACHE_INVALIDATION=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
