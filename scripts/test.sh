@@ -5351,7 +5351,42 @@ else
   echo "  - set RUN_CHAT_POLICY_UNCERTAINTY_SAFE_FALLBACK_GUARD=1 to enable"
 fi
 
-echo "[143/145] Canonical quality checks (optional)"
+echo "[143/146] Chat template missing fail-closed guard gate (optional)"
+if [ "${RUN_CHAT_TEMPLATE_MISSING_FAIL_CLOSED_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TEMPLATE_MISSING_EVENTS_JSONL="${CHAT_TEMPLATE_MISSING_EVENTS_JSONL:-$ROOT_DIR/var/grounded_answer/template_runtime_events.jsonl}"
+    CHAT_TEMPLATE_MISSING_WINDOW_HOURS="${CHAT_TEMPLATE_MISSING_WINDOW_HOURS:-24}"
+    CHAT_TEMPLATE_MISSING_LIMIT="${CHAT_TEMPLATE_MISSING_LIMIT:-100000}"
+    CHAT_TEMPLATE_MISSING_OUT_DIR="${CHAT_TEMPLATE_MISSING_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TEMPLATE_MISSING_MIN_WINDOW="${CHAT_TEMPLATE_MISSING_MIN_WINDOW:-0}"
+    CHAT_TEMPLATE_MISSING_MIN_EVENT_TOTAL="${CHAT_TEMPLATE_MISSING_MIN_EVENT_TOTAL:-0}"
+    CHAT_TEMPLATE_MISSING_MIN_FAIL_CLOSED_RATIO="${CHAT_TEMPLATE_MISSING_MIN_FAIL_CLOSED_RATIO:-0.0}"
+    CHAT_TEMPLATE_MISSING_MAX_FAIL_OPEN_TOTAL="${CHAT_TEMPLATE_MISSING_MAX_FAIL_OPEN_TOTAL:-1000000}"
+    CHAT_TEMPLATE_MISSING_MAX_UNSAFE_RENDERED_TOTAL="${CHAT_TEMPLATE_MISSING_MAX_UNSAFE_RENDERED_TOTAL:-1000000}"
+    CHAT_TEMPLATE_MISSING_MAX_REASON_MISSING_TOTAL="${CHAT_TEMPLATE_MISSING_MAX_REASON_MISSING_TOTAL:-1000000}"
+    CHAT_TEMPLATE_MISSING_MAX_STALE_MINUTES="${CHAT_TEMPLATE_MISSING_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_template_missing_fail_closed_guard.py" \
+      --events-jsonl "$CHAT_TEMPLATE_MISSING_EVENTS_JSONL" \
+      --window-hours "$CHAT_TEMPLATE_MISSING_WINDOW_HOURS" \
+      --limit "$CHAT_TEMPLATE_MISSING_LIMIT" \
+      --out "$CHAT_TEMPLATE_MISSING_OUT_DIR" \
+      --min-window "$CHAT_TEMPLATE_MISSING_MIN_WINDOW" \
+      --min-event-total "$CHAT_TEMPLATE_MISSING_MIN_EVENT_TOTAL" \
+      --min-fail-closed-enforcement-ratio "$CHAT_TEMPLATE_MISSING_MIN_FAIL_CLOSED_RATIO" \
+      --max-fail-open-violation-total "$CHAT_TEMPLATE_MISSING_MAX_FAIL_OPEN_TOTAL" \
+      --max-unsafe-rendered-when-missing-total "$CHAT_TEMPLATE_MISSING_MAX_UNSAFE_RENDERED_TOTAL" \
+      --max-template-missing-reason-missing-total "$CHAT_TEMPLATE_MISSING_MAX_REASON_MISSING_TOTAL" \
+      --max-stale-minutes "$CHAT_TEMPLATE_MISSING_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat template missing fail-closed guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TEMPLATE_MISSING_FAIL_CLOSED_GUARD=1 to enable"
+fi
+
+echo "[144/146] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -5362,7 +5397,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[144/145] E2E tests (optional)"
+echo "[145/146] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -5373,4 +5408,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[145/145] Done"
+echo "[146/146] Done"

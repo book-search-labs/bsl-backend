@@ -3899,6 +3899,28 @@ python scripts/eval/chat_policy_uncertainty_safe_fallback_guard.py \
 - CI 옵션:
   - `RUN_CHAT_POLICY_UNCERTAINTY_SAFE_FALLBACK_GUARD=1 ./scripts/test.sh`
 
+## Chat template missing fail-closed guard gate (B-0393, Bundle 4)
+- 한국어 정책 템플릿 누락 시 fail-open 없이 안전 차단되는지 검증:
+```bash
+python scripts/eval/chat_template_missing_fail_closed_guard.py \
+  --events-jsonl var/grounded_answer/template_runtime_events.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-fail-closed-enforcement-ratio 0.99 \
+  --max-fail-open-violation-total 0 \
+  --max-unsafe-rendered-when-missing-total 0 \
+  --max-template-missing-reason-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - template missing 구간 fail-closed enforcement ratio
+  - fail-open/unsafe rendered 위반 건수
+  - template missing reason_code 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_TEMPLATE_MISSING_FAIL_CLOSED_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

@@ -65,3 +65,13 @@ Implement a grounded answer composer:
   - `scripts/eval/test_chat_policy_uncertainty_safe_fallback_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_POLICY_UNCERTAINTY_SAFE_FALLBACK_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 4)
+- [x] Template missing fail-closed guard gate 추가
+  - `scripts/eval/chat_template_missing_fail_closed_guard.py`
+  - template missing 구간 fail-open 위반/unsafe rendered 검증
+  - template missing reason_code 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_template_missing_fail_closed_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TEMPLATE_MISSING_FAIL_CLOSED_GUARD=1 ./scripts/test.sh`
