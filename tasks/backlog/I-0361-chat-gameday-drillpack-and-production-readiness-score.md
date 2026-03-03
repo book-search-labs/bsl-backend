@@ -75,3 +75,18 @@ Operationalize chat reliability with gamedays:
   - require-all 옵션으로 필수 증거 리포트 누락 차단
 - [x] CI 진입점 추가
   - `RUN_CHAT_GAMEDAY_PACKET=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 6)
+- [x] Readiness score baseline 거버넌스 강화
+  - `scripts/eval/chat_readiness_score.py`
+    - `--baseline-report` 지원 및 score/open incident/rollback/capacity mode drift 비교 추가
+    - gate 결과에 `baseline_failures` 포함
+  - `services/query-service/tests/fixtures/chat_readiness_score_baseline_v1.json`
+- [x] Readiness trend baseline 거버넌스 강화
+  - `scripts/eval/chat_readiness_trend.py`
+    - `--baseline-report` 지원 및 week/month/report_total drift 비교 추가
+    - gate 결과에 `baseline_failures` 포함
+  - `services/query-service/tests/fixtures/chat_readiness_trend_baseline_v1.json`
+- [x] CI 진입점 확장
+  - `scripts/test.sh`의 `RUN_CHAT_READINESS_SCORE=1` 경로에 baseline/drift env 연결
+  - `scripts/test.sh`의 `RUN_CHAT_READINESS_TREND=1` 경로에 baseline/drift env 연결

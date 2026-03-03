@@ -1170,7 +1170,7 @@ python scripts/eval/chat_dr_drill_report.py \
     - `CHAT_DR_DRILL_MAX_AVG_MTTR_INCREASE`
 
 ## Production readiness score (I-0361, Bundle 1)
-- launch/liveops/incident/drill/capacity 신호를 종합해 readiness 점수 계산:
+- launch/liveops/incident/drill/capacity 신호를 종합해 readiness 점수 계산 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_readiness_score.py \
   --reports-dir data/eval/reports \
@@ -1180,6 +1180,11 @@ python scripts/eval/chat_readiness_score.py \
   --llm-audit-log var/llm_gateway/audit.log \
   --min-score 80 \
   --capacity-max-mode DEGRADE_LEVEL_1 \
+  --baseline-report services/query-service/tests/fixtures/chat_readiness_score_baseline_v1.json \
+  --max-score-drop 3.0 \
+  --max-open-incident-increase 0 \
+  --max-rollback-rate-increase 0.05 \
+  --max-capacity-mode-step-increase 0 \
   --out data/eval/reports \
   --gate
 ```
@@ -1189,9 +1194,14 @@ python scripts/eval/chat_readiness_score.py \
   - blocker/warning 목록
 - CI 옵션:
   - `RUN_CHAT_READINESS_SCORE=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_READINESS_MAX_SCORE_DROP`
+    - `CHAT_READINESS_MAX_OPEN_INCIDENT_INCREASE`
+    - `CHAT_READINESS_MAX_ROLLBACK_RATE_INCREASE`
+    - `CHAT_READINESS_MAX_CAPACITY_MODE_STEP_INCREASE`
 
 ## Readiness trend gate (I-0361, Bundle 4)
-- readiness 점수 리포트의 주/월 평균 추세와 다음 목표 점수를 자동 계산:
+- readiness 점수 리포트의 주/월 평균 추세와 다음 목표 점수를 자동 계산 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_readiness_trend.py \
   --reports-dir data/eval/reports \
@@ -1201,6 +1211,10 @@ python scripts/eval/chat_readiness_trend.py \
   --min-reports 1 \
   --min-week-avg 80 \
   --min-month-avg 80 \
+  --baseline-report services/query-service/tests/fixtures/chat_readiness_trend_baseline_v1.json \
+  --max-week-avg-drop 2.0 \
+  --max-month-avg-drop 2.0 \
+  --max-report-total-drop 5 \
   --gate
 ```
 - 산출물:
@@ -1208,6 +1222,10 @@ python scripts/eval/chat_readiness_trend.py \
   - target_next_week / target_next_month
 - CI 옵션:
   - `RUN_CHAT_READINESS_TREND=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_READINESS_TREND_MAX_WEEK_DROP`
+    - `CHAT_READINESS_TREND_MAX_MONTH_DROP`
+    - `CHAT_READINESS_TREND_MAX_REPORT_TOTAL_DROP`
 
 ## Gameday drillpack template (I-0361, Bundle 2)
 - triage reason 분포를 반영해 장애 훈련 체크리스트 자동 생성:

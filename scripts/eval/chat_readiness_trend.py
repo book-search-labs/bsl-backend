@@ -139,6 +139,50 @@ def evaluate_gate(summary: Mapping[str, Any], *, min_reports: int, min_week_avg:
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_week_avg_drop: float,
+    max_month_avg_drop: float,
+    max_report_total_drop: int,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_week_avg = _safe_float(base_summary.get("current_week_avg"), 0.0)
+    cur_week_avg = _safe_float(current_summary.get("current_week_avg"), 0.0)
+    week_drop = max(0.0, base_week_avg - cur_week_avg)
+    if week_drop > max(0.0, float(max_week_avg_drop)):
+        failures.append(
+            "week average regression: "
+            f"baseline={base_week_avg:.6f}, current={cur_week_avg:.6f}, allowed_drop={float(max_week_avg_drop):.6f}"
+        )
+
+    base_month_avg = _safe_float(base_summary.get("current_month_avg"), 0.0)
+    cur_month_avg = _safe_float(current_summary.get("current_month_avg"), 0.0)
+    month_drop = max(0.0, base_month_avg - cur_month_avg)
+    if month_drop > max(0.0, float(max_month_avg_drop)):
+        failures.append(
+            "month average regression: "
+            f"baseline={base_month_avg:.6f}, current={cur_month_avg:.6f}, allowed_drop={float(max_month_avg_drop):.6f}"
+        )
+
+    base_report_total = int(base_summary.get("report_total") or 0)
+    cur_report_total = int(current_summary.get("report_total") or 0)
+    report_drop = max(0, base_report_total - cur_report_total)
+    if report_drop > max(0, int(max_report_total_drop)):
+        failures.append(
+            "report_total regression: "
+            f"baseline={base_report_total}, current={cur_report_total}, allowed_drop={max(0, int(max_report_total_drop))}"
+        )
+
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -161,11 +205,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -179,6 +228,10 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--min-reports", type=int, default=1)
     parser.add_argument("--min-week-avg", type=float, default=80.0)
     parser.add_argument("--min-month-avg", type=float, default=80.0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-week-avg-drop", type=float, default=2.0)
+    parser.add_argument("--max-month-avg-drop", type=float, default=2.0)
+    parser.add_argument("--max-report-total-drop", type=int, default=5)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -193,17 +246,37 @@ def main() -> int:
         min_week_avg=max(0.0, float(args.min_week_avg)),
         min_month_avg=max(0.0, float(args.min_month_avg)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_report = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_report,
+            summary,
+            max_week_avg_drop=max(0.0, float(args.max_week_avg_drop)),
+            max_month_avg_drop=max(0.0, float(args.max_month_avg_drop)),
+            max_report_total_drop=max(0, int(args.max_report_total_drop)),
+        )
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source": {
+            "reports_dir": str(args.reports_dir),
+            "prefix": str(args.prefix),
+            "limit": max(1, int(args.limit)),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_reports": int(args.min_reports),
                 "min_week_avg": float(args.min_week_avg),
                 "min_month_avg": float(args.min_month_avg),
+                "max_week_avg_drop": float(args.max_week_avg_drop),
+                "max_month_avg_drop": float(args.max_month_avg_drop),
+                "max_report_total_drop": int(args.max_report_total_drop),
             },
         },
     }
@@ -220,8 +293,13 @@ def main() -> int:
     print(f"report_md={md_path}")
     print(f"current_week_avg={_safe_float(summary.get('current_week_avg'), 0.0):.2f}")
     print(f"current_month_avg={_safe_float(summary.get('current_month_avg'), 0.0):.2f}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and not payload["gate"]["pass"]:
+        for item in failures:
+            print(f"[gate-failure] {item}")
+        for item in baseline_failures:
+            print(f"[baseline-failure] {item}")
         return 2
     return 0
 

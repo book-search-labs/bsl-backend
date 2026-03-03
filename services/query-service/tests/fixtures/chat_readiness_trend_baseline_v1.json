@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "source": {
+    "reports_dir": "data/eval/reports",
+    "prefix": "chat_readiness_score",
+    "limit": 200,
+    "baseline_report": null
+  },
+  "summary": {
+    "report_total": 0,
+    "week_buckets": {},
+    "month_buckets": {},
+    "current_week": "",
+    "previous_week": "",
+    "current_week_avg": 0.0,
+    "previous_week_avg": 0.0,
+    "weekly_delta": 0.0,
+    "current_month": "",
+    "previous_month": "",
+    "current_month_avg": 0.0,
+    "previous_month_avg": 0.0,
+    "monthly_delta": 0.0,
+    "target_next_week": 1.0,
+    "target_next_month": 1.0,
+    "samples": []
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_reports": 1,
+      "min_week_avg": 80.0,
+      "min_month_avg": 80.0,
+      "max_week_avg_drop": 2.0,
+      "max_month_avg_drop": 2.0,
+      "max_report_total_drop": 5
+    }
+  }
+}

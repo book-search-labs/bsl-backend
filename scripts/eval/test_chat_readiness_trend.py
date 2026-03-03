@@ -60,3 +60,29 @@ def test_evaluate_gate_detects_insufficient_reports():
     )
     assert len(failures) == 1
     assert "insufficient readiness reports" in failures[0]
+
+
+def test_compare_with_baseline_detects_week_month_and_total_regression():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "report_total": 20,
+            "current_week_avg": 90.0,
+            "current_month_avg": 88.0,
+        }
+    }
+    current = {
+        "report_total": 10,
+        "current_week_avg": 70.0,
+        "current_month_avg": 65.0,
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_week_avg_drop=2.0,
+        max_month_avg_drop=2.0,
+        max_report_total_drop=1,
+    )
+    assert any("week average regression" in item for item in failures)
+    assert any("month average regression" in item for item in failures)
+    assert any("report_total regression" in item for item in failures)

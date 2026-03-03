@@ -85,3 +85,35 @@ def test_compute_readiness_watch_when_non_blocking_degradation():
     assert 70.0 <= readiness["total_score"] < 85.0
     assert readiness["tier"] == "WATCH"
     assert readiness["recommended_action"] == "hold"
+
+
+def test_compare_with_baseline_detects_score_and_signal_regression():
+    module = _load_module()
+    baseline = {
+        "readiness": {"total_score": 90.0},
+        "signals": {
+            "open_incident_total": 0,
+            "rollback_rate": 0.01,
+            "capacity_mode": "NORMAL",
+        },
+    }
+    current = {
+        "readiness": {"total_score": 70.0},
+        "signals": {
+            "open_incident_total": 2,
+            "rollback_rate": 0.3,
+            "capacity_mode": "FAIL_CLOSED",
+        },
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_score_drop=5.0,
+        max_open_incident_increase=0,
+        max_rollback_rate_increase=0.05,
+        max_capacity_mode_step_increase=0,
+    )
+    assert any("readiness score regression" in item for item in failures)
+    assert any("open incident regression" in item for item in failures)
+    assert any("rollback rate regression" in item for item in failures)
+    assert any("capacity mode regression" in item for item in failures)

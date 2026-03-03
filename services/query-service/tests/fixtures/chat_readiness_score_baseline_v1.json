@@ -1,0 +1,61 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "launch_gate_report_path": "data/eval/reports/chat_production_launch_gate_baseline.json",
+  "cycle_window_size": 0,
+  "sources": {
+    "reports_dir": "data/eval/reports",
+    "cycle_prefix": "chat_liveops_cycle",
+    "launch_prefix": "chat_production_launch_gate",
+    "llm_audit_log": "var/llm_gateway/audit.log",
+    "baseline_report": null
+  },
+  "signals": {
+    "launch_pass": true,
+    "canary_pass": true,
+    "liveops_pass_ratio": 1.0,
+    "rollback_rate": 0.0,
+    "open_incident_total": 0,
+    "mtta_sec": 0.0,
+    "mttr_sec": 0.0,
+    "capacity_mode": "NORMAL",
+    "dr_recovery_ratio": 1.0,
+    "dr_open_total": 0,
+    "dr_drill_total": 0
+  },
+  "readiness": {
+    "total_score": 100.0,
+    "tier": "READY",
+    "recommended_action": "promote",
+    "components": {
+      "quality": 100.0,
+      "safety": 100.0,
+      "reliability": 100.0,
+      "cost": 100.0,
+      "recovery": 100.0
+    },
+    "weights": {
+      "quality": 25.0,
+      "safety": 20.0,
+      "reliability": 25.0,
+      "cost": 15.0,
+      "recovery": 15.0
+    },
+    "blockers": [],
+    "warnings": []
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_score": 80.0,
+      "capacity_max_mode": "DEGRADE_LEVEL_1",
+      "require_promote": false,
+      "max_score_drop": 3.0,
+      "max_open_incident_increase": 0,
+      "max_rollback_rate_increase": 0.05,
+      "max_capacity_mode_step_increase": 0
+    }
+  }
+}
