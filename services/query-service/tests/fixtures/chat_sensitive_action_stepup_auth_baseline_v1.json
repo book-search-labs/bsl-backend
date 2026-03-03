@@ -1,0 +1,63 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "events_jsonl": "var/chat_actions/sensitive_action_events.jsonl",
+  "source": {
+    "events_jsonl": "var/chat_actions/sensitive_action_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": null
+  },
+  "summary": {
+    "window_size": 0,
+    "action_total": 0,
+    "high_risk_total": 0,
+    "stepup_required_total": 0,
+    "stepup_challenge_total": 0,
+    "stepup_verified_total": 0,
+    "stepup_failure_total": 0,
+    "stepup_failure_blocked_total": 0,
+    "stepup_failure_block_ratio": 1.0,
+    "high_risk_execute_without_stepup_total": 0,
+    "stepup_failed_then_execute_total": 0,
+    "stepup_latency_p95_sec": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "action_total": 0,
+      "high_risk_total": 0,
+      "stepup_required_total": 0,
+      "stepup_challenge_total": 0,
+      "stepup_verified_total": 0,
+      "stepup_failure_total": 0,
+      "stepup_failure_blocked_total": 0,
+      "stepup_failure_block_ratio": 1.0,
+      "high_risk_execute_without_stepup_total": 0,
+      "stepup_failed_then_execute_total": 0,
+      "stepup_latency_p95_sec": 0.0,
+      "latest_event_time": null,
+      "stale_minutes": 0.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_high_risk_execute_without_stepup_total": 0,
+      "max_stepup_failed_then_execute_total": 0,
+      "min_stepup_failure_block_ratio": 1.0,
+      "max_stepup_latency_p95_sec": 300.0,
+      "max_stale_minutes": 60.0,
+      "max_high_risk_execute_without_stepup_total_increase": 0,
+      "max_stepup_failed_then_execute_total_increase": 0,
+      "max_stepup_failure_block_ratio_drop": 0.05,
+      "max_stepup_latency_p95_sec_increase": 60.0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

@@ -120,3 +120,37 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_undo_audit_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "execute_without_request_total": 0,
+                "undo_after_window_total": 0,
+                "undo_success_ratio": 1.0,
+                "audit_trail_incomplete_total": 0,
+                "missing_audit_fields_total": 0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "execute_without_request_total": 1,
+            "undo_after_window_total": 1,
+            "undo_success_ratio": 0.6,
+            "audit_trail_incomplete_total": 1,
+            "missing_audit_fields_total": 5,
+            "stale_minutes": 40.0,
+        },
+        max_execute_without_request_total_increase=0,
+        max_undo_after_window_total_increase=0,
+        max_undo_success_ratio_drop=0.05,
+        max_audit_trail_incomplete_total_increase=0,
+        max_missing_audit_fields_total_increase=0,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 6

@@ -67,3 +67,34 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_stepup_auth_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "high_risk_execute_without_stepup_total": 0,
+                "stepup_failed_then_execute_total": 0,
+                "stepup_failure_block_ratio": 1.0,
+                "stepup_latency_p95_sec": 30.0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "high_risk_execute_without_stepup_total": 1,
+            "stepup_failed_then_execute_total": 1,
+            "stepup_failure_block_ratio": 0.6,
+            "stepup_latency_p95_sec": 180.0,
+            "stale_minutes": 40.0,
+        },
+        max_high_risk_execute_without_stepup_total_increase=0,
+        max_stepup_failed_then_execute_total_increase=0,
+        max_stepup_failure_block_ratio_drop=0.05,
+        max_stepup_latency_p95_sec_increase=60.0,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 5

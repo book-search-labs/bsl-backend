@@ -84,3 +84,37 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_sensitive_risk_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "unknown_risk_total": 0,
+                "high_risk_without_stepup_total": 0,
+                "irreversible_not_high_risk_total": 0,
+                "missing_actor_total": 0,
+                "missing_target_total": 0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "unknown_risk_total": 1,
+            "high_risk_without_stepup_total": 1,
+            "irreversible_not_high_risk_total": 1,
+            "missing_actor_total": 1,
+            "missing_target_total": 1,
+            "stale_minutes": 40.0,
+        },
+        max_unknown_risk_total_increase=0,
+        max_high_risk_without_stepup_total_increase=0,
+        max_irreversible_not_high_risk_total_increase=0,
+        max_missing_actor_total_increase=0,
+        max_missing_target_total_increase=0,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 6

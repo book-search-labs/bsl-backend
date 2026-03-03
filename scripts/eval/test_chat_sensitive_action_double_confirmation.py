@@ -80,3 +80,40 @@ def test_evaluate_gate_allows_empty_window_with_zero_min():
         max_stale_minutes=60.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_double_confirmation_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "execute_without_double_confirmation_total": 0,
+                "token_missing_on_execute_total": 0,
+                "token_reuse_total": 0,
+                "token_mismatch_total": 0,
+                "token_expired_total": 0,
+                "token_validation_ratio": 1.0,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "execute_without_double_confirmation_total": 1,
+            "token_missing_on_execute_total": 1,
+            "token_reuse_total": 1,
+            "token_mismatch_total": 1,
+            "token_expired_total": 1,
+            "token_validation_ratio": 0.7,
+            "stale_minutes": 40.0,
+        },
+        max_execute_without_double_confirmation_total_increase=0,
+        max_token_missing_on_execute_total_increase=0,
+        max_token_reuse_total_increase=0,
+        max_token_mismatch_total_increase=0,
+        max_token_expired_total_increase=0,
+        max_token_validation_ratio_drop=0.05,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 7

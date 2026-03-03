@@ -2168,7 +2168,7 @@ python scripts/eval/chat_low_reliability_guardrail.py \
     - `CHAT_LOW_GUARDRAIL_MAX_STALE_MINUTES_INCREASE`
 
 ## Sensitive action risk classification gate (B-0369, Bundle 1)
-- 민감 액션 리스크 분류 품질과 고위험 step-up 정책(추가 인증 요구) 준수 여부를 검증:
+- 민감 액션 리스크 분류 품질과 고위험 step-up 정책(추가 인증 요구) 준수 여부를 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_sensitive_action_risk_classification.py \
   --events-jsonl var/chat_actions/sensitive_action_events.jsonl \
@@ -2179,6 +2179,13 @@ python scripts/eval/chat_sensitive_action_risk_classification.py \
   --max-missing-actor-total 0 \
   --max-missing-target-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_sensitive_action_risk_classification_baseline_v1.json \
+  --max-unknown-risk-total-increase 0 \
+  --max-high-risk-without-stepup-total-increase 0 \
+  --max-irreversible-not-high-risk-total-increase 0 \
+  --max-missing-actor-total-increase 0 \
+  --max-missing-target-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2188,9 +2195,16 @@ python scripts/eval/chat_sensitive_action_risk_classification.py \
   - actor/target 감사 필드 누락 건수
 - CI 옵션:
   - `RUN_CHAT_SENSITIVE_ACTION_RISK_CLASSIFICATION=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_SENSITIVE_RISK_MAX_UNKNOWN_TOTAL_INCREASE`
+    - `CHAT_SENSITIVE_RISK_MAX_HIGH_NO_STEPUP_TOTAL_INCREASE`
+    - `CHAT_SENSITIVE_RISK_MAX_IRREVERSIBLE_NOT_HIGH_TOTAL_INCREASE`
+    - `CHAT_SENSITIVE_RISK_MAX_MISSING_ACTOR_TOTAL_INCREASE`
+    - `CHAT_SENSITIVE_RISK_MAX_MISSING_TARGET_TOTAL_INCREASE`
+    - `CHAT_SENSITIVE_RISK_MAX_STALE_MINUTES_INCREASE`
 
 ## Sensitive action double confirmation gate (B-0369, Bundle 2)
-- MEDIUM/HIGH 리스크 액션의 이중 확인(2-step) 및 one-time confirmation token 검증을 강제:
+- MEDIUM/HIGH 리스크 액션의 이중 확인(2-step) 및 one-time confirmation token 검증을 강제 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_sensitive_action_double_confirmation.py \
   --events-jsonl var/chat_actions/sensitive_action_events.jsonl \
@@ -2202,6 +2216,14 @@ python scripts/eval/chat_sensitive_action_double_confirmation.py \
   --max-token-expired-total 0 \
   --min-token-validation-ratio 0.95 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_sensitive_action_double_confirmation_baseline_v1.json \
+  --max-execute-without-double-confirmation-total-increase 0 \
+  --max-token-missing-on-execute-total-increase 0 \
+  --max-token-reuse-total-increase 0 \
+  --max-token-mismatch-total-increase 0 \
+  --max-token-expired-total-increase 0 \
+  --max-token-validation-ratio-drop 0.05 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2210,9 +2232,17 @@ python scripts/eval/chat_sensitive_action_double_confirmation.py \
   - token validation ratio
 - CI 옵션:
   - `RUN_CHAT_SENSITIVE_ACTION_DOUBLE_CONFIRMATION=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_SENSITIVE_DOUBLE_MAX_EXECUTE_NO_DOUBLE_TOTAL_INCREASE`
+    - `CHAT_SENSITIVE_DOUBLE_MAX_TOKEN_MISSING_ON_EXECUTE_TOTAL_INCREASE`
+    - `CHAT_SENSITIVE_DOUBLE_MAX_TOKEN_REUSE_TOTAL_INCREASE`
+    - `CHAT_SENSITIVE_DOUBLE_MAX_TOKEN_MISMATCH_TOTAL_INCREASE`
+    - `CHAT_SENSITIVE_DOUBLE_MAX_TOKEN_EXPIRED_TOTAL_INCREASE`
+    - `CHAT_SENSITIVE_DOUBLE_MAX_TOKEN_VALIDATION_RATIO_DROP`
+    - `CHAT_SENSITIVE_DOUBLE_MAX_STALE_MINUTES_INCREASE`
 
 ## Sensitive action step-up auth gate (B-0369, Bundle 3)
-- HIGH 리스크 액션의 추가 인증(step-up auth) 실패/타임아웃 시 차단·상담전환 정책 준수 여부를 검증:
+- HIGH 리스크 액션의 추가 인증(step-up auth) 실패/타임아웃 시 차단·상담전환 정책 준수 여부를 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_sensitive_action_stepup_auth.py \
   --events-jsonl var/chat_actions/sensitive_action_events.jsonl \
@@ -2222,6 +2252,12 @@ python scripts/eval/chat_sensitive_action_stepup_auth.py \
   --min-stepup-failure-block-ratio 1.0 \
   --max-stepup-latency-p95-sec 300 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_sensitive_action_stepup_auth_baseline_v1.json \
+  --max-high-risk-execute-without-stepup-total-increase 0 \
+  --max-stepup-failed-then-execute-total-increase 0 \
+  --max-stepup-failure-block-ratio-drop 0.05 \
+  --max-stepup-latency-p95-sec-increase 60 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2231,9 +2267,15 @@ python scripts/eval/chat_sensitive_action_stepup_auth.py \
   - step-up latency p95
 - CI 옵션:
   - `RUN_CHAT_SENSITIVE_ACTION_STEPUP_AUTH=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_SENSITIVE_STEPUP_MAX_HIGH_NO_AUTH_TOTAL_INCREASE`
+    - `CHAT_SENSITIVE_STEPUP_MAX_FAILED_THEN_EXECUTE_TOTAL_INCREASE`
+    - `CHAT_SENSITIVE_STEPUP_MAX_FAILURE_BLOCK_RATIO_DROP`
+    - `CHAT_SENSITIVE_STEPUP_MAX_LATENCY_P95_SEC_INCREASE`
+    - `CHAT_SENSITIVE_STEPUP_MAX_STALE_MINUTES_INCREASE`
 
 ## Sensitive action undo-audit gate (B-0369, Bundle 4)
-- 민감 액션 undo window 정책과 전 단계 감사로그(request/confirm/execute/undo)의 완전성을 검증:
+- 민감 액션 undo window 정책과 전 단계 감사로그(request/confirm/execute/undo)의 완전성을 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_sensitive_action_undo_audit.py \
   --events-jsonl var/chat_actions/sensitive_action_events.jsonl \
@@ -2244,6 +2286,13 @@ python scripts/eval/chat_sensitive_action_undo_audit.py \
   --max-audit-trail-incomplete-total 0 \
   --max-missing-audit-fields-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_sensitive_action_undo_audit_baseline_v1.json \
+  --max-execute-without-request-total-increase 0 \
+  --max-undo-after-window-total-increase 0 \
+  --max-undo-success-ratio-drop 0.05 \
+  --max-audit-trail-incomplete-total-increase 0 \
+  --max-missing-audit-fields-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2253,6 +2302,13 @@ python scripts/eval/chat_sensitive_action_undo_audit.py \
   - 감사 필수 필드(actor/target/reason/trace/request) 누락 건수
 - CI 옵션:
   - `RUN_CHAT_SENSITIVE_ACTION_UNDO_AUDIT=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_SENSITIVE_UNDO_MAX_EXECUTE_NO_REQUEST_TOTAL_INCREASE`
+    - `CHAT_SENSITIVE_UNDO_MAX_AFTER_WINDOW_TOTAL_INCREASE`
+    - `CHAT_SENSITIVE_UNDO_MAX_SUCCESS_RATIO_DROP`
+    - `CHAT_SENSITIVE_UNDO_MAX_AUDIT_INCOMPLETE_TOTAL_INCREASE`
+    - `CHAT_SENSITIVE_UNDO_MAX_MISSING_AUDIT_FIELDS_TOTAL_INCREASE`
+    - `CHAT_SENSITIVE_UNDO_MAX_STALE_MINUTES_INCREASE`
 
 ## Ticket creation integration gate (B-0370, Bundle 1)
 - 챗→지원티켓 생성 연동에서 요청 payload 완전성과 접수 응답(ticket_no/ETA)을 검증:

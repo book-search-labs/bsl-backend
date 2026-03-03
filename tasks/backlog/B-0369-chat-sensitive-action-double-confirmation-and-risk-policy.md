@@ -91,3 +91,24 @@ Harden sensitive chat actions:
   - `scripts/eval/test_chat_sensitive_action_undo_audit.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_SENSITIVE_ACTION_UNDO_AUDIT=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Baseline drift governance 추가 (B-0369 전체)
+  - `scripts/eval/chat_sensitive_action_risk_classification.py`
+  - `scripts/eval/chat_sensitive_action_double_confirmation.py`
+  - `scripts/eval/chat_sensitive_action_stepup_auth.py`
+  - `scripts/eval/chat_sensitive_action_undo_audit.py`
+  - 공통으로 `--baseline-report` + drift threshold 인자를 지원하고, `gate.pass`를 `failures + baseline_failures` 결합 기준으로 계산
+  - payload에 `source`, `derived.summary`를 추가해 baseline 비교 입력 스키마를 고정
+- [x] Baseline 회귀 단위테스트 추가
+  - `scripts/eval/test_chat_sensitive_action_risk_classification.py`
+  - `scripts/eval/test_chat_sensitive_action_double_confirmation.py`
+  - `scripts/eval/test_chat_sensitive_action_stepup_auth.py`
+  - `scripts/eval/test_chat_sensitive_action_undo_audit.py`
+- [x] CI baseline wiring 추가
+  - `scripts/test.sh` 52~55단계에 baseline fixture 자동 연결 + drift env 노출
+- [x] Baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_sensitive_action_risk_classification_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_sensitive_action_double_confirmation_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_sensitive_action_stepup_auth_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_sensitive_action_undo_audit_baseline_v1.json`
