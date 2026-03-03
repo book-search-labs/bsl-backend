@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -114,6 +115,84 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_missing_signature_increase: int,
+    max_unique_signature_increase: int,
+    max_signature_change_increase: int,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_missing = int(base_summary.get("missing_signature_count") or 0)
+    cur_missing = int(current_summary.get("missing_signature_count") or 0)
+    missing_increase = max(0, cur_missing - base_missing)
+    if missing_increase > max(0, int(max_missing_signature_increase)):
+        failures.append(
+            "missing signature regression: "
+            f"baseline={base_missing}, current={cur_missing}, allowed_increase={max(0, int(max_missing_signature_increase))}"
+        )
+
+    base_unique = int(base_summary.get("unique_signature_count") or 0)
+    cur_unique = int(current_summary.get("unique_signature_count") or 0)
+    unique_increase = max(0, cur_unique - base_unique)
+    if unique_increase > max(0, int(max_unique_signature_increase)):
+        failures.append(
+            "unique signature regression: "
+            f"baseline={base_unique}, current={cur_unique}, allowed_increase={max(0, int(max_unique_signature_increase))}"
+        )
+
+    base_change = int(base_summary.get("signature_change_count") or 0)
+    cur_change = int(current_summary.get("signature_change_count") or 0)
+    change_increase = max(0, cur_change - base_change)
+    if change_increase > max(0, int(max_signature_change_increase)):
+        failures.append(
+            "signature change regression: "
+            f"baseline={base_change}, current={cur_change}, allowed_increase={max(0, int(max_signature_change_increase))}"
+        )
+    return failures
+
+
+def render_markdown(report: Mapping[str, Any]) -> str:
+    derived = report.get("derived") if isinstance(report.get("derived"), Mapping) else {}
+    summary = derived.get("summary") if isinstance(derived.get("summary"), Mapping) else {}
+    gate = report.get("gate") if isinstance(report.get("gate"), Mapping) else {}
+    failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
+
+    lines: list[str] = []
+    lines.append("# Chat Immutable Bundle Guard Report")
+    lines.append("")
+    lines.append(f"- generated_at: {report.get('generated_at')}")
+    lines.append("")
+    lines.append("## Summary")
+    lines.append("")
+    lines.append(f"- window_size: {int(summary.get('window_size') or 0)}")
+    lines.append(f"- missing_signature_count: {int(summary.get('missing_signature_count') or 0)}")
+    lines.append(f"- unique_signature_count: {int(summary.get('unique_signature_count') or 0)}")
+    lines.append(f"- signature_change_count: {int(summary.get('signature_change_count') or 0)}")
+    lines.append("")
+    lines.append("## Gate")
+    lines.append("")
+    lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
+    if failures:
+        lines.append("- failures:")
+        for item in failures:
+            lines.append(f"  - {item}")
+    if baseline_failures:
+        lines.append("- baseline_failures:")
+        for item in baseline_failures:
+            lines.append(f"  - {item}")
+    if not failures and not baseline_failures:
+        lines.append("- failures: none")
+    return "\n".join(lines)
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Check immutable release bundle drift from chat liveops cycle reports.")
     parser.add_argument("--reports-dir", default="data/eval/reports")
@@ -124,6 +203,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-signature-changes", type=int, default=2)
     parser.add_argument("--allowed-change-actions", default="promote,rollback")
     parser.add_argument("--require-signature", action="store_true")
+    parser.add_argument("--out", default="data/eval/reports")
+    parser.add_argument("--report-prefix", default="chat_immutable_bundle_guard")
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-missing-signature-increase", type=int, default=0)
+    parser.add_argument("--max-unique-signature-increase", type=int, default=0)
+    parser.add_argument("--max-signature-change-increase", type=int, default=0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -143,23 +228,63 @@ def main() -> int:
         require_signature=bool(args.require_signature),
     )
 
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_report = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_report,
+            summary,
+            max_missing_signature_increase=max(0, int(args.max_missing_signature_increase)),
+            max_unique_signature_increase=max(0, int(args.max_unique_signature_increase)),
+            max_signature_change_increase=max(0, int(args.max_signature_change_increase)),
+        )
+
     payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source": {
+            "reports_dir": str(reports_dir),
+            "prefix": str(args.prefix),
+            "limit": max(1, int(args.limit)),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "max_unique_signatures": int(args.max_unique_signatures),
                 "max_signature_changes": int(args.max_signature_changes),
                 "allowed_change_actions": sorted(allowed_actions),
                 "require_signature": bool(args.require_signature),
+                "max_missing_signature_increase": int(args.max_missing_signature_increase),
+                "max_unique_signature_increase": int(args.max_unique_signature_increase),
+                "max_signature_change_increase": int(args.max_signature_change_increase),
             },
         },
     }
-    print(json.dumps(payload, ensure_ascii=False, indent=2))
-    if args.gate and failures:
+
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    json_path = out_dir / f"{args.report_prefix}_{stamp}.json"
+    md_path = out_dir / f"{args.report_prefix}_{stamp}.md"
+    json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    md_path.write_text(render_markdown(payload), encoding="utf-8")
+
+    print(f"report_json={json_path}")
+    print(f"report_md={md_path}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
+    if args.gate and not payload["gate"]["pass"]:
+        for item in failures:
+            print(f"[gate-failure] {item}")
+        for item in baseline_failures:
+            print(f"[baseline-failure] {item}")
         return 2
     return 0
 

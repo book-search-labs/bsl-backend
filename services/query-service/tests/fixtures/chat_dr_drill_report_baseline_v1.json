@@ -1,0 +1,51 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "source": {
+    "reports_dir": "data/eval/reports",
+    "prefix": "chat_liveops_cycle",
+    "limit": 40,
+    "baseline_report": null
+  },
+  "summary": {
+    "window_size": 0,
+    "drill_total": 0,
+    "recovered_total": 0,
+    "open_drill_total": 0,
+    "recovery_ratio": 1.0,
+    "avg_mttr_sec": 0.0,
+    "mttr_samples_sec": [],
+    "drills": [],
+    "open_drill": null,
+    "events": []
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "drill_total": 0,
+      "recovered_total": 0,
+      "open_drill_total": 0,
+      "recovery_ratio": 1.0,
+      "avg_mttr_sec": 0.0,
+      "mttr_samples_sec": [],
+      "drills": [],
+      "open_drill": null,
+      "events": []
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 3,
+      "require_drill": false,
+      "min_recovery_ratio": 1.0,
+      "max_open_drill_total": 0,
+      "max_avg_mttr_sec": 7200.0,
+      "max_recovery_ratio_drop": 0.05,
+      "max_open_drill_increase": 0,
+      "max_avg_mttr_sec_increase": 600.0
+    }
+  }
+}

@@ -143,3 +143,18 @@ Harden chat live operations for production:
 - [x] CI 진입점 확장
   - `scripts/test.sh`의 `RUN_CHAT_ONCALL_ACTION_PLAN=1` 경로에 baseline 및 drift env 연결
   - `scripts/test.sh`의 `RUN_CHAT_CAPACITY_COST_GUARD=1` 경로에 baseline 및 drift env 연결
+
+## Implementation Update (2026-03-04, Bundle 12)
+- [x] Immutable bundle guard baseline 거버넌스 강화
+  - `scripts/eval/chat_immutable_bundle_guard.py`
+    - `--baseline-report` 지원 및 missing/unique/signature-change drift 비교 추가
+    - json+markdown 리포트 출력(`--out`, `--report-prefix`) 추가
+  - `services/query-service/tests/fixtures/chat_immutable_bundle_guard_baseline_v1.json`
+- [x] DR drill report baseline 거버넌스 강화
+  - `scripts/eval/chat_dr_drill_report.py`
+    - `--baseline-report` 지원 및 recovery/open/avg-mttr drift 비교 추가
+    - gate 결과에 baseline_failures 포함
+  - `services/query-service/tests/fixtures/chat_dr_drill_report_baseline_v1.json`
+- [x] CI 진입점 확장
+  - `scripts/test.sh`의 `RUN_CHAT_IMMUTABLE_BUNDLE_GUARD=1` 경로에 baseline/drift env 연결
+  - `scripts/test.sh`의 `RUN_CHAT_DR_DRILL_REPORT=1` 경로에 baseline/drift env 연결

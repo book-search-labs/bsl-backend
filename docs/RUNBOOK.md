@@ -1112,16 +1112,22 @@ python scripts/eval/chat_capacity_cost_guard.py \
     - `CHAT_CAPACITY_MAX_LLM_P95_MS_INCREASE`
 
 ## Immutable bundle guard (I-0360, Bundle 7)
-- liveops cycle 리포트에서 release_signature 변경 드리프트를 감시:
+- liveops cycle 리포트에서 release_signature 변경 드리프트를 감시 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_immutable_bundle_guard.py \
   --reports-dir data/eval/reports \
   --prefix chat_liveops_cycle \
+  --out data/eval/reports \
+  --report-prefix chat_immutable_bundle_guard \
   --limit 20 \
   --min-window 3 \
   --max-unique-signatures 2 \
   --max-signature-changes 2 \
   --allowed-change-actions promote,rollback \
+  --baseline-report services/query-service/tests/fixtures/chat_immutable_bundle_guard_baseline_v1.json \
+  --max-missing-signature-increase 0 \
+  --max-unique-signature-increase 0 \
+  --max-signature-change-increase 0 \
   --require-signature \
   --gate
 ```
@@ -1131,9 +1137,13 @@ python scripts/eval/chat_immutable_bundle_guard.py \
   - window 내 signature 변화량 상한
 - CI 옵션:
   - `RUN_CHAT_IMMUTABLE_BUNDLE_GUARD=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_IMMUTABLE_MAX_MISSING_INCREASE`
+    - `CHAT_IMMUTABLE_MAX_UNIQUE_INCREASE`
+    - `CHAT_IMMUTABLE_MAX_CHANGE_INCREASE`
 
 ## DR drill report (I-0360, Bundle 8)
-- liveops cycle에서 rollback drill 복구 무결성을 월간/주간 리포트로 저장:
+- liveops cycle에서 rollback drill 복구 무결성을 월간/주간 리포트로 저장 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_dr_drill_report.py \
   --reports-dir data/eval/reports \
@@ -1144,12 +1154,20 @@ python scripts/eval/chat_dr_drill_report.py \
   --min-recovery-ratio 1.0 \
   --max-open-drill-total 0 \
   --max-avg-mttr-sec 7200 \
+  --baseline-report services/query-service/tests/fixtures/chat_dr_drill_report_baseline_v1.json \
+  --max-recovery-ratio-drop 0.05 \
+  --max-open-drill-increase 0 \
+  --max-avg-mttr-sec-increase 600 \
   --gate
 ```
 - 필요 시 실제 drill 강제:
   - `--require-drill`
 - CI 옵션:
   - `RUN_CHAT_DR_DRILL_REPORT=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_DR_DRILL_MAX_RECOVERY_RATIO_DROP`
+    - `CHAT_DR_DRILL_MAX_OPEN_INCREASE`
+    - `CHAT_DR_DRILL_MAX_AVG_MTTR_INCREASE`
 
 ## Production readiness score (I-0361, Bundle 1)
 - launch/liveops/incident/drill/capacity 신호를 종합해 readiness 점수 계산:

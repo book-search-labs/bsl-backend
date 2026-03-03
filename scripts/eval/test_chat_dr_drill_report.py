@@ -81,3 +81,31 @@ def test_evaluate_gate_detects_open_drill():
     assert len(failures) == 2
     assert any("recovery ratio below threshold" in item for item in failures)
     assert any("open drill count exceeded" in item for item in failures)
+
+
+def test_compare_with_baseline_detects_recovery_open_mttr_regression():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "recovery_ratio": 1.0,
+                "open_drill_total": 0,
+                "avg_mttr_sec": 60.0,
+            }
+        }
+    }
+    current = {
+        "recovery_ratio": 0.5,
+        "open_drill_total": 2,
+        "avg_mttr_sec": 600.0,
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_recovery_ratio_drop=0.1,
+        max_open_drill_increase=0,
+        max_avg_mttr_sec_increase=30.0,
+    )
+    assert any("recovery ratio regression" in item for item in failures)
+    assert any("open drill regression" in item for item in failures)
+    assert any("avg MTTR regression" in item for item in failures)

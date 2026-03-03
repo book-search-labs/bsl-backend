@@ -84,3 +84,31 @@ def test_evaluate_gate_detects_missing_signature():
     )
     assert len(failures) == 1
     assert "missing release_signature observed" in failures[0]
+
+
+def test_compare_with_baseline_detects_signature_regression():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "missing_signature_count": 0,
+                "unique_signature_count": 1,
+                "signature_change_count": 0,
+            }
+        }
+    }
+    current = {
+        "missing_signature_count": 2,
+        "unique_signature_count": 3,
+        "signature_change_count": 4,
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_missing_signature_increase=0,
+        max_unique_signature_increase=0,
+        max_signature_change_increase=0,
+    )
+    assert any("missing signature regression" in item for item in failures)
+    assert any("unique signature regression" in item for item in failures)
+    assert any("signature change regression" in item for item in failures)

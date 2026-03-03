@@ -682,24 +682,38 @@ if [ "${RUN_CHAT_IMMUTABLE_BUNDLE_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_IMMUTABLE_REPORTS_DIR="${CHAT_IMMUTABLE_REPORTS_DIR:-$ROOT_DIR/data/eval/reports}"
     CHAT_IMMUTABLE_PREFIX="${CHAT_IMMUTABLE_PREFIX:-chat_liveops_cycle}"
+    CHAT_IMMUTABLE_OUT_DIR="${CHAT_IMMUTABLE_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_IMMUTABLE_REPORT_PREFIX="${CHAT_IMMUTABLE_REPORT_PREFIX:-chat_immutable_bundle_guard}"
+    CHAT_IMMUTABLE_BASELINE_PATH="${CHAT_IMMUTABLE_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_immutable_bundle_guard_baseline_v1.json}"
     CHAT_IMMUTABLE_LIMIT="${CHAT_IMMUTABLE_LIMIT:-20}"
     CHAT_IMMUTABLE_MIN_WINDOW="${CHAT_IMMUTABLE_MIN_WINDOW:-3}"
     CHAT_IMMUTABLE_MAX_UNIQUE="${CHAT_IMMUTABLE_MAX_UNIQUE:-2}"
     CHAT_IMMUTABLE_MAX_CHANGES="${CHAT_IMMUTABLE_MAX_CHANGES:-2}"
     CHAT_IMMUTABLE_ALLOWED_ACTIONS="${CHAT_IMMUTABLE_ALLOWED_ACTIONS:-promote,rollback}"
     CHAT_IMMUTABLE_REQUIRE_SIGNATURE="${CHAT_IMMUTABLE_REQUIRE_SIGNATURE:-1}"
+    CHAT_IMMUTABLE_MAX_MISSING_INCREASE="${CHAT_IMMUTABLE_MAX_MISSING_INCREASE:-0}"
+    CHAT_IMMUTABLE_MAX_UNIQUE_INCREASE="${CHAT_IMMUTABLE_MAX_UNIQUE_INCREASE:-0}"
+    CHAT_IMMUTABLE_MAX_CHANGE_INCREASE="${CHAT_IMMUTABLE_MAX_CHANGE_INCREASE:-0}"
 
     CHAT_IMMUTABLE_ARGS=(
       "$ROOT_DIR/scripts/eval/chat_immutable_bundle_guard.py"
       --reports-dir "$CHAT_IMMUTABLE_REPORTS_DIR"
       --prefix "$CHAT_IMMUTABLE_PREFIX"
+      --out "$CHAT_IMMUTABLE_OUT_DIR"
+      --report-prefix "$CHAT_IMMUTABLE_REPORT_PREFIX"
       --limit "$CHAT_IMMUTABLE_LIMIT"
       --min-window "$CHAT_IMMUTABLE_MIN_WINDOW"
       --max-unique-signatures "$CHAT_IMMUTABLE_MAX_UNIQUE"
       --max-signature-changes "$CHAT_IMMUTABLE_MAX_CHANGES"
       --allowed-change-actions "$CHAT_IMMUTABLE_ALLOWED_ACTIONS"
+      --max-missing-signature-increase "$CHAT_IMMUTABLE_MAX_MISSING_INCREASE"
+      --max-unique-signature-increase "$CHAT_IMMUTABLE_MAX_UNIQUE_INCREASE"
+      --max-signature-change-increase "$CHAT_IMMUTABLE_MAX_CHANGE_INCREASE"
       --gate
     )
+    if [ -f "$CHAT_IMMUTABLE_BASELINE_PATH" ]; then
+      CHAT_IMMUTABLE_ARGS+=(--baseline-report "$CHAT_IMMUTABLE_BASELINE_PATH")
+    fi
     if [ "$CHAT_IMMUTABLE_REQUIRE_SIGNATURE" = "1" ]; then
       CHAT_IMMUTABLE_ARGS+=(--require-signature)
     fi
@@ -723,6 +737,10 @@ if [ "${RUN_CHAT_DR_DRILL_REPORT:-0}" = "1" ]; then
     CHAT_DR_DRILL_MIN_RECOVERY_RATIO="${CHAT_DR_DRILL_MIN_RECOVERY_RATIO:-1.0}"
     CHAT_DR_DRILL_MAX_OPEN="${CHAT_DR_DRILL_MAX_OPEN:-0}"
     CHAT_DR_DRILL_MAX_AVG_MTTR_SEC="${CHAT_DR_DRILL_MAX_AVG_MTTR_SEC:-7200}"
+    CHAT_DR_DRILL_BASELINE_PATH="${CHAT_DR_DRILL_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_dr_drill_report_baseline_v1.json}"
+    CHAT_DR_DRILL_MAX_RECOVERY_RATIO_DROP="${CHAT_DR_DRILL_MAX_RECOVERY_RATIO_DROP:-0.05}"
+    CHAT_DR_DRILL_MAX_OPEN_INCREASE="${CHAT_DR_DRILL_MAX_OPEN_INCREASE:-0}"
+    CHAT_DR_DRILL_MAX_AVG_MTTR_INCREASE="${CHAT_DR_DRILL_MAX_AVG_MTTR_INCREASE:-600}"
 
     CHAT_DR_DRILL_ARGS=(
       "$ROOT_DIR/scripts/eval/chat_dr_drill_report.py"
@@ -734,8 +752,14 @@ if [ "${RUN_CHAT_DR_DRILL_REPORT:-0}" = "1" ]; then
       --min-recovery-ratio "$CHAT_DR_DRILL_MIN_RECOVERY_RATIO"
       --max-open-drill-total "$CHAT_DR_DRILL_MAX_OPEN"
       --max-avg-mttr-sec "$CHAT_DR_DRILL_MAX_AVG_MTTR_SEC"
+      --max-recovery-ratio-drop "$CHAT_DR_DRILL_MAX_RECOVERY_RATIO_DROP"
+      --max-open-drill-increase "$CHAT_DR_DRILL_MAX_OPEN_INCREASE"
+      --max-avg-mttr-sec-increase "$CHAT_DR_DRILL_MAX_AVG_MTTR_INCREASE"
       --gate
     )
+    if [ -f "$CHAT_DR_DRILL_BASELINE_PATH" ]; then
+      CHAT_DR_DRILL_ARGS+=(--baseline-report "$CHAT_DR_DRILL_BASELINE_PATH")
+    fi
     if [ "$CHAT_DR_DRILL_REQUIRE_DRILL" = "1" ]; then
       CHAT_DR_DRILL_ARGS+=(--require-drill)
     fi
