@@ -58,3 +58,14 @@ Implement reasoning budget controls for chat agents:
   - `scripts/eval/test_chat_reasoning_budget_model.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_REASONING_BUDGET_MODEL=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Runtime enforcement gate 추가
+  - `scripts/eval/chat_reasoning_budget_runtime_enforcement.py`
+  - budget exceeded 이후 enforcement coverage/warning-before-abort/graceful abort/retry prompt 비율 검증
+  - hard breach 및 unhandled exceed request를 게이트화
+  - gate 모드에서 runtime stale evidence 포함 임계치 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_reasoning_budget_runtime_enforcement.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_REASONING_BUDGET_RUNTIME_ENFORCEMENT=1 ./scripts/test.sh`

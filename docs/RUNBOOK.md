@@ -2201,6 +2201,29 @@ python scripts/eval/chat_reasoning_budget_model.py \
 - CI 옵션:
   - `RUN_CHAT_REASONING_BUDGET_MODEL=1 ./scripts/test.sh`
 
+## Reasoning budget runtime enforcement gate (B-0374, Bundle 2)
+- 예산 초과 시점에서 경고/안전중단/재질문 유도가 실제 runtime에서 적용됐는지 검증:
+```bash
+python scripts/eval/chat_reasoning_budget_runtime_enforcement.py \
+  --events-jsonl var/chat_budget/runtime_events.jsonl \
+  --window-hours 24 \
+  --min-window 100 \
+  --max-hard-breach-total 0 \
+  --max-unhandled-exceed-request-total 0 \
+  --min-enforcement-coverage-ratio 0.95 \
+  --min-warning-before-abort-ratio 0.70 \
+  --min-graceful-abort-ratio 0.90 \
+  --min-retry-prompt-ratio 0.80 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - budget exceeded request 대비 enforcement coverage
+  - warning-before-abort, graceful-abort, retry-prompt 비율
+  - hard breach 및 unhandled exceed request 건수
+- CI 옵션:
+  - `RUN_CHAT_REASONING_BUDGET_RUNTIME_ENFORCEMENT=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
