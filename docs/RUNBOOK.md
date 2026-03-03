@@ -2041,6 +2041,29 @@ python scripts/eval/chat_tool_cache_invalidation.py \
 - CI 옵션:
   - `RUN_CHAT_TOOL_CACHE_INVALIDATION=1 ./scripts/test.sh`
 
+## Tool cache staleness guard gate (B-0372, Bundle 3)
+- stale threshold 초과 응답의 차단/원본 fallback 및 freshness stamp 준수 여부를 검증:
+```bash
+python scripts/eval/chat_tool_cache_staleness_guard.py \
+  --events-jsonl var/chat_tool/cache_events.jsonl \
+  --window-hours 24 \
+  --stale-threshold-seconds 300 \
+  --min-window 10 \
+  --max-stale-leak-total 0 \
+  --min-stale-block-ratio 0.95 \
+  --max-freshness-stamp-missing-total 0 \
+  --min-forced-origin-fetch-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - stale response 대비 block/origin fetch/leak 건수
+  - stale block ratio와 freshness stamp 누락 건수
+  - stale 차단 시 forced origin fetch 수행 건수
+  - staleness evidence freshness(stale minutes)
+- CI 옵션:
+  - `RUN_CHAT_TOOL_CACHE_STALENESS_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
