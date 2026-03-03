@@ -128,3 +128,18 @@ Harden chat live operations for production:
 - [x] CI 진입점 확장
   - `scripts/test.sh`의 `RUN_CHAT_LIVEOPS_CYCLE=1` 경로에 cycle baseline 및 drift env 연결
   - `CHAT_LIVEOPS_LAUNCH_GATE_REPORT_PATH`로 외부 launch gate 리포트 주입 지원
+
+## Implementation Update (2026-03-04, Bundle 11)
+- [x] On-call action plan baseline 거버넌스 강화
+  - `scripts/eval/chat_oncall_action_plan.py`
+    - `--baseline-report` 지원 및 case_total/BLOCKER/unknown reason drift 비교 추가
+    - 게이트 결과를 json+markdown 리포트(`report_prefix`)로 저장
+  - `services/query-service/tests/fixtures/chat_oncall_action_plan_baseline_v1.json`
+- [x] Capacity/Cost guard baseline 거버넌스 강화
+  - `scripts/eval/chat_capacity_cost_guard.py`
+    - `--baseline-report` 기반 mode/error_ratio/cost/fallback/llm_p95 drift 비교 추가
+    - 리포트 파일 출력(`--out`, `--output-prefix`) + markdown 요약 추가
+  - `services/query-service/tests/fixtures/chat_capacity_cost_guard_baseline_v1.json`
+- [x] CI 진입점 확장
+  - `scripts/test.sh`의 `RUN_CHAT_ONCALL_ACTION_PLAN=1` 경로에 baseline 및 drift env 연결
+  - `scripts/test.sh`의 `RUN_CHAT_CAPACITY_COST_GUARD=1` 경로에 baseline 및 drift env 연결

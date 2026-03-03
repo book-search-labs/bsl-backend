@@ -1062,31 +1062,54 @@ python scripts/eval/chat_liveops_incident_summary.py \
     - `CHAT_LIVEOPS_INCIDENT_MAX_OPEN_INCREASE`
 
 ## On-call action plan generator (I-0360, Bundle 5)
-- triage queue를 기반으로 우선순위 조치안 자동 생성:
+- triage queue를 기반으로 우선순위 조치안 자동 생성 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_oncall_action_plan.py \
   --triage-file var/chat_graph/triage/chat_launch_failure_cases.jsonl \
   --out data/eval/reports \
-  --top-n 5
+  --top-n 5 \
+  --baseline-report services/query-service/tests/fixtures/chat_oncall_action_plan_baseline_v1.json \
+  --max-case-total-increase 3 \
+  --max-blocker-increase 0 \
+  --max-unknown-reason-increase 1 \
+  --gate
 ```
 - CI 옵션:
   - `RUN_CHAT_ONCALL_ACTION_PLAN=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_ONCALL_MAX_CASE_TOTAL_INCREASE`
+    - `CHAT_ONCALL_MAX_BLOCKER_INCREASE`
+    - `CHAT_ONCALL_MAX_UNKNOWN_REASON_INCREASE`
 
 ## Capacity/Cost guard gate (I-0360, Bundle 6)
-- launch gate 성능 + LLM audit 로그를 결합해 load shedding 단계를 결정:
+- launch gate 성능 + LLM audit 로그를 결합해 load shedding 단계를 결정 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_capacity_cost_guard.py \
   --reports-dir data/eval/reports \
   --report-prefix chat_production_launch_gate \
   --llm-audit-log var/llm_gateway/audit.log \
   --audit-window-minutes 60 \
+  --out data/eval/reports \
+  --output-prefix chat_capacity_cost_guard \
+  --baseline-report services/query-service/tests/fixtures/chat_capacity_cost_guard_baseline_v1.json \
   --max-mode DEGRADE_LEVEL_1 \
+  --max-mode-step-increase 0 \
+  --max-audit-error-ratio-increase 0.02 \
+  --max-cost-usd-per-hour-increase 2.0 \
+  --max-fallback-ratio-increase 0.05 \
+  --max-llm-p95-ms-increase 800 \
   --gate
 ```
 - 출력 mode:
   - `NORMAL`, `DEGRADE_LEVEL_1`, `DEGRADE_LEVEL_2`, `FAIL_CLOSED`
 - CI 옵션:
   - `RUN_CHAT_CAPACITY_COST_GUARD=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_CAPACITY_MAX_MODE_STEP_INCREASE`
+    - `CHAT_CAPACITY_MAX_AUDIT_ERROR_RATIO_INCREASE`
+    - `CHAT_CAPACITY_MAX_COST_USD_PER_HOUR_INCREASE`
+    - `CHAT_CAPACITY_MAX_FALLBACK_RATIO_INCREASE`
+    - `CHAT_CAPACITY_MAX_LLM_P95_MS_INCREASE`
 
 ## Immutable bundle guard (I-0360, Bundle 7)
 - liveops cycle 리포트에서 release_signature 변경 드리프트를 감시:

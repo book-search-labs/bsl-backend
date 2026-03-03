@@ -64,6 +64,13 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return default
 
 
+def _safe_mode(value: Any, default: str = "NORMAL") -> str:
+    mode = str(value or "").strip().upper()
+    if mode in MODE_ORDER:
+        return mode
+    return default
+
+
 def read_audit_rows(path: Path, *, window_minutes: int, limit: int, now: datetime | None = None) -> list[dict[str, Any]]:
     if not path.exists():
         return []
@@ -207,8 +214,8 @@ def decide_guard_mode(
 
 def evaluate_gate(decision: Mapping[str, Any], *, max_mode: str) -> list[str]:
     failures: list[str] = []
-    selected = str(decision.get("mode") or "NORMAL").strip().upper()
-    allowed = str(max_mode or "DEGRADE_LEVEL_1").strip().upper()
+    selected = _safe_mode(decision.get("mode"), "NORMAL")
+    allowed = _safe_mode(max_mode, "DEGRADE_LEVEL_1")
     selected_order = MODE_ORDER.get(selected)
     allowed_order = MODE_ORDER.get(allowed)
 
@@ -221,6 +228,130 @@ def evaluate_gate(decision: Mapping[str, Any], *, max_mode: str) -> list[str]:
     if selected_order > allowed_order:
         failures.append(f"capacity guard mode exceeded: {selected} > allowed {allowed}")
     return failures
+
+
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    *,
+    current_decision: Mapping[str, Any],
+    current_audit_summary: Mapping[str, Any],
+    current_perf_summary: Mapping[str, Any],
+    max_mode_step_increase: int,
+    max_error_ratio_increase: float,
+    max_cost_usd_per_hour_increase: float,
+    max_fallback_ratio_increase: float,
+    max_llm_p95_ms_increase: float,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_decision = baseline_report.get("decision") if isinstance(baseline_report.get("decision"), Mapping) else {}
+    base_audit = (
+        baseline_report.get("audit_summary") if isinstance(baseline_report.get("audit_summary"), Mapping) else {}
+    )
+    base_perf = baseline_report.get("perf_summary") if isinstance(baseline_report.get("perf_summary"), Mapping) else {}
+
+    if isinstance(base_derived, Mapping):
+        if not base_decision and isinstance(base_derived.get("decision"), Mapping):
+            base_decision = base_derived.get("decision")  # type: ignore[assignment]
+        if not base_audit and isinstance(base_derived.get("audit_summary"), Mapping):
+            base_audit = base_derived.get("audit_summary")  # type: ignore[assignment]
+        if not base_perf and isinstance(base_derived.get("perf_summary"), Mapping):
+            base_perf = base_derived.get("perf_summary")  # type: ignore[assignment]
+
+    base_mode = _safe_mode(base_decision.get("mode"), "NORMAL")
+    cur_mode = _safe_mode(current_decision.get("mode"), "NORMAL")
+    mode_step = max(0, MODE_ORDER[cur_mode] - MODE_ORDER[base_mode])
+    if mode_step > max(0, int(max_mode_step_increase)):
+        failures.append(
+            "guard mode regression: "
+            f"baseline={base_mode}, current={cur_mode}, allowed_step={max(0, int(max_mode_step_increase))}"
+        )
+
+    base_error_ratio = float(base_audit.get("error_ratio") or 0.0)
+    cur_error_ratio = float(current_audit_summary.get("error_ratio") or 0.0)
+    error_ratio_increase = max(0.0, cur_error_ratio - base_error_ratio)
+    if error_ratio_increase > max(0.0, float(max_error_ratio_increase)):
+        failures.append(
+            "audit error ratio regression: "
+            f"baseline={base_error_ratio:.6f}, current={cur_error_ratio:.6f}, "
+            f"allowed_increase={float(max_error_ratio_increase):.6f}"
+        )
+
+    base_cost_per_hour = float(base_audit.get("cost_usd_per_hour") or 0.0)
+    cur_cost_per_hour = float(current_audit_summary.get("cost_usd_per_hour") or 0.0)
+    cost_increase = max(0.0, cur_cost_per_hour - base_cost_per_hour)
+    if cost_increase > max(0.0, float(max_cost_usd_per_hour_increase)):
+        failures.append(
+            "cost per hour regression: "
+            f"baseline={base_cost_per_hour:.6f}, current={cur_cost_per_hour:.6f}, "
+            f"allowed_increase={float(max_cost_usd_per_hour_increase):.6f}"
+        )
+
+    base_fallback = float(base_perf.get("fallback_ratio") or 0.0)
+    cur_fallback = float(current_perf_summary.get("fallback_ratio") or 0.0)
+    fallback_increase = max(0.0, cur_fallback - base_fallback)
+    if fallback_increase > max(0.0, float(max_fallback_ratio_increase)):
+        failures.append(
+            "fallback ratio regression: "
+            f"baseline={base_fallback:.6f}, current={cur_fallback:.6f}, "
+            f"allowed_increase={float(max_fallback_ratio_increase):.6f}"
+        )
+
+    base_llm_p95 = float(base_perf.get("llm_p95_ms") or 0.0)
+    cur_llm_p95 = float(current_perf_summary.get("llm_p95_ms") or 0.0)
+    llm_p95_increase = max(0.0, cur_llm_p95 - base_llm_p95)
+    if llm_p95_increase > max(0.0, float(max_llm_p95_ms_increase)):
+        failures.append(
+            "llm p95 regression: "
+            f"baseline={base_llm_p95:.6f}, current={cur_llm_p95:.6f}, "
+            f"allowed_increase={float(max_llm_p95_ms_increase):.6f}"
+        )
+
+    return failures
+
+
+def render_markdown(report: Mapping[str, Any]) -> str:
+    gate = report.get("gate") if isinstance(report.get("gate"), Mapping) else {}
+    decision = report.get("decision") if isinstance(report.get("decision"), Mapping) else {}
+    audit_summary = report.get("audit_summary") if isinstance(report.get("audit_summary"), Mapping) else {}
+    perf_summary = report.get("perf_summary") if isinstance(report.get("perf_summary"), Mapping) else {}
+    failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
+
+    lines: list[str] = []
+    lines.append("# Chat Capacity/Cost Guard Report")
+    lines.append("")
+    lines.append(f"- generated_at: {report.get('generated_at')}")
+    lines.append(f"- report_path: {report.get('report_path')}")
+    lines.append(f"- audit_log_path: {report.get('audit_log_path')}")
+    lines.append("")
+    lines.append("## Decision")
+    lines.append("")
+    lines.append(f"- mode: {decision.get('mode')}")
+    lines.append(f"- breaches: {len(decision.get('breaches') or [])}")
+    lines.append("")
+    lines.append("## Signals")
+    lines.append("")
+    lines.append(f"- audit_error_ratio: {float(audit_summary.get('error_ratio') or 0.0):.6f}")
+    lines.append(f"- cost_usd_per_hour: {float(audit_summary.get('cost_usd_per_hour') or 0.0):.6f}")
+    lines.append(f"- tokens_per_hour: {float(audit_summary.get('tokens_per_hour') or 0.0):.6f}")
+    lines.append(f"- llm_p95_ms: {float(perf_summary.get('llm_p95_ms') or 0.0):.6f}")
+    lines.append(f"- fallback_ratio: {float(perf_summary.get('fallback_ratio') or 0.0):.6f}")
+    lines.append("")
+    lines.append("## Gate")
+    lines.append("")
+    lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
+    if failures:
+        lines.append("- failures:")
+        for item in failures:
+            lines.append(f"  - {item}")
+    if baseline_failures:
+        lines.append("- baseline_failures:")
+        for item in baseline_failures:
+            lines.append(f"  - {item}")
+    if not failures and not baseline_failures:
+        lines.append("- failures: none")
+    return "\n".join(lines)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -238,6 +369,14 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-fallback-ratio", type=float, default=0.15)
     parser.add_argument("--max-insufficient-evidence-ratio", type=float, default=0.30)
     parser.add_argument("--max-mode", choices=list(MODE_ORDER.keys()), default="DEGRADE_LEVEL_1")
+    parser.add_argument("--out", default="data/eval/reports")
+    parser.add_argument("--output-prefix", default="chat_capacity_cost_guard")
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-mode-step-increase", type=int, default=0)
+    parser.add_argument("--max-audit-error-ratio-increase", type=float, default=0.02)
+    parser.add_argument("--max-cost-usd-per-hour-increase", type=float, default=2.0)
+    parser.add_argument("--max-fallback-ratio-increase", type=float, default=0.05)
+    parser.add_argument("--max-llm-p95-ms-increase", type=float, default=800.0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -273,8 +412,32 @@ def main() -> int:
         max_insufficient_evidence_ratio=max(0.0, float(args.max_insufficient_evidence_ratio)),
     )
     failures = evaluate_gate(decision, max_mode=str(args.max_mode))
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_report = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_report,
+            current_decision=decision,
+            current_audit_summary=audit_summary,
+            current_perf_summary=perf_summary,
+            max_mode_step_increase=max(0, int(args.max_mode_step_increase)),
+            max_error_ratio_increase=max(0.0, float(args.max_audit_error_ratio_increase)),
+            max_cost_usd_per_hour_increase=max(0.0, float(args.max_cost_usd_per_hour_increase)),
+            max_fallback_ratio_increase=max(0.0, float(args.max_fallback_ratio_increase)),
+            max_llm_p95_ms_increase=max(0.0, float(args.max_llm_p95_ms_increase)),
+        )
 
-    payload = {
+    report_payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source": {
+            "reports_dir": str(args.reports_dir),
+            "report_prefix": str(args.report_prefix),
+            "launch_gate_report": str(args.launch_gate_report) if args.launch_gate_report else None,
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+            "llm_audit_log": str(args.llm_audit_log),
+            "audit_window_minutes": max(1, int(args.audit_window_minutes)),
+            "audit_limit": max(1, int(args.audit_limit)),
+        },
         "report_path": str(report_path),
         "audit_log_path": str(audit_path),
         "audit_summary": audit_summary,
@@ -290,10 +453,26 @@ def main() -> int:
             "commerce_completion_rate": float(completion_summary.get("commerce_completion_rate") or 0.0),
         },
         "decision": decision,
+        "derived": {
+            "audit_summary": audit_summary,
+            "perf_summary": {
+                "window_size": int(perf_summary.get("window_size") or 0),
+                "llm_count": int(perf_summary.get("llm_count") or 0),
+                "llm_p95_ms": float(perf_summary.get("llm_p95_ms") or 0.0),
+                "fallback_ratio": float(perf_summary.get("fallback_ratio") or 0.0),
+            },
+            "completion_summary": {
+                "run_total": int(completion_summary.get("run_total") or 0),
+                "insufficient_evidence_ratio": float(completion_summary.get("insufficient_evidence_ratio") or 0.0),
+                "commerce_completion_rate": float(completion_summary.get("commerce_completion_rate") or 0.0),
+            },
+            "decision": decision,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "max_mode": str(args.max_mode),
                 "max_audit_error_ratio": float(args.max_audit_error_ratio),
@@ -302,11 +481,31 @@ def main() -> int:
                 "max_llm_p95_ms": float(args.max_llm_p95_ms),
                 "max_fallback_ratio": float(args.max_fallback_ratio),
                 "max_insufficient_evidence_ratio": float(args.max_insufficient_evidence_ratio),
+                "max_mode_step_increase": int(args.max_mode_step_increase),
+                "max_audit_error_ratio_increase": float(args.max_audit_error_ratio_increase),
+                "max_cost_usd_per_hour_increase": float(args.max_cost_usd_per_hour_increase),
+                "max_fallback_ratio_increase": float(args.max_fallback_ratio_increase),
+                "max_llm_p95_ms_increase": float(args.max_llm_p95_ms_increase),
             },
         },
     }
-    print(json.dumps(payload, ensure_ascii=False, indent=2))
-    if args.gate and failures:
+
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    json_path = out_dir / f"{args.output_prefix}_{stamp}.json"
+    md_path = out_dir / f"{args.output_prefix}_{stamp}.md"
+    json_path.write_text(json.dumps(report_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    md_path.write_text(render_markdown(report_payload), encoding="utf-8")
+
+    print(f"report_json={json_path}")
+    print(f"report_md={md_path}")
+    print(f"gate_pass={str(report_payload['gate']['pass']).lower()}")
+    if args.gate and not report_payload["gate"]["pass"]:
+        for item in failures:
+            print(f"[gate-failure] {item}")
+        for item in baseline_failures:
+            print(f"[baseline-failure] {item}")
         return 2
     return 0
 

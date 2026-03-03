@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "source": {
+    "triage_file": "var/chat_graph/triage/chat_launch_failure_cases.jsonl",
+    "top_n": 5,
+    "baseline_report": null
+  },
+  "derived": {
+    "summary": {
+      "case_total": 0,
+      "severity_counts": {},
+      "source_counts": {},
+      "reason_counts": {},
+      "top_reasons": [],
+      "actions": [
+        "triage case가 없어 즉시 조치 항목은 없습니다. 다음 cycle까지 모니터링을 유지합니다."
+      ]
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "require_cases": false,
+      "max_case_total_increase": 3,
+      "max_blocker_increase": 0,
+      "max_unknown_reason_increase": 1
+    }
+  }
+}

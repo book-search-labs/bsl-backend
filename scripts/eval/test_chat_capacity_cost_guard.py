@@ -76,3 +76,34 @@ def test_evaluate_gate_respects_max_mode():
     failures = module.evaluate_gate({"mode": "DEGRADE_LEVEL_2"}, max_mode="DEGRADE_LEVEL_1")
     assert len(failures) == 1
     assert "capacity guard mode exceeded" in failures[0]
+
+
+def test_compare_with_baseline_detects_mode_and_signal_regressions():
+    module = _load_module()
+    baseline = {
+        "decision": {"mode": "DEGRADE_LEVEL_1"},
+        "audit_summary": {
+            "error_ratio": 0.05,
+            "cost_usd_per_hour": 2.0,
+        },
+        "perf_summary": {
+            "fallback_ratio": 0.05,
+            "llm_p95_ms": 800.0,
+        },
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current_decision={"mode": "FAIL_CLOSED"},
+        current_audit_summary={"error_ratio": 0.20, "cost_usd_per_hour": 7.0},
+        current_perf_summary={"fallback_ratio": 0.30, "llm_p95_ms": 3200.0},
+        max_mode_step_increase=0,
+        max_error_ratio_increase=0.01,
+        max_cost_usd_per_hour_increase=0.5,
+        max_fallback_ratio_increase=0.01,
+        max_llm_p95_ms_increase=100.0,
+    )
+    assert any("guard mode regression" in item for item in failures)
+    assert any("audit error ratio regression" in item for item in failures)
+    assert any("cost per hour regression" in item for item in failures)
+    assert any("fallback ratio regression" in item for item in failures)
+    assert any("llm p95 regression" in item for item in failures)
