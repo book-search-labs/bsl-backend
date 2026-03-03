@@ -69,3 +69,14 @@ Implement reasoning budget controls for chat agents:
   - `scripts/eval/test_chat_reasoning_budget_runtime_enforcement.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_REASONING_BUDGET_RUNTIME_ENFORCEMENT=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Adaptive policy gate 추가
+  - `scripts/eval/chat_reasoning_budget_adaptive_policy.py`
+  - 비용/성공률 기반 동적 조정의 unsafe expansion, success/cost regression을 게이트화
+  - 고비용 인텐트 preconfirm coverage/missing 추적
+  - gate 모드에서 stale evidence 포함 임계치 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_reasoning_budget_adaptive_policy.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_REASONING_BUDGET_ADAPTIVE_POLICY=1 ./scripts/test.sh`

@@ -2224,6 +2224,29 @@ python scripts/eval/chat_reasoning_budget_runtime_enforcement.py \
 - CI 옵션:
   - `RUN_CHAT_REASONING_BUDGET_RUNTIME_ENFORCEMENT=1 ./scripts/test.sh`
 
+## Reasoning budget adaptive policy gate (B-0374, Bundle 3)
+- 비용/성공률 기반 예산 동적 조정이 안전하게 적용되는지 검증:
+```bash
+python scripts/eval/chat_reasoning_budget_adaptive_policy.py \
+  --events-jsonl var/chat_budget/adaptive_events.jsonl \
+  --window-hours 24 \
+  --high-cost-intents REFUND_REQUEST,CANCEL_ORDER,PAYMENT_CHANGE \
+  --min-window 100 \
+  --max-unsafe-expansion-total 0 \
+  --max-preconfirm-missing-total 0 \
+  --min-preconfirm-coverage-ratio 0.90 \
+  --max-success-regression-ratio 0.20 \
+  --max-cost-regression-ratio 0.20 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - unsafe expansion, success/cost regression ratio
+  - 고비용 인텐트 preconfirm coverage/missing 건수
+  - adaptive rollback 발생 건수 및 evidence freshness
+- CI 옵션:
+  - `RUN_CHAT_REASONING_BUDGET_ADAPTIVE_POLICY=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
