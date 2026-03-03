@@ -1491,6 +1491,27 @@ python scripts/eval/chat_config_distribution_rollout.py \
 - CI 옵션:
   - `RUN_CHAT_CONFIG_DISTRIBUTION_ROLLOUT=1 ./scripts/test.sh`
 
+## Config safety guard gate (I-0366, Bundle 2)
+- 배포 중 이상 감지 시 auto-stop/rollback/kill-switch 대응이 충분했는지 검증:
+```bash
+python scripts/eval/chat_config_safety_guard.py \
+  --events-jsonl var/chat_control/config_guard_events.jsonl \
+  --window-hours 24 \
+  --forbidden-killswitch-scopes GLOBAL_ALL_SERVICES \
+  --max-unhandled-anomaly-total 0 \
+  --min-mitigation-ratio 0.95 \
+  --max-detection-lag-p95-sec 120 \
+  --max-forbidden-killswitch-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - anomaly/handled/unhandled 집계와 mitigation ratio
+  - auto-stop/auto-rollback/killswitch 집계
+  - detection lag p95 및 forbidden scope kill-switch 위반
+- CI 옵션:
+  - `RUN_CHAT_CONFIG_SAFETY_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

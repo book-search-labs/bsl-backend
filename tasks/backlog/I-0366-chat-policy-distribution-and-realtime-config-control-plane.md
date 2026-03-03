@@ -57,3 +57,14 @@ Build a realtime control plane for chat policy/config rollout:
   - `scripts/eval/test_chat_config_distribution_rollout.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_CONFIG_DISTRIBUTION_ROLLOUT=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Config safety guard gate 추가
+  - `scripts/eval/chat_config_safety_guard.py`
+  - anomaly(slo/quality/cost breach) 이벤트에서 auto-stop/rollback/killswitch 대응 집계
+  - unhandled anomaly, mitigation ratio, detection lag p95, forbidden kill-switch scope 위반을 계산
+  - gate 모드에서 대응 누락/탐지 지연/금지 scope 위반/stale evidence를 차단
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_config_safety_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_CONFIG_SAFETY_GUARD=1 ./scripts/test.sh`
