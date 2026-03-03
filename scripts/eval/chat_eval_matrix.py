@@ -40,6 +40,43 @@ def load_json(path: Path) -> dict[str, Any]:
     return payload
 
 
+def _parse_iso_datetime(raw: Any) -> datetime | None:
+    if not isinstance(raw, str):
+        return None
+    text = raw.strip()
+    if not text:
+        return None
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _critical_gate_pass_map(matrix: Any) -> dict[str, bool]:
+    out: dict[str, bool] = {}
+    if not isinstance(matrix, list):
+        return out
+    for row in matrix:
+        if not isinstance(row, Mapping):
+            continue
+        gate = str(row.get("gate") or "")
+        if gate not in {"contract_compat", "reason_taxonomy", "parity"}:
+            continue
+        out[gate] = bool(row.get("pass"))
+    return out
+
+
+def _parity_derived(payload: Mapping[str, Any]) -> Mapping[str, Any]:
+    parity = payload.get("parity") if isinstance(payload.get("parity"), Mapping) else {}
+    derived = parity.get("derived") if isinstance(parity.get("derived"), Mapping) else {}
+    return derived
+
+
 def evaluate_matrix(
     *,
     cases_json: Path,
@@ -186,6 +223,10 @@ def compare_with_baseline(
     current_derived: Mapping[str, Any],
     *,
     max_gate_fail_increase: int,
+    max_parity_mismatch_ratio_increase: float,
+    max_parity_blocker_ratio_increase: float,
+    require_baseline_approval: bool,
+    max_baseline_age_days: int,
 ) -> list[str]:
     failures: list[str] = []
     base = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
@@ -196,6 +237,61 @@ def compare_with_baseline(
         failures.append(
             f"gate fail regression: baseline={base_fail_total}, current={cur_fail_total}, allowed_increase={max(0, int(max_gate_fail_increase))}"
         )
+
+    baseline_gate_pass = _critical_gate_pass_map(base.get("matrix"))
+    current_gate_pass = _critical_gate_pass_map(current_derived.get("matrix"))
+    for gate in ("contract_compat", "reason_taxonomy", "parity"):
+        if gate in baseline_gate_pass and gate not in current_gate_pass:
+            failures.append(f"critical gate missing from matrix: gate={gate}")
+            continue
+        if baseline_gate_pass.get(gate) and not current_gate_pass.get(gate, False):
+            failures.append(f"critical gate regression: gate={gate} baseline_pass=true current_pass=false")
+
+    base_parity = _parity_derived(base)
+    current_parity = _parity_derived(current_derived)
+    base_mismatch = float(base_parity.get("mismatch_ratio") or 0.0)
+    cur_mismatch = float(current_parity.get("mismatch_ratio") or 0.0)
+    mismatch_increase = max(0.0, cur_mismatch - base_mismatch)
+    if mismatch_increase > max(0.0, float(max_parity_mismatch_ratio_increase)):
+        failures.append(
+            "parity mismatch ratio regression: "
+            f"baseline={base_mismatch:.6f}, current={cur_mismatch:.6f}, allowed_increase={float(max_parity_mismatch_ratio_increase):.6f}"
+        )
+
+    base_blocker = float(base_parity.get("blocker_ratio") or 0.0)
+    cur_blocker = float(current_parity.get("blocker_ratio") or 0.0)
+    blocker_increase = max(0.0, cur_blocker - base_blocker)
+    if blocker_increase > max(0.0, float(max_parity_blocker_ratio_increase)):
+        failures.append(
+            "parity blocker ratio regression: "
+            f"baseline={base_blocker:.6f}, current={cur_blocker:.6f}, allowed_increase={float(max_parity_blocker_ratio_increase):.6f}"
+        )
+
+    baseline_meta = baseline_report.get("baseline_meta") if isinstance(baseline_report.get("baseline_meta"), Mapping) else {}
+    if require_baseline_approval:
+        approved_by = str(baseline_meta.get("approved_by") or "").strip()
+        approved_at = str(baseline_meta.get("approved_at") or "").strip()
+        evidence = str(baseline_meta.get("evidence") or "").strip()
+        if not approved_by:
+            failures.append("baseline metadata missing approved_by")
+        if not approved_at:
+            failures.append("baseline metadata missing approved_at")
+        if not evidence:
+            failures.append("baseline metadata missing evidence")
+
+    if max(0, int(max_baseline_age_days)) > 0:
+        approved_at = ""
+        if isinstance(baseline_meta, Mapping):
+            approved_at = str(baseline_meta.get("approved_at") or "").strip()
+        baseline_ts = _parse_iso_datetime(approved_at) or _parse_iso_datetime(baseline_report.get("generated_at"))
+        if baseline_ts is None:
+            failures.append("baseline timestamp missing or invalid for age check")
+        else:
+            age_days = (datetime.now(timezone.utc) - baseline_ts).total_seconds() / 86400.0
+            if age_days > float(max(0, int(max_baseline_age_days))):
+                failures.append(
+                    f"baseline too old: age_days={age_days:.2f} > max_baseline_age_days={max(0, int(max_baseline_age_days))}"
+                )
     return failures
 
 
@@ -240,6 +336,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--gate", action="store_true")
     parser.add_argument("--baseline-report", default="")
     parser.add_argument("--max-gate-fail-increase", type=int, default=0)
+    parser.add_argument("--max-parity-mismatch-ratio-increase", type=float, default=0.02)
+    parser.add_argument("--max-parity-blocker-ratio-increase", type=float, default=0.01)
+    parser.add_argument("--require-baseline-approval", action="store_true")
+    parser.add_argument("--max-baseline-age-days", type=int, default=0)
+    parser.add_argument("--baseline-approved-by", default="")
+    parser.add_argument("--baseline-evidence", default="")
     parser.add_argument("--write-baseline", default="")
     return parser.parse_args()
 
@@ -263,7 +365,19 @@ def main() -> int:
             baseline_report,
             derived,
             max_gate_fail_increase=max(0, int(args.max_gate_fail_increase)),
+            max_parity_mismatch_ratio_increase=max(0.0, float(args.max_parity_mismatch_ratio_increase)),
+            max_parity_blocker_ratio_increase=max(0.0, float(args.max_parity_blocker_ratio_increase)),
+            require_baseline_approval=bool(args.require_baseline_approval),
+            max_baseline_age_days=max(0, int(args.max_baseline_age_days)),
         )
+
+    baseline_meta: dict[str, Any] = {}
+    if str(args.baseline_approved_by or "").strip() or str(args.baseline_evidence or "").strip():
+        baseline_meta = {
+            "approved_by": str(args.baseline_approved_by or "").strip(),
+            "approved_at": datetime.now(timezone.utc).isoformat(),
+            "evidence": str(args.baseline_evidence or "").strip(),
+        }
 
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -275,13 +389,20 @@ def main() -> int:
             "parity_run_sample_limit": int(args.parity_run_sample_limit),
             "baseline_report": str(args.baseline_report) if args.baseline_report else None,
         },
+        "baseline_meta": baseline_meta,
         "derived": derived,
         "gate": {
             "enabled": bool(args.gate),
             "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
             "baseline_failures": baseline_failures,
-            "thresholds": {"max_gate_fail_increase": int(args.max_gate_fail_increase)},
+            "thresholds": {
+                "max_gate_fail_increase": int(args.max_gate_fail_increase),
+                "max_parity_mismatch_ratio_increase": float(args.max_parity_mismatch_ratio_increase),
+                "max_parity_blocker_ratio_increase": float(args.max_parity_blocker_ratio_increase),
+                "require_baseline_approval": bool(args.require_baseline_approval),
+                "max_baseline_age_days": int(args.max_baseline_age_days),
+            },
         },
     }
 

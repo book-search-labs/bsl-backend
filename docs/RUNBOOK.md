@@ -853,6 +853,8 @@ python scripts/eval/chat_reason_taxonomy_eval.py \
 python scripts/eval/chat_graph_parity_eval.py \
   --shadow-limit 200 \
   --replay-dir var/chat_graph/replay \
+  --baseline-report services/query-service/tests/fixtures/chat_graph_parity_eval_baseline_v1.json \
+  --require-baseline-approval \
   --gate
 ```
 - unified matrix:
@@ -862,13 +864,18 @@ python scripts/eval/chat_eval_matrix.py \
   --responses-json services/query-service/tests/fixtures/chat_reason_taxonomy_responses_v1.json \
   --contracts-root . \
   --replay-dir var/chat_graph/replay \
+  --baseline-report services/query-service/tests/fixtures/chat_eval_matrix_baseline_v1.json \
+  --require-baseline-approval \
   --gate
 ```
 - CI 옵션:
   - `RUN_CHAT_ALL_EVALS=1 ./scripts/test.sh`
+  - baseline approval/age gate env:
+    - `CHAT_EVAL_REQUIRE_BASELINE_APPROVAL` (default `1`)
+    - `CHAT_EVAL_MAX_BASELINE_AGE_DAYS` (default `0`, age check off)
   - baseline 파일:
-    - `data/eval/reports/chat_graph_parity_eval_baseline.json`
-    - `data/eval/reports/chat_eval_matrix_baseline.json`
+    - `services/query-service/tests/fixtures/chat_graph_parity_eval_baseline_v1.json`
+    - `services/query-service/tests/fixtures/chat_eval_matrix_baseline_v1.json`
 
 ## Performance budget + cutover gate (B-0724, in-progress)
 - perf budget module: `services/query-service/app/core/chat_graph/perf_budget.py`

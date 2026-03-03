@@ -1,0 +1,98 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "source": {
+    "cases_json": "services/query-service/tests/fixtures/chat_contract_compat_v1.json",
+    "responses_json": "services/query-service/tests/fixtures/chat_reason_taxonomy_responses_v1.json",
+    "replay_dir": "var/chat_graph/replay",
+    "shadow_limit": 200,
+    "parity_run_sample_limit": 50,
+    "baseline_report": null
+  },
+  "baseline_meta": {
+    "approved_by": "chat-platform",
+    "approved_at": "2026-03-04T00:00:00+00:00",
+    "evidence": "ci-smoke-run"
+  },
+  "derived": {
+    "contract": {
+      "derived": {
+        "case_total": 3,
+        "schema_fail_total": 0,
+        "required_path_fail_total": 0,
+        "reason_code_fail_total": 0,
+        "failures_total": 0
+      },
+      "failures": []
+    },
+    "reason_taxonomy": {
+      "derived": {
+        "case_total": 5,
+        "response_total": 3,
+        "mismatch_total": 0,
+        "invalid_total": 0,
+        "unknown_total": 0,
+        "invalid_ratio": 0.0,
+        "unknown_ratio": 0.0
+      },
+      "failures": []
+    },
+    "parity": {
+      "derived": {
+        "window_size": 0,
+        "matched": 0,
+        "mismatched": 0,
+        "mismatch_ratio": 0.0,
+        "blocker_ratio": 0.0,
+        "by_type": {},
+        "by_severity": {},
+        "samples": [],
+        "graph_runs": [],
+        "graph_run_count": 0
+      },
+      "failures": []
+    },
+    "matrix": [
+      {
+        "gate": "contract_compat",
+        "engine": "contract",
+        "graph_run_id": "",
+        "node_path": [],
+        "pass": true,
+        "failures": []
+      },
+      {
+        "gate": "reason_taxonomy",
+        "engine": "graph",
+        "graph_run_id": "",
+        "node_path": [],
+        "pass": true,
+        "failures": []
+      },
+      {
+        "gate": "parity",
+        "engine": "shadow",
+        "graph_run_id": "",
+        "node_path": [],
+        "pass": true,
+        "failures": [],
+        "mismatch_ratio": 0.0,
+        "blocker_ratio": 0.0
+      }
+    ],
+    "gate_fail_total": 0,
+    "aggregate_failures": []
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "max_gate_fail_increase": 0,
+      "max_parity_mismatch_ratio_increase": 0.02,
+      "max_parity_blocker_ratio_increase": 0.01,
+      "require_baseline_approval": true,
+      "max_baseline_age_days": 0
+    }
+  }
+}

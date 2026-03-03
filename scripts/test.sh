@@ -209,17 +209,32 @@ if [ "${RUN_CHAT_ALL_EVALS:-0}" = "1" ]; then
     CHAT_PARITY_RUN_SAMPLE_LIMIT="${CHAT_PARITY_RUN_SAMPLE_LIMIT:-50}"
     CHAT_PARITY_MAX_MISMATCH_RATIO="${CHAT_PARITY_MAX_MISMATCH_RATIO:-0.10}"
     CHAT_PARITY_MAX_BLOCKER_RATIO="${CHAT_PARITY_MAX_BLOCKER_RATIO:-0.02}"
+    CHAT_PARITY_BASELINE_PATH="${CHAT_PARITY_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_graph_parity_eval_baseline_v1.json}"
+    CHAT_EVAL_REQUIRE_BASELINE_APPROVAL="${CHAT_EVAL_REQUIRE_BASELINE_APPROVAL:-1}"
+    CHAT_EVAL_MAX_BASELINE_AGE_DAYS="${CHAT_EVAL_MAX_BASELINE_AGE_DAYS:-0}"
+    CHAT_PARITY_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_graph_parity_eval.py"
+      --shadow-limit "$CHAT_PARITY_SHADOW_LIMIT"
+      --replay-dir "$CHAT_PARITY_REPLAY_DIR"
+      --run-sample-limit "$CHAT_PARITY_RUN_SAMPLE_LIMIT"
+      --max-mismatch-ratio "$CHAT_PARITY_MAX_MISMATCH_RATIO"
+      --max-blocker-ratio "$CHAT_PARITY_MAX_BLOCKER_RATIO"
+      --out "$CHAT_PARITY_OUT_DIR"
+      --gate
+    )
+    if [ -f "$CHAT_PARITY_BASELINE_PATH" ]; then
+      CHAT_PARITY_ARGS+=(--baseline-report "$CHAT_PARITY_BASELINE_PATH")
+      if [ "$CHAT_EVAL_REQUIRE_BASELINE_APPROVAL" = "1" ]; then
+        CHAT_PARITY_ARGS+=(--require-baseline-approval)
+      fi
+      if [ "${CHAT_EVAL_MAX_BASELINE_AGE_DAYS:-0}" -gt 0 ]; then
+        CHAT_PARITY_ARGS+=(--max-baseline-age-days "$CHAT_EVAL_MAX_BASELINE_AGE_DAYS")
+      fi
+    fi
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_graph_parity_eval.py" \
-      --shadow-limit "$CHAT_PARITY_SHADOW_LIMIT" \
-      --replay-dir "$CHAT_PARITY_REPLAY_DIR" \
-      --run-sample-limit "$CHAT_PARITY_RUN_SAMPLE_LIMIT" \
-      --max-mismatch-ratio "$CHAT_PARITY_MAX_MISMATCH_RATIO" \
-      --max-blocker-ratio "$CHAT_PARITY_MAX_BLOCKER_RATIO" \
-      --out "$CHAT_PARITY_OUT_DIR" \
-      --gate || exit 1
+    $PYTHON_BIN "${CHAT_PARITY_ARGS[@]}" || exit 1
 
-    CHAT_MATRIX_BASELINE_PATH="${CHAT_MATRIX_BASELINE_PATH:-$ROOT_DIR/data/eval/reports/chat_eval_matrix_baseline.json}"
+    CHAT_MATRIX_BASELINE_PATH="${CHAT_MATRIX_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_eval_matrix_baseline_v1.json}"
     CHAT_MATRIX_ARGS=(
       "$ROOT_DIR/scripts/eval/chat_eval_matrix.py"
       --cases-json "${CHAT_CONTRACT_CASES_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_contract_compat_v1.json}"
@@ -233,6 +248,12 @@ if [ "${RUN_CHAT_ALL_EVALS:-0}" = "1" ]; then
     )
     if [ -f "$CHAT_MATRIX_BASELINE_PATH" ]; then
       CHAT_MATRIX_ARGS+=(--baseline-report "$CHAT_MATRIX_BASELINE_PATH")
+      if [ "$CHAT_EVAL_REQUIRE_BASELINE_APPROVAL" = "1" ]; then
+        CHAT_MATRIX_ARGS+=(--require-baseline-approval)
+      fi
+      if [ "${CHAT_EVAL_MAX_BASELINE_AGE_DAYS:-0}" -gt 0 ]; then
+        CHAT_MATRIX_ARGS+=(--max-baseline-age-days "$CHAT_EVAL_MAX_BASELINE_AGE_DAYS")
+      fi
     fi
     $PYTHON_BIN "${CHAT_MATRIX_ARGS[@]}" || exit 1
   else

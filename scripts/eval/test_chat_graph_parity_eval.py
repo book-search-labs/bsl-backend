@@ -41,6 +41,7 @@ def test_evaluate_gate_and_baseline():
         "graph_run_count": 10,
         "mismatch_ratio": 0.08,
         "blocker_ratio": 0.01,
+        "by_type": {"ACTION_DIFF": 5},
     }
     failures = module.evaluate_gate(
         derived,
@@ -57,6 +58,63 @@ def test_evaluate_gate_and_baseline():
         derived,
         max_mismatch_ratio_increase=0.02,
         max_blocker_ratio_increase=0.02,
+        max_action_diff_ratio_increase=0.10,
+        require_baseline_approval=False,
+        max_baseline_age_days=0,
     )
     assert len(regressions) == 1
     assert "mismatch ratio regression" in regressions[0]
+
+
+def test_compare_with_baseline_detects_action_diff_and_missing_approval():
+    module = _load_module()
+    baseline = {
+        "generated_at": "2026-01-01T00:00:00+00:00",
+        "baseline_meta": {},
+        "derived": {
+            "window_size": 100,
+            "mismatch_ratio": 0.01,
+            "blocker_ratio": 0.0,
+            "by_type": {"ACTION_DIFF": 1},
+        },
+    }
+    current = {
+        "window_size": 100,
+        "mismatch_ratio": 0.01,
+        "blocker_ratio": 0.0,
+        "by_type": {"ACTION_DIFF": 20},
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_mismatch_ratio_increase=1.0,
+        max_blocker_ratio_increase=1.0,
+        max_action_diff_ratio_increase=0.05,
+        require_baseline_approval=True,
+        max_baseline_age_days=0,
+    )
+    assert any("action diff ratio regression" in item for item in failures)
+    assert any("baseline metadata missing approved_by" in item for item in failures)
+    assert any("baseline metadata missing approved_at" in item for item in failures)
+    assert any("baseline metadata missing evidence" in item for item in failures)
+
+
+def test_build_mismatch_samples_adds_primary_diff_type():
+    module = _load_module()
+    samples = [
+        {"matched": True, "diff_types": []},
+        {
+            "matched": False,
+            "ts": 1,
+            "trace_id": "t1",
+            "request_id": "r1",
+            "intent": "BOOK_SEARCH",
+            "topic": "RefundPolicy",
+            "severity": "BLOCKER",
+            "diff_types": ["CITATION_DIFF", "ACTION_DIFF"],
+        },
+    ]
+    rows = module._build_mismatch_samples(samples, max_samples=5)
+    assert len(rows) == 1
+    assert rows[0]["primary_diff_type"] == "ACTION_DIFF"
+    assert rows[0]["trace_id"] == "t1"

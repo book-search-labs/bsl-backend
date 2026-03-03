@@ -43,3 +43,22 @@ Migrate chat eval harness for full rewrite:
 - Unify all chat gates with graph metadata.
 - Add legacy-vs-graph parity checks and sampled diffs.
 - Enforce baseline governance and CI fail-fast behavior.
+
+---
+
+## Implementation Update (Bundle 1)
+
+- Strengthened parity eval output for actionable triage:
+  - added mismatch sample extraction with classification (`primary_diff_type`, `intent`, `topic`, `trace_id`, `request_id`)
+  - added mismatch classification aggregates in derived report payload
+- Expanded baseline governance checks in parity/matrix eval:
+  - optional baseline approval metadata enforcement (`approved_by`, `approved_at`, `evidence`)
+  - optional baseline age gate (`max_baseline_age_days`)
+  - parity baseline drift now includes `ACTION_DIFF` ratio regression guard
+  - matrix baseline drift now checks critical gate pass regression (`contract_compat`, `reason_taxonomy`, `parity`)
+- Added v1 baseline fixtures for deterministic CI:
+  - `services/query-service/tests/fixtures/chat_graph_parity_eval_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_eval_matrix_baseline_v1.json`
+- Updated `RUN_CHAT_ALL_EVALS=1` flow:
+  - `scripts/test.sh` now wires parity + matrix baseline files by default and enables baseline approval gate by default
+  - CI contract/spec step now includes `RUN_CHAT_ALL_EVALS=1`
