@@ -2683,7 +2683,7 @@ else
   echo "  - set RUN_CHAT_REASONING_BUDGET_AUDIT_EXPLAINABILITY=1 to enable"
 fi
 
-echo "[76/84] Chat ticket triage taxonomy gate (optional)"
+echo "[76/85] Chat ticket triage taxonomy gate (optional)"
 if [ "${RUN_CHAT_TICKET_TRIAGE_TAXONOMY:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TICKET_TRIAGE_TAXONOMY_JSON="${CHAT_TICKET_TRIAGE_TAXONOMY_JSON:-$ROOT_DIR/var/chat_ticket/triage_taxonomy.json}"
@@ -2727,7 +2727,7 @@ else
   echo "  - set RUN_CHAT_TICKET_TRIAGE_TAXONOMY=1 to enable"
 fi
 
-echo "[77/84] Chat ticket classifier pipeline gate (optional)"
+echo "[77/85] Chat ticket classifier pipeline gate (optional)"
 if [ "${RUN_CHAT_TICKET_CLASSIFIER_PIPELINE:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TICKET_CLASSIFIER_EVENTS_JSONL="${CHAT_TICKET_CLASSIFIER_EVENTS_JSONL:-$ROOT_DIR/var/chat_ticket/triage_predictions.jsonl}"
@@ -2766,7 +2766,7 @@ else
   echo "  - set RUN_CHAT_TICKET_CLASSIFIER_PIPELINE=1 to enable"
 fi
 
-echo "[78/84] Chat ticket SLA estimator gate (optional)"
+echo "[78/85] Chat ticket SLA estimator gate (optional)"
 if [ "${RUN_CHAT_TICKET_SLA_ESTIMATOR:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TICKET_SLA_ESTIMATES_JSONL="${CHAT_TICKET_SLA_ESTIMATES_JSONL:-$ROOT_DIR/var/chat_ticket/sla_estimates.jsonl}"
@@ -2807,7 +2807,7 @@ else
   echo "  - set RUN_CHAT_TICKET_SLA_ESTIMATOR=1 to enable"
 fi
 
-echo "[79/84] Chat ticket feedback loop gate (optional)"
+echo "[79/85] Chat ticket feedback loop gate (optional)"
 if [ "${RUN_CHAT_TICKET_FEEDBACK_LOOP:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TICKET_FEEDBACK_JSONL="${CHAT_TICKET_FEEDBACK_JSONL:-$ROOT_DIR/var/chat_ticket/triage_feedback.jsonl}"
@@ -2848,7 +2848,7 @@ else
   echo "  - set RUN_CHAT_TICKET_FEEDBACK_LOOP=1 to enable"
 fi
 
-echo "[80/84] Chat ticket evidence pack schema gate (optional)"
+echo "[80/85] Chat ticket evidence pack schema gate (optional)"
 if [ "${RUN_CHAT_TICKET_EVIDENCE_PACK_SCHEMA:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TICKET_EVIDENCE_PACK_JSONL="${CHAT_TICKET_EVIDENCE_PACK_JSONL:-$ROOT_DIR/var/chat_ticket/evidence_packs.jsonl}"
@@ -2891,7 +2891,7 @@ else
   echo "  - set RUN_CHAT_TICKET_EVIDENCE_PACK_SCHEMA=1 to enable"
 fi
 
-echo "[81/84] Chat ticket evidence pack assembly gate (optional)"
+echo "[81/85] Chat ticket evidence pack assembly gate (optional)"
 if [ "${RUN_CHAT_TICKET_EVIDENCE_PACK_ASSEMBLY:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TICKET_EVIDENCE_ASSEMBLY_TICKETS_JSONL="${CHAT_TICKET_EVIDENCE_ASSEMBLY_TICKETS_JSONL:-$ROOT_DIR/var/chat_ticket/ticket_events.jsonl}"
@@ -2926,7 +2926,46 @@ else
   echo "  - set RUN_CHAT_TICKET_EVIDENCE_PACK_ASSEMBLY=1 to enable"
 fi
 
-echo "[82/84] Canonical quality checks (optional)"
+echo "[82/85] Chat ticket resolution assistance gate (optional)"
+if [ "${RUN_CHAT_TICKET_RESOLUTION_ASSISTANCE:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TICKET_RESOLUTION_ASSISTANCE_JSONL="${CHAT_TICKET_RESOLUTION_ASSISTANCE_JSONL:-$ROOT_DIR/var/chat_ticket/resolution_assistance.jsonl}"
+    CHAT_TICKET_RESOLUTION_ASSISTANCE_WINDOW_HOURS="${CHAT_TICKET_RESOLUTION_ASSISTANCE_WINDOW_HOURS:-24}"
+    CHAT_TICKET_RESOLUTION_ASSISTANCE_LIMIT="${CHAT_TICKET_RESOLUTION_ASSISTANCE_LIMIT:-50000}"
+    CHAT_TICKET_RESOLUTION_ASSISTANCE_CONFIDENCE_THRESHOLD="${CHAT_TICKET_RESOLUTION_ASSISTANCE_CONFIDENCE_THRESHOLD:-0.6}"
+    CHAT_TICKET_RESOLUTION_ASSISTANCE_OUT_DIR="${CHAT_TICKET_RESOLUTION_ASSISTANCE_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TICKET_RESOLUTION_ASSISTANCE_MIN_WINDOW="${CHAT_TICKET_RESOLUTION_ASSISTANCE_MIN_WINDOW:-0}"
+    CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_INSUFFICIENT_TOTAL="${CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_INSUFFICIENT_TOTAL:-1000000}"
+    CHAT_TICKET_RESOLUTION_ASSISTANCE_MIN_SIMILAR_COVERAGE_RATIO="${CHAT_TICKET_RESOLUTION_ASSISTANCE_MIN_SIMILAR_COVERAGE_RATIO:-0.0}"
+    CHAT_TICKET_RESOLUTION_ASSISTANCE_MIN_TEMPLATE_COVERAGE_RATIO="${CHAT_TICKET_RESOLUTION_ASSISTANCE_MIN_TEMPLATE_COVERAGE_RATIO:-0.0}"
+    CHAT_TICKET_RESOLUTION_ASSISTANCE_MIN_QUESTION_COVERAGE_RATIO="${CHAT_TICKET_RESOLUTION_ASSISTANCE_MIN_QUESTION_COVERAGE_RATIO:-0.0}"
+    CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_MISSING_REASON_CODE_TOTAL="${CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_MISSING_REASON_CODE_TOTAL:-1000000}"
+    CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_LOW_CONF_UNROUTED_TOTAL="${CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_LOW_CONF_UNROUTED_TOTAL:-1000000}"
+    CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_STALE_MINUTES="${CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_ticket_resolution_assistance.py" \
+      --assistance-jsonl "$CHAT_TICKET_RESOLUTION_ASSISTANCE_JSONL" \
+      --window-hours "$CHAT_TICKET_RESOLUTION_ASSISTANCE_WINDOW_HOURS" \
+      --limit "$CHAT_TICKET_RESOLUTION_ASSISTANCE_LIMIT" \
+      --confidence-threshold "$CHAT_TICKET_RESOLUTION_ASSISTANCE_CONFIDENCE_THRESHOLD" \
+      --out "$CHAT_TICKET_RESOLUTION_ASSISTANCE_OUT_DIR" \
+      --min-window "$CHAT_TICKET_RESOLUTION_ASSISTANCE_MIN_WINDOW" \
+      --max-insufficient-assistance-total "$CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_INSUFFICIENT_TOTAL" \
+      --min-similar-case-coverage-ratio "$CHAT_TICKET_RESOLUTION_ASSISTANCE_MIN_SIMILAR_COVERAGE_RATIO" \
+      --min-template-coverage-ratio "$CHAT_TICKET_RESOLUTION_ASSISTANCE_MIN_TEMPLATE_COVERAGE_RATIO" \
+      --min-question-coverage-ratio "$CHAT_TICKET_RESOLUTION_ASSISTANCE_MIN_QUESTION_COVERAGE_RATIO" \
+      --max-missing-reason-code-total "$CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_MISSING_REASON_CODE_TOTAL" \
+      --max-low-confidence-unrouted-total "$CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_LOW_CONF_UNROUTED_TOTAL" \
+      --max-stale-minutes "$CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat ticket resolution assistance gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TICKET_RESOLUTION_ASSISTANCE=1 to enable"
+fi
+
+echo "[83/85] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -2937,7 +2976,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[83/84] E2E tests (optional)"
+echo "[84/85] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -2948,4 +2987,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[84/84] Done"
+echo "[85/85] Done"

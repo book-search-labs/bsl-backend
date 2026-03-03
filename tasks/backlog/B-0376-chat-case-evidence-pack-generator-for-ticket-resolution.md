@@ -69,3 +69,14 @@ Generate structured chat evidence packs for support tickets:
   - `scripts/eval/test_chat_ticket_evidence_pack_assembly.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TICKET_EVIDENCE_PACK_ASSEMBLY=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Resolution assistance gate 추가
+  - `scripts/eval/chat_ticket_resolution_assistance.py`
+  - 유사케이스/템플릿/추가질문 추천 coverage ratio 검증
+  - 추천 불충분(insufficient) 건수, reason_code 누락 건수 검증
+  - low-confidence 추천 미라우팅 및 stale evidence 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_ticket_resolution_assistance.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TICKET_RESOLUTION_ASSISTANCE=1 ./scripts/test.sh`

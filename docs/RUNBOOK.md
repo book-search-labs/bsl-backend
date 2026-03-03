@@ -2418,6 +2418,30 @@ python scripts/eval/chat_ticket_evidence_pack_assembly.py \
 - CI 옵션:
   - `RUN_CHAT_TICKET_EVIDENCE_PACK_ASSEMBLY=1 ./scripts/test.sh`
 
+## Ticket resolution assistance gate (B-0376, Bundle 3)
+- evidence pack 기반 유사케이스/템플릿/추가질문 추천 품질을 배포 전에 검증:
+```bash
+python scripts/eval/chat_ticket_resolution_assistance.py \
+  --assistance-jsonl var/chat_ticket/resolution_assistance.jsonl \
+  --window-hours 24 \
+  --confidence-threshold 0.60 \
+  --min-window 100 \
+  --max-insufficient-assistance-total 0 \
+  --min-similar-case-coverage-ratio 0.60 \
+  --min-template-coverage-ratio 0.60 \
+  --min-question-coverage-ratio 0.60 \
+  --max-missing-reason-code-total 0 \
+  --max-low-confidence-unrouted-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - similar case/template/question coverage ratio
+  - 추천 불충분 케이스와 reason_code 누락 건수
+  - low-confidence 보조추천 미라우팅 건수와 stale minutes
+- CI 옵션:
+  - `RUN_CHAT_TICKET_RESOLUTION_ASSISTANCE=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
