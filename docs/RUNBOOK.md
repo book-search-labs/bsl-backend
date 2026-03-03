@@ -2721,6 +2721,30 @@ python scripts/eval/chat_privacy_user_rights_alignment.py \
 - CI 옵션:
   - `RUN_CHAT_PRIVACY_USER_RIGHTS_ALIGNMENT=1 ./scripts/test.sh`
 
+## Chat privacy incident handling gate (B-0379, Bundle 4)
+- PII incident 알림/운영자 큐/해결 루프를 검증:
+```bash
+python scripts/eval/chat_privacy_incident_handling.py \
+  --events-jsonl var/chat_privacy/privacy_incidents.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-incident-total 5 \
+  --min-high-queue-coverage-ratio 0.95 \
+  --min-resolved-ratio 0.80 \
+  --max-alert-miss-total 0 \
+  --max-high-unqueued-total 0 \
+  --max-p95-ack-latency-minutes 30 \
+  --max-missing-runbook-link-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - high severity incident alert miss/queue miss 건수
+  - p95 ack latency 및 resolved ratio
+  - runbook/playbook 링크 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_PRIVACY_INCIDENT_HANDLING=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

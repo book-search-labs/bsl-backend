@@ -3417,7 +3417,46 @@ else
   echo "  - set RUN_CHAT_PRIVACY_USER_RIGHTS_ALIGNMENT=1 to enable"
 fi
 
-echo "[95/97] Canonical quality checks (optional)"
+echo "[95/98] Chat privacy incident handling gate (optional)"
+if [ "${RUN_CHAT_PRIVACY_INCIDENT_HANDLING:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_PRIVACY_INCIDENTS_JSONL="${CHAT_PRIVACY_INCIDENTS_JSONL:-$ROOT_DIR/var/chat_privacy/privacy_incidents.jsonl}"
+    CHAT_PRIVACY_INCIDENTS_WINDOW_HOURS="${CHAT_PRIVACY_INCIDENTS_WINDOW_HOURS:-24}"
+    CHAT_PRIVACY_INCIDENTS_LIMIT="${CHAT_PRIVACY_INCIDENTS_LIMIT:-50000}"
+    CHAT_PRIVACY_INCIDENTS_OUT_DIR="${CHAT_PRIVACY_INCIDENTS_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_PRIVACY_INCIDENTS_MIN_WINDOW="${CHAT_PRIVACY_INCIDENTS_MIN_WINDOW:-0}"
+    CHAT_PRIVACY_INCIDENTS_MIN_TOTAL="${CHAT_PRIVACY_INCIDENTS_MIN_TOTAL:-0}"
+    CHAT_PRIVACY_INCIDENTS_MIN_HIGH_QUEUE_COVERAGE_RATIO="${CHAT_PRIVACY_INCIDENTS_MIN_HIGH_QUEUE_COVERAGE_RATIO:-0.0}"
+    CHAT_PRIVACY_INCIDENTS_MIN_RESOLVED_RATIO="${CHAT_PRIVACY_INCIDENTS_MIN_RESOLVED_RATIO:-0.0}"
+    CHAT_PRIVACY_INCIDENTS_MAX_ALERT_MISS_TOTAL="${CHAT_PRIVACY_INCIDENTS_MAX_ALERT_MISS_TOTAL:-1000000}"
+    CHAT_PRIVACY_INCIDENTS_MAX_HIGH_UNQUEUED_TOTAL="${CHAT_PRIVACY_INCIDENTS_MAX_HIGH_UNQUEUED_TOTAL:-1000000}"
+    CHAT_PRIVACY_INCIDENTS_MAX_P95_ACK_LATENCY_MINUTES="${CHAT_PRIVACY_INCIDENTS_MAX_P95_ACK_LATENCY_MINUTES:-1000000}"
+    CHAT_PRIVACY_INCIDENTS_MAX_MISSING_RUNBOOK_LINK_TOTAL="${CHAT_PRIVACY_INCIDENTS_MAX_MISSING_RUNBOOK_LINK_TOTAL:-1000000}"
+    CHAT_PRIVACY_INCIDENTS_MAX_STALE_MINUTES="${CHAT_PRIVACY_INCIDENTS_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_privacy_incident_handling.py" \
+      --events-jsonl "$CHAT_PRIVACY_INCIDENTS_JSONL" \
+      --window-hours "$CHAT_PRIVACY_INCIDENTS_WINDOW_HOURS" \
+      --limit "$CHAT_PRIVACY_INCIDENTS_LIMIT" \
+      --out "$CHAT_PRIVACY_INCIDENTS_OUT_DIR" \
+      --min-window "$CHAT_PRIVACY_INCIDENTS_MIN_WINDOW" \
+      --min-incident-total "$CHAT_PRIVACY_INCIDENTS_MIN_TOTAL" \
+      --min-high-queue-coverage-ratio "$CHAT_PRIVACY_INCIDENTS_MIN_HIGH_QUEUE_COVERAGE_RATIO" \
+      --min-resolved-ratio "$CHAT_PRIVACY_INCIDENTS_MIN_RESOLVED_RATIO" \
+      --max-alert-miss-total "$CHAT_PRIVACY_INCIDENTS_MAX_ALERT_MISS_TOTAL" \
+      --max-high-unqueued-total "$CHAT_PRIVACY_INCIDENTS_MAX_HIGH_UNQUEUED_TOTAL" \
+      --max-p95-ack-latency-minutes "$CHAT_PRIVACY_INCIDENTS_MAX_P95_ACK_LATENCY_MINUTES" \
+      --max-missing-runbook-link-total "$CHAT_PRIVACY_INCIDENTS_MAX_MISSING_RUNBOOK_LINK_TOTAL" \
+      --max-stale-minutes "$CHAT_PRIVACY_INCIDENTS_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat privacy incident handling gate"
+  fi
+else
+  echo "  - set RUN_CHAT_PRIVACY_INCIDENT_HANDLING=1 to enable"
+fi
+
+echo "[96/98] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -3428,7 +3467,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[96/97] E2E tests (optional)"
+echo "[97/98] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -3439,4 +3478,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[97/97] Done"
+echo "[98/98] Done"

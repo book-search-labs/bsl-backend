@@ -83,3 +83,14 @@ Harden chat privacy controls:
   - `scripts/eval/test_chat_privacy_user_rights_alignment.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_PRIVACY_USER_RIGHTS_ALIGNMENT=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] Privacy incident handling gate 추가
+  - `scripts/eval/chat_privacy_incident_handling.py`
+  - high severity incident alert miss / operator queue miss 검증
+  - ack latency p95 / resolved ratio 검증
+  - runbook link 누락 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_privacy_incident_handling.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_PRIVACY_INCIDENT_HANDLING=1 ./scripts/test.sh`
