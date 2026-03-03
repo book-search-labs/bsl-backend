@@ -162,6 +162,69 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_peak_rps_increase: float,
+    max_monthly_cost_usd_increase: float,
+    max_cpu_cores_increase: int,
+    max_gpu_required_increase: int,
+) -> list[str]:
+    failures: list[str] = []
+
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_forecast = base_summary.get("forecast") if isinstance(base_summary.get("forecast"), Mapping) else {}
+    cur_forecast = current_summary.get("forecast") if isinstance(current_summary.get("forecast"), Mapping) else {}
+    base_resources = base_summary.get("resources") if isinstance(base_summary.get("resources"), Mapping) else {}
+    cur_resources = current_summary.get("resources") if isinstance(current_summary.get("resources"), Mapping) else {}
+
+    base_peak_rps = _safe_float(base_forecast.get("peak_rps"), 0.0)
+    cur_peak_rps = _safe_float(cur_forecast.get("peak_rps"), 0.0)
+    peak_rps_increase = max(0.0, cur_peak_rps - base_peak_rps)
+    if peak_rps_increase > max(0.0, float(max_peak_rps_increase)):
+        failures.append(
+            "peak_rps regression: "
+            f"baseline={base_peak_rps:.6f}, current={cur_peak_rps:.6f}, "
+            f"allowed_increase={float(max_peak_rps_increase):.6f}"
+        )
+
+    base_monthly_cost_usd = _safe_float(base_forecast.get("monthly_cost_usd"), 0.0)
+    cur_monthly_cost_usd = _safe_float(cur_forecast.get("monthly_cost_usd"), 0.0)
+    monthly_cost_usd_increase = max(0.0, cur_monthly_cost_usd - base_monthly_cost_usd)
+    if monthly_cost_usd_increase > max(0.0, float(max_monthly_cost_usd_increase)):
+        failures.append(
+            "monthly cost regression: "
+            f"baseline={base_monthly_cost_usd:.6f}, current={cur_monthly_cost_usd:.6f}, "
+            f"allowed_increase={float(max_monthly_cost_usd_increase):.6f}"
+        )
+
+    base_cpu_cores = _safe_int(base_resources.get("cpu_cores_required"), 0)
+    cur_cpu_cores = _safe_int(cur_resources.get("cpu_cores_required"), 0)
+    cpu_cores_increase = max(0, cur_cpu_cores - base_cpu_cores)
+    if cpu_cores_increase > max(0, int(max_cpu_cores_increase)):
+        failures.append(
+            "cpu cores regression: "
+            f"baseline={base_cpu_cores}, current={cur_cpu_cores}, "
+            f"allowed_increase={max(0, int(max_cpu_cores_increase))}"
+        )
+
+    base_gpu_required = _safe_int(base_resources.get("gpu_required"), 0)
+    cur_gpu_required = _safe_int(cur_resources.get("gpu_required"), 0)
+    gpu_required_increase = max(0, cur_gpu_required - base_gpu_required)
+    if gpu_required_increase > max(0, int(max_gpu_required_increase)):
+        failures.append(
+            "gpu requirement regression: "
+            f"baseline={base_gpu_required}, current={cur_gpu_required}, "
+            f"allowed_increase={max(0, int(max_gpu_required_increase))}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     baseline = summary.get("baseline") if isinstance(summary.get("baseline"), Mapping) else {}
@@ -190,11 +253,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -219,6 +287,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-monthly-cost-usd", type=float, default=15000.0)
     parser.add_argument("--max-cpu-cores", type=int, default=64)
     parser.add_argument("--max-gpu-required", type=int, default=8)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-peak-rps-increase", type=float, default=5.0)
+    parser.add_argument("--max-monthly-cost-usd-increase", type=float, default=1000.0)
+    parser.add_argument("--max-cpu-cores-increase", type=int, default=4)
+    parser.add_argument("--max-gpu-required-increase", type=int, default=1)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -260,21 +333,46 @@ def main() -> int:
         max_cpu_cores=max(0, int(args.max_cpu_cores)),
         max_gpu_required=max(0, int(args.max_gpu_required)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            summary,
+            max_peak_rps_increase=max(0.0, float(args.max_peak_rps_increase)),
+            max_monthly_cost_usd_increase=max(0.0, float(args.max_monthly_cost_usd_increase)),
+            max_cpu_cores_increase=max(0, int(args.max_cpu_cores_increase)),
+            max_gpu_required_increase=max(0, int(args.max_gpu_required_increase)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "load_profile_report": str(report_path) if report_path else None,
+        "source": {
+            "reports_dir": str(args.reports_dir),
+            "load_prefix": str(args.load_prefix),
+            "load_report": str(report_path) if report_path else None,
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "max_peak_rps": float(args.max_peak_rps),
                 "max_monthly_cost_usd": float(args.max_monthly_cost_usd),
                 "max_cpu_cores": int(args.max_cpu_cores),
                 "max_gpu_required": int(args.max_gpu_required),
+                "max_peak_rps_increase": float(args.max_peak_rps_increase),
+                "max_monthly_cost_usd_increase": float(args.max_monthly_cost_usd_increase),
+                "max_cpu_cores_increase": int(args.max_cpu_cores_increase),
+                "max_gpu_required_increase": int(args.max_gpu_required_increase),
             },
         },
     }
@@ -291,8 +389,13 @@ def main() -> int:
     print(f"report_md={md_path}")
     print(f"peak_rps={_safe_float((summary.get('forecast') or {}).get('peak_rps'), 0.0):.4f}")
     print(f"monthly_cost_usd={_safe_float((summary.get('forecast') or {}).get('monthly_cost_usd'), 0.0):.2f}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and not payload["gate"]["pass"]:
+        for failure in failures:
+            print(f"[gate-failure] {failure}")
+        for failure in baseline_failures:
+            print(f"[baseline-failure] {failure}")
         return 2
     return 0
 

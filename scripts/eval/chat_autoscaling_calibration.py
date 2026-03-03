@@ -222,6 +222,64 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_under_ratio_increase: float,
+    max_over_ratio_increase: float,
+    max_prediction_mape_increase: float,
+    max_canary_failure_total_increase: int,
+) -> list[str]:
+    failures: list[str] = []
+
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_under_ratio = _safe_float(base_summary.get("under_ratio"), 0.0)
+    cur_under_ratio = _safe_float(current_summary.get("under_ratio"), 0.0)
+    under_ratio_increase = max(0.0, cur_under_ratio - base_under_ratio)
+    if under_ratio_increase > max(0.0, float(max_under_ratio_increase)):
+        failures.append(
+            "under ratio regression: "
+            f"baseline={base_under_ratio:.6f}, current={cur_under_ratio:.6f}, "
+            f"allowed_increase={float(max_under_ratio_increase):.6f}"
+        )
+
+    base_over_ratio = _safe_float(base_summary.get("over_ratio"), 0.0)
+    cur_over_ratio = _safe_float(current_summary.get("over_ratio"), 0.0)
+    over_ratio_increase = max(0.0, cur_over_ratio - base_over_ratio)
+    if over_ratio_increase > max(0.0, float(max_over_ratio_increase)):
+        failures.append(
+            "over ratio regression: "
+            f"baseline={base_over_ratio:.6f}, current={cur_over_ratio:.6f}, "
+            f"allowed_increase={float(max_over_ratio_increase):.6f}"
+        )
+
+    base_prediction_mape = _safe_float(base_summary.get("prediction_mape"), 0.0)
+    cur_prediction_mape = _safe_float(current_summary.get("prediction_mape"), 0.0)
+    prediction_mape_increase = max(0.0, cur_prediction_mape - base_prediction_mape)
+    if prediction_mape_increase > max(0.0, float(max_prediction_mape_increase)):
+        failures.append(
+            "prediction mape regression: "
+            f"baseline={base_prediction_mape:.6f}, current={cur_prediction_mape:.6f}, "
+            f"allowed_increase={float(max_prediction_mape_increase):.6f}"
+        )
+
+    base_canary_failure_total = _safe_int(base_summary.get("canary_failure_total"), 0)
+    cur_canary_failure_total = _safe_int(current_summary.get("canary_failure_total"), 0)
+    canary_failure_total_increase = max(0, cur_canary_failure_total - base_canary_failure_total)
+    if canary_failure_total_increase > max(0, int(max_canary_failure_total_increase)):
+        failures.append(
+            "canary failure count regression: "
+            f"baseline={base_canary_failure_total}, current={cur_canary_failure_total}, "
+            f"allowed_increase={max(0, int(max_canary_failure_total_increase))}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -246,11 +304,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -274,6 +337,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-prediction-mape", type=float, default=0.40)
     parser.add_argument("--max-canary-failure-total", type=int, default=0)
     parser.add_argument("--require-release-canary", action="store_true")
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-under-ratio-increase", type=float, default=0.05)
+    parser.add_argument("--max-over-ratio-increase", type=float, default=0.05)
+    parser.add_argument("--max-prediction-mape-increase", type=float, default=0.10)
+    parser.add_argument("--max-canary-failure-total-increase", type=int, default=0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -319,16 +387,38 @@ def main() -> int:
         max_canary_failure_total=max(0, int(args.max_canary_failure_total)),
         require_release_canary=bool(args.require_release_canary),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            summary,
+            max_under_ratio_increase=max(0.0, float(args.max_under_ratio_increase)),
+            max_over_ratio_increase=max(0.0, float(args.max_over_ratio_increase)),
+            max_prediction_mape_increase=max(0.0, float(args.max_prediction_mape_increase)),
+            max_canary_failure_total_increase=max(0, int(args.max_canary_failure_total_increase)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "events_jsonl": str(events_path),
         "capacity_forecast_report": str(forecast_path) if forecast_path else None,
+        "source": {
+            "events_jsonl": str(events_path),
+            "reports_dir": str(args.reports_dir),
+            "capacity_forecast_prefix": str(args.capacity_forecast_prefix),
+            "capacity_forecast_report": str(forecast_path) if forecast_path else None,
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "max_under_ratio": float(args.max_under_ratio),
@@ -336,6 +426,10 @@ def main() -> int:
                 "max_prediction_mape": float(args.max_prediction_mape),
                 "max_canary_failure_total": int(args.max_canary_failure_total),
                 "require_release_canary": bool(args.require_release_canary),
+                "max_under_ratio_increase": float(args.max_under_ratio_increase),
+                "max_over_ratio_increase": float(args.max_over_ratio_increase),
+                "max_prediction_mape_increase": float(args.max_prediction_mape_increase),
+                "max_canary_failure_total_increase": int(args.max_canary_failure_total_increase),
             },
         },
     }
@@ -352,8 +446,13 @@ def main() -> int:
     print(f"report_md={md_path}")
     print(f"under_ratio={_safe_float(summary.get('under_ratio'), 0.0):.4f}")
     print(f"over_ratio={_safe_float(summary.get('over_ratio'), 0.0):.4f}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and not payload["gate"]["pass"]:
+        for failure in failures:
+            print(f"[gate-failure] {failure}")
+        for failure in baseline_failures:
+            print(f"[baseline-failure] {failure}")
         return 2
     return 0
 

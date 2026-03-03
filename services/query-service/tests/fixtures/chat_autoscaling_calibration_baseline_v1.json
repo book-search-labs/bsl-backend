@@ -1,0 +1,68 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "events_jsonl": "var/chat_governance/autoscaling_events.jsonl",
+  "capacity_forecast_report": null,
+  "source": {
+    "events_jsonl": "var/chat_governance/autoscaling_events.jsonl",
+    "reports_dir": "data/eval/reports",
+    "capacity_forecast_prefix": "chat_capacity_forecast",
+    "capacity_forecast_report": null,
+    "baseline_report": null
+  },
+  "summary": {
+    "window_size": 0,
+    "under_total": 0,
+    "over_total": 0,
+    "under_ratio": 0.0,
+    "over_ratio": 0.0,
+    "canary_failure_total": 0,
+    "release_event_total": 0,
+    "canary_failure_ratio": 0.0,
+    "scale_up_total": 0,
+    "scale_down_total": 0,
+    "prediction_mape": 0.0,
+    "peak_actual_rps": 0.0,
+    "peak_allocated_rps": 0.0,
+    "forecast_peak_rps": 0.0,
+    "target_prescale_factor": 1.2,
+    "recommended_peak_rps": 0.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "under_total": 0,
+      "over_total": 0,
+      "under_ratio": 0.0,
+      "over_ratio": 0.0,
+      "canary_failure_total": 0,
+      "release_event_total": 0,
+      "canary_failure_ratio": 0.0,
+      "scale_up_total": 0,
+      "scale_down_total": 0,
+      "prediction_mape": 0.0,
+      "peak_actual_rps": 0.0,
+      "peak_allocated_rps": 0.0,
+      "forecast_peak_rps": 0.0,
+      "target_prescale_factor": 1.2,
+      "recommended_peak_rps": 0.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 1,
+      "max_under_ratio": 0.1,
+      "max_over_ratio": 0.35,
+      "max_prediction_mape": 0.4,
+      "max_canary_failure_total": 0,
+      "require_release_canary": false,
+      "max_under_ratio_increase": 0.05,
+      "max_over_ratio_increase": 0.05,
+      "max_prediction_mape_increase": 0.1,
+      "max_canary_failure_total_increase": 0
+    }
+  }
+}

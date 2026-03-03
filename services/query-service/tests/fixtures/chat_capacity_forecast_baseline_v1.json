@@ -1,0 +1,99 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "load_profile_report": null,
+  "source": {
+    "reports_dir": "data/eval/reports",
+    "load_prefix": "chat_load_profile_model",
+    "load_report": null,
+    "baseline_report": null
+  },
+  "summary": {
+    "baseline": {
+      "window_size": 0,
+      "window_hours": 168.0,
+      "requests_per_hour": 0.0,
+      "requests_per_week": 0.0,
+      "avg_tokens_per_request": 0.0,
+      "tool_calls_per_request": 0.0,
+      "peak_requests_per_hour": 0.0
+    },
+    "forecast": {
+      "week_requests": 0.0,
+      "month_requests": 0.0,
+      "week_tokens": 0.0,
+      "month_tokens": 0.0,
+      "week_tool_calls": 0.0,
+      "month_tool_calls": 0.0,
+      "peak_rps": 0.0,
+      "monthly_cost_usd": 0.0
+    },
+    "resources": {
+      "cpu_cores_required": 0,
+      "gpu_required": 0,
+      "memory_gb_required": 2.0,
+      "tokens_per_sec_peak": 0.0
+    },
+    "assumptions": {
+      "weekly_growth_factor": 1.08,
+      "monthly_growth_factor": 1.35,
+      "promo_surge_factor": 1.6,
+      "cpu_rps_per_core": 3.0,
+      "gpu_tokens_per_sec": 800.0,
+      "cost_per_1k_tokens": 0.002
+    }
+  },
+  "derived": {
+    "summary": {
+      "baseline": {
+        "window_size": 0,
+        "window_hours": 168.0,
+        "requests_per_hour": 0.0,
+        "requests_per_week": 0.0,
+        "avg_tokens_per_request": 0.0,
+        "tool_calls_per_request": 0.0,
+        "peak_requests_per_hour": 0.0
+      },
+      "forecast": {
+        "week_requests": 0.0,
+        "month_requests": 0.0,
+        "week_tokens": 0.0,
+        "month_tokens": 0.0,
+        "week_tool_calls": 0.0,
+        "month_tool_calls": 0.0,
+        "peak_rps": 0.0,
+        "monthly_cost_usd": 0.0
+      },
+      "resources": {
+        "cpu_cores_required": 0,
+        "gpu_required": 0,
+        "memory_gb_required": 2.0,
+        "tokens_per_sec_peak": 0.0
+      },
+      "assumptions": {
+        "weekly_growth_factor": 1.08,
+        "monthly_growth_factor": 1.35,
+        "promo_surge_factor": 1.6,
+        "cpu_rps_per_core": 3.0,
+        "gpu_tokens_per_sec": 800.0,
+        "cost_per_1k_tokens": 0.002
+      }
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 1,
+      "max_peak_rps": 50.0,
+      "max_monthly_cost_usd": 15000.0,
+      "max_cpu_cores": 64,
+      "max_gpu_required": 8,
+      "max_peak_rps_increase": 5.0,
+      "max_monthly_cost_usd_increase": 1000.0,
+      "max_cpu_cores_increase": 4,
+      "max_gpu_required_increase": 1
+    }
+  }
+}

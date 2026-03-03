@@ -93,3 +93,45 @@ def test_evaluate_gate_passes_when_normal_profile_is_healthy():
         max_normal_p95_queue_depth=50.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_normal_and_incident_regression():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "profiles": {
+                "NORMAL": {
+                    "error_ratio": 0.01,
+                    "p95_latency_ms": 800.0,
+                    "p95_queue_depth": 8.0,
+                }
+            },
+            "derived": {
+                "incident_vs_normal_ratio": 0.10,
+            },
+        }
+    }
+    current = {
+        "profiles": {
+            "NORMAL": {
+                "error_ratio": 0.30,
+                "p95_latency_ms": 5000.0,
+                "p95_queue_depth": 80.0,
+            }
+        },
+        "derived": {
+            "incident_vs_normal_ratio": 0.80,
+        },
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_normal_error_ratio_increase=0.0,
+        max_normal_p95_latency_ms_increase=0.0,
+        max_normal_p95_queue_depth_increase=0.0,
+        max_incident_vs_normal_ratio_increase=0.0,
+    )
+    assert any("normal error ratio regression" in item for item in failures)
+    assert any("normal p95 latency regression" in item for item in failures)
+    assert any("normal p95 queue depth regression" in item for item in failures)
+    assert any("incident-vs-normal ratio regression" in item for item in failures)

@@ -88,3 +88,33 @@ def test_evaluate_gate_passes_when_within_thresholds():
         require_release_canary=True,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_under_over_mape_canary_regression():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "under_ratio": 0.05,
+            "over_ratio": 0.08,
+            "prediction_mape": 0.15,
+            "canary_failure_total": 0,
+        }
+    }
+    current = {
+        "under_ratio": 0.30,
+        "over_ratio": 0.40,
+        "prediction_mape": 0.55,
+        "canary_failure_total": 3,
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_under_ratio_increase=0.0,
+        max_over_ratio_increase=0.0,
+        max_prediction_mape_increase=0.0,
+        max_canary_failure_total_increase=0,
+    )
+    assert any("under ratio regression" in item for item in failures)
+    assert any("over ratio regression" in item for item in failures)
+    assert any("prediction mape regression" in item for item in failures)
+    assert any("canary failure count regression" in item for item in failures)

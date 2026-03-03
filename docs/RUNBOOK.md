@@ -1404,7 +1404,7 @@ python scripts/eval/chat_data_governance_evidence.py \
     - `CHAT_DATA_GOV_MAX_BLOCKER_INCREASE`
 
 ## Load profile model gate (I-0363, Bundle 1)
-- 트래픽 이벤트에서 시간대/의도/툴사용/지연/오류를 시나리오별(`NORMAL|PROMOTION|INCIDENT`) 프로파일로 집계:
+- 트래픽 이벤트에서 시간대/의도/툴사용/지연/오류를 시나리오별(`NORMAL|PROMOTION|INCIDENT`) 프로파일로 집계 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_load_profile_model.py \
   --traffic-jsonl var/chat_governance/load_events.jsonl \
@@ -1414,6 +1414,11 @@ python scripts/eval/chat_load_profile_model.py \
   --max-normal-error-ratio 0.05 \
   --max-normal-p95-latency-ms 3000 \
   --max-normal-p95-queue-depth 50 \
+  --baseline-report services/query-service/tests/fixtures/chat_load_profile_model_baseline_v1.json \
+  --max-normal-error-ratio-increase 0.02 \
+  --max-normal-p95-latency-ms-increase 500 \
+  --max-normal-p95-queue-depth-increase 5 \
+  --max-incident-vs-normal-ratio-increase 0.2 \
   --gate
 ```
 - 산출물:
@@ -1422,9 +1427,14 @@ python scripts/eval/chat_load_profile_model.py \
   - 정상 구간(`NORMAL`) 기준 임계치 위반 여부
 - CI 옵션:
   - `RUN_CHAT_LOAD_PROFILE_MODEL=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_LOAD_PROFILE_MAX_ERROR_RATIO_INCREASE`
+    - `CHAT_LOAD_PROFILE_MAX_P95_LATENCY_INCREASE`
+    - `CHAT_LOAD_PROFILE_MAX_P95_QUEUE_INCREASE`
+    - `CHAT_LOAD_PROFILE_MAX_INCIDENT_RATIO_INCREASE`
 
 ## Capacity forecast gate (I-0363, Bundle 2)
-- load profile 리포트를 입력으로 주/월 수요/토큰/툴콜과 리소스(CPU/GPU/메모리)·비용을 예측:
+- load profile 리포트를 입력으로 주/월 수요/토큰/툴콜과 리소스(CPU/GPU/메모리)·비용을 예측 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_capacity_forecast.py \
   --reports-dir data/eval/reports \
@@ -1440,6 +1450,11 @@ python scripts/eval/chat_capacity_forecast.py \
   --max-monthly-cost-usd 15000 \
   --max-cpu-cores 64 \
   --max-gpu-required 8 \
+  --baseline-report services/query-service/tests/fixtures/chat_capacity_forecast_baseline_v1.json \
+  --max-peak-rps-increase 5 \
+  --max-monthly-cost-usd-increase 1000 \
+  --max-cpu-cores-increase 4 \
+  --max-gpu-required-increase 1 \
   --gate
 ```
 - 산출물:
@@ -1448,9 +1463,14 @@ python scripts/eval/chat_capacity_forecast.py \
   - 월 비용 추정치와 임계치 위반 여부
 - CI 옵션:
   - `RUN_CHAT_CAPACITY_FORECAST=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_FORECAST_MAX_PEAK_RPS_INCREASE`
+    - `CHAT_FORECAST_MAX_MONTHLY_COST_INCREASE`
+    - `CHAT_FORECAST_MAX_CPU_CORES_INCREASE`
+    - `CHAT_FORECAST_MAX_GPU_REQUIRED_INCREASE`
 
 ## Autoscaling calibration gate (I-0363, Bundle 3)
-- forecast 결과와 autoscaling 실측 이벤트를 비교해 과소/과잉 할당 비율 및 보정 계수를 계산:
+- forecast 결과와 autoscaling 실측 이벤트를 비교해 과소/과잉 할당 비율 및 보정 계수를 계산 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_autoscaling_calibration.py \
   --events-jsonl var/chat_governance/autoscaling_events.jsonl \
@@ -1465,6 +1485,11 @@ python scripts/eval/chat_autoscaling_calibration.py \
   --max-over-ratio 0.35 \
   --max-prediction-mape 0.40 \
   --max-canary-failure-total 0 \
+  --baseline-report services/query-service/tests/fixtures/chat_autoscaling_calibration_baseline_v1.json \
+  --max-under-ratio-increase 0.05 \
+  --max-over-ratio-increase 0.05 \
+  --max-prediction-mape-increase 0.10 \
+  --max-canary-failure-total-increase 0 \
   --require-release-canary \
   --gate
 ```
@@ -1474,6 +1499,11 @@ python scripts/eval/chat_autoscaling_calibration.py \
   - target prescale factor 및 recommended peak rps
 - CI 옵션:
   - `RUN_CHAT_AUTOSCALING_CALIBRATION=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_AUTOSCALE_MAX_UNDER_INCREASE`
+    - `CHAT_AUTOSCALE_MAX_OVER_INCREASE`
+    - `CHAT_AUTOSCALE_MAX_MAPE_INCREASE`
+    - `CHAT_AUTOSCALE_MAX_CANARY_INCREASE`
 
 ## Session gateway durability gate (I-0364, Bundle 1)
 - 세션 연결/재연결/resume/heartbeat 이벤트를 분석해 SSE 세션 복구 안정성을 게이트로 검증:

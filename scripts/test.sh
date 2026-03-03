@@ -1149,8 +1149,14 @@ if [ "${RUN_CHAT_LOAD_PROFILE_MODEL:-0}" = "1" ]; then
     CHAT_LOAD_PROFILE_MAX_ERROR_RATIO="${CHAT_LOAD_PROFILE_MAX_ERROR_RATIO:-0.05}"
     CHAT_LOAD_PROFILE_MAX_P95_LATENCY_MS="${CHAT_LOAD_PROFILE_MAX_P95_LATENCY_MS:-3000}"
     CHAT_LOAD_PROFILE_MAX_P95_QUEUE_DEPTH="${CHAT_LOAD_PROFILE_MAX_P95_QUEUE_DEPTH:-50}"
+    CHAT_LOAD_PROFILE_BASELINE_PATH="${CHAT_LOAD_PROFILE_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_load_profile_model_baseline_v1.json}"
+    CHAT_LOAD_PROFILE_MAX_ERROR_RATIO_INCREASE="${CHAT_LOAD_PROFILE_MAX_ERROR_RATIO_INCREASE:-0.02}"
+    CHAT_LOAD_PROFILE_MAX_P95_LATENCY_INCREASE="${CHAT_LOAD_PROFILE_MAX_P95_LATENCY_INCREASE:-500}"
+    CHAT_LOAD_PROFILE_MAX_P95_QUEUE_INCREASE="${CHAT_LOAD_PROFILE_MAX_P95_QUEUE_INCREASE:-5}"
+    CHAT_LOAD_PROFILE_MAX_INCIDENT_RATIO_INCREASE="${CHAT_LOAD_PROFILE_MAX_INCIDENT_RATIO_INCREASE:-0.2}"
 
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_load_profile_model.py" \
+    CHAT_LOAD_PROFILE_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_load_profile_model.py"
       --traffic-jsonl "$CHAT_LOAD_PROFILE_JSONL" \
       --window-hours "$CHAT_LOAD_PROFILE_WINDOW_HOURS" \
       --limit "$CHAT_LOAD_PROFILE_LIMIT" \
@@ -1159,7 +1165,16 @@ if [ "${RUN_CHAT_LOAD_PROFILE_MODEL:-0}" = "1" ]; then
       --max-normal-error-ratio "$CHAT_LOAD_PROFILE_MAX_ERROR_RATIO" \
       --max-normal-p95-latency-ms "$CHAT_LOAD_PROFILE_MAX_P95_LATENCY_MS" \
       --max-normal-p95-queue-depth "$CHAT_LOAD_PROFILE_MAX_P95_QUEUE_DEPTH" \
-      --gate || exit 1
+      --max-normal-error-ratio-increase "$CHAT_LOAD_PROFILE_MAX_ERROR_RATIO_INCREASE" \
+      --max-normal-p95-latency-ms-increase "$CHAT_LOAD_PROFILE_MAX_P95_LATENCY_INCREASE" \
+      --max-normal-p95-queue-depth-increase "$CHAT_LOAD_PROFILE_MAX_P95_QUEUE_INCREASE" \
+      --max-incident-vs-normal-ratio-increase "$CHAT_LOAD_PROFILE_MAX_INCIDENT_RATIO_INCREASE" \
+      --gate
+    )
+    if [ -f "$CHAT_LOAD_PROFILE_BASELINE_PATH" ]; then
+      CHAT_LOAD_PROFILE_ARGS+=(--baseline-report "$CHAT_LOAD_PROFILE_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_LOAD_PROFILE_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat load profile model gate"
   fi
@@ -1188,6 +1203,11 @@ if [ "${RUN_CHAT_CAPACITY_FORECAST:-0}" = "1" ]; then
     CHAT_FORECAST_MAX_MONTHLY_COST_USD="${CHAT_FORECAST_MAX_MONTHLY_COST_USD:-15000}"
     CHAT_FORECAST_MAX_CPU_CORES="${CHAT_FORECAST_MAX_CPU_CORES:-64}"
     CHAT_FORECAST_MAX_GPU_REQUIRED="${CHAT_FORECAST_MAX_GPU_REQUIRED:-8}"
+    CHAT_FORECAST_BASELINE_PATH="${CHAT_FORECAST_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_capacity_forecast_baseline_v1.json}"
+    CHAT_FORECAST_MAX_PEAK_RPS_INCREASE="${CHAT_FORECAST_MAX_PEAK_RPS_INCREASE:-5.0}"
+    CHAT_FORECAST_MAX_MONTHLY_COST_INCREASE="${CHAT_FORECAST_MAX_MONTHLY_COST_INCREASE:-1000.0}"
+    CHAT_FORECAST_MAX_CPU_CORES_INCREASE="${CHAT_FORECAST_MAX_CPU_CORES_INCREASE:-4}"
+    CHAT_FORECAST_MAX_GPU_REQUIRED_INCREASE="${CHAT_FORECAST_MAX_GPU_REQUIRED_INCREASE:-1}"
 
     CHAT_FORECAST_ARGS=(
       "$ROOT_DIR/scripts/eval/chat_capacity_forecast.py"
@@ -1208,10 +1228,17 @@ if [ "${RUN_CHAT_CAPACITY_FORECAST:-0}" = "1" ]; then
       --max-monthly-cost-usd "$CHAT_FORECAST_MAX_MONTHLY_COST_USD"
       --max-cpu-cores "$CHAT_FORECAST_MAX_CPU_CORES"
       --max-gpu-required "$CHAT_FORECAST_MAX_GPU_REQUIRED"
+      --max-peak-rps-increase "$CHAT_FORECAST_MAX_PEAK_RPS_INCREASE"
+      --max-monthly-cost-usd-increase "$CHAT_FORECAST_MAX_MONTHLY_COST_INCREASE"
+      --max-cpu-cores-increase "$CHAT_FORECAST_MAX_CPU_CORES_INCREASE"
+      --max-gpu-required-increase "$CHAT_FORECAST_MAX_GPU_REQUIRED_INCREASE"
       --gate
     )
     if [ -n "$CHAT_FORECAST_LOAD_REPORT" ]; then
       CHAT_FORECAST_ARGS+=(--load-report "$CHAT_FORECAST_LOAD_REPORT")
+    fi
+    if [ -f "$CHAT_FORECAST_BASELINE_PATH" ]; then
+      CHAT_FORECAST_ARGS+=(--baseline-report "$CHAT_FORECAST_BASELINE_PATH")
     fi
     $PYTHON_BIN "${CHAT_FORECAST_ARGS[@]}" || exit 1
   else
@@ -1241,6 +1268,11 @@ if [ "${RUN_CHAT_AUTOSCALING_CALIBRATION:-0}" = "1" ]; then
     CHAT_AUTOSCALE_MAX_MAPE="${CHAT_AUTOSCALE_MAX_MAPE:-0.40}"
     CHAT_AUTOSCALE_MAX_CANARY_FAILURE="${CHAT_AUTOSCALE_MAX_CANARY_FAILURE:-0}"
     CHAT_AUTOSCALE_REQUIRE_RELEASE_CANARY="${CHAT_AUTOSCALE_REQUIRE_RELEASE_CANARY:-0}"
+    CHAT_AUTOSCALE_BASELINE_PATH="${CHAT_AUTOSCALE_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_autoscaling_calibration_baseline_v1.json}"
+    CHAT_AUTOSCALE_MAX_UNDER_INCREASE="${CHAT_AUTOSCALE_MAX_UNDER_INCREASE:-0.05}"
+    CHAT_AUTOSCALE_MAX_OVER_INCREASE="${CHAT_AUTOSCALE_MAX_OVER_INCREASE:-0.05}"
+    CHAT_AUTOSCALE_MAX_MAPE_INCREASE="${CHAT_AUTOSCALE_MAX_MAPE_INCREASE:-0.10}"
+    CHAT_AUTOSCALE_MAX_CANARY_INCREASE="${CHAT_AUTOSCALE_MAX_CANARY_INCREASE:-0}"
 
     CHAT_AUTOSCALE_ARGS=(
       "$ROOT_DIR/scripts/eval/chat_autoscaling_calibration.py"
@@ -1259,10 +1291,17 @@ if [ "${RUN_CHAT_AUTOSCALING_CALIBRATION:-0}" = "1" ]; then
       --max-over-ratio "$CHAT_AUTOSCALE_MAX_OVER_RATIO"
       --max-prediction-mape "$CHAT_AUTOSCALE_MAX_MAPE"
       --max-canary-failure-total "$CHAT_AUTOSCALE_MAX_CANARY_FAILURE"
+      --max-under-ratio-increase "$CHAT_AUTOSCALE_MAX_UNDER_INCREASE"
+      --max-over-ratio-increase "$CHAT_AUTOSCALE_MAX_OVER_INCREASE"
+      --max-prediction-mape-increase "$CHAT_AUTOSCALE_MAX_MAPE_INCREASE"
+      --max-canary-failure-total-increase "$CHAT_AUTOSCALE_MAX_CANARY_INCREASE"
       --gate
     )
     if [ -n "$CHAT_AUTOSCALE_FORECAST_REPORT" ]; then
       CHAT_AUTOSCALE_ARGS+=(--capacity-forecast-report "$CHAT_AUTOSCALE_FORECAST_REPORT")
+    fi
+    if [ -f "$CHAT_AUTOSCALE_BASELINE_PATH" ]; then
+      CHAT_AUTOSCALE_ARGS+=(--baseline-report "$CHAT_AUTOSCALE_BASELINE_PATH")
     fi
     if [ "$CHAT_AUTOSCALE_REQUIRE_RELEASE_CANARY" = "1" ]; then
       CHAT_AUTOSCALE_ARGS+=(--require-release-canary)

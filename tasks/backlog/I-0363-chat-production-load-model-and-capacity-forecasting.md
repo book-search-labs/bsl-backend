@@ -69,3 +69,23 @@ Operationalize chat capacity forecasting:
   - `scripts/eval/test_chat_autoscaling_calibration.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_AUTOSCALING_CALIBRATION=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 4)
+- [x] Load/Forecast/Autoscaling baseline 거버넌스 강화
+  - `scripts/eval/chat_load_profile_model.py`
+    - `--baseline-report` 지원 및 normal error/latency/queue + incident ratio drift 비교 추가
+    - gate 결과에 `baseline_failures` 포함
+  - `scripts/eval/chat_capacity_forecast.py`
+    - `--baseline-report` 지원 및 peak/cost/cpu/gpu drift 비교 추가
+    - gate 결과에 `baseline_failures` 포함
+  - `scripts/eval/chat_autoscaling_calibration.py`
+    - `--baseline-report` 지원 및 under/over/mape/canary drift 비교 추가
+    - gate 결과에 `baseline_failures` 포함
+- [x] baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_load_profile_model_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_capacity_forecast_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_autoscaling_calibration_baseline_v1.json`
+- [x] CI 진입점 확장
+  - `scripts/test.sh`의 `RUN_CHAT_LOAD_PROFILE_MODEL=1` 경로에 baseline/drift env 연결
+  - `scripts/test.sh`의 `RUN_CHAT_CAPACITY_FORECAST=1` 경로에 baseline/drift env 연결
+  - `scripts/test.sh`의 `RUN_CHAT_AUTOSCALING_CALIBRATION=1` 경로에 baseline/drift env 연결

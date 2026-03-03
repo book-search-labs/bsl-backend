@@ -84,6 +84,13 @@ def read_events(path: Path, *, window_hours: int, limit: int, now: datetime | No
     return filtered
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"expected JSON object from {path}")
+    return payload
+
+
 def _percentile(values: list[float], ratio: float) -> float:
     if not values:
         return 0.0
@@ -259,6 +266,71 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_normal_error_ratio_increase: float,
+    max_normal_p95_latency_ms_increase: float,
+    max_normal_p95_queue_depth_increase: float,
+    max_incident_vs_normal_ratio_increase: float,
+) -> list[str]:
+    failures: list[str] = []
+
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_profiles = base_summary.get("profiles") if isinstance(base_summary.get("profiles"), Mapping) else {}
+    cur_profiles = current_summary.get("profiles") if isinstance(current_summary.get("profiles"), Mapping) else {}
+    base_normal = base_profiles.get("NORMAL") if isinstance(base_profiles.get("NORMAL"), Mapping) else {}
+    cur_normal = cur_profiles.get("NORMAL") if isinstance(cur_profiles.get("NORMAL"), Mapping) else {}
+
+    base_normal_error_ratio = _safe_float(base_normal.get("error_ratio"), 0.0)
+    cur_normal_error_ratio = _safe_float(cur_normal.get("error_ratio"), 0.0)
+    normal_error_ratio_increase = max(0.0, cur_normal_error_ratio - base_normal_error_ratio)
+    if normal_error_ratio_increase > max(0.0, float(max_normal_error_ratio_increase)):
+        failures.append(
+            "normal error ratio regression: "
+            f"baseline={base_normal_error_ratio:.6f}, current={cur_normal_error_ratio:.6f}, "
+            f"allowed_increase={float(max_normal_error_ratio_increase):.6f}"
+        )
+
+    base_normal_p95_latency_ms = _safe_float(base_normal.get("p95_latency_ms"), 0.0)
+    cur_normal_p95_latency_ms = _safe_float(cur_normal.get("p95_latency_ms"), 0.0)
+    normal_p95_latency_ms_increase = max(0.0, cur_normal_p95_latency_ms - base_normal_p95_latency_ms)
+    if normal_p95_latency_ms_increase > max(0.0, float(max_normal_p95_latency_ms_increase)):
+        failures.append(
+            "normal p95 latency regression: "
+            f"baseline={base_normal_p95_latency_ms:.6f}, current={cur_normal_p95_latency_ms:.6f}, "
+            f"allowed_increase={float(max_normal_p95_latency_ms_increase):.6f}"
+        )
+
+    base_normal_p95_queue_depth = _safe_float(base_normal.get("p95_queue_depth"), 0.0)
+    cur_normal_p95_queue_depth = _safe_float(cur_normal.get("p95_queue_depth"), 0.0)
+    normal_p95_queue_depth_increase = max(0.0, cur_normal_p95_queue_depth - base_normal_p95_queue_depth)
+    if normal_p95_queue_depth_increase > max(0.0, float(max_normal_p95_queue_depth_increase)):
+        failures.append(
+            "normal p95 queue depth regression: "
+            f"baseline={base_normal_p95_queue_depth:.6f}, current={cur_normal_p95_queue_depth:.6f}, "
+            f"allowed_increase={float(max_normal_p95_queue_depth_increase):.6f}"
+        )
+
+    base_derived_summary = base_summary.get("derived") if isinstance(base_summary.get("derived"), Mapping) else {}
+    cur_derived_summary = current_summary.get("derived") if isinstance(current_summary.get("derived"), Mapping) else {}
+    base_incident_vs_normal_ratio = _safe_float(base_derived_summary.get("incident_vs_normal_ratio"), 0.0)
+    cur_incident_vs_normal_ratio = _safe_float(cur_derived_summary.get("incident_vs_normal_ratio"), 0.0)
+    incident_vs_normal_ratio_increase = max(0.0, cur_incident_vs_normal_ratio - base_incident_vs_normal_ratio)
+    if incident_vs_normal_ratio_increase > max(0.0, float(max_incident_vs_normal_ratio_increase)):
+        failures.append(
+            "incident-vs-normal ratio regression: "
+            f"baseline={base_incident_vs_normal_ratio:.6f}, current={cur_incident_vs_normal_ratio:.6f}, "
+            f"allowed_increase={float(max_incident_vs_normal_ratio_increase):.6f}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     derived = summary.get("derived") if isinstance(summary.get("derived"), Mapping) else {}
@@ -295,11 +367,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -314,6 +391,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-normal-error-ratio", type=float, default=0.05)
     parser.add_argument("--max-normal-p95-latency-ms", type=float, default=3000.0)
     parser.add_argument("--max-normal-p95-queue-depth", type=float, default=50.0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-normal-error-ratio-increase", type=float, default=0.02)
+    parser.add_argument("--max-normal-p95-latency-ms-increase", type=float, default=500.0)
+    parser.add_argument("--max-normal-p95-queue-depth-increase", type=float, default=5.0)
+    parser.add_argument("--max-incident-vs-normal-ratio-increase", type=float, default=0.2)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -335,20 +417,45 @@ def main() -> int:
         max_normal_p95_latency_ms=max(0.0, float(args.max_normal_p95_latency_ms)),
         max_normal_p95_queue_depth=max(0.0, float(args.max_normal_p95_queue_depth)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_report = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_report,
+            summary,
+            max_normal_error_ratio_increase=max(0.0, float(args.max_normal_error_ratio_increase)),
+            max_normal_p95_latency_ms_increase=max(0.0, float(args.max_normal_p95_latency_ms_increase)),
+            max_normal_p95_queue_depth_increase=max(0.0, float(args.max_normal_p95_queue_depth_increase)),
+            max_incident_vs_normal_ratio_increase=max(0.0, float(args.max_incident_vs_normal_ratio_increase)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "traffic_jsonl": str(traffic_path),
+        "source": {
+            "traffic_jsonl": str(traffic_path),
+            "window_hours": max(1, int(args.window_hours)),
+            "limit": max(1, int(args.limit)),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "max_normal_error_ratio": float(args.max_normal_error_ratio),
                 "max_normal_p95_latency_ms": float(args.max_normal_p95_latency_ms),
                 "max_normal_p95_queue_depth": float(args.max_normal_p95_queue_depth),
+                "max_normal_error_ratio_increase": float(args.max_normal_error_ratio_increase),
+                "max_normal_p95_latency_ms_increase": float(args.max_normal_p95_latency_ms_increase),
+                "max_normal_p95_queue_depth_increase": float(args.max_normal_p95_queue_depth_increase),
+                "max_incident_vs_normal_ratio_increase": float(args.max_incident_vs_normal_ratio_increase),
             },
         },
     }
@@ -368,8 +475,13 @@ def main() -> int:
         "normal_error_ratio="
         f"{_safe_float((summary.get('profiles') or {}).get('NORMAL', {}).get('error_ratio'), 0.0):.4f}"
     )
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and not payload["gate"]["pass"]:
+        for failure in failures:
+            print(f"[gate-failure] {failure}")
+        for failure in baseline_failures:
+            print(f"[baseline-failure] {failure}")
         return 2
     return 0
 

@@ -76,3 +76,29 @@ def test_evaluate_gate_passes_when_forecast_within_thresholds():
         max_gpu_required=8,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_peak_cost_cpu_gpu_regression():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "forecast": {"peak_rps": 10.0, "monthly_cost_usd": 5000.0},
+            "resources": {"cpu_cores_required": 8, "gpu_required": 2},
+        }
+    }
+    current = {
+        "forecast": {"peak_rps": 40.0, "monthly_cost_usd": 15000.0},
+        "resources": {"cpu_cores_required": 32, "gpu_required": 6},
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_peak_rps_increase=0.0,
+        max_monthly_cost_usd_increase=0.0,
+        max_cpu_cores_increase=0,
+        max_gpu_required_increase=0,
+    )
+    assert any("peak_rps regression" in item for item in failures)
+    assert any("monthly cost regression" in item for item in failures)
+    assert any("cpu cores regression" in item for item in failures)
+    assert any("gpu requirement regression" in item for item in failures)
