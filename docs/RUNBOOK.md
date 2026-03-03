@@ -3854,6 +3854,29 @@ python scripts/eval/chat_grounded_answer_composer_guard.py \
 - CI 옵션:
   - `RUN_CHAT_GROUNDED_ANSWER_COMPOSER_GUARD=1 ./scripts/test.sh`
 
+## Chat korean policy template routing guard gate (B-0393, Bundle 2)
+- reason_code 기반 한국어 정책 템플릿 라우팅과 슬롯 주입 품질을 검증:
+```bash
+python scripts/eval/chat_korean_policy_template_routing_guard.py \
+  --events-jsonl var/grounded_answer/korean_policy_template_events.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-routing-coverage-ratio 0.98 \
+  --max-missing-template-total 0 \
+  --max-wrong-template-total 0 \
+  --max-missing-slot-injection-total 0 \
+  --max-non-korean-template-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - template required 대비 routing coverage 비율
+  - missing/wrong template 건수
+  - 슬롯 주입 누락 및 non-korean template 건수
+- CI 옵션:
+  - `RUN_CHAT_KOREAN_POLICY_TEMPLATE_ROUTING_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

@@ -45,3 +45,13 @@ Implement a grounded answer composer:
   - `scripts/eval/test_chat_grounded_answer_composer_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_GROUNDED_ANSWER_COMPOSER_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 2)
+- [x] Korean policy template routing guard gate 추가
+  - `scripts/eval/chat_korean_policy_template_routing_guard.py`
+  - reason_code 기반 template routing coverage 및 wrong template 검증
+  - required slots 주입 누락 및 non-korean template 위반 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_korean_policy_template_routing_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_KOREAN_POLICY_TEMPLATE_ROUTING_GUARD=1 ./scripts/test.sh`
