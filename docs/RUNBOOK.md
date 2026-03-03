@@ -4128,6 +4128,33 @@ python scripts/eval/chat_actionability_scorer_guard.py \
 - CI 옵션:
   - `RUN_CHAT_ACTIONABILITY_SCORER_GUARD=1 ./scripts/test.sh`
 
+## Chat actionability repair loop guard gate (B-0396, Bundle 2)
+- 저품질 답변 자동 재작성(최대 2회)과 fail-closed 전환 강제 여부를 검증:
+```bash
+python scripts/eval/chat_actionability_repair_loop_guard.py \
+  --events-jsonl var/actionability/repair_loop_events.jsonl \
+  --window-hours 24 \
+  --max-repair-attempts 2 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-repair-trigger-coverage-ratio 0.95 \
+  --min-repair-success-rate 0.70 \
+  --min-fail-closed-enforcement-ratio 1.0 \
+  --min-slot-gap-reduction-ratio 0.70 \
+  --max-repair-trigger-missing-total 0 \
+  --max-fail-closed-missing-total 0 \
+  --max-attempt-limit-violation-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - repair trigger coverage / success rate
+  - fail-closed enforcement ratio
+  - slot gap reduction ratio
+  - trigger 누락, fail-closed 누락, attempt limit 위반 건수
+- CI 옵션:
+  - `RUN_CHAT_ACTIONABILITY_REPAIR_LOOP_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

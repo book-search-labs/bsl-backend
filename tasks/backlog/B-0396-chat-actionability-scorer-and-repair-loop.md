@@ -61,3 +61,13 @@ Add actionability guarantees for production chat:
   - `scripts/eval/test_chat_actionability_scorer_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_ACTIONABILITY_SCORER_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 2)
+- [x] Repair loop guard gate 추가
+  - `scripts/eval/chat_actionability_repair_loop_guard.py`
+  - 저품질 응답의 repair 트리거 커버리지/성공률/slot gap 감소율 검증
+  - 2회 재작성 실패 후 fail-closed 미전환 및 attempt 한도 위반 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_actionability_repair_loop_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_ACTIONABILITY_REPAIR_LOOP_GUARD=1 ./scripts/test.sh`
