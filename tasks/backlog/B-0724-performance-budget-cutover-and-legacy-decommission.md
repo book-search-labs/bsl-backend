@@ -79,3 +79,17 @@ Complete rewrite rollout with performance/cost safeguards:
   - baseline fixture 추가:
     - `services/query-service/tests/fixtures/chat_legacy_decommission_baseline_v1.json`
   - `scripts/test.sh`의 `RUN_CHAT_LEGACY_DECOMMISSION_CHECK=1` 경로에 baseline/diff threshold 인자 연결
+
+## Implementation Update (Bundle 3)
+
+- `chat_release_train_gate.py`를 fail-fast 리포트 게이트로 승격:
+  - `--gate`, `--require-promote`, `--out`, `--prefix` 옵션 추가
+  - gate 규칙: rollback action 차단 + optional promote 강제
+  - report JSON/Markdown 출력(`report_json`, `report_md`, `gate_pass`)
+- 테스트 강화:
+  - `scripts/eval/test_chat_release_train_gate.py`
+    - rollback action 실패 검증
+    - require-promote 활성 시 hold 차단 검증
+- `scripts/test.sh` 연동:
+  - `RUN_CHAT_RELEASE_TRAIN_GATE=1` 경로에서 `--gate` 기본 적용
+  - `CHAT_RELEASE_TRAIN_REQUIRE_PROMOTE=1`로 strict promote 모드 지원

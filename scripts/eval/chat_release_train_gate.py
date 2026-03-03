@@ -5,6 +5,7 @@ import argparse
 import json
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -113,6 +114,47 @@ def decide_release_train(
     }
 
 
+def evaluate_gate(decision: Mapping[str, Any], *, require_promote: bool) -> list[str]:
+    failures: list[str] = []
+    action = str(decision.get("action") or "")
+    reason = str(decision.get("reason") or "")
+    if action == "rollback":
+        failures.append(f"release action=rollback: reason={reason or 'unknown'}")
+    if require_promote and action != "promote":
+        failures.append(f"release promote required but action={action or 'unknown'}")
+    return failures
+
+
+def render_markdown(report: Mapping[str, Any]) -> str:
+    decision = report.get("decision") if isinstance(report.get("decision"), Mapping) else {}
+    gate = report.get("gate") if isinstance(report.get("gate"), Mapping) else {}
+    lines: list[str] = []
+    lines.append("# Chat Release Train Gate Report")
+    lines.append("")
+    lines.append(f"- generated_at: {report.get('generated_at')}")
+    lines.append(f"- report_path: {report.get('report_path')}")
+    lines.append(f"- stage: {report.get('stage')}")
+    lines.append(f"- dwell_minutes: {report.get('dwell_minutes')}")
+    lines.append("")
+    lines.append("## Decision")
+    lines.append("")
+    lines.append(f"- action: {decision.get('action')}")
+    lines.append(f"- reason: {decision.get('reason')}")
+    lines.append(f"- next_stage: {decision.get('next_stage')}")
+    lines.append("")
+    lines.append("## Gate")
+    lines.append("")
+    lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
+    failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    if failures:
+        lines.append("- failures:")
+        for item in failures:
+            lines.append(f"  - {item}")
+    else:
+        lines.append("- failures: none")
+    return "\n".join(lines)
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Decide chat release-train promotion using launch gate report + cutover policy.")
     parser.add_argument("--launch-gate-report", default="")
@@ -121,6 +163,10 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--current-stage", type=int, default=10)
     parser.add_argument("--dwell-minutes", type=int, default=0)
     parser.add_argument("--apply-rollback", action="store_true")
+    parser.add_argument("--gate", action="store_true")
+    parser.add_argument("--require-promote", action="store_true")
+    parser.add_argument("--out", default="data/eval/reports")
+    parser.add_argument("--prefix", default="chat_release_train_gate")
     parser.add_argument("--trace-id", default=f"release_train_trace_{int(time.time())}")
     parser.add_argument("--request-id", default=f"release_train_req_{int(time.time())}")
     parser.add_argument("--source", default="chat_release_train_gate_script")
@@ -169,7 +215,14 @@ def main() -> int:
             "cooldown_until": result.cooldown_until,
         }
 
-    payload = {
+    failures = evaluate_gate(decision, require_promote=bool(args.require_promote))
+    report = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source": {
+            "reports_dir": str(args.reports_dir),
+            "report_prefix": str(args.report_prefix),
+            "launch_gate_report": str(args.launch_gate_report) if args.launch_gate_report else None,
+        },
         "report_path": str(report_path),
         "report_generated_at": str(report.get("generated_at") or ""),
         "release_profile": report.get("release_profile"),
@@ -177,8 +230,29 @@ def main() -> int:
         "dwell_minutes": max(0, int(args.dwell_minutes)),
         "decision": decision,
         "rollback": rollback,
+        "gate": {
+            "enabled": bool(args.gate),
+            "pass": len(failures) == 0,
+            "failures": failures,
+            "thresholds": {"require_promote": bool(args.require_promote)},
+        },
     }
-    print(json.dumps(payload, ensure_ascii=False, indent=2))
+
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    json_path = out_dir / f"{args.prefix}_{stamp}.json"
+    md_path = out_dir / f"{args.prefix}_{stamp}.md"
+    json_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    md_path.write_text(render_markdown(report), encoding="utf-8")
+
+    print(f"report_json={json_path}")
+    print(f"report_md={md_path}")
+    print(f"gate_pass={str(report['gate']['pass']).lower()}")
+    if args.gate and not report["gate"]["pass"]:
+        for item in failures:
+            print(f"[gate-failure] {item}")
+        return 2
     return 0
 
 

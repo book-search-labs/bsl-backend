@@ -423,6 +423,8 @@ if [ "${RUN_CHAT_RELEASE_TRAIN_GATE:-0}" = "1" ]; then
     CHAT_RELEASE_TRAIN_STAGE="${CHAT_RELEASE_TRAIN_STAGE:-10}"
     CHAT_RELEASE_TRAIN_DWELL_MINUTES="${CHAT_RELEASE_TRAIN_DWELL_MINUTES:-0}"
     CHAT_RELEASE_TRAIN_APPLY_ROLLBACK="${CHAT_RELEASE_TRAIN_APPLY_ROLLBACK:-0}"
+    CHAT_RELEASE_TRAIN_OUT_DIR="${CHAT_RELEASE_TRAIN_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_RELEASE_TRAIN_REQUIRE_PROMOTE="${CHAT_RELEASE_TRAIN_REQUIRE_PROMOTE:-0}"
 
     CHAT_RELEASE_TRAIN_ARGS=(
       "$ROOT_DIR/scripts/eval/chat_release_train_gate.py"
@@ -430,12 +432,17 @@ if [ "${RUN_CHAT_RELEASE_TRAIN_GATE:-0}" = "1" ]; then
       --report-prefix "$CHAT_RELEASE_TRAIN_PREFIX"
       --current-stage "$CHAT_RELEASE_TRAIN_STAGE"
       --dwell-minutes "$CHAT_RELEASE_TRAIN_DWELL_MINUTES"
+      --out "$CHAT_RELEASE_TRAIN_OUT_DIR"
+      --gate
     )
     if [ -n "$CHAT_RELEASE_TRAIN_REPORT_PATH" ]; then
       CHAT_RELEASE_TRAIN_ARGS+=(--launch-gate-report "$CHAT_RELEASE_TRAIN_REPORT_PATH")
     fi
     if [ "$CHAT_RELEASE_TRAIN_APPLY_ROLLBACK" = "1" ]; then
       CHAT_RELEASE_TRAIN_ARGS+=(--apply-rollback)
+    fi
+    if [ "$CHAT_RELEASE_TRAIN_REQUIRE_PROMOTE" = "1" ]; then
+      CHAT_RELEASE_TRAIN_ARGS+=(--require-promote)
     fi
     $PYTHON_BIN "${CHAT_RELEASE_TRAIN_ARGS[@]}" || exit 1
   else

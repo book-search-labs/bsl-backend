@@ -65,3 +65,17 @@ def test_load_json_reads_payload(tmp_path: Path):
     path.write_text(json.dumps(payload), encoding="utf-8")
     loaded = module.load_json(path)
     assert loaded["gate"]["pass"] is True
+
+
+def test_evaluate_gate_fails_on_rollback():
+    module = _load_module()
+    failures = module.evaluate_gate({"action": "rollback", "reason": "launch_gate_failed"}, require_promote=False)
+    assert len(failures) == 1
+    assert "release action=rollback" in failures[0]
+
+
+def test_evaluate_gate_require_promote_blocks_hold():
+    module = _load_module()
+    failures = module.evaluate_gate({"action": "hold", "reason": "dwell_not_met"}, require_promote=True)
+    assert len(failures) == 1
+    assert "release promote required but action=hold" in failures[0]

@@ -982,17 +982,21 @@ python scripts/eval/chat_release_train_gate.py \
   --reports-dir data/eval/reports \
   --report-prefix chat_production_launch_gate \
   --current-stage 25 \
-  --dwell-minutes 45
+  --dwell-minutes 45 \
+  --gate
 ```
 - 자동 rollback 적용(옵션):
 ```bash
 python scripts/eval/chat_release_train_gate.py \
   --current-stage 25 \
   --dwell-minutes 45 \
+  --gate \
   --apply-rollback
 ```
 - CI 옵션:
   - `RUN_CHAT_RELEASE_TRAIN_GATE=1 ./scripts/test.sh`
+  - strict promote 모드(옵션):
+    - `CHAT_RELEASE_TRAIN_REQUIRE_PROMOTE=1`
 
 ## LiveOps cycle orchestrator (I-0360, Bundle 2)
 - launch gate + release train 결정을 한 번에 실행:
