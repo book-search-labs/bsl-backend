@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "source": {
+    "reports_dir": "data/eval/reports",
+    "prefix": "chat_liveops_cycle",
+    "limit": 20,
+    "baseline_report": null
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "pass_total": 0,
+      "pass_ratio": 0.0,
+      "failure_total": 0,
+      "action_counts": {},
+      "release_signatures": {},
+      "samples": []
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 3,
+      "min_pass_ratio": 0.8,
+      "deny_actions": [
+        "rollback"
+      ],
+      "max_pass_ratio_drop": 0.05,
+      "max_failure_total_increase": 1,
+      "max_rollback_count_increase": 0
+    }
+  }
+}

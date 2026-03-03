@@ -124,6 +124,85 @@ def evaluate_gate(summary: Mapping[str, Any], *, min_window: int, max_mtta_sec: 
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_mtta_sec_increase: float,
+    max_mttr_sec_increase: float,
+    max_open_incident_increase: int,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_mtta = float(base_summary.get("mtta_sec") or 0.0)
+    cur_mtta = float(current_summary.get("mtta_sec") or 0.0)
+    mtta_increase = max(0.0, cur_mtta - base_mtta)
+    if mtta_increase > max(0.0, float(max_mtta_sec_increase)):
+        failures.append(
+            "mtta regression: "
+            f"baseline={base_mtta:.6f}, current={cur_mtta:.6f}, allowed_increase={float(max_mtta_sec_increase):.6f}"
+        )
+
+    base_mttr = float(base_summary.get("mttr_sec") or 0.0)
+    cur_mttr = float(current_summary.get("mttr_sec") or 0.0)
+    mttr_increase = max(0.0, cur_mttr - base_mttr)
+    if mttr_increase > max(0.0, float(max_mttr_sec_increase)):
+        failures.append(
+            "mttr regression: "
+            f"baseline={base_mttr:.6f}, current={cur_mttr:.6f}, allowed_increase={float(max_mttr_sec_increase):.6f}"
+        )
+
+    base_open = int(base_summary.get("open_incident_total") or 0)
+    cur_open = int(current_summary.get("open_incident_total") or 0)
+    open_increase = max(0, cur_open - base_open)
+    if open_increase > max(0, int(max_open_incident_increase)):
+        failures.append(
+            "open incident regression: "
+            f"baseline={base_open}, current={cur_open}, allowed_increase={max(0, int(max_open_incident_increase))}"
+        )
+    return failures
+
+
+def render_markdown(report: Mapping[str, Any]) -> str:
+    derived = report.get("derived") if isinstance(report.get("derived"), Mapping) else {}
+    summary = derived.get("summary") if isinstance(derived.get("summary"), Mapping) else {}
+    gate = report.get("gate") if isinstance(report.get("gate"), Mapping) else {}
+    failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
+
+    lines: list[str] = []
+    lines.append("# Chat LiveOps Incident Gate Report")
+    lines.append("")
+    lines.append(f"- generated_at: {report.get('generated_at')}")
+    lines.append("")
+    lines.append("## Summary")
+    lines.append("")
+    lines.append(f"- window_size: {int(summary.get('window_size') or 0)}")
+    lines.append(f"- incident_total: {int(summary.get('incident_total') or 0)}")
+    lines.append(f"- open_incident_total: {int(summary.get('open_incident_total') or 0)}")
+    lines.append(f"- mtta_sec: {float(summary.get('mtta_sec') or 0.0):.6f}")
+    lines.append(f"- mttr_sec: {float(summary.get('mttr_sec') or 0.0):.6f}")
+    lines.append("")
+    lines.append("## Gate")
+    lines.append("")
+    lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
+    if failures:
+        lines.append("- failures:")
+        for item in failures:
+            lines.append(f"  - {item}")
+    if baseline_failures:
+        lines.append("- baseline_failures:")
+        for item in baseline_failures:
+            lines.append(f"  - {item}")
+    if not failures and not baseline_failures:
+        lines.append("- failures: none")
+    return "\n".join(lines)
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Summarize MTTA/MTTR from liveops cycle reports and evaluate incident gate.")
     parser.add_argument("--reports-dir", default="data/eval/reports")
@@ -133,6 +212,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-mtta-sec", type=float, default=600.0)
     parser.add_argument("--max-mttr-sec", type=float, default=7200.0)
     parser.add_argument("--max-open-incidents", type=int, default=0)
+    parser.add_argument("--out", default="data/eval/reports")
+    parser.add_argument("--report-prefix", default="chat_liveops_incident_summary")
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-mtta-sec-increase", type=float, default=120.0)
+    parser.add_argument("--max-mttr-sec-increase", type=float, default=600.0)
+    parser.add_argument("--max-open-incident-increase", type=int, default=0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -149,22 +234,60 @@ def main() -> int:
         max_mttr_sec=max(0.0, float(args.max_mttr_sec)),
         max_open_incidents=max(0, int(args.max_open_incidents)),
     )
-    payload = {
-        "summary": summary,
+
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_report = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_report,
+            summary,
+            max_mtta_sec_increase=max(0.0, float(args.max_mtta_sec_increase)),
+            max_mttr_sec_increase=max(0.0, float(args.max_mttr_sec_increase)),
+            max_open_incident_increase=max(0, int(args.max_open_incident_increase)),
+        )
+
+    report = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source": {
+            "reports_dir": str(reports_dir),
+            "prefix": str(args.prefix),
+            "limit": max(1, int(args.limit)),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
+        "derived": {"summary": summary},
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "max_mtta_sec": float(args.max_mtta_sec),
                 "max_mttr_sec": float(args.max_mttr_sec),
                 "max_open_incidents": int(args.max_open_incidents),
+                "max_mtta_sec_increase": float(args.max_mtta_sec_increase),
+                "max_mttr_sec_increase": float(args.max_mttr_sec_increase),
+                "max_open_incident_increase": int(args.max_open_incident_increase),
             },
         },
     }
-    print(json.dumps(payload, ensure_ascii=False, indent=2))
-    if args.gate and failures:
+
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    json_path = out_dir / f"{args.report_prefix}_{stamp}.json"
+    md_path = out_dir / f"{args.report_prefix}_{stamp}.md"
+    json_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    md_path.write_text(render_markdown(report), encoding="utf-8")
+
+    print(f"report_json={json_path}")
+    print(f"report_md={md_path}")
+    print(f"gate_pass={str(report['gate']['pass']).lower()}")
+    if args.gate and not report["gate"]["pass"]:
+        for item in failures:
+            print(f"[gate-failure] {item}")
+        for item in baseline_failures:
+            print(f"[baseline-failure] {item}")
         return 2
     return 0
 

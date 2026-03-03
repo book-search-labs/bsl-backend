@@ -103,3 +103,17 @@ Harden chat live operations for production:
   - liveops cycle에서 rollback drill/recovery/open drill/MTTR을 집계하고 json+markdown 리포트를 자동 저장
 - [x] CI 진입점 추가
   - `RUN_CHAT_DR_DRILL_REPORT=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 9)
+- [x] liveops summary/incident gate를 baseline 거버넌스형 리포트로 강화
+  - `scripts/eval/chat_liveops_summary.py`
+    - report JSON/Markdown 출력 + `--baseline-report` 회귀 비교
+    - pass_ratio/failure_total/rollback_count drift guard 추가
+  - `scripts/eval/chat_liveops_incident_summary.py`
+    - report JSON/Markdown 출력 + `--baseline-report` 회귀 비교
+    - MTTA/MTTR/open incident drift guard 추가
+- [x] baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_liveops_summary_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_liveops_incident_baseline_v1.json`
+- [x] CI 진입점 확장
+  - `scripts/test.sh`의 `RUN_CHAT_LIVEOPS_SUMMARY_GATE`, `RUN_CHAT_LIVEOPS_INCIDENT_GATE` 경로에서 baseline drift env 연결

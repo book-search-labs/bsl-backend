@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -92,6 +93,86 @@ def evaluate_gate(summary: Mapping[str, Any], *, min_window: int, min_pass_ratio
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_pass_ratio_drop: float,
+    max_failure_total_increase: int,
+    max_rollback_count_increase: int,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_pass_ratio = float(base_summary.get("pass_ratio") or 0.0)
+    cur_pass_ratio = float(current_summary.get("pass_ratio") or 0.0)
+    pass_ratio_drop = max(0.0, base_pass_ratio - cur_pass_ratio)
+    if pass_ratio_drop > max(0.0, float(max_pass_ratio_drop)):
+        failures.append(
+            "pass ratio regression: "
+            f"baseline={base_pass_ratio:.6f}, current={cur_pass_ratio:.6f}, allowed_drop={float(max_pass_ratio_drop):.6f}"
+        )
+
+    base_failure_total = int(base_summary.get("failure_total") or 0)
+    cur_failure_total = int(current_summary.get("failure_total") or 0)
+    failure_total_increase = max(0, cur_failure_total - base_failure_total)
+    if failure_total_increase > max(0, int(max_failure_total_increase)):
+        failures.append(
+            "failure_total regression: "
+            f"baseline={base_failure_total}, current={cur_failure_total}, allowed_increase={max(0, int(max_failure_total_increase))}"
+        )
+
+    base_actions = base_summary.get("action_counts") if isinstance(base_summary.get("action_counts"), Mapping) else {}
+    cur_actions = current_summary.get("action_counts") if isinstance(current_summary.get("action_counts"), Mapping) else {}
+    base_rollback = int(base_actions.get("rollback") or 0)
+    cur_rollback = int(cur_actions.get("rollback") or 0)
+    rollback_increase = max(0, cur_rollback - base_rollback)
+    if rollback_increase > max(0, int(max_rollback_count_increase)):
+        failures.append(
+            "rollback action regression: "
+            f"baseline={base_rollback}, current={cur_rollback}, allowed_increase={max(0, int(max_rollback_count_increase))}"
+        )
+    return failures
+
+
+def render_markdown(report: Mapping[str, Any]) -> str:
+    derived = report.get("derived") if isinstance(report.get("derived"), Mapping) else {}
+    summary = derived.get("summary") if isinstance(derived.get("summary"), Mapping) else {}
+    gate = report.get("gate") if isinstance(report.get("gate"), Mapping) else {}
+    failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
+
+    lines: list[str] = []
+    lines.append("# Chat LiveOps Summary Gate Report")
+    lines.append("")
+    lines.append(f"- generated_at: {report.get('generated_at')}")
+    lines.append("")
+    lines.append("## Summary")
+    lines.append("")
+    lines.append(f"- window_size: {int(summary.get('window_size') or 0)}")
+    lines.append(f"- pass_total: {int(summary.get('pass_total') or 0)}")
+    lines.append(f"- pass_ratio: {float(summary.get('pass_ratio') or 0.0):.6f}")
+    lines.append(f"- failure_total: {int(summary.get('failure_total') or 0)}")
+    lines.append("")
+    lines.append("## Gate")
+    lines.append("")
+    lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
+    if failures:
+        lines.append("- failures:")
+        for item in failures:
+            lines.append(f"  - {item}")
+    if baseline_failures:
+        lines.append("- baseline_failures:")
+        for item in baseline_failures:
+            lines.append(f"  - {item}")
+    if not failures and not baseline_failures:
+        lines.append("- failures: none")
+    return "\n".join(lines)
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Summarize recent chat liveops cycle reports and evaluate gate.")
     parser.add_argument("--reports-dir", default="data/eval/reports")
@@ -100,6 +181,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--min-window", type=int, default=3)
     parser.add_argument("--min-pass-ratio", type=float, default=0.8)
     parser.add_argument("--deny-actions", default="rollback")
+    parser.add_argument("--out", default="data/eval/reports")
+    parser.add_argument("--report-prefix", default="chat_liveops_summary")
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-pass-ratio-drop", type=float, default=0.05)
+    parser.add_argument("--max-failure-total-increase", type=int, default=1)
+    parser.add_argument("--max-rollback-count-increase", type=int, default=0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -116,21 +203,59 @@ def main() -> int:
         min_pass_ratio=max(0.0, float(args.min_pass_ratio)),
         deny_actions=deny_actions,
     )
-    payload = {
-        "summary": summary,
+
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_report = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_report,
+            summary,
+            max_pass_ratio_drop=max(0.0, float(args.max_pass_ratio_drop)),
+            max_failure_total_increase=max(0, int(args.max_failure_total_increase)),
+            max_rollback_count_increase=max(0, int(args.max_rollback_count_increase)),
+        )
+
+    report = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source": {
+            "reports_dir": str(reports_dir),
+            "prefix": str(args.prefix),
+            "limit": max(1, int(args.limit)),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
+        "derived": {"summary": summary},
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "min_pass_ratio": float(args.min_pass_ratio),
                 "deny_actions": sorted(deny_actions),
+                "max_pass_ratio_drop": float(args.max_pass_ratio_drop),
+                "max_failure_total_increase": int(args.max_failure_total_increase),
+                "max_rollback_count_increase": int(args.max_rollback_count_increase),
             },
         },
     }
-    print(json.dumps(payload, ensure_ascii=False, indent=2))
-    if args.gate and failures:
+
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    json_path = out_dir / f"{args.report_prefix}_{stamp}.json"
+    md_path = out_dir / f"{args.report_prefix}_{stamp}.md"
+    json_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    md_path.write_text(render_markdown(report), encoding="utf-8")
+
+    print(f"report_json={json_path}")
+    print(f"report_md={md_path}")
+    print(f"gate_pass={str(report['gate']['pass']).lower()}")
+    if args.gate and not report["gate"]["pass"]:
+        for item in failures:
+            print(f"[gate-failure] {item}")
+        for item in baseline_failures:
+            print(f"[baseline-failure] {item}")
         return 2
     return 0
 

@@ -39,3 +39,31 @@ def test_evaluate_gate_detects_denied_action():
     )
     assert len(failures) == 1
     assert "denied action observed: rollback" in failures[0]
+
+
+def test_compare_with_baseline_detects_pass_ratio_and_rollback_regression():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "pass_ratio": 1.0,
+                "failure_total": 0,
+                "action_counts": {"rollback": 0},
+            }
+        }
+    }
+    current = {
+        "pass_ratio": 0.6,
+        "failure_total": 2,
+        "action_counts": {"rollback": 1},
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_pass_ratio_drop=0.1,
+        max_failure_total_increase=0,
+        max_rollback_count_increase=0,
+    )
+    assert any("pass ratio regression" in item for item in failures)
+    assert any("failure_total regression" in item for item in failures)
+    assert any("rollback action regression" in item for item in failures)

@@ -497,14 +497,28 @@ if [ "${RUN_CHAT_LIVEOPS_SUMMARY_GATE:-0}" = "1" ]; then
     CHAT_LIVEOPS_SUMMARY_MIN_WINDOW="${CHAT_LIVEOPS_SUMMARY_MIN_WINDOW:-3}"
     CHAT_LIVEOPS_SUMMARY_MIN_PASS_RATIO="${CHAT_LIVEOPS_SUMMARY_MIN_PASS_RATIO:-0.8}"
     CHAT_LIVEOPS_SUMMARY_DENY_ACTIONS="${CHAT_LIVEOPS_SUMMARY_DENY_ACTIONS:-rollback}"
-
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_liveops_summary.py" \
-      --reports-dir "$CHAT_LIVEOPS_SUMMARY_REPORTS_DIR" \
-      --limit "$CHAT_LIVEOPS_SUMMARY_LIMIT" \
-      --min-window "$CHAT_LIVEOPS_SUMMARY_MIN_WINDOW" \
-      --min-pass-ratio "$CHAT_LIVEOPS_SUMMARY_MIN_PASS_RATIO" \
-      --deny-actions "$CHAT_LIVEOPS_SUMMARY_DENY_ACTIONS" \
-      --gate || exit 1
+    CHAT_LIVEOPS_SUMMARY_OUT_DIR="${CHAT_LIVEOPS_SUMMARY_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_LIVEOPS_SUMMARY_BASELINE_PATH="${CHAT_LIVEOPS_SUMMARY_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_liveops_summary_baseline_v1.json}"
+    CHAT_LIVEOPS_SUMMARY_MAX_PASS_RATIO_DROP="${CHAT_LIVEOPS_SUMMARY_MAX_PASS_RATIO_DROP:-0.05}"
+    CHAT_LIVEOPS_SUMMARY_MAX_FAILURE_TOTAL_INCREASE="${CHAT_LIVEOPS_SUMMARY_MAX_FAILURE_TOTAL_INCREASE:-1}"
+    CHAT_LIVEOPS_SUMMARY_MAX_ROLLBACK_COUNT_INCREASE="${CHAT_LIVEOPS_SUMMARY_MAX_ROLLBACK_COUNT_INCREASE:-0}"
+    CHAT_LIVEOPS_SUMMARY_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_liveops_summary.py"
+      --reports-dir "$CHAT_LIVEOPS_SUMMARY_REPORTS_DIR"
+      --limit "$CHAT_LIVEOPS_SUMMARY_LIMIT"
+      --min-window "$CHAT_LIVEOPS_SUMMARY_MIN_WINDOW"
+      --min-pass-ratio "$CHAT_LIVEOPS_SUMMARY_MIN_PASS_RATIO"
+      --deny-actions "$CHAT_LIVEOPS_SUMMARY_DENY_ACTIONS"
+      --max-pass-ratio-drop "$CHAT_LIVEOPS_SUMMARY_MAX_PASS_RATIO_DROP"
+      --max-failure-total-increase "$CHAT_LIVEOPS_SUMMARY_MAX_FAILURE_TOTAL_INCREASE"
+      --max-rollback-count-increase "$CHAT_LIVEOPS_SUMMARY_MAX_ROLLBACK_COUNT_INCREASE"
+      --out "$CHAT_LIVEOPS_SUMMARY_OUT_DIR"
+      --gate
+    )
+    if [ -f "$CHAT_LIVEOPS_SUMMARY_BASELINE_PATH" ]; then
+      CHAT_LIVEOPS_SUMMARY_ARGS+=(--baseline-report "$CHAT_LIVEOPS_SUMMARY_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_LIVEOPS_SUMMARY_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat liveops summary gate"
   fi
@@ -521,15 +535,29 @@ if [ "${RUN_CHAT_LIVEOPS_INCIDENT_GATE:-0}" = "1" ]; then
     CHAT_LIVEOPS_INCIDENT_MAX_MTTA_SEC="${CHAT_LIVEOPS_INCIDENT_MAX_MTTA_SEC:-600}"
     CHAT_LIVEOPS_INCIDENT_MAX_MTTR_SEC="${CHAT_LIVEOPS_INCIDENT_MAX_MTTR_SEC:-7200}"
     CHAT_LIVEOPS_INCIDENT_MAX_OPEN="${CHAT_LIVEOPS_INCIDENT_MAX_OPEN:-0}"
-
-    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_liveops_incident_summary.py" \
-      --reports-dir "$CHAT_LIVEOPS_INCIDENT_REPORTS_DIR" \
-      --limit "$CHAT_LIVEOPS_INCIDENT_LIMIT" \
-      --min-window "$CHAT_LIVEOPS_INCIDENT_MIN_WINDOW" \
-      --max-mtta-sec "$CHAT_LIVEOPS_INCIDENT_MAX_MTTA_SEC" \
-      --max-mttr-sec "$CHAT_LIVEOPS_INCIDENT_MAX_MTTR_SEC" \
-      --max-open-incidents "$CHAT_LIVEOPS_INCIDENT_MAX_OPEN" \
-      --gate || exit 1
+    CHAT_LIVEOPS_INCIDENT_OUT_DIR="${CHAT_LIVEOPS_INCIDENT_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_LIVEOPS_INCIDENT_BASELINE_PATH="${CHAT_LIVEOPS_INCIDENT_BASELINE_PATH:-$ROOT_DIR/services/query-service/tests/fixtures/chat_liveops_incident_baseline_v1.json}"
+    CHAT_LIVEOPS_INCIDENT_MAX_MTTA_INCREASE="${CHAT_LIVEOPS_INCIDENT_MAX_MTTA_INCREASE:-120}"
+    CHAT_LIVEOPS_INCIDENT_MAX_MTTR_INCREASE="${CHAT_LIVEOPS_INCIDENT_MAX_MTTR_INCREASE:-600}"
+    CHAT_LIVEOPS_INCIDENT_MAX_OPEN_INCREASE="${CHAT_LIVEOPS_INCIDENT_MAX_OPEN_INCREASE:-0}"
+    CHAT_LIVEOPS_INCIDENT_ARGS=(
+      "$ROOT_DIR/scripts/eval/chat_liveops_incident_summary.py"
+      --reports-dir "$CHAT_LIVEOPS_INCIDENT_REPORTS_DIR"
+      --limit "$CHAT_LIVEOPS_INCIDENT_LIMIT"
+      --min-window "$CHAT_LIVEOPS_INCIDENT_MIN_WINDOW"
+      --max-mtta-sec "$CHAT_LIVEOPS_INCIDENT_MAX_MTTA_SEC"
+      --max-mttr-sec "$CHAT_LIVEOPS_INCIDENT_MAX_MTTR_SEC"
+      --max-open-incidents "$CHAT_LIVEOPS_INCIDENT_MAX_OPEN"
+      --max-mtta-sec-increase "$CHAT_LIVEOPS_INCIDENT_MAX_MTTA_INCREASE"
+      --max-mttr-sec-increase "$CHAT_LIVEOPS_INCIDENT_MAX_MTTR_INCREASE"
+      --max-open-incident-increase "$CHAT_LIVEOPS_INCIDENT_MAX_OPEN_INCREASE"
+      --out "$CHAT_LIVEOPS_INCIDENT_OUT_DIR"
+      --gate
+    )
+    if [ -f "$CHAT_LIVEOPS_INCIDENT_BASELINE_PATH" ]; then
+      CHAT_LIVEOPS_INCIDENT_ARGS+=(--baseline-report "$CHAT_LIVEOPS_INCIDENT_BASELINE_PATH")
+    fi
+    $PYTHON_BIN "${CHAT_LIVEOPS_INCIDENT_ARGS[@]}" || exit 1
   else
     echo "  - python not found; skipping chat liveops incident gate"
   fi

@@ -1024,10 +1024,15 @@ python scripts/eval/chat_liveops_summary.py \
   --min-window 3 \
   --min-pass-ratio 0.8 \
   --deny-actions rollback \
+  --baseline-report services/query-service/tests/fixtures/chat_liveops_summary_baseline_v1.json \
   --gate
 ```
 - CI 옵션:
   - `RUN_CHAT_LIVEOPS_SUMMARY_GATE=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_LIVEOPS_SUMMARY_MAX_PASS_RATIO_DROP`
+    - `CHAT_LIVEOPS_SUMMARY_MAX_FAILURE_TOTAL_INCREASE`
+    - `CHAT_LIVEOPS_SUMMARY_MAX_ROLLBACK_COUNT_INCREASE`
 
 ## LiveOps incident MTTA/MTTR gate (I-0360, Bundle 4)
 - 최근 cycle 리포트 기반 incident 지표 집계:
@@ -1039,10 +1044,15 @@ python scripts/eval/chat_liveops_incident_summary.py \
   --max-mtta-sec 600 \
   --max-mttr-sec 7200 \
   --max-open-incidents 0 \
+  --baseline-report services/query-service/tests/fixtures/chat_liveops_incident_baseline_v1.json \
   --gate
 ```
 - CI 옵션:
   - `RUN_CHAT_LIVEOPS_INCIDENT_GATE=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_LIVEOPS_INCIDENT_MAX_MTTA_INCREASE`
+    - `CHAT_LIVEOPS_INCIDENT_MAX_MTTR_INCREASE`
+    - `CHAT_LIVEOPS_INCIDENT_MAX_OPEN_INCREASE`
 
 ## On-call action plan generator (I-0360, Bundle 5)
 - triage queue를 기반으로 우선순위 조치안 자동 생성:

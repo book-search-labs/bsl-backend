@@ -54,3 +54,31 @@ def test_evaluate_gate_detects_open_incidents():
     )
     assert len(failures) == 1
     assert "open incidents exceeded" in failures[0]
+
+
+def test_compare_with_baseline_detects_mtta_mttr_and_open_regression():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "mtta_sec": 10.0,
+                "mttr_sec": 100.0,
+                "open_incident_total": 0,
+            }
+        }
+    }
+    current = {
+        "mtta_sec": 30.0,
+        "mttr_sec": 300.0,
+        "open_incident_total": 2,
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_mtta_sec_increase=5.0,
+        max_mttr_sec_increase=10.0,
+        max_open_incident_increase=0,
+    )
+    assert any("mtta regression" in item for item in failures)
+    assert any("mttr regression" in item for item in failures)
+    assert any("open incident regression" in item for item in failures)
