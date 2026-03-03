@@ -68,3 +68,14 @@ Add FinOps-grade control for production chat:
   - `scripts/eval/test_chat_cost_optimizer_policy.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_COST_OPTIMIZER_POLICY=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 3)
+- [x] Budget release guard gate 추가
+  - `scripts/eval/chat_budget_release_guard.py`
+  - `chat_capacity_forecast + chat_unit_economics_slo + chat_cost_optimizer_policy` 최신 리포트를 결합해 release guard 계산
+  - post-optimizer budget utilization, resolution rate, unresolved burn, cost-per-resolved 기준으로 `PROMOTE/HOLD/BLOCK` 상태 판정
+  - budget 압력이 높은데 clamp가 빠진 구성(require-clamp)도 운영 실패로 차단
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_budget_release_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_BUDGET_RELEASE_GUARD=1 ./scripts/test.sh`

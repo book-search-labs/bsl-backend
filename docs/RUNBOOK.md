@@ -1428,6 +1428,27 @@ python scripts/eval/chat_cost_optimizer_policy.py \
 - CI 옵션:
   - `RUN_CHAT_COST_OPTIMIZER_POLICY=1 ./scripts/test.sh`
 
+## Budget release guard gate (I-0365, Bundle 3)
+- forecast/unit-economics/optimizer 리포트를 결합해 릴리스 예산 안전성(`PROMOTE/HOLD/BLOCK`)을 계산:
+```bash
+python scripts/eval/chat_budget_release_guard.py \
+  --reports-dir data/eval/reports \
+  --forecast-prefix chat_capacity_forecast \
+  --unit-econ-prefix chat_unit_economics_slo \
+  --optimizer-prefix chat_cost_optimizer_policy \
+  --monthly-budget-limit-usd 15000 \
+  --max-budget-utilization 0.90 \
+  --max-unresolved-cost-burn-total 200 \
+  --min-resolution-rate 0.80 \
+  --gate
+```
+- 산출물:
+  - post-optimizer budget utilization 기반 release_state(`PROMOTE/HOLD/BLOCK`)
+  - quality/cost/budget 위반 원인 목록
+  - optimizer mode와 clamp 필요 여부 점검 결과
+- CI 옵션:
+  - `RUN_CHAT_BUDGET_RELEASE_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
