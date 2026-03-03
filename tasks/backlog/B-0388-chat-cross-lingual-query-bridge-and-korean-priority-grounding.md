@@ -77,3 +77,13 @@ Strengthen multilingual chat retrieval with Korean priority:
   - `scripts/eval/test_chat_crosslingual_citation_parity_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_CROSSLINGUAL_CITATION_PARITY_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 4)
+- [x] Crosslingual fallback policy guard gate 추가
+  - `scripts/eval/chat_crosslingual_fallback_policy_guard.py`
+  - low-confidence rewrite 상황 fallback coverage 및 source-based 응답/clarification 비율 검증
+  - 고위험 no-fallback 및 direct answer 위반 건수 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_crosslingual_fallback_policy_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_CROSSLINGUAL_FALLBACK_POLICY_GUARD=1 ./scripts/test.sh`

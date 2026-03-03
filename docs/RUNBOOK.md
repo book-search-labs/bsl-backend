@@ -3619,6 +3619,31 @@ python scripts/eval/chat_crosslingual_citation_parity_guard.py \
 - CI 옵션:
   - `RUN_CHAT_CROSSLINGUAL_CITATION_PARITY_GUARD=1 ./scripts/test.sh`
 
+## Chat crosslingual fallback policy guard gate (B-0388, Bundle 4)
+- 번역 불확실 상황에서 fallback policy(원문 기반+추가질문) 준수를 검증:
+```bash
+python scripts/eval/chat_crosslingual_fallback_policy_guard.py \
+  --events-jsonl var/crosslingual/fallback_policy_events.jsonl \
+  --window-hours 24 \
+  --low-confidence-threshold 0.60 \
+  --min-window 50 \
+  --min-event-total 50 \
+  --min-fallback-coverage-ratio 0.90 \
+  --min-source-based-response-ratio 0.80 \
+  --min-clarification-ratio 0.80 \
+  --max-unsafe-high-risk-no-fallback-total 0 \
+  --max-direct-answer-without-fallback-total 0 \
+  --max-reason-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - low-confidence 대비 fallback coverage 비율
+  - source-based response/clarification 비율
+  - 고위험 no-fallback, direct answer 위반 건수
+- CI 옵션:
+  - `RUN_CHAT_CROSSLINGUAL_FALLBACK_POLICY_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
