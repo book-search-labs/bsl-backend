@@ -3737,6 +3737,27 @@ python scripts/eval/chat_tool_override_audit_guard.py \
 - CI 옵션:
   - `RUN_CHAT_TOOL_OVERRIDE_AUDIT_GUARD=1 ./scripts/test.sh`
 
+## Chat answer risk band model guard gate (B-0390, Bundle 1)
+- 답변 위험도 밴드(R0~R3) 분류 일관성과 고위험 커버리지를 검증:
+```bash
+python scripts/eval/chat_answer_risk_band_model_guard.py \
+  --events-jsonl var/risk_banding/risk_band_events.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-high-risk-coverage-ratio 0.95 \
+  --max-missing-band-total 0 \
+  --max-underband-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - assigned/expected risk band 분포(R0/R1/R2/R3)
+  - high-risk 기대 케이스 대비 high-risk 밴딩 커버리지 비율
+  - band 누락 및 underband(저위험 오분류) 건수
+- CI 옵션:
+  - `RUN_CHAT_ANSWER_RISK_BAND_MODEL_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

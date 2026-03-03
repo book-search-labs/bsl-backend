@@ -47,3 +47,12 @@ Introduce risk-banded response controls:
 - Classify each answer by risk and enforce tiered handling policies.
 - Escalate high-risk outputs to stricter validation or approval flows.
 - Audit risk decisions and track misbanding feedback for improvement.
+
+## Implementation Update (2026-03-04, Bundle 1)
+- [x] Answer risk band model guard gate 추가
+  - `scripts/eval/chat_answer_risk_band_model_guard.py`
+  - R0~R3 밴드 분류 분포, high-risk coverage 비율, underband/missing band 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_answer_risk_band_model_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_ANSWER_RISK_BAND_MODEL_GUARD=1 ./scripts/test.sh`

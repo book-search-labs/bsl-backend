@@ -1,0 +1,106 @@
+import importlib.util
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+def _load_module():
+    script_path = Path(__file__).resolve().parent / "chat_answer_risk_band_model_guard.py"
+    spec = importlib.util.spec_from_file_location("chat_answer_risk_band_model_guard", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)  # type: ignore[assignment]
+    return module
+
+
+def test_summarize_answer_risk_band_model_guard_tracks_high_risk_coverage():
+    module = _load_module()
+    rows = [
+        {
+            "timestamp": "2026-03-04T00:00:00Z",
+            "risk_band": "R1",
+            "intent_sensitivity_level": "LOW",
+            "claim_count": 0,
+            "evidence_trust_score": 0.95,
+            "policy_conflict": False,
+        },
+        {
+            "timestamp": "2026-03-04T00:00:10Z",
+            "risk_band": "R2",
+            "intent_sensitivity_level": "HIGH",
+            "claim_count": 4,
+            "evidence_trust_score": 0.30,
+            "policy_conflict": False,
+        },
+        {
+            "timestamp": "2026-03-04T00:00:20Z",
+            "risk_band": "R1",
+            "intent_sensitivity_level": "HIGH",
+            "claim_count": 4,
+            "evidence_trust_score": 0.25,
+            "policy_conflict": True,
+        },
+        {
+            "timestamp": "2026-03-04T00:00:30Z",
+            "risk_band": "",
+            "intent_sensitivity_level": "MEDIUM",
+            "claim_count": 2,
+            "evidence_trust_score": 0.80,
+            "policy_conflict": False,
+        },
+    ]
+    summary = module.summarize_answer_risk_band_model_guard(
+        rows,
+        now=datetime(2026, 3, 4, 0, 1, tzinfo=timezone.utc),
+    )
+
+    assert summary["window_size"] == 4
+    assert summary["event_total"] == 4
+    assert summary["missing_band_total"] == 1
+    assert summary["high_risk_expected_total"] == 2
+    assert summary["high_risk_covered_total"] == 1
+    assert abs(summary["high_risk_coverage_ratio"] - 0.5) < 1e-9
+    assert summary["underband_total"] == 1
+    assert summary["overband_total"] == 1
+    assert abs(summary["stale_minutes"] - 0.5) < 1e-9
+
+
+def test_evaluate_gate_detects_answer_risk_band_failures():
+    module = _load_module()
+    failures = module.evaluate_gate(
+        {
+            "window_size": 4,
+            "event_total": 1,
+            "high_risk_coverage_ratio": 0.2,
+            "missing_band_total": 2,
+            "underband_total": 3,
+            "stale_minutes": 120.0,
+        },
+        min_window=5,
+        min_event_total=2,
+        min_high_risk_coverage_ratio=0.9,
+        max_missing_band_total=0,
+        max_underband_total=0,
+        max_stale_minutes=60.0,
+    )
+    assert len(failures) == 6
+
+
+def test_evaluate_gate_allows_empty_when_minimums_are_zero():
+    module = _load_module()
+    failures = module.evaluate_gate(
+        {
+            "window_size": 0,
+            "event_total": 0,
+            "high_risk_coverage_ratio": 1.0,
+            "missing_band_total": 0,
+            "underband_total": 0,
+            "stale_minutes": 0.0,
+        },
+        min_window=0,
+        min_event_total=0,
+        min_high_risk_coverage_ratio=0.0,
+        max_missing_band_total=1000000,
+        max_underband_total=1000000,
+        max_stale_minutes=1000000.0,
+    )
+    assert failures == []
