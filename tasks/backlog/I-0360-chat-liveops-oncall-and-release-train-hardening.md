@@ -117,3 +117,14 @@ Harden chat live operations for production:
   - `services/query-service/tests/fixtures/chat_liveops_incident_baseline_v1.json`
 - [x] CI 진입점 확장
   - `scripts/test.sh`의 `RUN_CHAT_LIVEOPS_SUMMARY_GATE`, `RUN_CHAT_LIVEOPS_INCIDENT_GATE` 경로에서 baseline drift env 연결
+
+## Implementation Update (2026-03-04, Bundle 10)
+- [x] `chat_liveops_cycle.py` baseline 회귀 비교 추가
+  - `--cycle-baseline-report` 입력으로 cycle 결과(action/launch pass/failure count) drift 비교
+  - `max_cycle_failure_increase`, `max_cycle_action_drop` 임계치 도입
+  - 리포트에 `runtime_failures`, `baseline_failures`, `gate` 메타 확장
+- [x] baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_liveops_cycle_baseline_v1.json`
+- [x] CI 진입점 확장
+  - `scripts/test.sh`의 `RUN_CHAT_LIVEOPS_CYCLE=1` 경로에 cycle baseline 및 drift env 연결
+  - `CHAT_LIVEOPS_LAUNCH_GATE_REPORT_PATH`로 외부 launch gate 리포트 주입 지원

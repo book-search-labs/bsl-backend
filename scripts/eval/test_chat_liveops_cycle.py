@@ -35,3 +35,39 @@ def test_render_markdown_contains_action_and_signature():
     text = module.render_markdown(report)
     assert "release_signature: sig001" in text
     assert "release_action: promote" in text
+
+
+def test_compare_with_baseline_detects_action_and_launch_regression():
+    module = _load_module()
+    baseline = {
+        "failures": [],
+        "launch_gate": {"pass": True},
+        "release_train": {"decision": {"action": "promote"}},
+    }
+    current = {
+        "runtime_failures": [],
+        "launch_gate": {"pass": False},
+        "release_train": {"decision": {"action": "rollback"}},
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_cycle_failure_increase=0,
+        max_cycle_action_drop=0,
+    )
+    assert any("launch gate pass regression" in item for item in failures)
+    assert any("release action regression" in item for item in failures)
+
+
+def test_compare_with_baseline_detects_failure_count_regression():
+    module = _load_module()
+    baseline = {"failures": ["a"], "launch_gate": {"pass": True}, "release_train": {"decision": {"action": "hold"}}}
+    current = {"runtime_failures": ["a", "b", "c"], "launch_gate": {"pass": True}, "release_train": {"decision": {"action": "hold"}}}
+    failures = module.compare_with_baseline(
+        baseline,
+        current,
+        max_cycle_failure_increase=1,
+        max_cycle_action_drop=2,
+    )
+    assert len(failures) == 1
+    assert "cycle failure regression" in failures[0]

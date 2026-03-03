@@ -147,6 +147,73 @@ def load_json(path: Path) -> dict[str, Any]:
     return payload
 
 
+def _safe_bool(value: Any, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off"}:
+            return False
+    return default
+
+
+def _action_score(action: str) -> int:
+    normalized = str(action or "").strip().lower()
+    if normalized == "promote":
+        return 2
+    if normalized == "hold":
+        return 1
+    if normalized == "rollback":
+        return 0
+    return -1
+
+
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_report: Mapping[str, Any],
+    *,
+    max_cycle_failure_increase: int,
+    max_cycle_action_drop: int,
+) -> list[str]:
+    failures: list[str] = []
+
+    base_failures = baseline_report.get("failures") if isinstance(baseline_report.get("failures"), list) else []
+    cur_failures = current_report.get("runtime_failures") if isinstance(current_report.get("runtime_failures"), list) else []
+    base_fail_total = len(base_failures)
+    cur_fail_total = len(cur_failures)
+    fail_increase = max(0, cur_fail_total - base_fail_total)
+    if fail_increase > max(0, int(max_cycle_failure_increase)):
+        failures.append(
+            f"cycle failure regression: baseline={base_fail_total}, current={cur_fail_total}, allowed_increase={max(0, int(max_cycle_failure_increase))}"
+        )
+
+    base_launch = baseline_report.get("launch_gate") if isinstance(baseline_report.get("launch_gate"), Mapping) else {}
+    cur_launch = current_report.get("launch_gate") if isinstance(current_report.get("launch_gate"), Mapping) else {}
+    base_launch_pass = _safe_bool(base_launch.get("pass"), False)
+    cur_launch_pass = _safe_bool(cur_launch.get("pass"), False)
+    if base_launch_pass and not cur_launch_pass:
+        failures.append("launch gate pass regression: baseline_pass=true current_pass=false")
+
+    base_decision_root = (
+        baseline_report.get("release_train") if isinstance(baseline_report.get("release_train"), Mapping) else {}
+    )
+    base_decision = base_decision_root.get("decision") if isinstance(base_decision_root.get("decision"), Mapping) else {}
+    cur_decision_root = current_report.get("release_train") if isinstance(current_report.get("release_train"), Mapping) else {}
+    cur_decision = cur_decision_root.get("decision") if isinstance(cur_decision_root.get("decision"), Mapping) else {}
+    base_action = str(base_decision.get("action") or "")
+    cur_action = str(cur_decision.get("action") or "")
+    base_score = _action_score(base_action)
+    cur_score = _action_score(cur_action)
+    action_drop = max(0, base_score - cur_score)
+    if action_drop > max(0, int(max_cycle_action_drop)):
+        failures.append(
+            f"release action regression: baseline={base_action or 'unknown'}, current={cur_action or 'unknown'}, allowed_drop={max(0, int(max_cycle_action_drop))}"
+        )
+    return failures
+
+
 def render_markdown(report: Mapping[str, Any]) -> str:
     release = report.get("release_profile") if isinstance(report.get("release_profile"), Mapping) else {}
     launch = report.get("launch_gate") if isinstance(report.get("launch_gate"), Mapping) else {}
@@ -163,11 +230,15 @@ def render_markdown(report: Mapping[str, Any]) -> str:
     lines.append(f"- next_stage: {release_decision.get('next_stage')}")
     lines.append("")
     failures = report.get("failures") if isinstance(report.get("failures"), list) else []
+    baseline_failures = report.get("baseline_failures") if isinstance(report.get("baseline_failures"), list) else []
     lines.append("## Failures")
     lines.append("")
     if failures:
         for item in failures:
             lines.append(f"- {item}")
+    elif baseline_failures:
+        for item in baseline_failures:
+            lines.append(f"- [baseline] {item}")
     else:
         lines.append("- (none)")
     return "\n".join(lines)
@@ -187,6 +258,9 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--apply-rollback", action="store_true")
     parser.add_argument("--require-promote", action="store_true")
     parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--cycle-baseline-report", default="")
+    parser.add_argument("--max-cycle-failure-increase", type=int, default=1)
+    parser.add_argument("--max-cycle-action-drop", type=int, default=2)
     parser.add_argument("--model-version", default="")
     parser.add_argument("--prompt-version", default="")
     parser.add_argument("--policy-version", default="")
@@ -307,8 +381,13 @@ def main() -> int:
     if args.require_promote and action != "promote":
         failures.append(f"require_promote enabled but action={action}")
 
+    baseline_failures: list[str] = []
+
     cycle_report = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source": {
+            "cycle_baseline_report": str(args.cycle_baseline_report) if args.cycle_baseline_report else None,
+        },
         "release_profile": launch_report.get("release_profile"),
         "launch_gate_report_path": str(launch_report_path),
         "launch_gate": {
@@ -325,7 +404,31 @@ def main() -> int:
             "decision": decision,
             "rollback": rollback_payload,
         },
-        "failures": failures,
+        "runtime_failures": list(failures),
+        "baseline_failures": [],
+        "failures": list(failures),
+    }
+
+    if str(args.cycle_baseline_report).strip():
+        baseline_payload = load_json(Path(args.cycle_baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            cycle_report,
+            max_cycle_failure_increase=max(0, int(args.max_cycle_failure_increase)),
+            max_cycle_action_drop=max(0, int(args.max_cycle_action_drop)),
+        )
+    cycle_report["baseline_failures"] = baseline_failures
+    cycle_report["failures"] = [*list(failures), *baseline_failures]
+    cycle_report["gate"] = {
+        "enabled": True,
+        "pass": len(cycle_report["failures"]) == 0,
+        "failures": cycle_report["failures"],
+        "runtime_failures": list(failures),
+        "baseline_failures": baseline_failures,
+        "thresholds": {
+            "max_cycle_failure_increase": max(0, int(args.max_cycle_failure_increase)),
+            "max_cycle_action_drop": max(0, int(args.max_cycle_action_drop)),
+        },
     }
 
     out_dir = Path(args.out)
@@ -339,11 +442,13 @@ def main() -> int:
     print(f"report_json={json_path}")
     print(f"report_md={md_path}")
     print(f"release_action={action}")
-    print(f"cycle_pass={str(len(failures) == 0).lower()}")
+    print(f"cycle_pass={str(len(cycle_report['failures']) == 0).lower()}")
 
-    if failures:
+    if cycle_report["failures"]:
         for item in failures:
             print(f"[cycle-failure] {item}")
+        for item in baseline_failures:
+            print(f"[cycle-baseline-failure] {item}")
         return 2
     return 0
 

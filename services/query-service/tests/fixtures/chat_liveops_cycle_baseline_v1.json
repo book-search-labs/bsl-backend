@@ -1,0 +1,42 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "source": {
+    "cycle_baseline_report": null
+  },
+  "release_profile": {
+    "release_signature": "baseline"
+  },
+  "launch_gate_report_path": "data/eval/reports/chat_production_launch_gate_baseline.json",
+  "launch_gate": {
+    "generated_at": "2026-03-04T00:00:00+00:00",
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "stdout": null,
+    "rc": 0
+  },
+  "release_train": {
+    "stage": 10,
+    "dwell_minutes": 0,
+    "decision": {
+      "action": "hold",
+      "reason": "dwell_not_met",
+      "next_stage": 10
+    },
+    "rollback": null
+  },
+  "runtime_failures": [],
+  "baseline_failures": [],
+  "failures": [],
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "runtime_failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "max_cycle_failure_increase": 1,
+      "max_cycle_action_drop": 2
+    }
+  }
+}

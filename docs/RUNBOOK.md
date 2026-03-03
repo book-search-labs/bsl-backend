@@ -1006,14 +1006,21 @@ python scripts/eval/chat_liveops_cycle.py \
   --replay-dir var/chat_graph/replay \
   --completion-source auto \
   --current-stage 25 \
-  --dwell-minutes 45
+  --dwell-minutes 45 \
+  --cycle-baseline-report services/query-service/tests/fixtures/chat_liveops_cycle_baseline_v1.json
 ```
 - 옵션:
   - `--baseline-report ...` : launch gate baseline 회귀 비교 포함
+  - `--cycle-baseline-report ...` : liveops cycle 결과 회귀 비교 포함
   - `--apply-rollback` : rollback 결정 시 force-legacy override 즉시 적용
   - `--require-promote` : 결과가 promote가 아니면 실패 처리
 - CI 옵션:
   - `RUN_CHAT_LIVEOPS_CYCLE=1 ./scripts/test.sh`
+  - 외부 launch gate 리포트 사용(옵션):
+    - `CHAT_LIVEOPS_LAUNCH_GATE_REPORT_PATH=/path/to/chat_production_launch_gate_*.json`
+  - cycle drift gate env:
+    - `CHAT_LIVEOPS_MAX_CYCLE_FAILURE_INCREASE`
+    - `CHAT_LIVEOPS_MAX_CYCLE_ACTION_DROP`
 
 ## LiveOps summary gate (I-0360, Bundle 3)
 - 최근 liveops cycle 리포트 집계:
