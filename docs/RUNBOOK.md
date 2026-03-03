@@ -1449,6 +1449,27 @@ python scripts/eval/chat_budget_release_guard.py \
 - CI 옵션:
   - `RUN_CHAT_BUDGET_RELEASE_GUARD=1 ./scripts/test.sh`
 
+## FinOps tradeoff report gate (I-0365, Bundle 4)
+- unit economics/예산가드/감사로그를 합쳐 cost-quality 트레이드오프를 주간 리포트로 평가:
+```bash
+python scripts/eval/chat_finops_tradeoff_report.py \
+  --reports-dir data/eval/reports \
+  --unit-prefix chat_unit_economics_slo \
+  --budget-prefix chat_budget_release_guard \
+  --llm-audit-log var/llm_gateway/audit.log \
+  --report-limit 30 \
+  --min-tradeoff-index 0.20 \
+  --max-avg-cost-per-resolved-session 2.5 \
+  --max-avg-unresolved-cost-burn-total 200 \
+  --gate
+```
+- 산출물:
+  - avg cost-per-resolved / resolution / unresolved burn / budget utilization
+  - tradeoff index와 cost-down 대비 quality 저하 여부
+  - reason_code별 비용 급등(top reasons) 분해
+- CI 옵션:
+  - `RUN_CHAT_FINOPS_TRADEOFF_REPORT=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

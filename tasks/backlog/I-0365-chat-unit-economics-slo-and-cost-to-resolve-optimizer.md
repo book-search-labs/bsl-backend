@@ -79,3 +79,14 @@ Add FinOps-grade control for production chat:
   - `scripts/eval/test_chat_budget_release_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_BUDGET_RELEASE_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 4)
+- [x] FinOps tradeoff report gate 추가
+  - `scripts/eval/chat_finops_tradeoff_report.py`
+  - `chat_unit_economics_slo`/`chat_budget_release_guard` 리포트를 집계해 평균 cost-per-resolved, resolution, unresolved burn, budget utilization, tradeoff index를 계산
+  - `var/llm_gateway/audit.log` reason_code를 비용 기준으로 분해해 급등 원인(top reasons) 가시화
+  - 비용은 줄었지만 품질이 함께 하락한 회귀(`quality_drop_with_cost_cut`)를 gate에서 차단
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_finops_tradeoff_report.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_FINOPS_TRADEOFF_REPORT=1 ./scripts/test.sh`
