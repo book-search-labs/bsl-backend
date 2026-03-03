@@ -3045,6 +3045,33 @@ python scripts/eval/chat_tool_tx_audit_replayability.py \
 - CI 옵션:
   - `RUN_CHAT_TOOL_TX_AUDIT_REPLAYABILITY=1 ./scripts/test.sh`
 
+## Chat output contract guard gate (B-0383, Bundle 1)
+- 응답 직전 형식/금지 문구/금지 액션/필수 필드/포맷 정합성 검증:
+```bash
+python scripts/eval/chat_output_contract_guard.py \
+  --events-jsonl var/chat_output_guard/output_guard_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-output-total 20 \
+  --min-guard-coverage-ratio 0.99 \
+  --min-contract-pass-ratio 0.98 \
+  --max-guard-bypass-total 0 \
+  --max-forbidden-phrase-total 0 \
+  --max-forbidden-action-total 0 \
+  --max-required-field-missing-total 0 \
+  --max-invalid-amount-format-total 0 \
+  --max-invalid-date-format-total 0 \
+  --max-invalid-status-format-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - guard coverage/pass ratio, bypass 건수
+  - forbidden phrase/action 및 required field 누락 건수
+  - 금액/날짜/상태 포맷 오류 건수
+- CI 옵션:
+  - `RUN_CHAT_OUTPUT_CONTRACT_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)

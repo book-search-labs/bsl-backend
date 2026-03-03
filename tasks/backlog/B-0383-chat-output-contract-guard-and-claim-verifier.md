@@ -64,3 +64,14 @@ Add a final output guard for chat responses:
 - Validate response contracts (format, policy, forbidden actions).
 - Re-verify high-impact claims against citations before delivery.
 - Downgrade or block unsafe outputs with deterministic Korean fallbacks.
+
+## Implementation Update (2026-03-03, Bundle 1)
+- [x] Output contract guard gate 추가
+  - `scripts/eval/chat_output_contract_guard.py`
+  - guard coverage/bypass 및 contract pass ratio 검증
+  - forbidden phrase/action, required field 누락 검증
+  - 금액/날짜/상태 포맷 오류 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_output_contract_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_OUTPUT_CONTRACT_GUARD=1 ./scripts/test.sh`
