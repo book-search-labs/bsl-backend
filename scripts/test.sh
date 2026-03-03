@@ -4940,7 +4940,7 @@ else
   echo "  - set RUN_CHAT_CROSSLINGUAL_FALLBACK_POLICY_GUARD=1 to enable"
 fi
 
-echo "[132/137] Chat tool health score guard gate (optional)"
+echo "[132/138] Chat tool health score guard gate (optional)"
 if [ "${RUN_CHAT_TOOL_HEALTH_SCORE_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_HEALTH_EVENTS_JSONL="${CHAT_TOOL_HEALTH_EVENTS_JSONL:-$ROOT_DIR/var/tool_health/tool_events.jsonl}"
@@ -4981,7 +4981,7 @@ else
   echo "  - set RUN_CHAT_TOOL_HEALTH_SCORE_GUARD=1 to enable"
 fi
 
-echo "[133/137] Chat tool capability routing guard gate (optional)"
+echo "[133/138] Chat tool capability routing guard gate (optional)"
 if [ "${RUN_CHAT_TOOL_CAPABILITY_ROUTING_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_CAP_ROUTING_EVENTS_JSONL="${CHAT_TOOL_CAP_ROUTING_EVENTS_JSONL:-$ROOT_DIR/var/tool_health/capability_routing_events.jsonl}"
@@ -5016,7 +5016,7 @@ else
   echo "  - set RUN_CHAT_TOOL_CAPABILITY_ROUTING_GUARD=1 to enable"
 fi
 
-echo "[134/137] Chat tool degrade strategy guard gate (optional)"
+echo "[134/138] Chat tool degrade strategy guard gate (optional)"
 if [ "${RUN_CHAT_TOOL_DEGRADE_STRATEGY_GUARD:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     CHAT_TOOL_DEGRADE_EVENTS_JSONL="${CHAT_TOOL_DEGRADE_EVENTS_JSONL:-$ROOT_DIR/var/tool_health/degrade_strategy_events.jsonl}"
@@ -5051,7 +5051,46 @@ else
   echo "  - set RUN_CHAT_TOOL_DEGRADE_STRATEGY_GUARD=1 to enable"
 fi
 
-echo "[135/137] Canonical quality checks (optional)"
+echo "[135/138] Chat tool override audit guard gate (optional)"
+if [ "${RUN_CHAT_TOOL_OVERRIDE_AUDIT_GUARD:-0}" = "1" ]; then
+  if [ -n "$PYTHON_BIN" ]; then
+    CHAT_TOOL_OVERRIDE_EVENTS_JSONL="${CHAT_TOOL_OVERRIDE_EVENTS_JSONL:-$ROOT_DIR/var/tool_health/override_events.jsonl}"
+    CHAT_TOOL_OVERRIDE_WINDOW_HOURS="${CHAT_TOOL_OVERRIDE_WINDOW_HOURS:-24}"
+    CHAT_TOOL_OVERRIDE_LIMIT="${CHAT_TOOL_OVERRIDE_LIMIT:-100000}"
+    CHAT_TOOL_OVERRIDE_OUT_DIR="${CHAT_TOOL_OVERRIDE_OUT_DIR:-$ROOT_DIR/data/eval/reports}"
+    CHAT_TOOL_OVERRIDE_MIN_WINDOW="${CHAT_TOOL_OVERRIDE_MIN_WINDOW:-0}"
+    CHAT_TOOL_OVERRIDE_MIN_EVENT_TOTAL="${CHAT_TOOL_OVERRIDE_MIN_EVENT_TOTAL:-0}"
+    CHAT_TOOL_OVERRIDE_MAX_MISSING_ACTOR_TOTAL="${CHAT_TOOL_OVERRIDE_MAX_MISSING_ACTOR_TOTAL:-1000000}"
+    CHAT_TOOL_OVERRIDE_MAX_MISSING_REASON_TOTAL="${CHAT_TOOL_OVERRIDE_MAX_MISSING_REASON_TOTAL:-1000000}"
+    CHAT_TOOL_OVERRIDE_MAX_MISSING_AUDIT_CONTEXT_TOTAL="${CHAT_TOOL_OVERRIDE_MAX_MISSING_AUDIT_CONTEXT_TOTAL:-1000000}"
+    CHAT_TOOL_OVERRIDE_MAX_MISSING_EXPIRY_TOTAL="${CHAT_TOOL_OVERRIDE_MAX_MISSING_EXPIRY_TOTAL:-1000000}"
+    CHAT_TOOL_OVERRIDE_MAX_UNAUTHORIZED_TOTAL="${CHAT_TOOL_OVERRIDE_MAX_UNAUTHORIZED_TOTAL:-1000000}"
+    CHAT_TOOL_OVERRIDE_MAX_CONFLICTING_TOTAL="${CHAT_TOOL_OVERRIDE_MAX_CONFLICTING_TOTAL:-1000000}"
+    CHAT_TOOL_OVERRIDE_MAX_STALE_MINUTES="${CHAT_TOOL_OVERRIDE_MAX_STALE_MINUTES:-1000000}"
+
+    $PYTHON_BIN "$ROOT_DIR/scripts/eval/chat_tool_override_audit_guard.py" \
+      --events-jsonl "$CHAT_TOOL_OVERRIDE_EVENTS_JSONL" \
+      --window-hours "$CHAT_TOOL_OVERRIDE_WINDOW_HOURS" \
+      --limit "$CHAT_TOOL_OVERRIDE_LIMIT" \
+      --out "$CHAT_TOOL_OVERRIDE_OUT_DIR" \
+      --min-window "$CHAT_TOOL_OVERRIDE_MIN_WINDOW" \
+      --min-override-event-total "$CHAT_TOOL_OVERRIDE_MIN_EVENT_TOTAL" \
+      --max-missing-actor-total "$CHAT_TOOL_OVERRIDE_MAX_MISSING_ACTOR_TOTAL" \
+      --max-missing-reason-total "$CHAT_TOOL_OVERRIDE_MAX_MISSING_REASON_TOTAL" \
+      --max-missing-audit-context-total "$CHAT_TOOL_OVERRIDE_MAX_MISSING_AUDIT_CONTEXT_TOTAL" \
+      --max-missing-expiry-total "$CHAT_TOOL_OVERRIDE_MAX_MISSING_EXPIRY_TOTAL" \
+      --max-unauthorized-override-total "$CHAT_TOOL_OVERRIDE_MAX_UNAUTHORIZED_TOTAL" \
+      --max-conflicting-override-total "$CHAT_TOOL_OVERRIDE_MAX_CONFLICTING_TOTAL" \
+      --max-stale-minutes "$CHAT_TOOL_OVERRIDE_MAX_STALE_MINUTES" \
+      --gate || exit 1
+  else
+    echo "  - python not found; skipping chat tool override audit guard gate"
+  fi
+else
+  echo "  - set RUN_CHAT_TOOL_OVERRIDE_AUDIT_GUARD=1 to enable"
+fi
+
+echo "[136/138] Canonical quality checks (optional)"
 if [ "${RUN_CANONICAL_CHECKS:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/canonical/validate_canonical.py" || exit 1
@@ -5062,7 +5101,7 @@ else
   echo "  - set RUN_CANONICAL_CHECKS=1 to enable"
 fi
 
-echo "[136/137] E2E tests (optional)"
+echo "[137/138] E2E tests (optional)"
 if [ "${RUN_E2E:-0}" = "1" ]; then
   if [ -n "$PYTHON_BIN" ]; then
     $PYTHON_BIN "$ROOT_DIR/scripts/e2e/e2e_commerce_flow.py" || exit 1
@@ -5073,4 +5112,4 @@ else
   echo "  - set RUN_E2E=1 to enable"
 fi
 
-echo "[137/137] Done"
+echo "[138/138] Done"

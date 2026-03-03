@@ -77,3 +77,13 @@ Add capability-aware tool routing for chat:
   - `scripts/eval/test_chat_tool_degrade_strategy_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TOOL_DEGRADE_STRATEGY_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 4)
+- [x] Tool override audit guard gate 추가
+  - `scripts/eval/chat_tool_override_audit_guard.py`
+  - override 적용 시 actor/reason/trace+request/expiry 감사 필드 누락 검증
+  - unauthorized override 적용 및 tool 충돌 override 구성 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_tool_override_audit_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_TOOL_OVERRIDE_AUDIT_GUARD=1 ./scripts/test.sh`

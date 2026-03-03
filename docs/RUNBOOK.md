@@ -3713,6 +3713,30 @@ python scripts/eval/chat_tool_degrade_strategy_guard.py \
 - CI 옵션:
   - `RUN_CHAT_TOOL_DEGRADE_STRATEGY_GUARD=1 ./scripts/test.sh`
 
+## Chat tool override audit guard gate (B-0389, Bundle 4)
+- 운영자 override 적용/감사 추적 및 충돌 구성을 검증:
+```bash
+python scripts/eval/chat_tool_override_audit_guard.py \
+  --events-jsonl var/tool_health/override_events.jsonl \
+  --window-hours 24 \
+  --min-window 20 \
+  --min-override-event-total 20 \
+  --max-missing-actor-total 0 \
+  --max-missing-reason-total 0 \
+  --max-missing-audit-context-total 0 \
+  --max-missing-expiry-total 0 \
+  --max-unauthorized-override-total 0 \
+  --max-conflicting-override-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - override applied 총량, force include/exclude 분포
+  - actor/reason/trace_id+request_id/expiry 누락 건수
+  - unauthorized applied 및 conflicting override 건수
+- CI 옵션:
+  - `RUN_CHAT_TOOL_OVERRIDE_AUDIT_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
