@@ -3964,6 +3964,29 @@ python scripts/eval/chat_session_state_transition_guard.py \
 - CI 옵션:
   - `RUN_CHAT_SESSION_STATE_TRANSITION_GUARD=1 ./scripts/test.sh`
 
+## Chat realtime intervention policy guard gate (B-0394, Bundle 3)
+- `AT_RISK/DEGRADED` 상태별 개입 정책과 연속 실패 escalation 누락을 검증:
+```bash
+python scripts/eval/chat_realtime_intervention_policy_guard.py \
+  --events-jsonl var/session_quality/intervention_events.jsonl \
+  --window-hours 24 \
+  --escalation-failure-threshold 3 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-intervention-trigger-rate 0.80 \
+  --max-at-risk-intervention-missing-total 10 \
+  --max-degraded-intervention-missing-total 0 \
+  --max-escalation-missing-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - intervention trigger rate
+  - at-risk/degraded 정책 누락 건수
+  - escalation 누락 건수
+- CI 옵션:
+  - `RUN_CHAT_REALTIME_INTERVENTION_POLICY_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
