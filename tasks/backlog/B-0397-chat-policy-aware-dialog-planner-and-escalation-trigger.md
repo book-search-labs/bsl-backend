@@ -73,3 +73,14 @@ Implement a policy-aware dialog planner for production chat:
   - `scripts/eval/test_chat_escalation_trigger_engine_guard.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_ESCALATION_TRIGGER_ENGINE_GUARD=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 3)
+- [x] Case handover payload guard gate 추가
+  - `scripts/eval/chat_case_handover_payload_guard.py`
+  - 에스컬레이션 payload 최소 필드(요약/실행액션/정책근거) 완전성 검증
+  - payload 누락/불완전으로 인한 재질문 리스크 지표 검증
+  - 민감 필드 마스킹 위반 검증
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_case_handover_payload_guard.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_CASE_HANDOVER_PAYLOAD_GUARD=1 ./scripts/test.sh`

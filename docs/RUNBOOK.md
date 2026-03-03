@@ -4252,6 +4252,30 @@ python scripts/eval/chat_escalation_trigger_engine_guard.py \
 - CI 옵션:
   - `RUN_CHAT_ESCALATION_TRIGGER_ENGINE_GUARD=1 ./scripts/test.sh`
 
+## Chat case handover payload guard gate (B-0397, Bundle 3)
+- 에스컬레이션 payload의 완전성(요약/실행액션/정책근거)과 PII 마스킹을 검증:
+```bash
+python scripts/eval/chat_case_handover_payload_guard.py \
+  --events-jsonl var/dialog_planner/handover_events.jsonl \
+  --window-hours 24 \
+  --min-window 50 \
+  --min-event-total 100 \
+  --min-payload-completeness-ratio 0.95 \
+  --max-payload-missing-total 0 \
+  --max-summary-missing-total 0 \
+  --max-actions-missing-total 0 \
+  --max-policy-evidence-missing-total 0 \
+  --max-masking-violation-total 0 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - payload completeness ratio
+  - summary/actions/policy evidence 누락 건수
+  - masking violation 건수
+- CI 옵션:
+  - `RUN_CHAT_CASE_HANDOVER_PAYLOAD_GUARD=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
