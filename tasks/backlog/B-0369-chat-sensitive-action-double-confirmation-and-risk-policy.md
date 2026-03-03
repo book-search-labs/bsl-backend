@@ -58,3 +58,14 @@ Harden sensitive chat actions:
   - `scripts/eval/test_chat_sensitive_action_risk_classification.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_SENSITIVE_ACTION_RISK_CLASSIFICATION=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-03, Bundle 2)
+- [x] Two-step confirmation + one-time token gate 추가
+  - `scripts/eval/chat_sensitive_action_double_confirmation.py`
+  - MEDIUM/HIGH 리스크 액션에서 step1/step2 확인 누락 실행(`execute_without_double_confirmation_total`)을 검출
+  - confirmation token 발급/검증/재사용/불일치/만료 이벤트를 집계해 token 재사용·오용을 게이트화
+  - gate 모드에서 무이중확인 실행, token 미검증 실행, token replay/mismatch/expiry, stale evidence 위반 시 실패
+- [x] 단위 테스트 추가
+  - `scripts/eval/test_chat_sensitive_action_double_confirmation.py`
+- [x] CI 진입점 추가
+  - `RUN_CHAT_SENSITIVE_ACTION_DOUBLE_CONFIRMATION=1 ./scripts/test.sh`

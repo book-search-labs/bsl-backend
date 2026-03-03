@@ -1746,6 +1746,28 @@ python scripts/eval/chat_sensitive_action_risk_classification.py \
 - CI 옵션:
   - `RUN_CHAT_SENSITIVE_ACTION_RISK_CLASSIFICATION=1 ./scripts/test.sh`
 
+## Sensitive action double confirmation gate (B-0369, Bundle 2)
+- MEDIUM/HIGH 리스크 액션의 이중 확인(2-step) 및 one-time confirmation token 검증을 강제:
+```bash
+python scripts/eval/chat_sensitive_action_double_confirmation.py \
+  --events-jsonl var/chat_actions/sensitive_action_events.jsonl \
+  --window-hours 24 \
+  --max-execute-without-double-confirmation-total 0 \
+  --max-token-missing-on-execute-total 0 \
+  --max-token-reuse-total 0 \
+  --max-token-mismatch-total 0 \
+  --max-token-expired-total 0 \
+  --min-token-validation-ratio 0.95 \
+  --max-stale-minutes 60 \
+  --gate
+```
+- 산출물:
+  - double-confirm required 액션 수 및 무확인 실행 건수
+  - token issue/validation/reuse/mismatch/expired 집계
+  - token validation ratio
+- CI 옵션:
+  - `RUN_CHAT_SENSITIVE_ACTION_DOUBLE_CONFIRMATION=1 ./scripts/test.sh`
+
 ---
 
 ## Search Service (Local)
