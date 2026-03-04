@@ -88,3 +88,43 @@ def test_evaluate_gate_allows_empty_when_thresholds_open():
         max_stale_minutes=999999.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_drift_tracking_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "dataset_case_total": 500,
+                "dataset_version_total": 8,
+                "refresh_age_days": 3.0,
+                "missing_monthly_refresh_total": 0,
+                "incident_total": 40,
+                "incident_link_ratio": 0.90,
+                "incident_unlinked_total": 2,
+                "stale_minutes": 5.0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "dataset_case_total": 300,
+            "dataset_version_total": 5,
+            "refresh_age_days": 20.0,
+            "missing_monthly_refresh_total": 3,
+            "incident_total": 20,
+            "incident_link_ratio": 0.60,
+            "incident_unlinked_total": 8,
+            "stale_minutes": 50.0,
+        },
+        max_dataset_case_total_drop=10,
+        max_dataset_version_total_drop=1,
+        max_refresh_age_days_increase=7.0,
+        max_missing_monthly_refresh_total_increase=1,
+        max_incident_total_drop=5,
+        max_incident_link_ratio_drop=0.05,
+        max_unlinked_incident_total_increase=2,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 8

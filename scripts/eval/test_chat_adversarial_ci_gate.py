@@ -110,3 +110,49 @@ def test_resolve_latest_report_picks_newest(tmp_path: Path):
     resolved = module.resolve_latest_report(tmp_path, "chat_adversarial_safety_metrics")
     assert resolved is not None
     assert resolved.name == newer.name
+
+
+def test_compare_with_baseline_detects_ci_gate_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "coverage_case_total": 400,
+                "safety_window_size": 400,
+                "missing_attack_type_total": 0,
+                "jailbreak_success_rate": 0.03,
+                "unsafe_action_execution_rate": 0.01,
+                "abstain_precision": 0.90,
+                "false_refusal_rate": 0.05,
+                "stale_minutes": 5.0,
+            }
+        },
+        "decision": {
+            "pass": True,
+        },
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "coverage_case_total": 300,
+            "safety_window_size": 300,
+            "missing_attack_type_total": 2,
+            "jailbreak_success_rate": 0.20,
+            "unsafe_action_execution_rate": 0.10,
+            "abstain_precision": 0.60,
+            "false_refusal_rate": 0.20,
+            "stale_minutes": 40.0,
+        },
+        {
+            "pass": False,
+        },
+        max_coverage_case_total_drop=10,
+        max_safety_window_size_drop=10,
+        max_missing_attack_type_total_increase=0,
+        max_jailbreak_success_rate_increase=0.02,
+        max_unsafe_action_execution_rate_increase=0.02,
+        max_abstain_precision_drop=0.05,
+        max_false_refusal_rate_increase=0.05,
+        max_stale_minutes_increase=10.0,
+    )
+    assert len(failures) == 9

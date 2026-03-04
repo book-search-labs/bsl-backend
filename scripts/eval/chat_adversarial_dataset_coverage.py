@@ -110,6 +110,13 @@ def read_cases(path: Path, *, limit: int = 200000) -> list[dict[str, Any]]:
     return rows
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, Mapping):
+        raise RuntimeError(f"expected JSON object from {path}")
+    return {str(k): v for k, v in payload.items()}
+
+
 def summarize_dataset_coverage(
     cases: list[Mapping[str, Any]],
     *,
@@ -196,6 +203,84 @@ def evaluate_gate(
     return failures
 
 
+def _missing_attack_type_total(summary: Mapping[str, Any]) -> int:
+    missing = summary.get("missing_attack_types")
+    if isinstance(missing, list):
+        return len(missing)
+    return _safe_int(summary.get("missing_attack_type_total"), 0)
+
+
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_case_total_drop: int,
+    max_missing_attack_type_total_increase: int,
+    max_korean_case_ratio_drop: float,
+    max_cjk_mixed_total_drop: int,
+    max_commerce_case_total_drop: int,
+    max_invalid_case_total_increase: int,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_case_total = _safe_int(base_summary.get("case_total"), 0)
+    cur_case_total = _safe_int(current_summary.get("case_total"), 0)
+    case_total_drop = max(0, base_case_total - cur_case_total)
+    if case_total_drop > max(0, int(max_case_total_drop)):
+        failures.append(
+            f"case_total regression: baseline={base_case_total}, current={cur_case_total}, "
+            f"allowed_drop={max(0, int(max_case_total_drop))}"
+        )
+
+    base_missing_attack_type_total = _missing_attack_type_total(base_summary)
+    cur_missing_attack_type_total = _missing_attack_type_total(current_summary)
+    missing_attack_type_total_increase = max(0, cur_missing_attack_type_total - base_missing_attack_type_total)
+    if missing_attack_type_total_increase > max(0, int(max_missing_attack_type_total_increase)):
+        failures.append(
+            "missing_attack_type_total regression: "
+            f"baseline={base_missing_attack_type_total}, current={cur_missing_attack_type_total}, "
+            f"allowed_increase={max(0, int(max_missing_attack_type_total_increase))}"
+        )
+
+    base_korean_case_ratio = _safe_float(base_summary.get("korean_case_ratio"), 0.0)
+    cur_korean_case_ratio = _safe_float(current_summary.get("korean_case_ratio"), 0.0)
+    korean_case_ratio_drop = max(0.0, base_korean_case_ratio - cur_korean_case_ratio)
+    if korean_case_ratio_drop > max(0.0, float(max_korean_case_ratio_drop)):
+        failures.append(
+            "korean_case_ratio regression: "
+            f"baseline={base_korean_case_ratio:.6f}, current={cur_korean_case_ratio:.6f}, "
+            f"allowed_drop={float(max_korean_case_ratio_drop):.6f}"
+        )
+
+    baseline_pairs = [
+        ("cjk_mixed_total", max_cjk_mixed_total_drop),
+        ("commerce_case_total", max_commerce_case_total_drop),
+    ]
+    for key, allowed_drop in baseline_pairs:
+        base_value = _safe_int(base_summary.get(key), 0)
+        cur_value = _safe_int(current_summary.get(key), 0)
+        drop = max(0, base_value - cur_value)
+        if drop > max(0, int(allowed_drop)):
+            failures.append(
+                f"{key} regression: baseline={base_value}, current={cur_value}, "
+                f"allowed_drop={max(0, int(allowed_drop))}"
+            )
+
+    base_invalid_case_total = _safe_int(base_summary.get("invalid_case_total"), 0)
+    cur_invalid_case_total = _safe_int(current_summary.get("invalid_case_total"), 0)
+    invalid_case_total_increase = max(0, cur_invalid_case_total - base_invalid_case_total)
+    if invalid_case_total_increase > max(0, int(max_invalid_case_total_increase)):
+        failures.append(
+            f"invalid_case_total regression: baseline={base_invalid_case_total}, current={cur_invalid_case_total}, "
+            f"allowed_increase={max(0, int(max_invalid_case_total_increase))}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -215,11 +300,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -239,6 +329,13 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--min-cjk-mixed-total", type=int, default=0)
     parser.add_argument("--min-commerce-case-total", type=int, default=0)
     parser.add_argument("--max-invalid-case-total", type=int, default=0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-case-total-drop", type=int, default=10)
+    parser.add_argument("--max-missing-attack-type-total-increase", type=int, default=0)
+    parser.add_argument("--max-korean-case-ratio-drop", type=float, default=0.05)
+    parser.add_argument("--max-cjk-mixed-total-drop", type=int, default=2)
+    parser.add_argument("--max-commerce-case-total-drop", type=int, default=2)
+    parser.add_argument("--max-invalid-case-total-increase", type=int, default=0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -260,15 +357,41 @@ def main() -> int:
         min_commerce_case_total=max(0, int(args.min_commerce_case_total)),
         max_invalid_case_total=max(0, int(args.max_invalid_case_total)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            summary,
+            max_case_total_drop=max(0, int(args.max_case_total_drop)),
+            max_missing_attack_type_total_increase=max(0, int(args.max_missing_attack_type_total_increase)),
+            max_korean_case_ratio_drop=max(0.0, float(args.max_korean_case_ratio_drop)),
+            max_cjk_mixed_total_drop=max(0, int(args.max_cjk_mixed_total_drop)),
+            max_commerce_case_total_drop=max(0, int(args.max_commerce_case_total_drop)),
+            max_invalid_case_total_increase=max(0, int(args.max_invalid_case_total_increase)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "dataset_jsonl": str(dataset_path),
+        "source": {
+            "dataset_jsonl": str(dataset_path),
+            "limit": max(1, int(args.limit)),
+            "required_attack_types": sorted(required_attack_types),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": {
+                **summary,
+                "missing_attack_type_total": _missing_attack_type_total(summary),
+            },
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_case_total": int(args.min_case_total),
                 "max_missing_attack_type_total": int(args.max_missing_attack_type_total),
@@ -276,6 +399,12 @@ def main() -> int:
                 "min_cjk_mixed_total": int(args.min_cjk_mixed_total),
                 "min_commerce_case_total": int(args.min_commerce_case_total),
                 "max_invalid_case_total": int(args.max_invalid_case_total),
+                "max_case_total_drop": int(args.max_case_total_drop),
+                "max_missing_attack_type_total_increase": int(args.max_missing_attack_type_total_increase),
+                "max_korean_case_ratio_drop": float(args.max_korean_case_ratio_drop),
+                "max_cjk_mixed_total_drop": int(args.max_cjk_mixed_total_drop),
+                "max_commerce_case_total_drop": int(args.max_commerce_case_total_drop),
+                "max_invalid_case_total_increase": int(args.max_invalid_case_total_increase),
             },
         },
     }
@@ -292,8 +421,9 @@ def main() -> int:
     print(f"report_md={md_path}")
     print(f"case_total={_safe_int(summary.get('case_total'), 0)}")
     print(f"korean_case_ratio={_safe_float(summary.get('korean_case_ratio'), 0.0):.4f}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and (failures or baseline_failures):
         return 2
     return 0
 

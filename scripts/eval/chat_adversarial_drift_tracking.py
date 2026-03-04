@@ -77,6 +77,13 @@ def _read_rows(path: Path, *, limit: int) -> list[dict[str, Any]]:
     return rows
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, Mapping):
+        raise RuntimeError(f"expected JSON object from {path}")
+    return {str(k): v for k, v in payload.items()}
+
+
 def _version_id(row: Mapping[str, Any]) -> str:
     for key in ("dataset_version", "version", "suite_version", "evalset_version"):
         text = str(row.get(key) or "").strip()
@@ -248,6 +255,89 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_dataset_case_total_drop: int,
+    max_dataset_version_total_drop: int,
+    max_refresh_age_days_increase: float,
+    max_missing_monthly_refresh_total_increase: int,
+    max_incident_total_drop: int,
+    max_incident_link_ratio_drop: float,
+    max_unlinked_incident_total_increase: int,
+    max_stale_minutes_increase: float,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    baseline_drop_pairs = [
+        ("dataset_case_total", max_dataset_case_total_drop),
+        ("dataset_version_total", max_dataset_version_total_drop),
+        ("incident_total", max_incident_total_drop),
+    ]
+    for key, allowed_drop in baseline_drop_pairs:
+        base_value = _safe_int(base_summary.get(key), 0)
+        cur_value = _safe_int(current_summary.get(key), 0)
+        drop = max(0, base_value - cur_value)
+        if drop > max(0, int(allowed_drop)):
+            failures.append(
+                f"{key} regression: baseline={base_value}, current={cur_value}, "
+                f"allowed_drop={max(0, int(allowed_drop))}"
+            )
+
+    baseline_increase_pairs = [
+        ("refresh_age_days", max_refresh_age_days_increase),
+        ("stale_minutes", max_stale_minutes_increase),
+    ]
+    for key, allowed_increase in baseline_increase_pairs:
+        base_value = _safe_float(base_summary.get(key), 0.0)
+        cur_value = _safe_float(current_summary.get(key), 0.0)
+        increase = max(0.0, cur_value - base_value)
+        if increase > max(0.0, float(allowed_increase)):
+            failures.append(
+                f"{key} regression: baseline={base_value:.6f}, current={cur_value:.6f}, "
+                f"allowed_increase={float(allowed_increase):.6f}"
+            )
+
+    base_missing_monthly_refresh_total = _safe_int(base_summary.get("missing_monthly_refresh_total"), 0)
+    cur_missing_monthly_refresh_total = _safe_int(current_summary.get("missing_monthly_refresh_total"), 0)
+    missing_monthly_refresh_total_increase = max(
+        0,
+        cur_missing_monthly_refresh_total - base_missing_monthly_refresh_total,
+    )
+    if missing_monthly_refresh_total_increase > max(0, int(max_missing_monthly_refresh_total_increase)):
+        failures.append(
+            "missing_monthly_refresh_total regression: "
+            f"baseline={base_missing_monthly_refresh_total}, current={cur_missing_monthly_refresh_total}, "
+            f"allowed_increase={max(0, int(max_missing_monthly_refresh_total_increase))}"
+        )
+
+    base_incident_link_ratio = _safe_float(base_summary.get("incident_link_ratio"), 1.0)
+    cur_incident_link_ratio = _safe_float(current_summary.get("incident_link_ratio"), 1.0)
+    incident_link_ratio_drop = max(0.0, base_incident_link_ratio - cur_incident_link_ratio)
+    if incident_link_ratio_drop > max(0.0, float(max_incident_link_ratio_drop)):
+        failures.append(
+            "incident_link_ratio regression: "
+            f"baseline={base_incident_link_ratio:.6f}, current={cur_incident_link_ratio:.6f}, "
+            f"allowed_drop={float(max_incident_link_ratio_drop):.6f}"
+        )
+
+    base_incident_unlinked_total = _safe_int(base_summary.get("incident_unlinked_total"), 0)
+    cur_incident_unlinked_total = _safe_int(current_summary.get("incident_unlinked_total"), 0)
+    incident_unlinked_total_increase = max(0, cur_incident_unlinked_total - base_incident_unlinked_total)
+    if incident_unlinked_total_increase > max(0, int(max_unlinked_incident_total_increase)):
+        failures.append(
+            "incident_unlinked_total regression: "
+            f"baseline={base_incident_unlinked_total}, current={cur_incident_unlinked_total}, "
+            f"allowed_increase={max(0, int(max_unlinked_incident_total_increase))}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -268,11 +358,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -292,6 +387,15 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--min-incident-link-ratio", type=float, default=0.7)
     parser.add_argument("--max-unlinked-incident-total", type=int, default=0)
     parser.add_argument("--max-stale-minutes", type=float, default=60.0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-dataset-case-total-drop", type=int, default=10)
+    parser.add_argument("--max-dataset-version-total-drop", type=int, default=1)
+    parser.add_argument("--max-refresh-age-days-increase", type=float, default=7.0)
+    parser.add_argument("--max-missing-monthly-refresh-total-increase", type=int, default=1)
+    parser.add_argument("--max-incident-total-drop", type=int, default=5)
+    parser.add_argument("--max-incident-link-ratio-drop", type=float, default=0.05)
+    parser.add_argument("--max-unlinked-incident-total-increase", type=int, default=2)
+    parser.add_argument("--max-stale-minutes-increase", type=float, default=30.0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -316,16 +420,44 @@ def main() -> int:
         max_unlinked_incident_total=max(0, int(args.max_unlinked_incident_total)),
         max_stale_minutes=max(0.0, float(args.max_stale_minutes)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            summary,
+            max_dataset_case_total_drop=max(0, int(args.max_dataset_case_total_drop)),
+            max_dataset_version_total_drop=max(0, int(args.max_dataset_version_total_drop)),
+            max_refresh_age_days_increase=max(0.0, float(args.max_refresh_age_days_increase)),
+            max_missing_monthly_refresh_total_increase=max(
+                0, int(args.max_missing_monthly_refresh_total_increase)
+            ),
+            max_incident_total_drop=max(0, int(args.max_incident_total_drop)),
+            max_incident_link_ratio_drop=max(0.0, float(args.max_incident_link_ratio_drop)),
+            max_unlinked_incident_total_increase=max(0, int(args.max_unlinked_incident_total_increase)),
+            max_stale_minutes_increase=max(0.0, float(args.max_stale_minutes_increase)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "dataset_jsonl": str(args.dataset_jsonl),
         "incident_jsonl": str(args.incident_jsonl),
+        "source": {
+            "dataset_jsonl": str(args.dataset_jsonl),
+            "incident_jsonl": str(args.incident_jsonl),
+            "window_days": max(1, int(args.window_days)),
+            "limit": max(1, int(args.limit)),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_dataset_case_total": int(args.min_dataset_case_total),
                 "min_dataset_version_total": int(args.min_dataset_version_total),
@@ -335,6 +467,14 @@ def main() -> int:
                 "min_incident_link_ratio": float(args.min_incident_link_ratio),
                 "max_unlinked_incident_total": int(args.max_unlinked_incident_total),
                 "max_stale_minutes": float(args.max_stale_minutes),
+                "max_dataset_case_total_drop": int(args.max_dataset_case_total_drop),
+                "max_dataset_version_total_drop": int(args.max_dataset_version_total_drop),
+                "max_refresh_age_days_increase": float(args.max_refresh_age_days_increase),
+                "max_missing_monthly_refresh_total_increase": int(args.max_missing_monthly_refresh_total_increase),
+                "max_incident_total_drop": int(args.max_incident_total_drop),
+                "max_incident_link_ratio_drop": float(args.max_incident_link_ratio_drop),
+                "max_unlinked_incident_total_increase": int(args.max_unlinked_incident_total_increase),
+                "max_stale_minutes_increase": float(args.max_stale_minutes_increase),
             },
         },
     }
@@ -353,8 +493,9 @@ def main() -> int:
     print(f"dataset_version_total={_safe_int(summary.get('dataset_version_total'), 0)}")
     print(f"incident_total={_safe_int(summary.get('incident_total'), 0)}")
     print(f"incident_link_ratio={_safe_float(summary.get('incident_link_ratio'), 1.0):.4f}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and (failures or baseline_failures):
         return 2
     return 0
 

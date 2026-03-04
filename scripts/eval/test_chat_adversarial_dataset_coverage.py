@@ -95,3 +95,37 @@ def test_evaluate_gate_allows_empty_when_min_zero():
         max_invalid_case_total=0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_dataset_coverage_regressions():
+    module = _load_module()
+    baseline = {
+        "derived": {
+            "summary": {
+                "case_total": 200,
+                "missing_attack_type_total": 0,
+                "korean_case_ratio": 0.60,
+                "cjk_mixed_total": 30,
+                "commerce_case_total": 80,
+                "invalid_case_total": 0,
+            }
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "case_total": 150,
+            "missing_attack_types": ["EMOTIONAL_PRESSURE"],
+            "korean_case_ratio": 0.40,
+            "cjk_mixed_total": 10,
+            "commerce_case_total": 40,
+            "invalid_case_total": 3,
+        },
+        max_case_total_drop=10,
+        max_missing_attack_type_total_increase=0,
+        max_korean_case_ratio_drop=0.05,
+        max_cjk_mixed_total_drop=2,
+        max_commerce_case_total_drop=2,
+        max_invalid_case_total_increase=0,
+    )
+    assert len(failures) == 6

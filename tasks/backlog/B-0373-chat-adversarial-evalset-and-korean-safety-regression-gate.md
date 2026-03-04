@@ -91,3 +91,26 @@ Strengthen Korean chat safety evaluation:
   - `scripts/eval/test_chat_adversarial_drift_tracking.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_ADVERSARIAL_DRIFT_TRACKING=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Baseline drift governance 추가
+  - `scripts/eval/chat_adversarial_dataset_coverage.py`
+  - `scripts/eval/chat_adversarial_safety_metrics.py`
+  - `scripts/eval/chat_adversarial_ci_gate.py`
+  - `scripts/eval/chat_adversarial_drift_tracking.py`
+  - 공통 baseline 비교(`derived.summary` fallback 포함) + drift threshold 게이트 연동
+  - gate pass 조건을 `failures + baseline_failures` 모두 0으로 강화
+- [x] 회귀 테스트 확장
+  - `scripts/eval/test_chat_adversarial_dataset_coverage.py`
+  - `scripts/eval/test_chat_adversarial_safety_metrics.py`
+  - `scripts/eval/test_chat_adversarial_ci_gate.py`
+  - `scripts/eval/test_chat_adversarial_drift_tracking.py`
+  - baseline 대비 품질 저하 케이스를 고정 테스트로 추가
+- [x] CI 진입점 baseline wiring
+  - `scripts/test.sh` (step 68~71)
+  - baseline fixture 자동 주입(`--baseline-report`) + drift env 인자 전달
+- [x] Baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_adversarial_dataset_coverage_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_adversarial_safety_metrics_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_adversarial_ci_gate_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_adversarial_drift_tracking_baseline_v1.json`
