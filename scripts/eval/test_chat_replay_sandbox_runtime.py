@@ -130,3 +130,56 @@ def test_evaluate_gate_allows_empty_when_min_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_sandbox_runtime_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "mock_total": 20,
+            "real_total": 20,
+            "parity_mismatch_total": 0,
+            "non_deterministic_total": 0,
+            "missing_mode_total": 0,
+            "invalid_result_total": 0,
+            "missing_seed_total": 0,
+            "missing_response_hash_total": 0,
+            "parity_match_ratio": 1.0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "mock_total": 1,
+            "real_total": 1,
+            "parity_mismatch_total": 2,
+            "non_deterministic_total": 1,
+            "missing_mode_total": 1,
+            "invalid_result_total": 1,
+            "missing_seed_total": 1,
+            "missing_response_hash_total": 1,
+            "parity_match_ratio": 0.2,
+            "stale_minutes": 80.0,
+        },
+        max_mock_total_drop=1,
+        max_real_total_drop=1,
+        max_parity_mismatch_total_increase=0,
+        max_non_deterministic_total_increase=0,
+        max_missing_mode_total_increase=0,
+        max_invalid_result_total_increase=0,
+        max_missing_seed_total_increase=0,
+        max_missing_response_hash_total_increase=0,
+        max_parity_match_ratio_drop=0.05,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("mock_total regression" in item for item in failures)
+    assert any("real_total regression" in item for item in failures)
+    assert any("parity_mismatch_total regression" in item for item in failures)
+    assert any("non_deterministic_total regression" in item for item in failures)
+    assert any("missing_mode_total regression" in item for item in failures)
+    assert any("invalid_result_total regression" in item for item in failures)
+    assert any("missing_seed_total regression" in item for item in failures)
+    assert any("missing_response_hash_total regression" in item for item in failures)
+    assert any("parity_match_ratio regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

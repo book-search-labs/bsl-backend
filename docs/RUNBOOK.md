@@ -3604,6 +3604,15 @@ python scripts/eval/chat_replay_snapshot_format.py \
   --max-missing-budget-state-total 0 \
   --max-missing-seed-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_replay_snapshot_format_baseline_v1.json \
+  --max-snapshot-total-drop 10 \
+  --max-missing-request-payload-total-increase 0 \
+  --max-missing-policy-version-total-increase 0 \
+  --max-missing-prompt-template-total-increase 0 \
+  --max-missing-tool-io-total-increase 0 \
+  --max-missing-budget-state-total-increase 0 \
+  --max-missing-seed-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -3611,6 +3620,15 @@ python scripts/eval/chat_replay_snapshot_format.py \
   - snapshot 최신성(stale minutes)
 - CI 옵션:
   - `RUN_CHAT_REPLAY_SNAPSHOT_FORMAT=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_REPLAY_SNAPSHOT_MAX_SNAPSHOT_TOTAL_DROP`
+    - `CHAT_REPLAY_SNAPSHOT_MAX_MISSING_REQUEST_PAYLOAD_TOTAL_INCREASE`
+    - `CHAT_REPLAY_SNAPSHOT_MAX_MISSING_POLICY_VERSION_TOTAL_INCREASE`
+    - `CHAT_REPLAY_SNAPSHOT_MAX_MISSING_PROMPT_TEMPLATE_TOTAL_INCREASE`
+    - `CHAT_REPLAY_SNAPSHOT_MAX_MISSING_TOOL_IO_TOTAL_INCREASE`
+    - `CHAT_REPLAY_SNAPSHOT_MAX_MISSING_BUDGET_STATE_TOTAL_INCREASE`
+    - `CHAT_REPLAY_SNAPSHOT_MAX_MISSING_SEED_TOTAL_INCREASE`
+    - `CHAT_REPLAY_SNAPSHOT_MAX_STALE_MINUTES_INCREASE`
 
 ## Replay sandbox runtime gate (B-0378, Bundle 2)
 - mock/real 모드 전환과 동일 시드 재현성(비결정성)을 검증:
@@ -3628,6 +3646,17 @@ python scripts/eval/chat_replay_sandbox_runtime.py \
   --max-missing-seed-total 0 \
   --max-missing-response-hash-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_replay_sandbox_runtime_baseline_v1.json \
+  --max-mock-total-drop 10 \
+  --max-real-total-drop 10 \
+  --max-parity-mismatch-total-increase 0 \
+  --max-non-deterministic-total-increase 0 \
+  --max-missing-mode-total-increase 0 \
+  --max-invalid-result-total-increase 0 \
+  --max-missing-seed-total-increase 0 \
+  --max-missing-response-hash-total-increase 0 \
+  --max-parity-match-ratio-drop 0.05 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -3636,6 +3665,17 @@ python scripts/eval/chat_replay_sandbox_runtime.py \
   - mode/result/seed/response hash 누락 건수
 - CI 옵션:
   - `RUN_CHAT_REPLAY_SANDBOX_RUNTIME=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_REPLAY_SANDBOX_MAX_MOCK_TOTAL_DROP`
+    - `CHAT_REPLAY_SANDBOX_MAX_REAL_TOTAL_DROP`
+    - `CHAT_REPLAY_SANDBOX_MAX_PARITY_MISMATCH_TOTAL_INCREASE`
+    - `CHAT_REPLAY_SANDBOX_MAX_NON_DETERMINISTIC_TOTAL_INCREASE`
+    - `CHAT_REPLAY_SANDBOX_MAX_MISSING_MODE_TOTAL_INCREASE`
+    - `CHAT_REPLAY_SANDBOX_MAX_INVALID_RESULT_TOTAL_INCREASE`
+    - `CHAT_REPLAY_SANDBOX_MAX_MISSING_SEED_TOTAL_INCREASE`
+    - `CHAT_REPLAY_SANDBOX_MAX_MISSING_RESPONSE_HASH_TOTAL_INCREASE`
+    - `CHAT_REPLAY_SANDBOX_MAX_PARITY_MATCH_RATIO_DROP`
+    - `CHAT_REPLAY_SANDBOX_MAX_STALE_MINUTES_INCREASE`
 
 ## Replay diff inspector gate (B-0378, Bundle 3)
 - 정상/실패 replay 경로의 첫 분기점(first divergence) 추적 품질을 검증:
@@ -3649,6 +3689,13 @@ python scripts/eval/chat_replay_diff_inspector.py \
   --max-unknown-divergence-type-total 0 \
   --max-invalid-step-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_replay_diff_inspector_baseline_v1.json \
+  --max-divergence-detected-total-drop 10 \
+  --max-first-divergence-total-drop 10 \
+  --max-missing-first-divergence-total-increase 0 \
+  --max-unknown-divergence-type-total-increase 0 \
+  --max-invalid-step-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -3657,6 +3704,13 @@ python scripts/eval/chat_replay_diff_inspector.py \
   - unknown divergence type/invalid step/stale freshness 건수
 - CI 옵션:
   - `RUN_CHAT_REPLAY_DIFF_INSPECTOR=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_REPLAY_DIFF_MAX_DIVERGENCE_DETECTED_TOTAL_DROP`
+    - `CHAT_REPLAY_DIFF_MAX_FIRST_DIVERGENCE_TOTAL_DROP`
+    - `CHAT_REPLAY_DIFF_MAX_MISSING_FIRST_DIVERGENCE_TOTAL_INCREASE`
+    - `CHAT_REPLAY_DIFF_MAX_UNKNOWN_DIVERGENCE_TYPE_TOTAL_INCREASE`
+    - `CHAT_REPLAY_DIFF_MAX_INVALID_STEP_TOTAL_INCREASE`
+    - `CHAT_REPLAY_DIFF_MAX_STALE_MINUTES_INCREASE`
 
 ## Replay artifact shareability gate (B-0378, Bundle 4)
 - RCA 첨부용 replay artifact의 생성/공유 가능성과 redaction 안전성을 검증:
@@ -3672,6 +3726,16 @@ python scripts/eval/chat_replay_artifact_shareability.py \
   --max-missing-ticket-reference-total 0 \
   --max-invalid-share-scope-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_replay_artifact_shareability_baseline_v1.json \
+  --max-artifact-created-total-drop 10 \
+  --max-shareable-total-drop 10 \
+  --max-redaction-applied-total-drop 10 \
+  --max-missing-redaction-total-increase 0 \
+  --max-unmasked-sensitive-total-increase 0 \
+  --max-missing-ticket-reference-total-increase 0 \
+  --max-invalid-share-scope-total-increase 0 \
+  --max-redaction-ratio-drop 0.05 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -3680,6 +3744,16 @@ python scripts/eval/chat_replay_artifact_shareability.py \
   - unmasked sensitive / missing ticket reference / invalid share scope 건수
 - CI 옵션:
   - `RUN_CHAT_REPLAY_ARTIFACT_SHAREABILITY=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_REPLAY_ARTIFACT_MAX_ARTIFACT_CREATED_TOTAL_DROP`
+    - `CHAT_REPLAY_ARTIFACT_MAX_SHAREABLE_TOTAL_DROP`
+    - `CHAT_REPLAY_ARTIFACT_MAX_REDACTION_APPLIED_TOTAL_DROP`
+    - `CHAT_REPLAY_ARTIFACT_MAX_MISSING_REDACTION_TOTAL_INCREASE`
+    - `CHAT_REPLAY_ARTIFACT_MAX_UNMASKED_SENSITIVE_TOTAL_INCREASE`
+    - `CHAT_REPLAY_ARTIFACT_MAX_MISSING_TICKET_REFERENCE_TOTAL_INCREASE`
+    - `CHAT_REPLAY_ARTIFACT_MAX_INVALID_SHARE_SCOPE_TOTAL_INCREASE`
+    - `CHAT_REPLAY_ARTIFACT_MAX_REDACTION_RATIO_DROP`
+    - `CHAT_REPLAY_ARTIFACT_MAX_STALE_MINUTES_INCREASE`
 
 ## Chat privacy DLP filter gate (B-0379, Bundle 1)
 - 입력/출력 PII 탐지 후 보호 액션(mask/block/review) 적용 품질을 검증:

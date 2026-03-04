@@ -100,3 +100,40 @@ def test_evaluate_gate_allows_empty_window_when_minimum_is_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_diff_inspector_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "divergence_detected_total": 20,
+            "first_divergence_total": 20,
+            "missing_first_divergence_total": 0,
+            "unknown_divergence_type_total": 0,
+            "invalid_step_total": 0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "divergence_detected_total": 1,
+            "first_divergence_total": 1,
+            "missing_first_divergence_total": 1,
+            "unknown_divergence_type_total": 1,
+            "invalid_step_total": 1,
+            "stale_minutes": 80.0,
+        },
+        max_divergence_detected_total_drop=1,
+        max_first_divergence_total_drop=1,
+        max_missing_first_divergence_total_increase=0,
+        max_unknown_divergence_type_total_increase=0,
+        max_invalid_step_total_increase=0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("divergence_detected_total regression" in item for item in failures)
+    assert any("first_divergence_total regression" in item for item in failures)
+    assert any("missing_first_divergence_total regression" in item for item in failures)
+    assert any("unknown_divergence_type_total regression" in item for item in failures)
+    assert any("invalid_step_total regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

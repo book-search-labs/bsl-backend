@@ -109,3 +109,52 @@ def test_evaluate_gate_allows_empty_when_minimums_are_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_artifact_shareability_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "artifact_created_total": 20,
+            "shareable_total": 20,
+            "redaction_applied_total": 20,
+            "missing_redaction_total": 0,
+            "unmasked_sensitive_total": 0,
+            "missing_ticket_reference_total": 0,
+            "invalid_share_scope_total": 0,
+            "redaction_ratio": 1.0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "artifact_created_total": 1,
+            "shareable_total": 1,
+            "redaction_applied_total": 1,
+            "missing_redaction_total": 1,
+            "unmasked_sensitive_total": 1,
+            "missing_ticket_reference_total": 1,
+            "invalid_share_scope_total": 1,
+            "redaction_ratio": 0.1,
+            "stale_minutes": 80.0,
+        },
+        max_artifact_created_total_drop=1,
+        max_shareable_total_drop=1,
+        max_redaction_applied_total_drop=1,
+        max_missing_redaction_total_increase=0,
+        max_unmasked_sensitive_total_increase=0,
+        max_missing_ticket_reference_total_increase=0,
+        max_invalid_share_scope_total_increase=0,
+        max_redaction_ratio_drop=0.05,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("artifact_created_total regression" in item for item in failures)
+    assert any("shareable_total regression" in item for item in failures)
+    assert any("redaction_applied_total regression" in item for item in failures)
+    assert any("missing_redaction_total regression" in item for item in failures)
+    assert any("unmasked_sensitive_total regression" in item for item in failures)
+    assert any("missing_ticket_reference_total regression" in item for item in failures)
+    assert any("invalid_share_scope_total regression" in item for item in failures)
+    assert any("redaction_ratio regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

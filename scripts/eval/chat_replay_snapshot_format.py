@@ -22,6 +22,16 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    if not isinstance(payload, Mapping):
+        return {}
+    return {str(k): v for k, v in payload.items()}
+
+
 def _parse_ts(value: Any) -> datetime | None:
     text = str(value or "").strip()
     if not text:
@@ -208,6 +218,65 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_snapshot_total_drop: int,
+    max_missing_request_payload_total_increase: int,
+    max_missing_policy_version_total_increase: int,
+    max_missing_prompt_template_total_increase: int,
+    max_missing_tool_io_total_increase: int,
+    max_missing_budget_state_total_increase: int,
+    max_missing_seed_total_increase: int,
+    max_stale_minutes_increase: float,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_snapshot_total = _safe_int(base_summary.get("snapshot_total"), 0)
+    cur_snapshot_total = _safe_int(current_summary.get("snapshot_total"), 0)
+    snapshot_total_drop = max(0, base_snapshot_total - cur_snapshot_total)
+    if snapshot_total_drop > max(0, int(max_snapshot_total_drop)):
+        failures.append(
+            "snapshot_total regression: "
+            f"baseline={base_snapshot_total}, current={cur_snapshot_total}, "
+            f"allowed_drop={max(0, int(max_snapshot_total_drop))}"
+        )
+
+    baseline_increase_pairs = [
+        ("missing_request_payload_total", max_missing_request_payload_total_increase),
+        ("missing_policy_version_total", max_missing_policy_version_total_increase),
+        ("missing_prompt_template_total", max_missing_prompt_template_total_increase),
+        ("missing_tool_io_total", max_missing_tool_io_total_increase),
+        ("missing_budget_state_total", max_missing_budget_state_total_increase),
+        ("missing_seed_total", max_missing_seed_total_increase),
+    ]
+    for key, allowed_increase in baseline_increase_pairs:
+        base_value = _safe_int(base_summary.get(key), 0)
+        cur_value = _safe_int(current_summary.get(key), 0)
+        increase = max(0, cur_value - base_value)
+        if increase > max(0, int(allowed_increase)):
+            failures.append(
+                f"{key} regression: baseline={base_value}, current={cur_value}, "
+                f"allowed_increase={max(0, int(allowed_increase))}"
+            )
+
+    base_stale_minutes = _safe_float(base_summary.get("stale_minutes"), 0.0)
+    cur_stale_minutes = _safe_float(current_summary.get("stale_minutes"), 0.0)
+    stale_minutes_increase = max(0.0, cur_stale_minutes - base_stale_minutes)
+    if stale_minutes_increase > max(0.0, float(max_stale_minutes_increase)):
+        failures.append(
+            "stale minutes regression: "
+            f"baseline={base_stale_minutes:.6f}, current={cur_stale_minutes:.6f}, "
+            f"allowed_increase={float(max_stale_minutes_increase):.6f}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -226,10 +295,14 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
-    else:
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
+    if not failures and not baseline_failures:
         lines.append("- failure: (none)")
     return "\n".join(lines)
 
@@ -249,6 +322,15 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-missing-budget-state-total", type=int, default=0)
     parser.add_argument("--max-missing-seed-total", type=int, default=0)
     parser.add_argument("--max-stale-minutes", type=float, default=60.0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-snapshot-total-drop", type=int, default=10)
+    parser.add_argument("--max-missing-request-payload-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-policy-version-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-prompt-template-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-tool-io-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-budget-state-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-seed-total-increase", type=int, default=0)
+    parser.add_argument("--max-stale-minutes-increase", type=float, default=30.0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -273,15 +355,40 @@ def main() -> int:
         max_missing_seed_total=max(0, int(args.max_missing_seed_total)),
         max_stale_minutes=max(0.0, float(args.max_stale_minutes)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            summary,
+            max_snapshot_total_drop=max(0, int(args.max_snapshot_total_drop)),
+            max_missing_request_payload_total_increase=max(0, int(args.max_missing_request_payload_total_increase)),
+            max_missing_policy_version_total_increase=max(0, int(args.max_missing_policy_version_total_increase)),
+            max_missing_prompt_template_total_increase=max(0, int(args.max_missing_prompt_template_total_increase)),
+            max_missing_tool_io_total_increase=max(0, int(args.max_missing_tool_io_total_increase)),
+            max_missing_budget_state_total_increase=max(0, int(args.max_missing_budget_state_total_increase)),
+            max_missing_seed_total_increase=max(0, int(args.max_missing_seed_total_increase)),
+            max_stale_minutes_increase=max(0.0, float(args.max_stale_minutes_increase)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "replay_dir": str(replay_dir),
+        "source": {
+            "replay_dir": str(replay_dir),
+            "window_hours": int(args.window_hours),
+            "limit": int(args.limit),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "max_missing_request_payload_total": int(args.max_missing_request_payload_total),
@@ -291,6 +398,14 @@ def main() -> int:
                 "max_missing_budget_state_total": int(args.max_missing_budget_state_total),
                 "max_missing_seed_total": int(args.max_missing_seed_total),
                 "max_stale_minutes": float(args.max_stale_minutes),
+                "max_snapshot_total_drop": int(args.max_snapshot_total_drop),
+                "max_missing_request_payload_total_increase": int(args.max_missing_request_payload_total_increase),
+                "max_missing_policy_version_total_increase": int(args.max_missing_policy_version_total_increase),
+                "max_missing_prompt_template_total_increase": int(args.max_missing_prompt_template_total_increase),
+                "max_missing_tool_io_total_increase": int(args.max_missing_tool_io_total_increase),
+                "max_missing_budget_state_total_increase": int(args.max_missing_budget_state_total_increase),
+                "max_missing_seed_total_increase": int(args.max_missing_seed_total_increase),
+                "max_stale_minutes_increase": float(args.max_stale_minutes_increase),
             },
         },
     }
@@ -308,8 +423,12 @@ def main() -> int:
     print(f"snapshot_total={_safe_int(summary.get('snapshot_total'), 0)}")
     print(f"missing_request_payload_total={_safe_int(summary.get('missing_request_payload_total'), 0)}")
     print(f"missing_seed_total={_safe_int(summary.get('missing_seed_total'), 0)}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            print(f"baseline_failure={failure}")
 
-    if args.gate and failures:
+    if args.gate and (failures or baseline_failures):
         return 2
     return 0
 

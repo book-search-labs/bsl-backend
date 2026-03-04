@@ -90,3 +90,21 @@ Build deterministic replay tooling for chat agents:
   - `scripts/eval/test_chat_replay_artifact_shareability.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_REPLAY_ARTIFACT_SHAREABILITY=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Baseline drift governance 추가 (replay 4종 공통)
+  - `scripts/eval/chat_replay_snapshot_format.py`
+  - `scripts/eval/chat_replay_sandbox_runtime.py`
+  - `scripts/eval/chat_replay_diff_inspector.py`
+  - `scripts/eval/chat_replay_artifact_shareability.py`
+  - `--baseline-report` + `compare_with_baseline(...)` + `gate.baseline_failures` + `source/derived.summary` + `gate_pass` 출력 반영
+- [x] baseline 회귀 테스트 추가
+  - `scripts/eval/test_chat_replay_snapshot_format.py`
+  - `scripts/eval/test_chat_replay_sandbox_runtime.py`
+  - `scripts/eval/test_chat_replay_diff_inspector.py`
+  - `scripts/eval/test_chat_replay_artifact_shareability.py`
+- [x] CI baseline wiring + drift env 확장
+  - `scripts/test.sh` (step 88~91)
+  - baseline fixture 자동 연결 + `*_DROP`, `*_INCREASE` env 반영
+- [x] 운영 문서 업데이트
+  - `docs/RUNBOOK.md` B-0378 섹션에 baseline 실행 예시/CI drift env 추가

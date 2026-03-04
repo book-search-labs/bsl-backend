@@ -98,3 +98,48 @@ def test_evaluate_gate_allows_empty_when_min_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_snapshot_format_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "snapshot_total": 20,
+            "missing_request_payload_total": 0,
+            "missing_policy_version_total": 0,
+            "missing_prompt_template_total": 0,
+            "missing_tool_io_total": 0,
+            "missing_budget_state_total": 0,
+            "missing_seed_total": 0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "snapshot_total": 1,
+            "missing_request_payload_total": 1,
+            "missing_policy_version_total": 1,
+            "missing_prompt_template_total": 1,
+            "missing_tool_io_total": 1,
+            "missing_budget_state_total": 1,
+            "missing_seed_total": 1,
+            "stale_minutes": 80.0,
+        },
+        max_snapshot_total_drop=1,
+        max_missing_request_payload_total_increase=0,
+        max_missing_policy_version_total_increase=0,
+        max_missing_prompt_template_total_increase=0,
+        max_missing_tool_io_total_increase=0,
+        max_missing_budget_state_total_increase=0,
+        max_missing_seed_total_increase=0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("snapshot_total regression" in item for item in failures)
+    assert any("missing_request_payload_total regression" in item for item in failures)
+    assert any("missing_policy_version_total regression" in item for item in failures)
+    assert any("missing_prompt_template_total regression" in item for item in failures)
+    assert any("missing_tool_io_total regression" in item for item in failures)
+    assert any("missing_budget_state_total regression" in item for item in failures)
+    assert any("missing_seed_total regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)
