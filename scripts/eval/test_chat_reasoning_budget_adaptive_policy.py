@@ -108,3 +108,44 @@ def test_evaluate_gate_allows_open_thresholds():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_adaptive_policy_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "unsafe_expansion_total": 0,
+            "preconfirm_missing_total": 0,
+            "preconfirm_coverage_ratio": 1.0,
+            "success_regression_ratio": 0.0,
+            "cost_regression_ratio": 0.0,
+            "rollback_total": 0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "unsafe_expansion_total": 2,
+            "preconfirm_missing_total": 3,
+            "preconfirm_coverage_ratio": 0.4,
+            "success_regression_ratio": 0.5,
+            "cost_regression_ratio": 0.6,
+            "rollback_total": 4,
+            "stale_minutes": 80.0,
+        },
+        max_unsafe_expansion_total_increase=0,
+        max_preconfirm_missing_total_increase=0,
+        max_preconfirm_coverage_ratio_drop=0.05,
+        max_success_regression_ratio_increase=0.05,
+        max_cost_regression_ratio_increase=0.05,
+        max_rollback_total_increase=0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("unsafe_expansion_total regression" in item for item in failures)
+    assert any("preconfirm_missing_total regression" in item for item in failures)
+    assert any("preconfirm_coverage_ratio regression" in item for item in failures)
+    assert any("success_regression_ratio regression" in item for item in failures)
+    assert any("cost_regression_ratio regression" in item for item in failures)
+    assert any("rollback_total regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

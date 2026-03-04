@@ -104,3 +104,52 @@ def test_evaluate_gate_allows_empty_window_when_min_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_audit_explainability_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "critical_event_total": 10,
+            "missing_reason_code_total": 0,
+            "unknown_reason_code_total": 0,
+            "missing_trace_id_total": 0,
+            "missing_request_id_total": 0,
+            "missing_budget_type_total": 0,
+            "explainability_missing_total": 0,
+            "dashboard_tag_missing_total": 0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "critical_event_total": 2,
+            "missing_reason_code_total": 2,
+            "unknown_reason_code_total": 1,
+            "missing_trace_id_total": 2,
+            "missing_request_id_total": 2,
+            "missing_budget_type_total": 2,
+            "explainability_missing_total": 3,
+            "dashboard_tag_missing_total": 4,
+            "stale_minutes": 80.0,
+        },
+        max_critical_event_total_drop=1,
+        max_missing_reason_code_total_increase=0,
+        max_unknown_reason_code_total_increase=0,
+        max_missing_trace_id_total_increase=0,
+        max_missing_request_id_total_increase=0,
+        max_missing_budget_type_total_increase=0,
+        max_explainability_missing_total_increase=0,
+        max_dashboard_tag_missing_total_increase=0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("critical_event_total regression" in item for item in failures)
+    assert any("missing_reason_code_total regression" in item for item in failures)
+    assert any("unknown_reason_code_total regression" in item for item in failures)
+    assert any("missing_trace_id_total regression" in item for item in failures)
+    assert any("missing_request_id_total regression" in item for item in failures)
+    assert any("missing_budget_type_total regression" in item for item in failures)
+    assert any("explainability_missing_total regression" in item for item in failures)
+    assert any("dashboard_tag_missing_total regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

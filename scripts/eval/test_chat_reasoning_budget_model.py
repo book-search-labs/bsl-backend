@@ -82,3 +82,44 @@ def test_evaluate_gate_allows_open_thresholds():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_budget_model_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "policy_total": 10,
+            "version_missing": False,
+            "missing_budget_field_total": 0,
+            "invalid_limit_total": 0,
+            "duplicate_scope_total": 0,
+            "missing_sensitive_intent_total": 0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "policy_total": 2,
+            "version_missing": True,
+            "missing_budget_field_total": 3,
+            "invalid_limit_total": 2,
+            "duplicate_scope_total": 1,
+            "missing_sensitive_intent_total": 4,
+            "stale_minutes": 80.0,
+        },
+        max_policy_total_drop=1,
+        max_version_missing_total_increase=0,
+        max_missing_budget_field_total_increase=0,
+        max_invalid_limit_total_increase=0,
+        max_duplicate_scope_total_increase=0,
+        max_missing_sensitive_intent_total_increase=0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("policy_total regression" in item for item in failures)
+    assert any("version_missing regression" in item for item in failures)
+    assert any("missing_budget_field_total regression" in item for item in failures)
+    assert any("invalid_limit_total regression" in item for item in failures)
+    assert any("duplicate_scope_total regression" in item for item in failures)
+    assert any("missing_sensitive_intent_total regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

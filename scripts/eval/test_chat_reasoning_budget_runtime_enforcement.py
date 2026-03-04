@@ -92,3 +92,44 @@ def test_evaluate_gate_allows_empty_window_with_open_threshold():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_runtime_enforcement_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "hard_breach_total": 0,
+            "unhandled_exceed_request_total": 0,
+            "enforcement_coverage_ratio": 1.0,
+            "warning_before_abort_ratio": 1.0,
+            "graceful_abort_ratio": 1.0,
+            "retry_prompt_ratio": 1.0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "hard_breach_total": 3,
+            "unhandled_exceed_request_total": 2,
+            "enforcement_coverage_ratio": 0.4,
+            "warning_before_abort_ratio": 0.3,
+            "graceful_abort_ratio": 0.2,
+            "retry_prompt_ratio": 0.5,
+            "stale_minutes": 80.0,
+        },
+        max_hard_breach_total_increase=0,
+        max_unhandled_exceed_request_total_increase=0,
+        max_enforcement_coverage_ratio_drop=0.05,
+        max_warning_before_abort_ratio_drop=0.05,
+        max_graceful_abort_ratio_drop=0.05,
+        max_retry_prompt_ratio_drop=0.05,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("hard_breach_total regression" in item for item in failures)
+    assert any("unhandled_exceed_request_total regression" in item for item in failures)
+    assert any("enforcement_coverage_ratio regression" in item for item in failures)
+    assert any("warning_before_abort_ratio regression" in item for item in failures)
+    assert any("graceful_abort_ratio regression" in item for item in failures)
+    assert any("retry_prompt_ratio regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

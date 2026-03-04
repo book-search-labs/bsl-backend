@@ -91,3 +91,24 @@ Implement reasoning budget controls for chat agents:
   - `scripts/eval/test_chat_reasoning_budget_audit_explainability.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_REASONING_BUDGET_AUDIT_EXPLAINABILITY=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Baseline governance 적용
+  - `scripts/eval/chat_reasoning_budget_model.py`
+  - `scripts/eval/chat_reasoning_budget_runtime_enforcement.py`
+  - `scripts/eval/chat_reasoning_budget_adaptive_policy.py`
+  - `scripts/eval/chat_reasoning_budget_audit_explainability.py`
+  - 공통: `--baseline-report` + drift threshold 인자 + `gate.baseline_failures` + `source/derived.summary` 추가
+- [x] baseline 회귀 테스트 추가
+  - `scripts/eval/test_chat_reasoning_budget_model.py`
+  - `scripts/eval/test_chat_reasoning_budget_runtime_enforcement.py`
+  - `scripts/eval/test_chat_reasoning_budget_adaptive_policy.py`
+  - `scripts/eval/test_chat_reasoning_budget_audit_explainability.py`
+- [x] baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_reasoning_budget_model_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_reasoning_budget_runtime_enforcement_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_reasoning_budget_adaptive_policy_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_reasoning_budget_audit_explainability_baseline_v1.json`
+- [x] CI wiring + RUNBOOK 업데이트
+  - `scripts/test.sh` reasoning budget 4개 gate에 baseline drift env/arg wiring 추가
+  - `docs/RUNBOOK.md` B-0374 Bundle 1~4에 baseline drift gate 인자/환경변수 반영

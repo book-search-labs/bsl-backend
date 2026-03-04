@@ -2915,7 +2915,7 @@ python scripts/eval/chat_adversarial_drift_tracking.py \
     - `CHAT_ADVERSARIAL_DRIFT_MAX_STALE_MINUTES_INCREASE`
 
 ## Reasoning budget model gate (B-0374, Bundle 1)
-- request/token/step/tool_call budget 정책 정의 누락/충돌을 배포 전에 차단:
+- request/token/step/tool_call budget 정책 정의 누락/충돌을 배포 전에 차단 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_reasoning_budget_model.py \
   --policy-json var/chat_budget/budget_policy.json \
@@ -2927,6 +2927,14 @@ python scripts/eval/chat_reasoning_budget_model.py \
   --max-duplicate-scope-total 0 \
   --max-missing-sensitive-intent-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_reasoning_budget_model_baseline_v1.json \
+  --max-policy-total-drop 5 \
+  --max-version-missing-total-increase 0 \
+  --max-missing-budget-field-total-increase 0 \
+  --max-invalid-limit-total-increase 0 \
+  --max-duplicate-scope-total-increase 0 \
+  --max-missing-sensitive-intent-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2935,9 +2943,17 @@ python scripts/eval/chat_reasoning_budget_model.py \
   - 민감 인텐트 예산 커버리지 누락 건수
 - CI 옵션:
   - `RUN_CHAT_REASONING_BUDGET_MODEL=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_REASONING_BUDGET_MAX_POLICY_TOTAL_DROP`
+    - `CHAT_REASONING_BUDGET_MAX_VERSION_MISSING_TOTAL_INCREASE`
+    - `CHAT_REASONING_BUDGET_MAX_MISSING_BUDGET_FIELD_TOTAL_INCREASE`
+    - `CHAT_REASONING_BUDGET_MAX_INVALID_LIMIT_TOTAL_INCREASE`
+    - `CHAT_REASONING_BUDGET_MAX_DUPLICATE_SCOPE_TOTAL_INCREASE`
+    - `CHAT_REASONING_BUDGET_MAX_MISSING_SENSITIVE_INTENT_TOTAL_INCREASE`
+    - `CHAT_REASONING_BUDGET_MAX_STALE_MINUTES_INCREASE`
 
 ## Reasoning budget runtime enforcement gate (B-0374, Bundle 2)
-- 예산 초과 시점에서 경고/안전중단/재질문 유도가 실제 runtime에서 적용됐는지 검증:
+- 예산 초과 시점에서 경고/안전중단/재질문 유도가 실제 runtime에서 적용됐는지 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_reasoning_budget_runtime_enforcement.py \
   --events-jsonl var/chat_budget/runtime_events.jsonl \
@@ -2950,6 +2966,14 @@ python scripts/eval/chat_reasoning_budget_runtime_enforcement.py \
   --min-graceful-abort-ratio 0.90 \
   --min-retry-prompt-ratio 0.80 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_reasoning_budget_runtime_enforcement_baseline_v1.json \
+  --max-hard-breach-total-increase 0 \
+  --max-unhandled-exceed-request-total-increase 0 \
+  --max-enforcement-coverage-ratio-drop 0.05 \
+  --max-warning-before-abort-ratio-drop 0.05 \
+  --max-graceful-abort-ratio-drop 0.05 \
+  --max-retry-prompt-ratio-drop 0.05 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2958,9 +2982,17 @@ python scripts/eval/chat_reasoning_budget_runtime_enforcement.py \
   - hard breach 및 unhandled exceed request 건수
 - CI 옵션:
   - `RUN_CHAT_REASONING_BUDGET_RUNTIME_ENFORCEMENT=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_REASONING_BUDGET_RUNTIME_MAX_HARD_BREACH_TOTAL_INCREASE`
+    - `CHAT_REASONING_BUDGET_RUNTIME_MAX_UNHANDLED_EXCEED_REQUEST_TOTAL_INCREASE`
+    - `CHAT_REASONING_BUDGET_RUNTIME_MAX_ENFORCEMENT_COVERAGE_RATIO_DROP`
+    - `CHAT_REASONING_BUDGET_RUNTIME_MAX_WARNING_BEFORE_ABORT_RATIO_DROP`
+    - `CHAT_REASONING_BUDGET_RUNTIME_MAX_GRACEFUL_ABORT_RATIO_DROP`
+    - `CHAT_REASONING_BUDGET_RUNTIME_MAX_RETRY_PROMPT_RATIO_DROP`
+    - `CHAT_REASONING_BUDGET_RUNTIME_MAX_STALE_MINUTES_INCREASE`
 
 ## Reasoning budget adaptive policy gate (B-0374, Bundle 3)
-- 비용/성공률 기반 예산 동적 조정이 안전하게 적용되는지 검증:
+- 비용/성공률 기반 예산 동적 조정이 안전하게 적용되는지 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_reasoning_budget_adaptive_policy.py \
   --events-jsonl var/chat_budget/adaptive_events.jsonl \
@@ -2973,6 +3005,14 @@ python scripts/eval/chat_reasoning_budget_adaptive_policy.py \
   --max-success-regression-ratio 0.20 \
   --max-cost-regression-ratio 0.20 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_reasoning_budget_adaptive_policy_baseline_v1.json \
+  --max-unsafe-expansion-total-increase 0 \
+  --max-preconfirm-missing-total-increase 0 \
+  --max-preconfirm-coverage-ratio-drop 0.05 \
+  --max-success-regression-ratio-increase 0.05 \
+  --max-cost-regression-ratio-increase 0.05 \
+  --max-rollback-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -2981,9 +3021,17 @@ python scripts/eval/chat_reasoning_budget_adaptive_policy.py \
   - adaptive rollback 발생 건수 및 evidence freshness
 - CI 옵션:
   - `RUN_CHAT_REASONING_BUDGET_ADAPTIVE_POLICY=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_REASONING_BUDGET_ADAPTIVE_MAX_UNSAFE_EXPANSION_TOTAL_INCREASE`
+    - `CHAT_REASONING_BUDGET_ADAPTIVE_MAX_PRECONFIRM_MISSING_TOTAL_INCREASE`
+    - `CHAT_REASONING_BUDGET_ADAPTIVE_MAX_PRECONFIRM_COVERAGE_RATIO_DROP`
+    - `CHAT_REASONING_BUDGET_ADAPTIVE_MAX_SUCCESS_REGRESSION_RATIO_INCREASE`
+    - `CHAT_REASONING_BUDGET_ADAPTIVE_MAX_COST_REGRESSION_RATIO_INCREASE`
+    - `CHAT_REASONING_BUDGET_ADAPTIVE_MAX_ROLLBACK_TOTAL_INCREASE`
+    - `CHAT_REASONING_BUDGET_ADAPTIVE_MAX_STALE_MINUTES_INCREASE`
 
 ## Reasoning budget audit explainability gate (B-0374, Bundle 4)
-- budget 소진/중단 이벤트의 감사·설명 필드 완전성을 검증:
+- budget 소진/중단 이벤트의 감사·설명 필드 완전성을 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_reasoning_budget_audit_explainability.py \
   --events-jsonl var/chat_budget/audit_events.jsonl \
@@ -2997,6 +3045,16 @@ python scripts/eval/chat_reasoning_budget_audit_explainability.py \
   --max-explainability-missing-total 0 \
   --max-dashboard-tag-missing-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_reasoning_budget_audit_explainability_baseline_v1.json \
+  --max-critical-event-total-drop 5 \
+  --max-missing-reason-code-total-increase 0 \
+  --max-unknown-reason-code-total-increase 0 \
+  --max-missing-trace-id-total-increase 0 \
+  --max-missing-request-id-total-increase 0 \
+  --max-missing-budget-type-total-increase 0 \
+  --max-explainability-missing-total-increase 0 \
+  --max-dashboard-tag-missing-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -3005,6 +3063,16 @@ python scripts/eval/chat_reasoning_budget_audit_explainability.py \
   - audit evidence freshness(stale minutes)
 - CI 옵션:
   - `RUN_CHAT_REASONING_BUDGET_AUDIT_EXPLAINABILITY=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_REASONING_BUDGET_AUDIT_MAX_CRITICAL_EVENT_TOTAL_DROP`
+    - `CHAT_REASONING_BUDGET_AUDIT_MAX_MISSING_REASON_CODE_TOTAL_INCREASE`
+    - `CHAT_REASONING_BUDGET_AUDIT_MAX_UNKNOWN_REASON_CODE_TOTAL_INCREASE`
+    - `CHAT_REASONING_BUDGET_AUDIT_MAX_MISSING_TRACE_ID_TOTAL_INCREASE`
+    - `CHAT_REASONING_BUDGET_AUDIT_MAX_MISSING_REQUEST_ID_TOTAL_INCREASE`
+    - `CHAT_REASONING_BUDGET_AUDIT_MAX_MISSING_BUDGET_TYPE_TOTAL_INCREASE`
+    - `CHAT_REASONING_BUDGET_AUDIT_MAX_EXPLAINABILITY_MISSING_TOTAL_INCREASE`
+    - `CHAT_REASONING_BUDGET_AUDIT_MAX_DASHBOARD_TAG_MISSING_TOTAL_INCREASE`
+    - `CHAT_REASONING_BUDGET_AUDIT_MAX_STALE_MINUTES_INCREASE`
 
 ## Ticket triage taxonomy gate (B-0375, Bundle 1)
 - 티켓 분류 taxonomy(카테고리/심각도)와 severity rule 정의 누락을 배포 전에 차단:

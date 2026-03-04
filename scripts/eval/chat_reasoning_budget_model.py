@@ -70,6 +70,13 @@ def _read_json(path: Path) -> dict[str, Any]:
     return {}
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, Mapping):
+        raise RuntimeError(f"expected JSON object from {path}")
+    return {str(k): v for k, v in payload.items()}
+
+
 def _first_int(row: Mapping[str, Any], keys: tuple[str, ...]) -> int | None:
     for key in keys:
         value = row.get(key)
@@ -219,6 +226,71 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_policy_total_drop: int,
+    max_version_missing_total_increase: int,
+    max_missing_budget_field_total_increase: int,
+    max_invalid_limit_total_increase: int,
+    max_duplicate_scope_total_increase: int,
+    max_missing_sensitive_intent_total_increase: int,
+    max_stale_minutes_increase: float,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_policy_total = _safe_int(base_summary.get("policy_total"), 0)
+    cur_policy_total = _safe_int(current_summary.get("policy_total"), 0)
+    policy_total_drop = max(0, base_policy_total - cur_policy_total)
+    if policy_total_drop > max(0, int(max_policy_total_drop)):
+        failures.append(
+            f"policy_total regression: baseline={base_policy_total}, current={cur_policy_total}, "
+            f"allowed_drop={max(0, int(max_policy_total_drop))}"
+        )
+
+    base_version_missing_total = 1 if _safe_bool(base_summary.get("version_missing"), False) else 0
+    cur_version_missing_total = 1 if _safe_bool(current_summary.get("version_missing"), False) else 0
+    version_missing_total_increase = max(0, cur_version_missing_total - base_version_missing_total)
+    if version_missing_total_increase > max(0, int(max_version_missing_total_increase)):
+        failures.append(
+            "version_missing regression: "
+            f"baseline={base_version_missing_total}, current={cur_version_missing_total}, "
+            f"allowed_increase={max(0, int(max_version_missing_total_increase))}"
+        )
+
+    baseline_pairs = [
+        ("missing_budget_field_total", max_missing_budget_field_total_increase),
+        ("invalid_limit_total", max_invalid_limit_total_increase),
+        ("duplicate_scope_total", max_duplicate_scope_total_increase),
+        ("missing_sensitive_intent_total", max_missing_sensitive_intent_total_increase),
+    ]
+    for key, allowed_increase in baseline_pairs:
+        base_value = _safe_int(base_summary.get(key), 0)
+        cur_value = _safe_int(current_summary.get(key), 0)
+        increase = max(0, cur_value - base_value)
+        if increase > max(0, int(allowed_increase)):
+            failures.append(
+                f"{key} regression: baseline={base_value}, current={cur_value}, "
+                f"allowed_increase={max(0, int(allowed_increase))}"
+            )
+
+    base_stale_minutes = _safe_float(base_summary.get("stale_minutes"), 0.0)
+    cur_stale_minutes = _safe_float(current_summary.get("stale_minutes"), 0.0)
+    stale_minutes_increase = max(0.0, cur_stale_minutes - base_stale_minutes)
+    if stale_minutes_increase > max(0.0, float(max_stale_minutes_increase)):
+        failures.append(
+            "stale minutes regression: "
+            f"baseline={base_stale_minutes:.6f}, current={cur_stale_minutes:.6f}, "
+            f"allowed_increase={float(max_stale_minutes_increase):.6f}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -239,11 +311,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -263,6 +340,14 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-duplicate-scope-total", type=int, default=0)
     parser.add_argument("--max-missing-sensitive-intent-total", type=int, default=0)
     parser.add_argument("--max-stale-minutes", type=float, default=60.0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-policy-total-drop", type=int, default=5)
+    parser.add_argument("--max-version-missing-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-budget-field-total-increase", type=int, default=0)
+    parser.add_argument("--max-invalid-limit-total-increase", type=int, default=0)
+    parser.add_argument("--max-duplicate-scope-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-sensitive-intent-total-increase", type=int, default=0)
+    parser.add_argument("--max-stale-minutes-increase", type=float, default=30.0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -287,15 +372,40 @@ def main() -> int:
         max_missing_sensitive_intent_total=max(0, int(args.max_missing_sensitive_intent_total)),
         max_stale_minutes=max(0.0, float(args.max_stale_minutes)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            summary,
+            max_policy_total_drop=max(0, int(args.max_policy_total_drop)),
+            max_version_missing_total_increase=max(0, int(args.max_version_missing_total_increase)),
+            max_missing_budget_field_total_increase=max(0, int(args.max_missing_budget_field_total_increase)),
+            max_invalid_limit_total_increase=max(0, int(args.max_invalid_limit_total_increase)),
+            max_duplicate_scope_total_increase=max(0, int(args.max_duplicate_scope_total_increase)),
+            max_missing_sensitive_intent_total_increase=max(
+                0, int(args.max_missing_sensitive_intent_total_increase)
+            ),
+            max_stale_minutes_increase=max(0.0, float(args.max_stale_minutes_increase)),
+        )
 
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "policy_json": str(policy_path),
+        "source": {
+            "policy_json": str(policy_path),
+            "required_sensitive_intents": sorted(required_sensitive_intents),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_policy_total": int(args.min_policy_total),
                 "require_policy_version": bool(args.require_policy_version),
@@ -304,6 +414,15 @@ def main() -> int:
                 "max_duplicate_scope_total": int(args.max_duplicate_scope_total),
                 "max_missing_sensitive_intent_total": int(args.max_missing_sensitive_intent_total),
                 "max_stale_minutes": float(args.max_stale_minutes),
+                "max_policy_total_drop": int(args.max_policy_total_drop),
+                "max_version_missing_total_increase": int(args.max_version_missing_total_increase),
+                "max_missing_budget_field_total_increase": int(args.max_missing_budget_field_total_increase),
+                "max_invalid_limit_total_increase": int(args.max_invalid_limit_total_increase),
+                "max_duplicate_scope_total_increase": int(args.max_duplicate_scope_total_increase),
+                "max_missing_sensitive_intent_total_increase": int(
+                    args.max_missing_sensitive_intent_total_increase
+                ),
+                "max_stale_minutes_increase": float(args.max_stale_minutes_increase),
             },
         },
     }
@@ -321,8 +440,9 @@ def main() -> int:
     print(f"policy_total={_safe_int(summary.get('policy_total'), 0)}")
     print(f"missing_budget_field_total={_safe_int(summary.get('missing_budget_field_total'), 0)}")
     print(f"invalid_limit_total={_safe_int(summary.get('invalid_limit_total'), 0)}")
+    print(f"gate_pass={str(report['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and (failures or baseline_failures):
         return 2
     return 0
 

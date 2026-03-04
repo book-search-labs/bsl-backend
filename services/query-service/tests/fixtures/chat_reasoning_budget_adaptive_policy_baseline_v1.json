@@ -1,0 +1,77 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "events_jsonl": "var/chat_budget/adaptive_events.jsonl",
+  "source": {
+    "events_jsonl": "var/chat_budget/adaptive_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "high_cost_intents": [
+      "CANCEL_ORDER",
+      "PAYMENT_CHANGE",
+      "REFUND_REQUEST"
+    ],
+    "baseline_report": null
+  },
+  "summary": {
+    "window_size": 0,
+    "request_total": 0,
+    "adjustment_total": 0,
+    "expansion_total": 0,
+    "unsafe_expansion_total": 0,
+    "success_regression_total": 0,
+    "cost_regression_total": 0,
+    "success_improved_total": 0,
+    "cost_reduced_total": 0,
+    "rollback_total": 0,
+    "high_cost_request_total": 0,
+    "preconfirm_missing_total": 0,
+    "preconfirm_coverage_ratio": 1.0,
+    "success_regression_ratio": 0.0,
+    "cost_regression_ratio": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "request_total": 0,
+      "adjustment_total": 0,
+      "expansion_total": 0,
+      "unsafe_expansion_total": 0,
+      "success_regression_total": 0,
+      "cost_regression_total": 0,
+      "success_improved_total": 0,
+      "cost_reduced_total": 0,
+      "rollback_total": 0,
+      "high_cost_request_total": 0,
+      "preconfirm_missing_total": 0,
+      "preconfirm_coverage_ratio": 1.0,
+      "success_regression_ratio": 0.0,
+      "cost_regression_ratio": 0.0,
+      "latest_event_time": null,
+      "stale_minutes": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_unsafe_expansion_total": 1000000,
+      "max_preconfirm_missing_total": 1000000,
+      "min_preconfirm_coverage_ratio": 0.0,
+      "max_success_regression_ratio": 1.0,
+      "max_cost_regression_ratio": 1.0,
+      "max_stale_minutes": 1000000.0,
+      "max_unsafe_expansion_total_increase": 0,
+      "max_preconfirm_missing_total_increase": 0,
+      "max_preconfirm_coverage_ratio_drop": 0.05,
+      "max_success_regression_ratio_increase": 0.05,
+      "max_cost_regression_ratio_increase": 0.05,
+      "max_rollback_total_increase": 0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}
