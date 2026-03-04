@@ -75,6 +75,13 @@ def _read_jsonl(path: Path, *, window_hours: int, limit: int) -> list[dict[str, 
     return filtered
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, Mapping):
+        raise RuntimeError(f"expected JSON object from {path}")
+    return {str(k): v for k, v in payload.items()}
+
+
 def _pack_payload(row: Mapping[str, Any]) -> dict[str, Any]:
     pack = row.get("evidence_pack")
     if isinstance(pack, Mapping):
@@ -304,6 +311,71 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_pack_total_drop: int,
+    max_duplicate_ticket_total_increase: int,
+    max_missing_summary_total_increase: int,
+    max_missing_intent_total_increase: int,
+    max_missing_tool_trace_total_increase: int,
+    max_missing_error_code_total_increase: int,
+    max_missing_reference_total_increase: int,
+    max_missing_policy_version_total_increase: int,
+    max_missing_tool_version_total_increase: int,
+    max_unmasked_pii_total_increase: int,
+    max_stale_minutes_increase: float,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_pack_total = _safe_int(base_summary.get("pack_total"), 0)
+    cur_pack_total = _safe_int(current_summary.get("pack_total"), 0)
+    pack_total_drop = max(0, base_pack_total - cur_pack_total)
+    if pack_total_drop > max(0, int(max_pack_total_drop)):
+        failures.append(
+            "pack_total regression: "
+            f"baseline={base_pack_total}, current={cur_pack_total}, "
+            f"allowed_drop={max(0, int(max_pack_total_drop))}"
+        )
+
+    baseline_increase_pairs = [
+        ("duplicate_ticket_total", max_duplicate_ticket_total_increase),
+        ("missing_summary_total", max_missing_summary_total_increase),
+        ("missing_intent_total", max_missing_intent_total_increase),
+        ("missing_tool_trace_total", max_missing_tool_trace_total_increase),
+        ("missing_error_code_total", max_missing_error_code_total_increase),
+        ("missing_reference_total", max_missing_reference_total_increase),
+        ("missing_policy_version_total", max_missing_policy_version_total_increase),
+        ("missing_tool_version_total", max_missing_tool_version_total_increase),
+        ("unmasked_pii_total", max_unmasked_pii_total_increase),
+    ]
+    for key, allowed_increase in baseline_increase_pairs:
+        base_value = _safe_int(base_summary.get(key), 0)
+        cur_value = _safe_int(current_summary.get(key), 0)
+        increase = max(0, cur_value - base_value)
+        if increase > max(0, int(allowed_increase)):
+            failures.append(
+                f"{key} regression: baseline={base_value}, current={cur_value}, "
+                f"allowed_increase={max(0, int(allowed_increase))}"
+            )
+
+    base_stale_minutes = _safe_float(base_summary.get("stale_minutes"), 0.0)
+    cur_stale_minutes = _safe_float(current_summary.get("stale_minutes"), 0.0)
+    stale_minutes_increase = max(0.0, cur_stale_minutes - base_stale_minutes)
+    if stale_minutes_increase > max(0.0, float(max_stale_minutes_increase)):
+        failures.append(
+            "stale minutes regression: "
+            f"baseline={base_stale_minutes:.6f}, current={cur_stale_minutes:.6f}, "
+            f"allowed_increase={float(max_stale_minutes_increase):.6f}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -322,11 +394,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -348,6 +425,18 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-missing-tool-version-total", type=int, default=0)
     parser.add_argument("--max-unmasked-pii-total", type=int, default=0)
     parser.add_argument("--max-stale-minutes", type=float, default=60.0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-pack-total-drop", type=int, default=10)
+    parser.add_argument("--max-duplicate-ticket-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-summary-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-intent-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-tool-trace-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-error-code-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-reference-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-policy-version-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-tool-version-total-increase", type=int, default=0)
+    parser.add_argument("--max-unmasked-pii-total-increase", type=int, default=0)
+    parser.add_argument("--max-stale-minutes-increase", type=float, default=30.0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -374,15 +463,43 @@ def main() -> int:
         max_unmasked_pii_total=max(0, int(args.max_unmasked_pii_total)),
         max_stale_minutes=max(0.0, float(args.max_stale_minutes)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            summary,
+            max_pack_total_drop=max(0, int(args.max_pack_total_drop)),
+            max_duplicate_ticket_total_increase=max(0, int(args.max_duplicate_ticket_total_increase)),
+            max_missing_summary_total_increase=max(0, int(args.max_missing_summary_total_increase)),
+            max_missing_intent_total_increase=max(0, int(args.max_missing_intent_total_increase)),
+            max_missing_tool_trace_total_increase=max(0, int(args.max_missing_tool_trace_total_increase)),
+            max_missing_error_code_total_increase=max(0, int(args.max_missing_error_code_total_increase)),
+            max_missing_reference_total_increase=max(0, int(args.max_missing_reference_total_increase)),
+            max_missing_policy_version_total_increase=max(0, int(args.max_missing_policy_version_total_increase)),
+            max_missing_tool_version_total_increase=max(0, int(args.max_missing_tool_version_total_increase)),
+            max_unmasked_pii_total_increase=max(0, int(args.max_unmasked_pii_total_increase)),
+            max_stale_minutes_increase=max(0.0, float(args.max_stale_minutes_increase)),
+        )
 
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "packs_jsonl": str(args.packs_jsonl),
+        "source": {
+            "packs_jsonl": str(args.packs_jsonl),
+            "window_hours": int(args.window_hours),
+            "limit": int(args.limit),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "max_duplicate_ticket_total": int(args.max_duplicate_ticket_total),
@@ -395,6 +512,17 @@ def main() -> int:
                 "max_missing_tool_version_total": int(args.max_missing_tool_version_total),
                 "max_unmasked_pii_total": int(args.max_unmasked_pii_total),
                 "max_stale_minutes": float(args.max_stale_minutes),
+                "max_pack_total_drop": int(args.max_pack_total_drop),
+                "max_duplicate_ticket_total_increase": int(args.max_duplicate_ticket_total_increase),
+                "max_missing_summary_total_increase": int(args.max_missing_summary_total_increase),
+                "max_missing_intent_total_increase": int(args.max_missing_intent_total_increase),
+                "max_missing_tool_trace_total_increase": int(args.max_missing_tool_trace_total_increase),
+                "max_missing_error_code_total_increase": int(args.max_missing_error_code_total_increase),
+                "max_missing_reference_total_increase": int(args.max_missing_reference_total_increase),
+                "max_missing_policy_version_total_increase": int(args.max_missing_policy_version_total_increase),
+                "max_missing_tool_version_total_increase": int(args.max_missing_tool_version_total_increase),
+                "max_unmasked_pii_total_increase": int(args.max_unmasked_pii_total_increase),
+                "max_stale_minutes_increase": float(args.max_stale_minutes_increase),
             },
         },
     }
@@ -412,8 +540,9 @@ def main() -> int:
     print(f"pack_total={_safe_int(summary.get('pack_total'), 0)}")
     print(f"missing_summary_total={_safe_int(summary.get('missing_summary_total'), 0)}")
     print(f"unmasked_pii_total={_safe_int(summary.get('unmasked_pii_total'), 0)}")
+    print(f"gate_pass={str(report['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and (failures or baseline_failures):
         return 2
     return 0
 

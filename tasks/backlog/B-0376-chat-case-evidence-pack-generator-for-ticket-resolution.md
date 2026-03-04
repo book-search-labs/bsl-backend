@@ -91,3 +91,24 @@ Generate structured chat evidence packs for support tickets:
   - `scripts/eval/test_chat_ticket_evidence_integrity.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TICKET_EVIDENCE_INTEGRITY=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Baseline governance 적용
+  - `scripts/eval/chat_ticket_evidence_pack_schema.py`
+  - `scripts/eval/chat_ticket_evidence_pack_assembly.py`
+  - `scripts/eval/chat_ticket_resolution_assistance.py`
+  - `scripts/eval/chat_ticket_evidence_integrity.py`
+  - 공통: `--baseline-report` + drift threshold 인자 + `gate.baseline_failures` + `source/derived.summary` + `gate_pass` 출력 추가
+- [x] baseline 회귀 테스트 추가
+  - `scripts/eval/test_chat_ticket_evidence_pack_schema.py`
+  - `scripts/eval/test_chat_ticket_evidence_pack_assembly.py`
+  - `scripts/eval/test_chat_ticket_resolution_assistance.py`
+  - `scripts/eval/test_chat_ticket_evidence_integrity.py`
+- [x] baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_ticket_evidence_pack_schema_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_ticket_evidence_pack_assembly_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_ticket_resolution_assistance_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_ticket_evidence_integrity_baseline_v1.json`
+- [x] CI wiring + RUNBOOK 업데이트
+  - `scripts/test.sh` 80~83단계에 baseline fixture 자동 연결 + drift env/arg 추가
+  - `docs/RUNBOOK.md` B-0376 Bundle 1~4 섹션에 baseline drift gate 인자/환경변수 반영

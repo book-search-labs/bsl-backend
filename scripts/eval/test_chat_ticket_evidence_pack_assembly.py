@@ -88,3 +88,48 @@ def test_evaluate_gate_allows_empty_when_min_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_evidence_pack_assembly_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "ticket_created_total": 20,
+            "pack_assembled_total": 20,
+            "missing_pack_total": 0,
+            "pack_coverage_ratio": 1.0,
+            "missing_field_total": 0,
+            "missing_field_guidance_missing_total": 0,
+            "p95_assembly_latency_seconds": 60.0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "ticket_created_total": 1,
+            "pack_assembled_total": 1,
+            "missing_pack_total": 2,
+            "pack_coverage_ratio": 0.3,
+            "missing_field_total": 3,
+            "missing_field_guidance_missing_total": 2,
+            "p95_assembly_latency_seconds": 180.0,
+            "stale_minutes": 80.0,
+        },
+        max_ticket_created_total_drop=1,
+        max_pack_assembled_total_drop=1,
+        max_missing_pack_total_increase=0,
+        max_pack_coverage_ratio_drop=0.05,
+        max_missing_field_total_increase=0,
+        max_missing_field_guidance_missing_total_increase=0,
+        max_p95_assembly_latency_seconds_increase=30.0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("ticket_created_total regression" in item for item in failures)
+    assert any("pack_assembled_total regression" in item for item in failures)
+    assert any("missing_pack_total regression" in item for item in failures)
+    assert any("pack_coverage_ratio regression" in item for item in failures)
+    assert any("missing_field_total regression" in item for item in failures)
+    assert any("missing_field_guidance_missing_total regression" in item for item in failures)
+    assert any("p95_assembly_latency_seconds regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

@@ -107,3 +107,48 @@ def test_evaluate_gate_allows_empty_when_min_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_evidence_integrity_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "pack_total": 20,
+            "missing_link_total": 0,
+            "invalid_url_total": 0,
+            "unresolved_link_total": 0,
+            "missing_policy_version_total": 0,
+            "missing_tool_version_total": 0,
+            "missing_evidence_hash_total": 0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "pack_total": 1,
+            "missing_link_total": 2,
+            "invalid_url_total": 2,
+            "unresolved_link_total": 2,
+            "missing_policy_version_total": 1,
+            "missing_tool_version_total": 1,
+            "missing_evidence_hash_total": 1,
+            "stale_minutes": 80.0,
+        },
+        max_pack_total_drop=1,
+        max_missing_link_total_increase=0,
+        max_invalid_url_total_increase=0,
+        max_unresolved_link_total_increase=0,
+        max_missing_policy_version_total_increase=0,
+        max_missing_tool_version_total_increase=0,
+        max_missing_evidence_hash_total_increase=0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("pack_total regression" in item for item in failures)
+    assert any("missing_link_total regression" in item for item in failures)
+    assert any("invalid_url_total regression" in item for item in failures)
+    assert any("unresolved_link_total regression" in item for item in failures)
+    assert any("missing_policy_version_total regression" in item for item in failures)
+    assert any("missing_tool_version_total regression" in item for item in failures)
+    assert any("missing_evidence_hash_total regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

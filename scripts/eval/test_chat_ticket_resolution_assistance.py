@@ -114,3 +114,48 @@ def test_evaluate_gate_allows_empty_when_min_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_resolution_assistance_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "assistance_total": 20,
+            "insufficient_assistance_total": 0,
+            "similar_case_coverage_ratio": 0.9,
+            "template_coverage_ratio": 0.9,
+            "question_coverage_ratio": 0.9,
+            "missing_reason_code_total": 0,
+            "low_confidence_unrouted_total": 0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "assistance_total": 1,
+            "insufficient_assistance_total": 3,
+            "similar_case_coverage_ratio": 0.1,
+            "template_coverage_ratio": 0.2,
+            "question_coverage_ratio": 0.3,
+            "missing_reason_code_total": 2,
+            "low_confidence_unrouted_total": 1,
+            "stale_minutes": 80.0,
+        },
+        max_assistance_total_drop=1,
+        max_insufficient_assistance_total_increase=0,
+        max_similar_case_coverage_ratio_drop=0.05,
+        max_template_coverage_ratio_drop=0.05,
+        max_question_coverage_ratio_drop=0.05,
+        max_missing_reason_code_total_increase=0,
+        max_low_confidence_unrouted_total_increase=0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("assistance_total regression" in item for item in failures)
+    assert any("insufficient_assistance_total regression" in item for item in failures)
+    assert any("similar_case_coverage_ratio regression" in item for item in failures)
+    assert any("template_coverage_ratio regression" in item for item in failures)
+    assert any("question_coverage_ratio regression" in item for item in failures)
+    assert any("missing_reason_code_total regression" in item for item in failures)
+    assert any("low_confidence_unrouted_total regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

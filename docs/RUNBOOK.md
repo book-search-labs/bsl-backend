@@ -3266,6 +3266,18 @@ python scripts/eval/chat_ticket_evidence_pack_schema.py \
   --max-missing-tool-version-total 0 \
   --max-unmasked-pii-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_ticket_evidence_pack_schema_baseline_v1.json \
+  --max-pack-total-drop 10 \
+  --max-duplicate-ticket-total-increase 0 \
+  --max-missing-summary-total-increase 0 \
+  --max-missing-intent-total-increase 0 \
+  --max-missing-tool-trace-total-increase 0 \
+  --max-missing-error-code-total-increase 0 \
+  --max-missing-reference-total-increase 0 \
+  --max-missing-policy-version-total-increase 0 \
+  --max-missing-tool-version-total-increase 0 \
+  --max-unmasked-pii-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -3274,6 +3286,18 @@ python scripts/eval/chat_ticket_evidence_pack_schema.py \
   - unmasked PII 건수와 evidence freshness
 - CI 옵션:
   - `RUN_CHAT_TICKET_EVIDENCE_PACK_SCHEMA=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TICKET_EVIDENCE_PACK_MAX_PACK_TOTAL_DROP`
+    - `CHAT_TICKET_EVIDENCE_PACK_MAX_DUPLICATE_TICKET_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_SUMMARY_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_INTENT_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_TOOL_TRACE_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_ERROR_CODE_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_REFERENCE_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_POLICY_VERSION_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_PACK_MAX_MISSING_TOOL_VERSION_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_PACK_MAX_UNMASKED_PII_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_PACK_MAX_STALE_MINUTES_INCREASE`
 
 ## Ticket evidence pack assembly gate (B-0376, Bundle 2)
 - 티켓 생성 대비 evidence pack 자동 조립률과 누락필드 보완가이드 생성 여부를 검증:
@@ -3288,6 +3312,15 @@ python scripts/eval/chat_ticket_evidence_pack_assembly.py \
   --max-missing-field-guidance-missing-total 0 \
   --max-p95-assembly-latency-seconds 120 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_ticket_evidence_pack_assembly_baseline_v1.json \
+  --max-ticket-created-total-drop 10 \
+  --max-pack-assembled-total-drop 10 \
+  --max-missing-pack-total-increase 0 \
+  --max-pack-coverage-ratio-drop 0.05 \
+  --max-missing-field-total-increase 0 \
+  --max-missing-field-guidance-missing-total-increase 0 \
+  --max-p95-assembly-latency-seconds-increase 30 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -3296,6 +3329,15 @@ python scripts/eval/chat_ticket_evidence_pack_assembly.py \
   - assembly p95 latency와 evidence freshness
 - CI 옵션:
   - `RUN_CHAT_TICKET_EVIDENCE_PACK_ASSEMBLY=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TICKET_EVIDENCE_ASSEMBLY_MAX_TICKET_CREATED_TOTAL_DROP`
+    - `CHAT_TICKET_EVIDENCE_ASSEMBLY_MAX_PACK_ASSEMBLED_TOTAL_DROP`
+    - `CHAT_TICKET_EVIDENCE_ASSEMBLY_MAX_MISSING_PACK_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_ASSEMBLY_MAX_PACK_COVERAGE_RATIO_DROP`
+    - `CHAT_TICKET_EVIDENCE_ASSEMBLY_MAX_MISSING_FIELD_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_ASSEMBLY_MAX_GUIDANCE_MISSING_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_ASSEMBLY_MAX_P95_LATENCY_SECONDS_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_ASSEMBLY_MAX_STALE_MINUTES_INCREASE`
 
 ## Ticket resolution assistance gate (B-0376, Bundle 3)
 - evidence pack 기반 유사케이스/템플릿/추가질문 추천 품질을 배포 전에 검증:
@@ -3312,6 +3354,15 @@ python scripts/eval/chat_ticket_resolution_assistance.py \
   --max-missing-reason-code-total 0 \
   --max-low-confidence-unrouted-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_ticket_resolution_assistance_baseline_v1.json \
+  --max-assistance-total-drop 10 \
+  --max-insufficient-assistance-total-increase 0 \
+  --max-similar-case-coverage-ratio-drop 0.05 \
+  --max-template-coverage-ratio-drop 0.05 \
+  --max-question-coverage-ratio-drop 0.05 \
+  --max-missing-reason-code-total-increase 0 \
+  --max-low-confidence-unrouted-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -3320,6 +3371,15 @@ python scripts/eval/chat_ticket_resolution_assistance.py \
   - low-confidence 보조추천 미라우팅 건수와 stale minutes
 - CI 옵션:
   - `RUN_CHAT_TICKET_RESOLUTION_ASSISTANCE=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_ASSISTANCE_TOTAL_DROP`
+    - `CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_INSUFFICIENT_TOTAL_INCREASE`
+    - `CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_SIMILAR_COVERAGE_RATIO_DROP`
+    - `CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_TEMPLATE_COVERAGE_RATIO_DROP`
+    - `CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_QUESTION_COVERAGE_RATIO_DROP`
+    - `CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_MISSING_REASON_CODE_TOTAL_INCREASE`
+    - `CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_LOW_CONF_UNROUTED_TOTAL_INCREASE`
+    - `CHAT_TICKET_RESOLUTION_ASSISTANCE_MAX_STALE_MINUTES_INCREASE`
 
 ## Ticket evidence integrity gate (B-0376, Bundle 4)
 - evidence link 무결성과 policy/tool/version/hash 기록 완전성을 배포 전에 검증:
@@ -3335,6 +3395,15 @@ python scripts/eval/chat_ticket_evidence_integrity.py \
   --max-missing-tool-version-total 0 \
   --max-missing-evidence-hash-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_ticket_evidence_integrity_baseline_v1.json \
+  --max-pack-total-drop 10 \
+  --max-missing-link-total-increase 0 \
+  --max-invalid-url-total-increase 0 \
+  --max-unresolved-link-total-increase 0 \
+  --max-missing-policy-version-total-increase 0 \
+  --max-missing-tool-version-total-increase 0 \
+  --max-missing-evidence-hash-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -3343,6 +3412,15 @@ python scripts/eval/chat_ticket_evidence_integrity.py \
   - integrity evidence freshness
 - CI 옵션:
   - `RUN_CHAT_TICKET_EVIDENCE_INTEGRITY=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TICKET_EVIDENCE_INTEGRITY_MAX_PACK_TOTAL_DROP`
+    - `CHAT_TICKET_EVIDENCE_INTEGRITY_MAX_MISSING_LINK_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_INTEGRITY_MAX_INVALID_URL_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_INTEGRITY_MAX_UNRESOLVED_LINK_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_INTEGRITY_MAX_MISSING_POLICY_VERSION_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_INTEGRITY_MAX_MISSING_TOOL_VERSION_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_INTEGRITY_MAX_MISSING_HASH_TOTAL_INCREASE`
+    - `CHAT_TICKET_EVIDENCE_INTEGRITY_MAX_STALE_MINUTES_INCREASE`
 
 ## Source conflict detection gate (B-0377, Bundle 1)
 - 다중 출처 상충 감지의 severity/type/source/evidence 완전성을 배포 전에 검증:
