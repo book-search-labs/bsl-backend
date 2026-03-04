@@ -118,3 +118,48 @@ def test_evaluate_gate_allows_empty_when_min_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_sla_estimator_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "estimate_total": 50,
+            "high_risk_unalerted_total": 0,
+            "missing_features_snapshot_total": 0,
+            "missing_model_version_total": 0,
+            "predicted_minutes_invalid_total": 0,
+            "mae_minutes": 10.0,
+            "breach_recall": 0.9,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "estimate_total": 20,
+            "high_risk_unalerted_total": 3,
+            "missing_features_snapshot_total": 2,
+            "missing_model_version_total": 2,
+            "predicted_minutes_invalid_total": 2,
+            "mae_minutes": 45.0,
+            "breach_recall": 0.3,
+            "stale_minutes": 90.0,
+        },
+        max_estimate_total_drop=5,
+        max_high_risk_unalerted_total_increase=0,
+        max_missing_features_snapshot_total_increase=0,
+        max_missing_model_version_total_increase=0,
+        max_predicted_minutes_invalid_total_increase=0,
+        max_mae_minutes_increase=5.0,
+        max_breach_recall_drop=0.05,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("estimate_total regression" in item for item in failures)
+    assert any("high_risk_unalerted_total regression" in item for item in failures)
+    assert any("missing_features_snapshot_total regression" in item for item in failures)
+    assert any("missing_model_version_total regression" in item for item in failures)
+    assert any("predicted_minutes_invalid_total regression" in item for item in failures)
+    assert any("mae_minutes regression" in item for item in failures)
+    assert any("breach_recall regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

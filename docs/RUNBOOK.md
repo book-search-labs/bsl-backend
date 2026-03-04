@@ -3075,7 +3075,7 @@ python scripts/eval/chat_reasoning_budget_audit_explainability.py \
     - `CHAT_REASONING_BUDGET_AUDIT_MAX_STALE_MINUTES_INCREASE`
 
 ## Ticket triage taxonomy gate (B-0375, Bundle 1)
-- 티켓 분류 taxonomy(카테고리/심각도)와 severity rule 정의 누락을 배포 전에 차단:
+- 티켓 분류 taxonomy(카테고리/심각도)와 severity rule 정의 누락을 배포 전에 차단 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_ticket_triage_taxonomy.py \
   --taxonomy-json var/chat_ticket/triage_taxonomy.json \
@@ -3090,6 +3090,16 @@ python scripts/eval/chat_ticket_triage_taxonomy.py \
   --max-duplicate-severity-total 0 \
   --max-missing-severity-rule-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_ticket_triage_taxonomy_baseline_v1.json \
+  --max-category-total-drop 2 \
+  --max-severity-total-drop 1 \
+  --max-version-missing-total-increase 0 \
+  --max-missing-category-total-increase 0 \
+  --max-missing-severity-total-increase 0 \
+  --max-duplicate-category-total-increase 0 \
+  --max-duplicate-severity-total-increase 0 \
+  --max-missing-severity-rule-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -3098,9 +3108,19 @@ python scripts/eval/chat_ticket_triage_taxonomy.py \
   - taxonomy version/staleness 상태
 - CI 옵션:
   - `RUN_CHAT_TICKET_TRIAGE_TAXONOMY=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TICKET_TRIAGE_MAX_CATEGORY_TOTAL_DROP`
+    - `CHAT_TICKET_TRIAGE_MAX_SEVERITY_TOTAL_DROP`
+    - `CHAT_TICKET_TRIAGE_MAX_VERSION_MISSING_TOTAL_INCREASE`
+    - `CHAT_TICKET_TRIAGE_MAX_MISSING_CATEGORY_TOTAL_INCREASE`
+    - `CHAT_TICKET_TRIAGE_MAX_MISSING_SEVERITY_TOTAL_INCREASE`
+    - `CHAT_TICKET_TRIAGE_MAX_DUPLICATE_CATEGORY_TOTAL_INCREASE`
+    - `CHAT_TICKET_TRIAGE_MAX_DUPLICATE_SEVERITY_TOTAL_INCREASE`
+    - `CHAT_TICKET_TRIAGE_MAX_MISSING_SEVERITY_RULE_TOTAL_INCREASE`
+    - `CHAT_TICKET_TRIAGE_MAX_STALE_MINUTES_INCREASE`
 
 ## Ticket classifier pipeline gate (B-0375, Bundle 2)
-- low-confidence 분류를 manual review 큐로 제대로 보내는지 포함해 분류 파이프라인 품질을 검증:
+- low-confidence 분류를 manual review 큐로 제대로 보내는지 포함해 분류 파이프라인 품질을 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_ticket_classifier_pipeline.py \
   --events-jsonl var/chat_ticket/triage_predictions.jsonl \
@@ -3114,6 +3134,15 @@ python scripts/eval/chat_ticket_classifier_pipeline.py \
   --max-missing-model-version-total 0 \
   --max-missing-signal-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_ticket_classifier_pipeline_baseline_v1.json \
+  --max-prediction-total-drop 10 \
+  --max-low-confidence-unrouted-total-increase 0 \
+  --max-manual-review-coverage-ratio-drop 0.05 \
+  --max-unknown-category-total-increase 0 \
+  --max-unknown-severity-total-increase 0 \
+  --max-missing-model-version-total-increase 0 \
+  --max-missing-signal-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -3122,9 +3151,18 @@ python scripts/eval/chat_ticket_classifier_pipeline.py \
   - classifier input signal(요약/reason/tool failure) 누락 건수
 - CI 옵션:
   - `RUN_CHAT_TICKET_CLASSIFIER_PIPELINE=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TICKET_CLASSIFIER_MAX_PREDICTION_TOTAL_DROP`
+    - `CHAT_TICKET_CLASSIFIER_MAX_LOW_CONF_UNROUTED_TOTAL_INCREASE`
+    - `CHAT_TICKET_CLASSIFIER_MAX_MANUAL_REVIEW_COVERAGE_RATIO_DROP`
+    - `CHAT_TICKET_CLASSIFIER_MAX_UNKNOWN_CATEGORY_TOTAL_INCREASE`
+    - `CHAT_TICKET_CLASSIFIER_MAX_UNKNOWN_SEVERITY_TOTAL_INCREASE`
+    - `CHAT_TICKET_CLASSIFIER_MAX_MISSING_MODEL_VERSION_TOTAL_INCREASE`
+    - `CHAT_TICKET_CLASSIFIER_MAX_MISSING_SIGNAL_TOTAL_INCREASE`
+    - `CHAT_TICKET_CLASSIFIER_MAX_STALE_MINUTES_INCREASE`
 
 ## Ticket SLA estimator gate (B-0375, Bundle 3)
-- 티켓 SLA 예측의 오차/고위험 알림 누락/근거 필드 누락을 배포 전에 차단:
+- 티켓 SLA 예측의 오차/고위험 알림 누락/근거 필드 누락을 배포 전에 차단 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_ticket_sla_estimator.py \
   --estimates-jsonl var/chat_ticket/sla_estimates.jsonl \
@@ -3139,6 +3177,15 @@ python scripts/eval/chat_ticket_sla_estimator.py \
   --max-mae-minutes 30 \
   --min-breach-recall 0.70 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_ticket_sla_estimator_baseline_v1.json \
+  --max-estimate-total-drop 10 \
+  --max-high-risk-unalerted-total-increase 0 \
+  --max-missing-features-snapshot-total-increase 0 \
+  --max-missing-model-version-total-increase 0 \
+  --max-predicted-minutes-invalid-total-increase 0 \
+  --max-mae-minutes-increase 10 \
+  --max-breach-recall-drop 0.05 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -3147,9 +3194,18 @@ python scripts/eval/chat_ticket_sla_estimator.py \
   - features snapshot/model_version 누락 및 evidence freshness
 - CI 옵션:
   - `RUN_CHAT_TICKET_SLA_ESTIMATOR=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TICKET_SLA_MAX_ESTIMATE_TOTAL_DROP`
+    - `CHAT_TICKET_SLA_MAX_HIGH_RISK_UNALERTED_TOTAL_INCREASE`
+    - `CHAT_TICKET_SLA_MAX_MISSING_FEATURES_SNAPSHOT_TOTAL_INCREASE`
+    - `CHAT_TICKET_SLA_MAX_MISSING_MODEL_VERSION_TOTAL_INCREASE`
+    - `CHAT_TICKET_SLA_MAX_PREDICTED_MINUTES_INVALID_TOTAL_INCREASE`
+    - `CHAT_TICKET_SLA_MAX_MAE_MINUTES_INCREASE`
+    - `CHAT_TICKET_SLA_MAX_BREACH_RECALL_DROP`
+    - `CHAT_TICKET_SLA_MAX_STALE_MINUTES_INCREASE`
 
 ## Ticket feedback loop gate (B-0375, Bundle 4)
-- triage 정정 피드백이 실제 결과(outcome)와 연결되고 재학습 신호로 축적되는지 검증:
+- triage 정정 피드백이 실제 결과(outcome)와 연결되고 재학습 신호로 축적되는지 검증 + baseline drift 게이트:
 ```bash
 python scripts/eval/chat_ticket_feedback_loop.py \
   --feedback-jsonl var/chat_ticket/triage_feedback.jsonl \
@@ -3164,6 +3220,16 @@ python scripts/eval/chat_ticket_feedback_loop.py \
   --min-monthly-bucket-total 1 \
   --min-monthly-samples-per-bucket 10 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_ticket_feedback_loop_baseline_v1.json \
+  --max-feedback-total-drop 10 \
+  --max-corrected-total-drop 10 \
+  --max-missing-actor-total-increase 0 \
+  --max-missing-corrected-time-total-increase 0 \
+  --max-missing-model-version-total-increase 0 \
+  --max-feedback-linkage-ratio-drop 0.05 \
+  --max-monthly-bucket-total-drop 1 \
+  --max-monthly-min-samples-drop 2 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -3172,6 +3238,16 @@ python scripts/eval/chat_ticket_feedback_loop.py \
   - 월별 feedback 샘플 커버리지와 evidence freshness
 - CI 옵션:
   - `RUN_CHAT_TICKET_FEEDBACK_LOOP=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TICKET_FEEDBACK_MAX_FEEDBACK_TOTAL_DROP`
+    - `CHAT_TICKET_FEEDBACK_MAX_CORRECTED_TOTAL_DROP`
+    - `CHAT_TICKET_FEEDBACK_MAX_MISSING_ACTOR_TOTAL_INCREASE`
+    - `CHAT_TICKET_FEEDBACK_MAX_MISSING_CORRECTED_TIME_TOTAL_INCREASE`
+    - `CHAT_TICKET_FEEDBACK_MAX_MISSING_MODEL_VERSION_TOTAL_INCREASE`
+    - `CHAT_TICKET_FEEDBACK_MAX_LINKAGE_RATIO_DROP`
+    - `CHAT_TICKET_FEEDBACK_MAX_MONTHLY_BUCKET_TOTAL_DROP`
+    - `CHAT_TICKET_FEEDBACK_MAX_MONTHLY_MIN_SAMPLES_DROP`
+    - `CHAT_TICKET_FEEDBACK_MAX_STALE_MINUTES_INCREASE`
 
 ## Ticket evidence pack schema gate (B-0376, Bundle 1)
 - 티켓 evidence pack의 필수 필드/버전/PII 마스킹 누락을 배포 전에 차단:

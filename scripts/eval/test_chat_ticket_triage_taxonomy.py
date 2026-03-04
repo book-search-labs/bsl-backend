@@ -92,3 +92,52 @@ def test_evaluate_gate_allows_open_thresholds():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_triage_taxonomy_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "category_total": 6,
+            "severity_total": 4,
+            "version_missing": False,
+            "missing_category_total": 0,
+            "missing_severity_total": 0,
+            "duplicate_category_total": 0,
+            "duplicate_severity_total": 0,
+            "missing_severity_rule_total": 0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "category_total": 1,
+            "severity_total": 1,
+            "version_missing": True,
+            "missing_category_total": 3,
+            "missing_severity_total": 2,
+            "duplicate_category_total": 1,
+            "duplicate_severity_total": 1,
+            "missing_severity_rule_total": 1,
+            "stale_minutes": 80.0,
+        },
+        max_category_total_drop=1,
+        max_severity_total_drop=1,
+        max_version_missing_total_increase=0,
+        max_missing_category_total_increase=0,
+        max_missing_severity_total_increase=0,
+        max_duplicate_category_total_increase=0,
+        max_duplicate_severity_total_increase=0,
+        max_missing_severity_rule_total_increase=0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("category_total regression" in item for item in failures)
+    assert any("severity_total regression" in item for item in failures)
+    assert any("version_missing regression" in item for item in failures)
+    assert any("missing_category_total regression" in item for item in failures)
+    assert any("missing_severity_total regression" in item for item in failures)
+    assert any("duplicate_category_total regression" in item for item in failures)
+    assert any("duplicate_severity_total regression" in item for item in failures)
+    assert any("missing_severity_rule_total regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

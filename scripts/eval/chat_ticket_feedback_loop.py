@@ -83,6 +83,13 @@ def _read_jsonl(path: Path, *, window_hours: int, limit: int) -> list[dict[str, 
     return filtered
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, Mapping):
+        raise RuntimeError(f"expected JSON object from {path}")
+    return {str(k): v for k, v in payload.items()}
+
+
 def _ticket_id(row: Mapping[str, Any]) -> str:
     return str(row.get("ticket_id") or row.get("id") or row.get("case_id") or "").strip()
 
@@ -265,6 +272,79 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_feedback_total_drop: int,
+    max_corrected_total_drop: int,
+    max_missing_actor_total_increase: int,
+    max_missing_corrected_time_total_increase: int,
+    max_missing_model_version_total_increase: int,
+    max_feedback_linkage_ratio_drop: float,
+    max_monthly_bucket_total_drop: int,
+    max_monthly_min_samples_drop: int,
+    max_stale_minutes_increase: float,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    baseline_drop_pairs = [
+        ("feedback_total", max_feedback_total_drop),
+        ("corrected_total", max_corrected_total_drop),
+        ("monthly_bucket_total", max_monthly_bucket_total_drop),
+        ("monthly_min_samples", max_monthly_min_samples_drop),
+    ]
+    for key, allowed_drop in baseline_drop_pairs:
+        base_value = _safe_int(base_summary.get(key), 0)
+        cur_value = _safe_int(current_summary.get(key), 0)
+        drop = max(0, base_value - cur_value)
+        if drop > max(0, int(allowed_drop)):
+            failures.append(
+                f"{key} regression: baseline={base_value}, current={cur_value}, "
+                f"allowed_drop={max(0, int(allowed_drop))}"
+            )
+
+    baseline_increase_pairs = [
+        ("missing_actor_total", max_missing_actor_total_increase),
+        ("missing_corrected_time_total", max_missing_corrected_time_total_increase),
+        ("missing_model_version_total", max_missing_model_version_total_increase),
+    ]
+    for key, allowed_increase in baseline_increase_pairs:
+        base_value = _safe_int(base_summary.get(key), 0)
+        cur_value = _safe_int(current_summary.get(key), 0)
+        increase = max(0, cur_value - base_value)
+        if increase > max(0, int(allowed_increase)):
+            failures.append(
+                f"{key} regression: baseline={base_value}, current={cur_value}, "
+                f"allowed_increase={max(0, int(allowed_increase))}"
+            )
+
+    base_feedback_linkage_ratio = _safe_float(base_summary.get("feedback_linkage_ratio"), 0.0)
+    cur_feedback_linkage_ratio = _safe_float(current_summary.get("feedback_linkage_ratio"), 0.0)
+    feedback_linkage_ratio_drop = max(0.0, base_feedback_linkage_ratio - cur_feedback_linkage_ratio)
+    if feedback_linkage_ratio_drop > max(0.0, float(max_feedback_linkage_ratio_drop)):
+        failures.append(
+            "feedback_linkage_ratio regression: "
+            f"baseline={base_feedback_linkage_ratio:.6f}, current={cur_feedback_linkage_ratio:.6f}, "
+            f"allowed_drop={float(max_feedback_linkage_ratio_drop):.6f}"
+        )
+
+    base_stale_minutes = _safe_float(base_summary.get("stale_minutes"), 0.0)
+    cur_stale_minutes = _safe_float(current_summary.get("stale_minutes"), 0.0)
+    stale_minutes_increase = max(0.0, cur_stale_minutes - base_stale_minutes)
+    if stale_minutes_increase > max(0.0, float(max_stale_minutes_increase)):
+        failures.append(
+            "stale minutes regression: "
+            f"baseline={base_stale_minutes:.6f}, current={cur_stale_minutes:.6f}, "
+            f"allowed_increase={float(max_stale_minutes_increase):.6f}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -284,11 +364,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -309,6 +394,16 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--min-monthly-bucket-total", type=int, default=1)
     parser.add_argument("--min-monthly-samples-per-bucket", type=int, default=10)
     parser.add_argument("--max-stale-minutes", type=float, default=60.0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-feedback-total-drop", type=int, default=10)
+    parser.add_argument("--max-corrected-total-drop", type=int, default=10)
+    parser.add_argument("--max-missing-actor-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-corrected-time-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-model-version-total-increase", type=int, default=0)
+    parser.add_argument("--max-feedback-linkage-ratio-drop", type=float, default=0.05)
+    parser.add_argument("--max-monthly-bucket-total-drop", type=int, default=1)
+    parser.add_argument("--max-monthly-min-samples-drop", type=int, default=2)
+    parser.add_argument("--max-stale-minutes-increase", type=float, default=30.0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -338,16 +433,45 @@ def main() -> int:
         min_monthly_samples_per_bucket=max(0, int(args.min_monthly_samples_per_bucket)),
         max_stale_minutes=max(0.0, float(args.max_stale_minutes)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            summary,
+            max_feedback_total_drop=max(0, int(args.max_feedback_total_drop)),
+            max_corrected_total_drop=max(0, int(args.max_corrected_total_drop)),
+            max_missing_actor_total_increase=max(0, int(args.max_missing_actor_total_increase)),
+            max_missing_corrected_time_total_increase=max(
+                0, int(args.max_missing_corrected_time_total_increase)
+            ),
+            max_missing_model_version_total_increase=max(0, int(args.max_missing_model_version_total_increase)),
+            max_feedback_linkage_ratio_drop=max(0.0, float(args.max_feedback_linkage_ratio_drop)),
+            max_monthly_bucket_total_drop=max(0, int(args.max_monthly_bucket_total_drop)),
+            max_monthly_min_samples_drop=max(0, int(args.max_monthly_min_samples_drop)),
+            max_stale_minutes_increase=max(0.0, float(args.max_stale_minutes_increase)),
+        )
 
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "feedback_jsonl": str(args.feedback_jsonl),
         "outcomes_jsonl": str(args.outcomes_jsonl),
+        "source": {
+            "feedback_jsonl": str(args.feedback_jsonl),
+            "outcomes_jsonl": str(args.outcomes_jsonl),
+            "window_hours": int(args.window_hours),
+            "limit": int(args.limit),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "min_feedback_total": int(args.min_feedback_total),
@@ -358,6 +482,15 @@ def main() -> int:
                 "min_monthly_bucket_total": int(args.min_monthly_bucket_total),
                 "min_monthly_samples_per_bucket": int(args.min_monthly_samples_per_bucket),
                 "max_stale_minutes": float(args.max_stale_minutes),
+                "max_feedback_total_drop": int(args.max_feedback_total_drop),
+                "max_corrected_total_drop": int(args.max_corrected_total_drop),
+                "max_missing_actor_total_increase": int(args.max_missing_actor_total_increase),
+                "max_missing_corrected_time_total_increase": int(args.max_missing_corrected_time_total_increase),
+                "max_missing_model_version_total_increase": int(args.max_missing_model_version_total_increase),
+                "max_feedback_linkage_ratio_drop": float(args.max_feedback_linkage_ratio_drop),
+                "max_monthly_bucket_total_drop": int(args.max_monthly_bucket_total_drop),
+                "max_monthly_min_samples_drop": int(args.max_monthly_min_samples_drop),
+                "max_stale_minutes_increase": float(args.max_stale_minutes_increase),
             },
         },
     }
@@ -375,8 +508,9 @@ def main() -> int:
     print(f"feedback_total={_safe_int(summary.get('feedback_total'), 0)}")
     print(f"corrected_total={_safe_int(summary.get('corrected_total'), 0)}")
     print(f"feedback_linkage_ratio={_safe_float(summary.get('feedback_linkage_ratio'), 1.0):.4f}")
+    print(f"gate_pass={str(report['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and (failures or baseline_failures):
         return 2
     return 0
 

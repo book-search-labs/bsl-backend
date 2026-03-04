@@ -109,3 +109,24 @@ Implement chat ticket triage intelligence:
   - `scripts/eval/test_chat_ticket_feedback_loop.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TICKET_FEEDBACK_LOOP=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Baseline governance 적용
+  - `scripts/eval/chat_ticket_triage_taxonomy.py`
+  - `scripts/eval/chat_ticket_classifier_pipeline.py`
+  - `scripts/eval/chat_ticket_sla_estimator.py`
+  - `scripts/eval/chat_ticket_feedback_loop.py`
+  - 공통: `--baseline-report` + drift threshold 인자 + `gate.baseline_failures` + `source/derived.summary` 추가
+- [x] baseline 회귀 테스트 추가
+  - `scripts/eval/test_chat_ticket_triage_taxonomy.py`
+  - `scripts/eval/test_chat_ticket_classifier_pipeline.py`
+  - `scripts/eval/test_chat_ticket_sla_estimator.py`
+  - `scripts/eval/test_chat_ticket_feedback_loop.py`
+- [x] baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_ticket_triage_taxonomy_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_ticket_classifier_pipeline_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_ticket_sla_estimator_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_ticket_feedback_loop_baseline_v1.json`
+- [x] CI wiring + RUNBOOK 업데이트
+  - `scripts/test.sh` 76~79단계에 baseline fixture 자동 연결 + drift env/arg 추가
+  - `docs/RUNBOOK.md` B-0375 Bundle 1~4 섹션에 baseline drift gate 인자/환경변수 반영

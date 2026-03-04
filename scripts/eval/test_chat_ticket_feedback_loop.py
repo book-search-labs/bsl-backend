@@ -133,3 +133,52 @@ def test_evaluate_gate_allows_empty_when_min_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_feedback_loop_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "feedback_total": 40,
+            "corrected_total": 20,
+            "missing_actor_total": 0,
+            "missing_corrected_time_total": 0,
+            "missing_model_version_total": 0,
+            "feedback_linkage_ratio": 0.95,
+            "monthly_bucket_total": 3,
+            "monthly_min_samples": 10,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "feedback_total": 10,
+            "corrected_total": 3,
+            "missing_actor_total": 2,
+            "missing_corrected_time_total": 2,
+            "missing_model_version_total": 2,
+            "feedback_linkage_ratio": 0.30,
+            "monthly_bucket_total": 1,
+            "monthly_min_samples": 1,
+            "stale_minutes": 90.0,
+        },
+        max_feedback_total_drop=5,
+        max_corrected_total_drop=5,
+        max_missing_actor_total_increase=0,
+        max_missing_corrected_time_total_increase=0,
+        max_missing_model_version_total_increase=0,
+        max_feedback_linkage_ratio_drop=0.05,
+        max_monthly_bucket_total_drop=0,
+        max_monthly_min_samples_drop=0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("feedback_total regression" in item for item in failures)
+    assert any("corrected_total regression" in item for item in failures)
+    assert any("missing_actor_total regression" in item for item in failures)
+    assert any("missing_corrected_time_total regression" in item for item in failures)
+    assert any("missing_model_version_total regression" in item for item in failures)
+    assert any("feedback_linkage_ratio regression" in item for item in failures)
+    assert any("monthly_bucket_total regression" in item for item in failures)
+    assert any("monthly_min_samples regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

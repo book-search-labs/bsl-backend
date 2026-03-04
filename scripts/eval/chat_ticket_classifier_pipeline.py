@@ -86,6 +86,13 @@ def _read_rows(path: Path, *, window_hours: int, limit: int) -> list[dict[str, A
     return filtered
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, Mapping):
+        raise RuntimeError(f"expected JSON object from {path}")
+    return {str(k): v for k, v in payload.items()}
+
+
 def _is_prediction_row(row: Mapping[str, Any]) -> bool:
     event = str(row.get("event_type") or row.get("event") or row.get("status") or "").strip().upper()
     if event in {"TRIAGE_PREDICT", "TRIAGE_RESULT", "PREDICTION"}:
@@ -235,6 +242,74 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_prediction_total_drop: int,
+    max_low_confidence_unrouted_total_increase: int,
+    max_manual_review_coverage_ratio_drop: float,
+    max_unknown_category_total_increase: int,
+    max_unknown_severity_total_increase: int,
+    max_missing_model_version_total_increase: int,
+    max_missing_signal_total_increase: int,
+    max_stale_minutes_increase: float,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_prediction_total = _safe_int(base_summary.get("prediction_total"), 0)
+    cur_prediction_total = _safe_int(current_summary.get("prediction_total"), 0)
+    prediction_total_drop = max(0, base_prediction_total - cur_prediction_total)
+    if prediction_total_drop > max(0, int(max_prediction_total_drop)):
+        failures.append(
+            "prediction_total regression: "
+            f"baseline={base_prediction_total}, current={cur_prediction_total}, "
+            f"allowed_drop={max(0, int(max_prediction_total_drop))}"
+        )
+
+    baseline_increase_pairs = [
+        ("low_confidence_unrouted_total", max_low_confidence_unrouted_total_increase),
+        ("unknown_category_total", max_unknown_category_total_increase),
+        ("unknown_severity_total", max_unknown_severity_total_increase),
+        ("missing_model_version_total", max_missing_model_version_total_increase),
+        ("missing_signal_total", max_missing_signal_total_increase),
+    ]
+    for key, allowed_increase in baseline_increase_pairs:
+        base_value = _safe_int(base_summary.get(key), 0)
+        cur_value = _safe_int(current_summary.get(key), 0)
+        increase = max(0, cur_value - base_value)
+        if increase > max(0, int(allowed_increase)):
+            failures.append(
+                f"{key} regression: baseline={base_value}, current={cur_value}, "
+                f"allowed_increase={max(0, int(allowed_increase))}"
+            )
+
+    base_manual_review_coverage_ratio = _safe_float(base_summary.get("manual_review_coverage_ratio"), 0.0)
+    cur_manual_review_coverage_ratio = _safe_float(current_summary.get("manual_review_coverage_ratio"), 0.0)
+    manual_review_coverage_ratio_drop = max(0.0, base_manual_review_coverage_ratio - cur_manual_review_coverage_ratio)
+    if manual_review_coverage_ratio_drop > max(0.0, float(max_manual_review_coverage_ratio_drop)):
+        failures.append(
+            "manual_review_coverage_ratio regression: "
+            f"baseline={base_manual_review_coverage_ratio:.6f}, current={cur_manual_review_coverage_ratio:.6f}, "
+            f"allowed_drop={float(max_manual_review_coverage_ratio_drop):.6f}"
+        )
+
+    base_stale_minutes = _safe_float(base_summary.get("stale_minutes"), 0.0)
+    cur_stale_minutes = _safe_float(current_summary.get("stale_minutes"), 0.0)
+    stale_minutes_increase = max(0.0, cur_stale_minutes - base_stale_minutes)
+    if stale_minutes_increase > max(0.0, float(max_stale_minutes_increase)):
+        failures.append(
+            "stale minutes regression: "
+            f"baseline={base_stale_minutes:.6f}, current={cur_stale_minutes:.6f}, "
+            f"allowed_increase={float(max_stale_minutes_increase):.6f}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -253,11 +328,16 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
     else:
-        lines.append("- failure: (none)")
+        if not failures:
+            lines.append("- failure: (none)")
     return "\n".join(lines)
 
 
@@ -277,6 +357,15 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-missing-model-version-total", type=int, default=0)
     parser.add_argument("--max-missing-signal-total", type=int, default=0)
     parser.add_argument("--max-stale-minutes", type=float, default=60.0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-prediction-total-drop", type=int, default=10)
+    parser.add_argument("--max-low-confidence-unrouted-total-increase", type=int, default=0)
+    parser.add_argument("--max-manual-review-coverage-ratio-drop", type=float, default=0.05)
+    parser.add_argument("--max-unknown-category-total-increase", type=int, default=0)
+    parser.add_argument("--max-unknown-severity-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-model-version-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-signal-total-increase", type=int, default=0)
+    parser.add_argument("--max-stale-minutes-increase", type=float, default=30.0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -304,15 +393,41 @@ def main() -> int:
         max_missing_signal_total=max(0, int(args.max_missing_signal_total)),
         max_stale_minutes=max(0.0, float(args.max_stale_minutes)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            summary,
+            max_prediction_total_drop=max(0, int(args.max_prediction_total_drop)),
+            max_low_confidence_unrouted_total_increase=max(0, int(args.max_low_confidence_unrouted_total_increase)),
+            max_manual_review_coverage_ratio_drop=max(0.0, float(args.max_manual_review_coverage_ratio_drop)),
+            max_unknown_category_total_increase=max(0, int(args.max_unknown_category_total_increase)),
+            max_unknown_severity_total_increase=max(0, int(args.max_unknown_severity_total_increase)),
+            max_missing_model_version_total_increase=max(0, int(args.max_missing_model_version_total_increase)),
+            max_missing_signal_total_increase=max(0, int(args.max_missing_signal_total_increase)),
+            max_stale_minutes_increase=max(0.0, float(args.max_stale_minutes_increase)),
+        )
 
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "events_jsonl": str(events_path),
+        "source": {
+            "events_jsonl": str(events_path),
+            "window_hours": int(args.window_hours),
+            "limit": int(args.limit),
+            "low_confidence_threshold": float(args.low_confidence_threshold),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "low_confidence_threshold": float(args.low_confidence_threshold),
@@ -323,6 +438,14 @@ def main() -> int:
                 "max_missing_model_version_total": int(args.max_missing_model_version_total),
                 "max_missing_signal_total": int(args.max_missing_signal_total),
                 "max_stale_minutes": float(args.max_stale_minutes),
+                "max_prediction_total_drop": int(args.max_prediction_total_drop),
+                "max_low_confidence_unrouted_total_increase": int(args.max_low_confidence_unrouted_total_increase),
+                "max_manual_review_coverage_ratio_drop": float(args.max_manual_review_coverage_ratio_drop),
+                "max_unknown_category_total_increase": int(args.max_unknown_category_total_increase),
+                "max_unknown_severity_total_increase": int(args.max_unknown_severity_total_increase),
+                "max_missing_model_version_total_increase": int(args.max_missing_model_version_total_increase),
+                "max_missing_signal_total_increase": int(args.max_missing_signal_total_increase),
+                "max_stale_minutes_increase": float(args.max_stale_minutes_increase),
             },
         },
     }
@@ -340,8 +463,9 @@ def main() -> int:
     print(f"prediction_total={_safe_int(summary.get('prediction_total'), 0)}")
     print(f"low_confidence_total={_safe_int(summary.get('low_confidence_total'), 0)}")
     print(f"low_confidence_unrouted_total={_safe_int(summary.get('low_confidence_unrouted_total'), 0)}")
+    print(f"gate_pass={str(report['gate']['pass']).lower()}")
 
-    if args.gate and failures:
+    if args.gate and (failures or baseline_failures):
         return 2
     return 0
 
