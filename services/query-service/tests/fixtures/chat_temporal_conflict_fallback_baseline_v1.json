@@ -1,0 +1,69 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "events_jsonl": "var/chat_policy/temporal_conflict_events.jsonl",
+  "source": {
+    "events_jsonl": "var/chat_policy/temporal_conflict_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": null
+  },
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "temporal_conflict_total": 0,
+    "fallback_expected_total": 0,
+    "safe_fallback_total": 0,
+    "fallback_coverage_ratio": 1.0,
+    "unsafe_resolution_total": 0,
+    "missing_followup_prompt_total": 0,
+    "missing_official_source_link_total": 0,
+    "missing_reason_code_total": 0,
+    "p95_fallback_latency_ms": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "event_total": 0,
+      "temporal_conflict_total": 0,
+      "fallback_expected_total": 0,
+      "safe_fallback_total": 0,
+      "fallback_coverage_ratio": 1.0,
+      "unsafe_resolution_total": 0,
+      "missing_followup_prompt_total": 0,
+      "missing_official_source_link_total": 0,
+      "missing_reason_code_total": 0,
+      "p95_fallback_latency_ms": 0.0,
+      "latest_event_time": null,
+      "stale_minutes": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_temporal_conflict_total": 0,
+      "min_fallback_coverage_ratio": 0.0,
+      "max_unsafe_resolution_total": 1000000,
+      "max_missing_followup_prompt_total": 1000000,
+      "max_missing_official_source_link_total": 1000000,
+      "max_missing_reason_code_total": 1000000,
+      "max_p95_fallback_latency_ms": 1000000.0,
+      "max_stale_minutes": 1000000.0,
+      "max_temporal_conflict_total_drop": 10,
+      "max_fallback_expected_total_drop": 10,
+      "max_safe_fallback_total_drop": 10,
+      "max_fallback_coverage_ratio_drop": 0.05,
+      "max_unsafe_resolution_total_increase": 0,
+      "max_missing_followup_prompt_total_increase": 0,
+      "max_missing_official_source_link_total_increase": 0,
+      "max_missing_reason_code_total_increase": 0,
+      "max_p95_fallback_latency_ms_increase": 100.0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

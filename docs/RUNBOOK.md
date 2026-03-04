@@ -3915,6 +3915,7 @@ python scripts/eval/chat_temporal_metadata_model.py \
   --max-invalid-window-total 0 \
   --max-overlap-conflict-total 0 \
   --max-stale-hours 24 \
+  --baseline-report services/query-service/tests/fixtures/chat_temporal_metadata_model_baseline_v1.json \
   --gate
 ```
 - 산출물:
@@ -3923,6 +3924,15 @@ python scripts/eval/chat_temporal_metadata_model.py \
   - timezone 분포 및 최신성(stale hours)
 - CI 옵션:
   - `RUN_CHAT_TEMPORAL_METADATA_MODEL=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TEMPORAL_META_MAX_DOC_TOTAL_DROP`
+    - `CHAT_TEMPORAL_META_MAX_MISSING_SOURCE_ID_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_META_MAX_MISSING_EFFECTIVE_FROM_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_META_MAX_MISSING_ANNOUNCED_AT_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_META_MAX_MISSING_TIMEZONE_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_META_MAX_INVALID_WINDOW_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_META_MAX_OVERLAP_CONFLICT_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_META_MAX_STALE_HOURS_INCREASE`
 
 ## Chat temporal query filtering gate (B-0380, Bundle 2)
 - 질문 시점(reference time) 파싱과 유효기간 기반 필터링 정합성을 검증:
@@ -3939,6 +3949,7 @@ python scripts/eval/chat_temporal_query_filtering.py \
   --max-conflict-unhandled-total 0 \
   --max-p95-resolve-latency-ms 500 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_temporal_query_filtering_baseline_v1.json \
   --gate
 ```
 - 산출물:
@@ -3948,6 +3959,16 @@ python scripts/eval/chat_temporal_query_filtering.py \
   - 기준시각 해석 p95 latency
 - CI 옵션:
   - `RUN_CHAT_TEMPORAL_QUERY_FILTERING=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TEMPORAL_QUERY_MAX_REQUEST_TOTAL_DROP`
+    - `CHAT_TEMPORAL_QUERY_MAX_MATCHED_REQUEST_TOTAL_DROP`
+    - `CHAT_TEMPORAL_QUERY_MAX_MATCH_OR_SAFE_RATIO_DROP`
+    - `CHAT_TEMPORAL_QUERY_MAX_PARSE_ERROR_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_QUERY_MAX_MISSING_REFERENCE_TIME_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_QUERY_MAX_INVALID_MATCH_REQUEST_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_QUERY_MAX_CONFLICT_UNHANDLED_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_QUERY_MAX_P95_RESOLVE_LATENCY_MS_INCREASE`
+    - `CHAT_TEMPORAL_QUERY_MAX_STALE_MINUTES_INCREASE`
 
 ## Chat temporal answer rendering gate (B-0380, Bundle 3)
 - 최종 답변의 시점/버전 투명성과 불명확 질의 후속질문 처리 품질을 검증:
@@ -3966,6 +3987,7 @@ python scripts/eval/chat_temporal_answer_rendering.py \
   --max-render-contract-violation-total 0 \
   --max-p95-render-latency-ms 800 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_temporal_answer_rendering_baseline_v1.json \
   --gate
 ```
 - 산출물:
@@ -3975,6 +3997,19 @@ python scripts/eval/chat_temporal_answer_rendering.py \
   - answer rendering p95 latency
 - CI 옵션:
   - `RUN_CHAT_TEMPORAL_ANSWER_RENDERING=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TEMPORAL_ANSWER_MAX_ANSWER_TOTAL_DROP`
+    - `CHAT_TEMPORAL_ANSWER_MAX_WITH_EFFECTIVE_DATE_TOTAL_DROP`
+    - `CHAT_TEMPORAL_ANSWER_MAX_WITH_POLICY_VERSION_TOTAL_DROP`
+    - `CHAT_TEMPORAL_ANSWER_MAX_EFFECTIVE_DATE_RATIO_DROP`
+    - `CHAT_TEMPORAL_ANSWER_MAX_POLICY_VERSION_RATIO_DROP`
+    - `CHAT_TEMPORAL_ANSWER_MAX_AMBIGUOUS_FOLLOWUP_RATIO_DROP`
+    - `CHAT_TEMPORAL_ANSWER_MAX_MISSING_REFERENCE_DATE_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_ANSWER_MAX_AMBIGUOUS_DIRECT_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_ANSWER_MAX_MISSING_OFFICIAL_SOURCE_LINK_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_ANSWER_MAX_RENDER_CONTRACT_VIOLATION_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_ANSWER_MAX_P95_RENDER_LATENCY_MS_INCREASE`
+    - `CHAT_TEMPORAL_ANSWER_MAX_STALE_MINUTES_INCREASE`
 
 ## Chat temporal conflict fallback gate (B-0380, Bundle 4)
 - 시점 충돌/해결 불가 상황에서 안전 fallback, follow-up, 공식 출처 안내 준수 여부를 검증:
@@ -3991,6 +4026,7 @@ python scripts/eval/chat_temporal_conflict_fallback.py \
   --max-missing-reason-code-total 0 \
   --max-p95-fallback-latency-ms 1000 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_temporal_conflict_fallback_baseline_v1.json \
   --gate
 ```
 - 산출물:
@@ -4000,6 +4036,17 @@ python scripts/eval/chat_temporal_conflict_fallback.py \
   - fallback 처리 p95 latency
 - CI 옵션:
   - `RUN_CHAT_TEMPORAL_CONFLICT_FALLBACK=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_TEMPORAL_CONFLICT_MAX_TEMPORAL_CONFLICT_TOTAL_DROP`
+    - `CHAT_TEMPORAL_CONFLICT_MAX_FALLBACK_EXPECTED_TOTAL_DROP`
+    - `CHAT_TEMPORAL_CONFLICT_MAX_SAFE_FALLBACK_TOTAL_DROP`
+    - `CHAT_TEMPORAL_CONFLICT_MAX_FALLBACK_COVERAGE_RATIO_DROP`
+    - `CHAT_TEMPORAL_CONFLICT_MAX_UNSAFE_RESOLUTION_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_CONFLICT_MAX_MISSING_FOLLOWUP_PROMPT_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_CONFLICT_MAX_MISSING_OFFICIAL_SOURCE_LINK_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_CONFLICT_MAX_MISSING_REASON_CODE_TOTAL_INCREASE`
+    - `CHAT_TEMPORAL_CONFLICT_MAX_P95_FALLBACK_LATENCY_MS_INCREASE`
+    - `CHAT_TEMPORAL_CONFLICT_MAX_STALE_MINUTES_INCREASE`
 
 ## Chat correction memory schema gate (B-0381, Bundle 1)
 - 운영자 승인 교정 메모리 레코드의 필수 필드/스코프/활성 상태 정합성을 검증:

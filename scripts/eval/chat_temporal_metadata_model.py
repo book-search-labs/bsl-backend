@@ -24,6 +24,16 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    if not isinstance(payload, Mapping):
+        return {}
+    return {str(k): v for k, v in payload.items()}
+
+
 def _parse_ts(value: Any) -> datetime | None:
     text = str(value or "").strip()
     if not text:
@@ -212,6 +222,64 @@ def evaluate_gate(
     return failures
 
 
+def compare_with_baseline(
+    baseline_report: Mapping[str, Any],
+    current_summary: Mapping[str, Any],
+    *,
+    max_doc_total_drop: int,
+    max_missing_source_id_total_increase: int,
+    max_missing_effective_from_total_increase: int,
+    max_missing_announced_at_total_increase: int,
+    max_missing_timezone_total_increase: int,
+    max_invalid_window_total_increase: int,
+    max_overlap_conflict_total_increase: int,
+    max_stale_hours_increase: float,
+) -> list[str]:
+    failures: list[str] = []
+    base_derived = baseline_report.get("derived") if isinstance(baseline_report.get("derived"), Mapping) else {}
+    base_summary = base_derived.get("summary") if isinstance(base_derived.get("summary"), Mapping) else {}
+    if not base_summary and isinstance(baseline_report.get("summary"), Mapping):
+        base_summary = baseline_report.get("summary")  # type: ignore[assignment]
+
+    base_doc_total = _safe_int(base_summary.get("doc_total"), 0)
+    cur_doc_total = _safe_int(current_summary.get("doc_total"), 0)
+    doc_total_drop = max(0, base_doc_total - cur_doc_total)
+    if doc_total_drop > max(0, int(max_doc_total_drop)):
+        failures.append(
+            f"doc_total regression: baseline={base_doc_total}, current={cur_doc_total}, "
+            f"allowed_drop={max(0, int(max_doc_total_drop))}"
+        )
+
+    baseline_increase_pairs = [
+        ("missing_source_id_total", max_missing_source_id_total_increase),
+        ("missing_effective_from_total", max_missing_effective_from_total_increase),
+        ("missing_announced_at_total", max_missing_announced_at_total_increase),
+        ("missing_timezone_total", max_missing_timezone_total_increase),
+        ("invalid_window_total", max_invalid_window_total_increase),
+        ("overlap_conflict_total", max_overlap_conflict_total_increase),
+    ]
+    for key, allowed_increase in baseline_increase_pairs:
+        base_value = _safe_int(base_summary.get(key), 0)
+        cur_value = _safe_int(current_summary.get(key), 0)
+        increase = max(0, cur_value - base_value)
+        if increase > max(0, int(allowed_increase)):
+            failures.append(
+                f"{key} regression: baseline={base_value}, current={cur_value}, "
+                f"allowed_increase={max(0, int(allowed_increase))}"
+            )
+
+    base_stale_hours = _safe_float(base_summary.get("stale_hours"), 0.0)
+    cur_stale_hours = _safe_float(current_summary.get("stale_hours"), 0.0)
+    stale_hours_increase = max(0.0, cur_stale_hours - base_stale_hours)
+    if stale_hours_increase > max(0.0, float(max_stale_hours_increase)):
+        failures.append(
+            "stale hours regression: "
+            f"baseline={base_stale_hours:.6f}, current={cur_stale_hours:.6f}, "
+            f"allowed_increase={float(max_stale_hours_increase):.6f}"
+        )
+    return failures
+
+
 def render_markdown(payload: Mapping[str, Any]) -> str:
     summary = payload.get("summary") if isinstance(payload.get("summary"), Mapping) else {}
     gate = payload.get("gate") if isinstance(payload.get("gate"), Mapping) else {}
@@ -230,10 +298,14 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     lines.append(f"- enabled: {str(bool(gate.get('enabled'))).lower()}")
     lines.append(f"- pass: {str(bool(gate.get('pass'))).lower()}")
     failures = gate.get("failures") if isinstance(gate.get("failures"), list) else []
+    baseline_failures = gate.get("baseline_failures") if isinstance(gate.get("baseline_failures"), list) else []
     if failures:
         for failure in failures:
             lines.append(f"- failure: {failure}")
-    else:
+    if baseline_failures:
+        for failure in baseline_failures:
+            lines.append(f"- baseline_failure: {failure}")
+    if not failures and not baseline_failures:
         lines.append("- failure: (none)")
     return "\n".join(lines)
 
@@ -254,6 +326,15 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-invalid-window-total", type=int, default=0)
     parser.add_argument("--max-overlap-conflict-total", type=int, default=0)
     parser.add_argument("--max-stale-hours", type=float, default=24.0)
+    parser.add_argument("--baseline-report", default="")
+    parser.add_argument("--max-doc-total-drop", type=int, default=10)
+    parser.add_argument("--max-missing-source-id-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-effective-from-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-announced-at-total-increase", type=int, default=0)
+    parser.add_argument("--max-missing-timezone-total-increase", type=int, default=0)
+    parser.add_argument("--max-invalid-window-total-increase", type=int, default=0)
+    parser.add_argument("--max-overlap-conflict-total-increase", type=int, default=0)
+    parser.add_argument("--max-stale-hours-increase", type=float, default=24.0)
     parser.add_argument("--gate", action="store_true")
     return parser.parse_args()
 
@@ -278,15 +359,40 @@ def main() -> int:
         max_overlap_conflict_total=max(0, int(args.max_overlap_conflict_total)),
         max_stale_hours=max(0.0, float(args.max_stale_hours)),
     )
+    baseline_failures: list[str] = []
+    if args.baseline_report:
+        baseline_payload = load_json(Path(args.baseline_report))
+        baseline_failures = compare_with_baseline(
+            baseline_payload,
+            summary,
+            max_doc_total_drop=max(0, int(args.max_doc_total_drop)),
+            max_missing_source_id_total_increase=max(0, int(args.max_missing_source_id_total_increase)),
+            max_missing_effective_from_total_increase=max(0, int(args.max_missing_effective_from_total_increase)),
+            max_missing_announced_at_total_increase=max(0, int(args.max_missing_announced_at_total_increase)),
+            max_missing_timezone_total_increase=max(0, int(args.max_missing_timezone_total_increase)),
+            max_invalid_window_total_increase=max(0, int(args.max_invalid_window_total_increase)),
+            max_overlap_conflict_total_increase=max(0, int(args.max_overlap_conflict_total_increase)),
+            max_stale_hours_increase=max(0.0, float(args.max_stale_hours_increase)),
+        )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "events_jsonl": str(args.events_jsonl),
+        "source": {
+            "events_jsonl": str(args.events_jsonl),
+            "window_hours": int(args.window_hours),
+            "limit": int(args.limit),
+            "baseline_report": str(args.baseline_report) if args.baseline_report else None,
+        },
         "summary": summary,
+        "derived": {
+            "summary": summary,
+        },
         "gate": {
             "enabled": bool(args.gate),
-            "pass": len(failures) == 0,
+            "pass": len(failures) == 0 and len(baseline_failures) == 0,
             "failures": failures,
+            "baseline_failures": baseline_failures,
             "thresholds": {
                 "min_window": int(args.min_window),
                 "min_doc_total": int(args.min_doc_total),
@@ -297,6 +403,14 @@ def main() -> int:
                 "max_invalid_window_total": int(args.max_invalid_window_total),
                 "max_overlap_conflict_total": int(args.max_overlap_conflict_total),
                 "max_stale_hours": float(args.max_stale_hours),
+                "max_doc_total_drop": int(args.max_doc_total_drop),
+                "max_missing_source_id_total_increase": int(args.max_missing_source_id_total_increase),
+                "max_missing_effective_from_total_increase": int(args.max_missing_effective_from_total_increase),
+                "max_missing_announced_at_total_increase": int(args.max_missing_announced_at_total_increase),
+                "max_missing_timezone_total_increase": int(args.max_missing_timezone_total_increase),
+                "max_invalid_window_total_increase": int(args.max_invalid_window_total_increase),
+                "max_overlap_conflict_total_increase": int(args.max_overlap_conflict_total_increase),
+                "max_stale_hours_increase": float(args.max_stale_hours_increase),
             },
         },
     }
@@ -314,8 +428,12 @@ def main() -> int:
     print(f"doc_total={_safe_int(summary.get('doc_total'), 0)}")
     print(f"invalid_window_total={_safe_int(summary.get('invalid_window_total'), 0)}")
     print(f"overlap_conflict_total={_safe_int(summary.get('overlap_conflict_total'), 0)}")
+    print(f"gate_pass={str(payload['gate']['pass']).lower()}")
+    if baseline_failures:
+        for failure in baseline_failures:
+            print(f"baseline_failure={failure}")
 
-    if args.gate and failures:
+    if args.gate and (failures or baseline_failures):
         return 2
     return 0
 

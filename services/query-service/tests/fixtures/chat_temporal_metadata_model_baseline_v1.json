@@ -1,0 +1,65 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "events_jsonl": "var/chat_policy/temporal_meta.jsonl",
+  "source": {
+    "events_jsonl": "var/chat_policy/temporal_meta.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": null
+  },
+  "summary": {
+    "window_size": 0,
+    "doc_total": 0,
+    "missing_source_id_total": 0,
+    "missing_effective_from_total": 0,
+    "missing_announced_at_total": 0,
+    "missing_timezone_total": 0,
+    "invalid_window_total": 0,
+    "open_ended_total": 0,
+    "overlap_conflict_total": 0,
+    "timezone_distribution": [],
+    "latest_event_time": null,
+    "stale_hours": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "doc_total": 0,
+      "missing_source_id_total": 0,
+      "missing_effective_from_total": 0,
+      "missing_announced_at_total": 0,
+      "missing_timezone_total": 0,
+      "invalid_window_total": 0,
+      "open_ended_total": 0,
+      "overlap_conflict_total": 0,
+      "timezone_distribution": [],
+      "latest_event_time": null,
+      "stale_hours": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_doc_total": 0,
+      "max_missing_source_id_total": 1000000,
+      "max_missing_effective_from_total": 1000000,
+      "max_missing_announced_at_total": 1000000,
+      "max_missing_timezone_total": 1000000,
+      "max_invalid_window_total": 1000000,
+      "max_overlap_conflict_total": 1000000,
+      "max_stale_hours": 1000000.0,
+      "max_doc_total_drop": 10,
+      "max_missing_source_id_total_increase": 0,
+      "max_missing_effective_from_total_increase": 0,
+      "max_missing_announced_at_total_increase": 0,
+      "max_missing_timezone_total_increase": 0,
+      "max_invalid_window_total_increase": 0,
+      "max_overlap_conflict_total_increase": 0,
+      "max_stale_hours_increase": 24.0
+    }
+  }
+}

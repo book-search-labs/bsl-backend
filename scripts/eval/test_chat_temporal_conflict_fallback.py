@@ -114,3 +114,56 @@ def test_evaluate_gate_allows_empty_when_minimums_are_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_temporal_conflict_fallback_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "temporal_conflict_total": 30,
+            "fallback_expected_total": 30,
+            "safe_fallback_total": 30,
+            "fallback_coverage_ratio": 1.0,
+            "unsafe_resolution_total": 0,
+            "missing_followup_prompt_total": 0,
+            "missing_official_source_link_total": 0,
+            "missing_reason_code_total": 0,
+            "p95_fallback_latency_ms": 120.0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "temporal_conflict_total": 1,
+            "fallback_expected_total": 1,
+            "safe_fallback_total": 0,
+            "fallback_coverage_ratio": 0.1,
+            "unsafe_resolution_total": 2,
+            "missing_followup_prompt_total": 2,
+            "missing_official_source_link_total": 2,
+            "missing_reason_code_total": 2,
+            "p95_fallback_latency_ms": 600.0,
+            "stale_minutes": 80.0,
+        },
+        max_temporal_conflict_total_drop=1,
+        max_fallback_expected_total_drop=1,
+        max_safe_fallback_total_drop=1,
+        max_fallback_coverage_ratio_drop=0.05,
+        max_unsafe_resolution_total_increase=0,
+        max_missing_followup_prompt_total_increase=0,
+        max_missing_official_source_link_total_increase=0,
+        max_missing_reason_code_total_increase=0,
+        max_p95_fallback_latency_ms_increase=100.0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("temporal_conflict_total regression" in item for item in failures)
+    assert any("fallback_expected_total regression" in item for item in failures)
+    assert any("safe_fallback_total regression" in item for item in failures)
+    assert any("fallback_coverage_ratio regression" in item for item in failures)
+    assert any("unsafe_resolution_total regression" in item for item in failures)
+    assert any("missing_followup_prompt_total regression" in item for item in failures)
+    assert any("missing_official_source_link_total regression" in item for item in failures)
+    assert any("missing_reason_code_total regression" in item for item in failures)
+    assert any("p95_fallback_latency_ms regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

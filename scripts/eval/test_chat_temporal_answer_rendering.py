@@ -123,3 +123,64 @@ def test_evaluate_gate_allows_empty_when_minimums_are_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_temporal_answer_rendering_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "answer_total": 30,
+            "with_effective_date_total": 30,
+            "with_policy_version_total": 30,
+            "effective_date_ratio": 1.0,
+            "policy_version_ratio": 1.0,
+            "ambiguous_followup_ratio": 1.0,
+            "missing_reference_date_total": 0,
+            "ambiguous_direct_answer_total": 0,
+            "missing_official_source_link_total": 0,
+            "render_contract_violation_total": 0,
+            "p95_render_latency_ms": 120.0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "answer_total": 1,
+            "with_effective_date_total": 1,
+            "with_policy_version_total": 1,
+            "effective_date_ratio": 0.1,
+            "policy_version_ratio": 0.1,
+            "ambiguous_followup_ratio": 0.1,
+            "missing_reference_date_total": 2,
+            "ambiguous_direct_answer_total": 2,
+            "missing_official_source_link_total": 2,
+            "render_contract_violation_total": 2,
+            "p95_render_latency_ms": 600.0,
+            "stale_minutes": 80.0,
+        },
+        max_answer_total_drop=1,
+        max_with_effective_date_total_drop=1,
+        max_with_policy_version_total_drop=1,
+        max_effective_date_ratio_drop=0.05,
+        max_policy_version_ratio_drop=0.05,
+        max_ambiguous_followup_ratio_drop=0.05,
+        max_missing_reference_date_total_increase=0,
+        max_ambiguous_direct_answer_total_increase=0,
+        max_missing_official_source_link_total_increase=0,
+        max_render_contract_violation_total_increase=0,
+        max_p95_render_latency_ms_increase=100.0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("answer_total regression" in item for item in failures)
+    assert any("with_effective_date_total regression" in item for item in failures)
+    assert any("with_policy_version_total regression" in item for item in failures)
+    assert any("effective_date_ratio regression" in item for item in failures)
+    assert any("policy_version_ratio regression" in item for item in failures)
+    assert any("ambiguous_followup_ratio regression" in item for item in failures)
+    assert any("missing_reference_date_total regression" in item for item in failures)
+    assert any("ambiguous_direct_answer_total regression" in item for item in failures)
+    assert any("missing_official_source_link_total regression" in item for item in failures)
+    assert any("render_contract_violation_total regression" in item for item in failures)
+    assert any("p95_render_latency_ms regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

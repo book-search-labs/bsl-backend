@@ -131,3 +131,52 @@ def test_evaluate_gate_allows_empty_when_minimums_are_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_temporal_query_filtering_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "request_total": 30,
+            "matched_request_total": 28,
+            "match_or_safe_ratio": 0.95,
+            "parse_error_total": 0,
+            "missing_reference_time_total": 0,
+            "invalid_match_request_total": 0,
+            "conflict_unhandled_total": 0,
+            "p95_resolve_latency_ms": 120.0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "request_total": 1,
+            "matched_request_total": 0,
+            "match_or_safe_ratio": 0.1,
+            "parse_error_total": 2,
+            "missing_reference_time_total": 2,
+            "invalid_match_request_total": 2,
+            "conflict_unhandled_total": 1,
+            "p95_resolve_latency_ms": 600.0,
+            "stale_minutes": 80.0,
+        },
+        max_request_total_drop=1,
+        max_matched_request_total_drop=1,
+        max_match_or_safe_ratio_drop=0.05,
+        max_parse_error_total_increase=0,
+        max_missing_reference_time_total_increase=0,
+        max_invalid_match_request_total_increase=0,
+        max_conflict_unhandled_total_increase=0,
+        max_p95_resolve_latency_ms_increase=100.0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("request_total regression" in item for item in failures)
+    assert any("matched_request_total regression" in item for item in failures)
+    assert any("match_or_safe_ratio regression" in item for item in failures)
+    assert any("parse_error_total regression" in item for item in failures)
+    assert any("missing_reference_time_total regression" in item for item in failures)
+    assert any("invalid_match_request_total regression" in item for item in failures)
+    assert any("conflict_unhandled_total regression" in item for item in failures)
+    assert any("p95_resolve_latency_ms regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

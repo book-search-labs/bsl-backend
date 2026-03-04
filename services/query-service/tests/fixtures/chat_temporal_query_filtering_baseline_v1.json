@@ -1,0 +1,80 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "events_jsonl": "var/chat_policy/temporal_resolution_audit.jsonl",
+  "source": {
+    "events_jsonl": "var/chat_policy/temporal_resolution_audit.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": null
+  },
+  "summary": {
+    "window_size": 0,
+    "request_total": 0,
+    "parse_error_total": 0,
+    "relative_reference_total": 0,
+    "explicit_reference_total": 0,
+    "missing_reference_time_total": 0,
+    "missing_reference_timezone_total": 0,
+    "matched_request_total": 0,
+    "zero_match_total": 0,
+    "match_or_safe_ratio": 1.0,
+    "invalid_match_request_total": 0,
+    "invalid_match_doc_total": 0,
+    "conflict_total": 0,
+    "conflict_unhandled_total": 0,
+    "disambiguation_total": 0,
+    "safe_abstention_total": 0,
+    "p95_resolve_latency_ms": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "request_total": 0,
+      "parse_error_total": 0,
+      "relative_reference_total": 0,
+      "explicit_reference_total": 0,
+      "missing_reference_time_total": 0,
+      "missing_reference_timezone_total": 0,
+      "matched_request_total": 0,
+      "zero_match_total": 0,
+      "match_or_safe_ratio": 1.0,
+      "invalid_match_request_total": 0,
+      "invalid_match_doc_total": 0,
+      "conflict_total": 0,
+      "conflict_unhandled_total": 0,
+      "disambiguation_total": 0,
+      "safe_abstention_total": 0,
+      "p95_resolve_latency_ms": 0.0,
+      "latest_event_time": null,
+      "stale_minutes": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_request_total": 0,
+      "min_match_or_safe_ratio": 0.0,
+      "max_parse_error_total": 1000000,
+      "max_missing_reference_time_total": 1000000,
+      "max_invalid_match_request_total": 1000000,
+      "max_conflict_unhandled_total": 1000000,
+      "max_p95_resolve_latency_ms": 1000000.0,
+      "max_stale_minutes": 1000000.0,
+      "max_request_total_drop": 10,
+      "max_matched_request_total_drop": 10,
+      "max_match_or_safe_ratio_drop": 0.05,
+      "max_parse_error_total_increase": 0,
+      "max_missing_reference_time_total_increase": 0,
+      "max_invalid_match_request_total_increase": 0,
+      "max_conflict_unhandled_total_increase": 0,
+      "max_p95_resolve_latency_ms_increase": 100.0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

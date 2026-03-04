@@ -117,3 +117,48 @@ def test_evaluate_gate_allows_empty_when_minimums_are_zero():
         max_stale_hours=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_temporal_metadata_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "doc_total": 20,
+            "missing_source_id_total": 0,
+            "missing_effective_from_total": 0,
+            "missing_announced_at_total": 0,
+            "missing_timezone_total": 0,
+            "invalid_window_total": 0,
+            "overlap_conflict_total": 0,
+            "stale_hours": 2.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "doc_total": 1,
+            "missing_source_id_total": 1,
+            "missing_effective_from_total": 1,
+            "missing_announced_at_total": 1,
+            "missing_timezone_total": 1,
+            "invalid_window_total": 1,
+            "overlap_conflict_total": 1,
+            "stale_hours": 30.0,
+        },
+        max_doc_total_drop=1,
+        max_missing_source_id_total_increase=0,
+        max_missing_effective_from_total_increase=0,
+        max_missing_announced_at_total_increase=0,
+        max_missing_timezone_total_increase=0,
+        max_invalid_window_total_increase=0,
+        max_overlap_conflict_total_increase=0,
+        max_stale_hours_increase=12.0,
+    )
+    assert any("doc_total regression" in item for item in failures)
+    assert any("missing_source_id_total regression" in item for item in failures)
+    assert any("missing_effective_from_total regression" in item for item in failures)
+    assert any("missing_announced_at_total regression" in item for item in failures)
+    assert any("missing_timezone_total regression" in item for item in failures)
+    assert any("invalid_window_total regression" in item for item in failures)
+    assert any("overlap_conflict_total regression" in item for item in failures)
+    assert any("stale hours regression" in item for item in failures)

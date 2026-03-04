@@ -107,3 +107,21 @@ Add temporal reasoning to policy answers:
   - `scripts/eval/test_chat_temporal_conflict_fallback.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_TEMPORAL_CONFLICT_FALLBACK=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Baseline drift governance 추가 (temporal 4종 공통)
+  - `scripts/eval/chat_temporal_metadata_model.py`
+  - `scripts/eval/chat_temporal_query_filtering.py`
+  - `scripts/eval/chat_temporal_answer_rendering.py`
+  - `scripts/eval/chat_temporal_conflict_fallback.py`
+  - `--baseline-report` + `compare_with_baseline(...)` + `gate.baseline_failures` + `source/derived.summary` + `gate_pass` 출력 반영
+- [x] baseline 회귀 테스트 추가
+  - `scripts/eval/test_chat_temporal_metadata_model.py`
+  - `scripts/eval/test_chat_temporal_query_filtering.py`
+  - `scripts/eval/test_chat_temporal_answer_rendering.py`
+  - `scripts/eval/test_chat_temporal_conflict_fallback.py`
+- [x] CI baseline wiring + drift env 확장
+  - `scripts/test.sh` (step 96~99)
+  - baseline fixture 자동 연결 + `*_DROP`, `*_INCREASE` env 반영
+- [x] 운영 문서 업데이트
+  - `docs/RUNBOOK.md` B-0380 섹션에 baseline 실행 예시/CI drift env 추가
