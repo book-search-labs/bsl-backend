@@ -1,0 +1,70 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "events_jsonl": "var/chat_correction/correction_quality_events.jsonl",
+  "source": {
+    "events_jsonl": "var/chat_correction/correction_quality_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": null
+  },
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "correction_applied_total": 0,
+    "overapply_total": 0,
+    "precision_gate_fail_total": 0,
+    "false_positive_report_total": 0,
+    "false_positive_open_total": 0,
+    "emergency_block_total": 0,
+    "rollback_total": 0,
+    "rollback_sla_breach_total": 0,
+    "missing_audit_total": 0,
+    "p95_report_to_rollback_minutes": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "event_total": 0,
+      "correction_applied_total": 0,
+      "overapply_total": 0,
+      "precision_gate_fail_total": 0,
+      "false_positive_report_total": 0,
+      "false_positive_open_total": 0,
+      "emergency_block_total": 0,
+      "rollback_total": 0,
+      "rollback_sla_breach_total": 0,
+      "missing_audit_total": 0,
+      "p95_report_to_rollback_minutes": 0.0,
+      "latest_event_time": null,
+      "stale_minutes": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_event_total": 0,
+      "max_overapply_total": 1000000,
+      "max_precision_gate_fail_total": 1000000,
+      "max_false_positive_open_total": 1000000,
+      "max_rollback_sla_breach_total": 1000000,
+      "max_missing_audit_total": 1000000,
+      "max_p95_report_to_rollback_minutes": 1000000.0,
+      "max_stale_minutes": 1000000.0,
+      "max_event_total_drop": 10,
+      "max_correction_applied_total_drop": 10,
+      "max_overapply_total_increase": 0,
+      "max_precision_gate_fail_total_increase": 0,
+      "max_false_positive_open_total_increase": 0,
+      "max_rollback_sla_breach_total_increase": 0,
+      "max_missing_audit_total_increase": 0,
+      "max_p95_report_to_rollback_minutes_increase": 30.0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

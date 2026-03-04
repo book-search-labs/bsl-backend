@@ -110,3 +110,52 @@ def test_evaluate_gate_allows_empty_when_minimums_are_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_correction_retrieval_integration_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "request_total": 30,
+            "correction_hit_total": 24,
+            "hit_ratio": 0.80,
+            "stale_hit_total": 0,
+            "precedence_violation_total": 0,
+            "policy_conflict_unhandled_total": 0,
+            "missing_reason_code_total": 0,
+            "p95_retrieval_latency_ms": 200.0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "request_total": 1,
+            "correction_hit_total": 1,
+            "hit_ratio": 0.10,
+            "stale_hit_total": 2,
+            "precedence_violation_total": 2,
+            "policy_conflict_unhandled_total": 1,
+            "missing_reason_code_total": 1,
+            "p95_retrieval_latency_ms": 1200.0,
+            "stale_minutes": 90.0,
+        },
+        max_request_total_drop=1,
+        max_correction_hit_total_drop=1,
+        max_hit_ratio_drop=0.05,
+        max_stale_hit_total_increase=0,
+        max_precedence_violation_total_increase=0,
+        max_policy_conflict_unhandled_total_increase=0,
+        max_missing_reason_code_total_increase=0,
+        max_p95_retrieval_latency_ms_increase=100.0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("request_total regression" in item for item in failures)
+    assert any("correction_hit_total regression" in item for item in failures)
+    assert any("hit_ratio regression" in item for item in failures)
+    assert any("stale_hit_total regression" in item for item in failures)
+    assert any("precedence_violation_total regression" in item for item in failures)
+    assert any("policy_conflict_unhandled_total regression" in item for item in failures)
+    assert any("missing_reason_code_total regression" in item for item in failures)
+    assert any("p95_retrieval_latency_ms regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

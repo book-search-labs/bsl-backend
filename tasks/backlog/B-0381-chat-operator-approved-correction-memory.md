@@ -91,3 +91,27 @@ Implement approved correction memory for chat:
   - `scripts/eval/test_chat_correction_quality_safeguards.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_CORRECTION_QUALITY_SAFEGUARDS=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Baseline drift governance 추가 (4개 gate 공통)
+  - `scripts/eval/chat_correction_memory_schema.py`
+  - `scripts/eval/chat_correction_approval_workflow.py`
+  - `scripts/eval/chat_correction_retrieval_integration.py`
+  - `scripts/eval/chat_correction_quality_safeguards.py`
+  - `--baseline-report` 입력 + `compare_with_baseline(...)` + `gate.baseline_failures` + `gate_pass` 출력
+  - payload 공통 필드(`source`, `derived.summary`) 추가
+- [x] 단위 테스트 확장 (baseline regression)
+  - `scripts/eval/test_chat_correction_memory_schema.py`
+  - `scripts/eval/test_chat_correction_approval_workflow.py`
+  - `scripts/eval/test_chat_correction_retrieval_integration.py`
+  - `scripts/eval/test_chat_correction_quality_safeguards.py`
+- [x] CI baseline 옵션/드리프트 env 연동
+  - `scripts/test.sh`
+  - baseline fixture 경로 자동 연결 + `*_DROP`/`*_INCREASE` env 추가
+- [x] baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_correction_memory_schema_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_correction_approval_workflow_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_correction_retrieval_integration_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_correction_quality_safeguards_baseline_v1.json`
+- [x] 운영 문서 갱신
+  - `docs/RUNBOOK.md` (B-0381 Bundle 1~4 baseline 실행 예시 + drift env 명시)

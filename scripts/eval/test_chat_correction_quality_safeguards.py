@@ -116,3 +116,52 @@ def test_evaluate_gate_allows_empty_when_minimums_are_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_correction_quality_safeguards_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "event_total": 30,
+            "correction_applied_total": 20,
+            "overapply_total": 0,
+            "precision_gate_fail_total": 0,
+            "false_positive_open_total": 0,
+            "rollback_sla_breach_total": 0,
+            "missing_audit_total": 0,
+            "p95_report_to_rollback_minutes": 10.0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "event_total": 1,
+            "correction_applied_total": 1,
+            "overapply_total": 2,
+            "precision_gate_fail_total": 2,
+            "false_positive_open_total": 1,
+            "rollback_sla_breach_total": 1,
+            "missing_audit_total": 1,
+            "p95_report_to_rollback_minutes": 90.0,
+            "stale_minutes": 90.0,
+        },
+        max_event_total_drop=1,
+        max_correction_applied_total_drop=1,
+        max_overapply_total_increase=0,
+        max_precision_gate_fail_total_increase=0,
+        max_false_positive_open_total_increase=0,
+        max_rollback_sla_breach_total_increase=0,
+        max_missing_audit_total_increase=0,
+        max_p95_report_to_rollback_minutes_increase=30.0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("event_total regression" in item for item in failures)
+    assert any("correction_applied_total regression" in item for item in failures)
+    assert any("overapply_total regression" in item for item in failures)
+    assert any("precision_gate_fail_total regression" in item for item in failures)
+    assert any("false_positive_open_total regression" in item for item in failures)
+    assert any("rollback_sla_breach_total regression" in item for item in failures)
+    assert any("missing_audit_total regression" in item for item in failures)
+    assert any("p95_report_to_rollback_minutes regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

@@ -125,3 +125,52 @@ def test_evaluate_gate_allows_empty_when_minimums_are_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_correction_memory_schema_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "record_total": 20,
+            "active_total": 18,
+            "missing_required_total": 0,
+            "missing_scope_total": 0,
+            "invalid_approval_state_total": 0,
+            "unapproved_active_total": 0,
+            "expired_active_total": 0,
+            "duplicate_active_pattern_total": 0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "record_total": 1,
+            "active_total": 1,
+            "missing_required_total": 2,
+            "missing_scope_total": 1,
+            "invalid_approval_state_total": 1,
+            "unapproved_active_total": 1,
+            "expired_active_total": 1,
+            "duplicate_active_pattern_total": 1,
+            "stale_minutes": 90.0,
+        },
+        max_record_total_drop=1,
+        max_active_total_drop=1,
+        max_missing_required_total_increase=0,
+        max_missing_scope_total_increase=0,
+        max_invalid_approval_state_total_increase=0,
+        max_unapproved_active_total_increase=0,
+        max_expired_active_total_increase=0,
+        max_duplicate_active_pattern_total_increase=0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("record_total regression" in item for item in failures)
+    assert any("active_total regression" in item for item in failures)
+    assert any("missing_required_total regression" in item for item in failures)
+    assert any("missing_scope_total regression" in item for item in failures)
+    assert any("invalid_approval_state_total regression" in item for item in failures)
+    assert any("unapproved_active_total regression" in item for item in failures)
+    assert any("expired_active_total regression" in item for item in failures)
+    assert any("duplicate_active_pattern_total regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

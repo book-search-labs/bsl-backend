@@ -4063,6 +4063,16 @@ python scripts/eval/chat_correction_memory_schema.py \
   --max-expired-active-total 0 \
   --max-duplicate-active-pattern-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_correction_memory_schema_baseline_v1.json \
+  --max-record-total-drop 10 \
+  --max-active-total-drop 10 \
+  --max-missing-required-total-increase 0 \
+  --max-missing-scope-total-increase 0 \
+  --max-invalid-approval-state-total-increase 0 \
+  --max-unapproved-active-total-increase 0 \
+  --max-expired-active-total-increase 0 \
+  --max-duplicate-active-pattern-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -4071,6 +4081,16 @@ python scripts/eval/chat_correction_memory_schema.py \
   - active trigger 중복 패턴 건수
 - CI 옵션:
   - `RUN_CHAT_CORRECTION_MEMORY_SCHEMA=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_CORRECTION_MEMORY_SCHEMA_MAX_RECORD_TOTAL_DROP`
+    - `CHAT_CORRECTION_MEMORY_SCHEMA_MAX_ACTIVE_TOTAL_DROP`
+    - `CHAT_CORRECTION_MEMORY_SCHEMA_MAX_MISSING_REQUIRED_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_MEMORY_SCHEMA_MAX_MISSING_SCOPE_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_MEMORY_SCHEMA_MAX_INVALID_APPROVAL_STATE_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_MEMORY_SCHEMA_MAX_UNAPPROVED_ACTIVE_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_MEMORY_SCHEMA_MAX_EXPIRED_ACTIVE_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_MEMORY_SCHEMA_MAX_DUPLICATE_ACTIVE_PATTERN_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_MEMORY_SCHEMA_MAX_STALE_MINUTES_INCREASE`
 
 ## Chat correction approval workflow gate (B-0381, Bundle 2)
 - 운영자 작성→검토 승인→활성화 전이의 정합성과 지연(SLA) 위반 여부를 검증:
@@ -4088,6 +4108,18 @@ python scripts/eval/chat_correction_approval_workflow.py \
   --max-p95-approval-latency-minutes 60 \
   --max-p95-activation-latency-minutes 60 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_correction_approval_workflow_baseline_v1.json \
+  --max-correction-total-drop 10 \
+  --max-submitted-total-drop 10 \
+  --max-approved-total-drop 10 \
+  --max-activated-total-drop 10 \
+  --max-invalid-event-type-total-increase 0 \
+  --max-invalid-transition-total-increase 0 \
+  --max-missing-actor-total-increase 0 \
+  --max-missing-reviewer-total-increase 0 \
+  --max-p95-approval-latency-minutes-increase 30 \
+  --max-p95-activation-latency-minutes-increase 30 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -4096,6 +4128,18 @@ python scripts/eval/chat_correction_approval_workflow.py \
   - approval/activation p95 latency
 - CI 옵션:
   - `RUN_CHAT_CORRECTION_APPROVAL_WORKFLOW=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_CORRECTION_APPROVAL_MAX_CORRECTION_TOTAL_DROP`
+    - `CHAT_CORRECTION_APPROVAL_MAX_SUBMITTED_TOTAL_DROP`
+    - `CHAT_CORRECTION_APPROVAL_MAX_APPROVED_TOTAL_DROP`
+    - `CHAT_CORRECTION_APPROVAL_MAX_ACTIVATED_TOTAL_DROP`
+    - `CHAT_CORRECTION_APPROVAL_MAX_INVALID_EVENT_TYPE_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_APPROVAL_MAX_INVALID_TRANSITION_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_APPROVAL_MAX_MISSING_ACTOR_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_APPROVAL_MAX_MISSING_REVIEWER_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_APPROVAL_MAX_P95_APPROVAL_LATENCY_MINUTES_INCREASE`
+    - `CHAT_CORRECTION_APPROVAL_MAX_P95_ACTIVATION_LATENCY_MINUTES_INCREASE`
+    - `CHAT_CORRECTION_APPROVAL_MAX_STALE_MINUTES_INCREASE`
 
 ## Chat correction retrieval integration gate (B-0381, Bundle 3)
 - 교정 메모리 우선 적용(precedence), 정책 충돌 처리, reason_code 누락 여부를 검증:
@@ -4112,6 +4156,16 @@ python scripts/eval/chat_correction_retrieval_integration.py \
   --max-missing-reason-code-total 0 \
   --max-p95-retrieval-latency-ms 700 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_correction_retrieval_integration_baseline_v1.json \
+  --max-request-total-drop 10 \
+  --max-correction-hit-total-drop 10 \
+  --max-hit-ratio-drop 0.05 \
+  --max-stale-hit-total-increase 0 \
+  --max-precedence-violation-total-increase 0 \
+  --max-policy-conflict-unhandled-total-increase 0 \
+  --max-missing-reason-code-total-increase 0 \
+  --max-p95-retrieval-latency-ms-increase 100 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -4121,6 +4175,16 @@ python scripts/eval/chat_correction_retrieval_integration.py \
   - retrieval p95 latency
 - CI 옵션:
   - `RUN_CHAT_CORRECTION_RETRIEVAL_INTEGRATION=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_CORRECTION_RETRIEVAL_MAX_REQUEST_TOTAL_DROP`
+    - `CHAT_CORRECTION_RETRIEVAL_MAX_CORRECTION_HIT_TOTAL_DROP`
+    - `CHAT_CORRECTION_RETRIEVAL_MAX_HIT_RATIO_DROP`
+    - `CHAT_CORRECTION_RETRIEVAL_MAX_STALE_HIT_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_RETRIEVAL_MAX_PRECEDENCE_VIOLATION_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_RETRIEVAL_MAX_POLICY_CONFLICT_UNHANDLED_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_RETRIEVAL_MAX_MISSING_REASON_CODE_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_RETRIEVAL_MAX_P95_LATENCY_MS_INCREASE`
+    - `CHAT_CORRECTION_RETRIEVAL_MAX_STALE_MINUTES_INCREASE`
 
 ## Chat correction quality safeguards gate (B-0381, Bundle 4)
 - 교정 문구 과적용/오탐 신고/긴급차단/롤백 SLA 위반을 검증:
@@ -4137,6 +4201,16 @@ python scripts/eval/chat_correction_quality_safeguards.py \
   --max-missing-audit-total 0 \
   --max-p95-report-to-rollback-minutes 30 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_correction_quality_safeguards_baseline_v1.json \
+  --max-event-total-drop 10 \
+  --max-correction-applied-total-drop 10 \
+  --max-overapply-total-increase 0 \
+  --max-precision-gate-fail-total-increase 0 \
+  --max-false-positive-open-total-increase 0 \
+  --max-rollback-sla-breach-total-increase 0 \
+  --max-missing-audit-total-increase 0 \
+  --max-p95-report-to-rollback-minutes-increase 30 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -4145,6 +4219,16 @@ python scripts/eval/chat_correction_quality_safeguards.py \
   - correction 품질 이벤트 audit 누락 건수
 - CI 옵션:
   - `RUN_CHAT_CORRECTION_QUALITY_SAFEGUARDS=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_CORRECTION_QUALITY_MAX_EVENT_TOTAL_DROP`
+    - `CHAT_CORRECTION_QUALITY_MAX_CORRECTION_APPLIED_TOTAL_DROP`
+    - `CHAT_CORRECTION_QUALITY_MAX_OVERAPPLY_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_QUALITY_MAX_PRECISION_GATE_FAIL_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_QUALITY_MAX_FALSE_POSITIVE_OPEN_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_QUALITY_MAX_ROLLBACK_SLA_BREACH_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_QUALITY_MAX_MISSING_AUDIT_TOTAL_INCREASE`
+    - `CHAT_CORRECTION_QUALITY_MAX_P95_REPORT_TO_ROLLBACK_MINUTES_INCREASE`
+    - `CHAT_CORRECTION_QUALITY_MAX_STALE_MINUTES_INCREASE`
 
 ## Chat tool transaction fence model gate (B-0382, Bundle 1)
 - 다단계 tool 실행의 `prepare→validate→commit` 경계와 optimistic check 정합성을 검증:
