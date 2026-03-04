@@ -3436,6 +3436,15 @@ python scripts/eval/chat_source_conflict_detection.py \
   --max-missing-source-pair-total 0 \
   --max-missing-evidence-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_source_conflict_detection_baseline_v1.json \
+  --max-conflict-detected-total-drop 10 \
+  --max-high-conflict-total-drop 5 \
+  --max-invalid-severity-total-increase 0 \
+  --max-missing-topic-total-increase 0 \
+  --max-missing-conflict-type-total-increase 0 \
+  --max-missing-source-pair-total-increase 0 \
+  --max-missing-evidence-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -3444,6 +3453,15 @@ python scripts/eval/chat_source_conflict_detection.py \
   - detection evidence freshness
 - CI 옵션:
   - `RUN_CHAT_SOURCE_CONFLICT_DETECTION=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_SOURCE_CONFLICT_DETECTION_MAX_CONFLICT_DETECTED_TOTAL_DROP`
+    - `CHAT_SOURCE_CONFLICT_DETECTION_MAX_HIGH_CONFLICT_TOTAL_DROP`
+    - `CHAT_SOURCE_CONFLICT_DETECTION_MAX_INVALID_SEVERITY_TOTAL_INCREASE`
+    - `CHAT_SOURCE_CONFLICT_DETECTION_MAX_MISSING_TOPIC_TOTAL_INCREASE`
+    - `CHAT_SOURCE_CONFLICT_DETECTION_MAX_MISSING_TYPE_TOTAL_INCREASE`
+    - `CHAT_SOURCE_CONFLICT_DETECTION_MAX_MISSING_SOURCE_PAIR_TOTAL_INCREASE`
+    - `CHAT_SOURCE_CONFLICT_DETECTION_MAX_MISSING_EVIDENCE_TOTAL_INCREASE`
+    - `CHAT_SOURCE_CONFLICT_DETECTION_MAX_STALE_MINUTES_INCREASE`
 
 ## Source conflict resolution policy gate (B-0377, Bundle 2)
 - 고충돌 안전결정과 공식출처 우선 적용률을 배포 전에 검증:
@@ -3460,6 +3478,16 @@ python scripts/eval/chat_source_conflict_resolution_policy.py \
   --max-missing-policy-version-total 0 \
   --max-missing-reason-code-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_source_conflict_resolution_policy_baseline_v1.json \
+  --max-conflict-total-drop 10 \
+  --max-high-conflict-total-drop 5 \
+  --max-high-conflict-unsafe-total-increase 0 \
+  --max-official-preference-ratio-drop 0.05 \
+  --max-resolution-rate-drop 0.05 \
+  --max-invalid-strategy-total-increase 0 \
+  --max-missing-policy-version-total-increase 0 \
+  --max-missing-reason-code-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -3468,6 +3496,16 @@ python scripts/eval/chat_source_conflict_resolution_policy.py \
   - resolution rate, 정책 버전/reason_code 누락, freshness
 - CI 옵션:
   - `RUN_CHAT_SOURCE_CONFLICT_RESOLUTION_POLICY=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_SOURCE_CONFLICT_RESOLUTION_MAX_CONFLICT_TOTAL_DROP`
+    - `CHAT_SOURCE_CONFLICT_RESOLUTION_MAX_HIGH_CONFLICT_TOTAL_DROP`
+    - `CHAT_SOURCE_CONFLICT_RESOLUTION_MAX_HIGH_UNSAFE_TOTAL_INCREASE`
+    - `CHAT_SOURCE_CONFLICT_RESOLUTION_MAX_OFFICIAL_PREF_RATIO_DROP`
+    - `CHAT_SOURCE_CONFLICT_RESOLUTION_MAX_RESOLUTION_RATE_DROP`
+    - `CHAT_SOURCE_CONFLICT_RESOLUTION_MAX_INVALID_STRATEGY_TOTAL_INCREASE`
+    - `CHAT_SOURCE_CONFLICT_RESOLUTION_MAX_MISSING_POLICY_VERSION_TOTAL_INCREASE`
+    - `CHAT_SOURCE_CONFLICT_RESOLUTION_MAX_MISSING_REASON_CODE_TOTAL_INCREASE`
+    - `CHAT_SOURCE_CONFLICT_RESOLUTION_MAX_STALE_MINUTES_INCREASE`
 
 ## Source conflict safe abstention gate (B-0377, Bundle 3)
 - 상충 상황 사용자 안내에서 단정 답변 차단과 표준문구/출처링크 포함을 검증:
@@ -3483,6 +3521,16 @@ python scripts/eval/chat_source_conflict_safe_abstention.py \
   --max-missing-reason-code-total 0 \
   --min-message-quality-ratio 0.90 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_source_conflict_safe_abstention_baseline_v1.json \
+  --max-should-abstain-total-drop 10 \
+  --max-abstain-total-drop 10 \
+  --max-unsafe-definitive-total-increase 0 \
+  --max-abstain-compliance-ratio-drop 0.05 \
+  --max-missing-standard-phrase-total-increase 0 \
+  --max-missing-source-link-total-increase 0 \
+  --max-missing-reason-code-total-increase 0 \
+  --max-message-quality-ratio-drop 0.05 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -3491,6 +3539,16 @@ python scripts/eval/chat_source_conflict_safe_abstention.py \
   - 안내 메시지 품질 비율(message quality ratio)과 freshness
 - CI 옵션:
   - `RUN_CHAT_SOURCE_CONFLICT_SAFE_ABSTENTION=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_SOURCE_CONFLICT_SAFE_ABSTENTION_MAX_SHOULD_ABSTAIN_TOTAL_DROP`
+    - `CHAT_SOURCE_CONFLICT_SAFE_ABSTENTION_MAX_ABSTAIN_TOTAL_DROP`
+    - `CHAT_SOURCE_CONFLICT_SAFE_ABSTENTION_MAX_UNSAFE_TOTAL_INCREASE`
+    - `CHAT_SOURCE_CONFLICT_SAFE_ABSTENTION_MAX_COMPLIANCE_RATIO_DROP`
+    - `CHAT_SOURCE_CONFLICT_SAFE_ABSTENTION_MAX_MISSING_PHRASE_TOTAL_INCREASE`
+    - `CHAT_SOURCE_CONFLICT_SAFE_ABSTENTION_MAX_MISSING_SOURCE_LINK_TOTAL_INCREASE`
+    - `CHAT_SOURCE_CONFLICT_SAFE_ABSTENTION_MAX_MISSING_REASON_CODE_TOTAL_INCREASE`
+    - `CHAT_SOURCE_CONFLICT_SAFE_ABSTENTION_MAX_MESSAGE_QUALITY_RATIO_DROP`
+    - `CHAT_SOURCE_CONFLICT_SAFE_ABSTENTION_MAX_STALE_MINUTES_INCREASE`
 
 ## Source conflict operator feedback gate (B-0377, Bundle 4)
 - 상충 케이스가 운영 큐로 전달되고 처리 루프로 닫히는지 검증:
@@ -3505,6 +3563,15 @@ python scripts/eval/chat_source_conflict_operator_feedback.py \
   --max-p95-ack-latency-minutes 30 \
   --max-missing-operator-note-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_source_conflict_operator_feedback_baseline_v1.json \
+  --max-conflict-total-drop 10 \
+  --max-high-conflict-total-drop 5 \
+  --max-high-conflict-unqueued-total-increase 0 \
+  --max-high-queue-coverage-ratio-drop 0.05 \
+  --max-resolved-ratio-drop 0.05 \
+  --max-p95-ack-latency-minutes-increase 30 \
+  --max-missing-operator-note-total-increase 0 \
+  --max-stale-minutes-increase 30 \
   --gate
 ```
 - 산출물:
@@ -3513,6 +3580,15 @@ python scripts/eval/chat_source_conflict_operator_feedback.py \
   - operator note 누락 건수와 feedback freshness
 - CI 옵션:
   - `RUN_CHAT_SOURCE_CONFLICT_OPERATOR_FEEDBACK=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_SOURCE_CONFLICT_OPERATOR_FEEDBACK_MAX_CONFLICT_TOTAL_DROP`
+    - `CHAT_SOURCE_CONFLICT_OPERATOR_FEEDBACK_MAX_HIGH_TOTAL_DROP`
+    - `CHAT_SOURCE_CONFLICT_OPERATOR_FEEDBACK_MAX_HIGH_UNQUEUED_TOTAL_INCREASE`
+    - `CHAT_SOURCE_CONFLICT_OPERATOR_FEEDBACK_MAX_HIGH_QUEUE_COVERAGE_RATIO_DROP`
+    - `CHAT_SOURCE_CONFLICT_OPERATOR_FEEDBACK_MAX_RESOLVED_RATIO_DROP`
+    - `CHAT_SOURCE_CONFLICT_OPERATOR_FEEDBACK_MAX_P95_ACK_LATENCY_MINUTES_INCREASE`
+    - `CHAT_SOURCE_CONFLICT_OPERATOR_FEEDBACK_MAX_MISSING_NOTE_TOTAL_INCREASE`
+    - `CHAT_SOURCE_CONFLICT_OPERATOR_FEEDBACK_MAX_STALE_MINUTES_INCREASE`
 
 ## Replay snapshot format gate (B-0378, Bundle 1)
 - replay 스냅샷의 필수 필드(request/policy/prompt/tool I/O/budget/seed) 완전성을 검증:

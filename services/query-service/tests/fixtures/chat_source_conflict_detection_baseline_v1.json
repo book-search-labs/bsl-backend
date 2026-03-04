@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "conflicts_jsonl": "var/chat_trust/source_conflicts.jsonl",
+  "source": {
+    "conflicts_jsonl": "var/chat_trust/source_conflicts.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": null
+  },
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "conflict_detected_total": 0,
+    "high_conflict_total": 0,
+    "invalid_severity_total": 0,
+    "missing_topic_total": 0,
+    "missing_conflict_type_total": 0,
+    "missing_source_pair_total": 0,
+    "missing_evidence_total": 0,
+    "severity_distribution": [],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "event_total": 0,
+      "conflict_detected_total": 0,
+      "high_conflict_total": 0,
+      "invalid_severity_total": 0,
+      "missing_topic_total": 0,
+      "missing_conflict_type_total": 0,
+      "missing_source_pair_total": 0,
+      "missing_evidence_total": 0,
+      "severity_distribution": [],
+      "latest_event_time": null,
+      "stale_minutes": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_conflict_detected_total": 0,
+      "max-invalid-severity-total": 1000000,
+      "max-missing-topic-total": 1000000,
+      "max-missing-conflict-type-total": 1000000,
+      "max-missing-source-pair-total": 1000000,
+      "max-missing-evidence-total": 1000000,
+      "max-stale-minutes": 1000000.0,
+      "max_conflict_detected_total_drop": 10,
+      "max_high_conflict_total_drop": 5,
+      "max_invalid_severity_total_increase": 0,
+      "max_missing_topic_total_increase": 0,
+      "max_missing_conflict_type_total_increase": 0,
+      "max_missing_source_pair_total_increase": 0,
+      "max_missing_evidence_total_increase": 0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

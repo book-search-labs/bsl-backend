@@ -90,3 +90,24 @@ Implement conflict-aware chat grounding:
   - `scripts/eval/test_chat_source_conflict_operator_feedback.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_SOURCE_CONFLICT_OPERATOR_FEEDBACK=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Baseline governance 적용
+  - `scripts/eval/chat_source_conflict_detection.py`
+  - `scripts/eval/chat_source_conflict_resolution_policy.py`
+  - `scripts/eval/chat_source_conflict_safe_abstention.py`
+  - `scripts/eval/chat_source_conflict_operator_feedback.py`
+  - 공통: `--baseline-report` + drift threshold 인자 + `gate.baseline_failures` + `source/derived.summary` + `gate_pass` 출력 추가
+- [x] baseline 회귀 테스트 추가
+  - `scripts/eval/test_chat_source_conflict_detection.py`
+  - `scripts/eval/test_chat_source_conflict_resolution_policy.py`
+  - `scripts/eval/test_chat_source_conflict_safe_abstention.py`
+  - `scripts/eval/test_chat_source_conflict_operator_feedback.py`
+- [x] baseline fixture 추가
+  - `services/query-service/tests/fixtures/chat_source_conflict_detection_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_source_conflict_resolution_policy_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_source_conflict_safe_abstention_baseline_v1.json`
+  - `services/query-service/tests/fixtures/chat_source_conflict_operator_feedback_baseline_v1.json`
+- [x] CI wiring + RUNBOOK 업데이트
+  - `scripts/test.sh` 84~87단계에 baseline fixture 자동 연결 + drift env/arg 추가
+  - `docs/RUNBOOK.md` B-0377 Bundle 1~4 섹션에 baseline drift gate 인자/환경변수 반영

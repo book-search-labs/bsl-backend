@@ -1,0 +1,74 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "events_jsonl": "var/chat_trust/source_conflict_resolution_events.jsonl",
+  "source": {
+    "events_jsonl": "var/chat_trust/source_conflict_resolution_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": null
+  },
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "conflict_total": 0,
+    "high_conflict_total": 0,
+    "high_conflict_safe_total": 0,
+    "high_conflict_unsafe_total": 0,
+    "official_available_total": 0,
+    "official_preferred_total": 0,
+    "official_preference_ratio": 1.0,
+    "resolved_total": 0,
+    "resolution_rate": 1.0,
+    "invalid_strategy_total": 0,
+    "missing_policy_version_total": 0,
+    "missing_reason_code_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "event_total": 0,
+      "conflict_total": 0,
+      "high_conflict_total": 0,
+      "high_conflict_safe_total": 0,
+      "high_conflict_unsafe_total": 0,
+      "official_available_total": 0,
+      "official_preferred_total": 0,
+      "official_preference_ratio": 1.0,
+      "resolved_total": 0,
+      "resolution_rate": 1.0,
+      "invalid_strategy_total": 0,
+      "missing_policy_version_total": 0,
+      "missing_reason_code_total": 0,
+      "latest_event_time": null,
+      "stale_minutes": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_conflict_total": 0,
+      "max_high_conflict_unsafe_total": 1000000,
+      "min_official_preference_ratio": 0.0,
+      "min_resolution_rate": 0.0,
+      "max_invalid_strategy_total": 1000000,
+      "max_missing_policy_version_total": 1000000,
+      "max_missing_reason_code_total": 1000000,
+      "max_stale_minutes": 1000000.0,
+      "max_conflict_total_drop": 10,
+      "max_high_conflict_total_drop": 5,
+      "max_high_conflict_unsafe_total_increase": 0,
+      "max_official_preference_ratio_drop": 0.05,
+      "max_resolution_rate_drop": 0.05,
+      "max_invalid_strategy_total_increase": 0,
+      "max_missing_policy_version_total_increase": 0,
+      "max_missing_reason_code_total_increase": 0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

@@ -105,3 +105,52 @@ def test_evaluate_gate_allows_empty_when_min_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_source_conflict_abstention_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "should_abstain_total": 20,
+            "abstain_total": 20,
+            "unsafe_definitive_total": 0,
+            "abstain_compliance_ratio": 1.0,
+            "missing_standard_phrase_total": 0,
+            "missing_source_link_total": 0,
+            "missing_reason_code_total": 0,
+            "message_quality_ratio": 1.0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "should_abstain_total": 1,
+            "abstain_total": 1,
+            "unsafe_definitive_total": 1,
+            "abstain_compliance_ratio": 0.2,
+            "missing_standard_phrase_total": 1,
+            "missing_source_link_total": 1,
+            "missing_reason_code_total": 1,
+            "message_quality_ratio": 0.3,
+            "stale_minutes": 80.0,
+        },
+        max_should_abstain_total_drop=1,
+        max_abstain_total_drop=1,
+        max_unsafe_definitive_total_increase=0,
+        max_abstain_compliance_ratio_drop=0.05,
+        max_missing_standard_phrase_total_increase=0,
+        max_missing_source_link_total_increase=0,
+        max_missing_reason_code_total_increase=0,
+        max_message_quality_ratio_drop=0.05,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("should_abstain_total regression" in item for item in failures)
+    assert any("abstain_total regression" in item for item in failures)
+    assert any("unsafe_definitive_total regression" in item for item in failures)
+    assert any("abstain_compliance_ratio regression" in item for item in failures)
+    assert any("missing_standard_phrase_total regression" in item for item in failures)
+    assert any("missing_source_link_total regression" in item for item in failures)
+    assert any("missing_reason_code_total regression" in item for item in failures)
+    assert any("message_quality_ratio regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

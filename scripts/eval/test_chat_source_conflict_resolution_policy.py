@@ -113,3 +113,52 @@ def test_evaluate_gate_allows_empty_when_min_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_source_conflict_resolution_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "conflict_total": 20,
+            "high_conflict_total": 10,
+            "high_conflict_unsafe_total": 0,
+            "official_preference_ratio": 0.9,
+            "resolution_rate": 0.9,
+            "invalid_strategy_total": 0,
+            "missing_policy_version_total": 0,
+            "missing_reason_code_total": 0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "conflict_total": 1,
+            "high_conflict_total": 1,
+            "high_conflict_unsafe_total": 1,
+            "official_preference_ratio": 0.1,
+            "resolution_rate": 0.2,
+            "invalid_strategy_total": 1,
+            "missing_policy_version_total": 1,
+            "missing_reason_code_total": 1,
+            "stale_minutes": 80.0,
+        },
+        max_conflict_total_drop=1,
+        max_high_conflict_total_drop=1,
+        max_high_conflict_unsafe_total_increase=0,
+        max_official_preference_ratio_drop=0.05,
+        max_resolution_rate_drop=0.05,
+        max_invalid_strategy_total_increase=0,
+        max_missing_policy_version_total_increase=0,
+        max_missing_reason_code_total_increase=0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("conflict_total regression" in item for item in failures)
+    assert any("high_conflict_total regression" in item for item in failures)
+    assert any("high_conflict_unsafe_total regression" in item for item in failures)
+    assert any("official_preference_ratio regression" in item for item in failures)
+    assert any("resolution_rate regression" in item for item in failures)
+    assert any("invalid_strategy_total regression" in item for item in failures)
+    assert any("missing_policy_version_total regression" in item for item in failures)
+    assert any("missing_reason_code_total regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

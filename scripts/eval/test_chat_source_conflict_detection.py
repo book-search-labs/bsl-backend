@@ -104,3 +104,48 @@ def test_evaluate_gate_allows_empty_when_min_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_source_conflict_detection_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "conflict_detected_total": 20,
+            "high_conflict_total": 10,
+            "invalid_severity_total": 0,
+            "missing_topic_total": 0,
+            "missing_conflict_type_total": 0,
+            "missing_source_pair_total": 0,
+            "missing_evidence_total": 0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "conflict_detected_total": 1,
+            "high_conflict_total": 1,
+            "invalid_severity_total": 1,
+            "missing_topic_total": 1,
+            "missing_conflict_type_total": 1,
+            "missing_source_pair_total": 1,
+            "missing_evidence_total": 1,
+            "stale_minutes": 80.0,
+        },
+        max_conflict_detected_total_drop=1,
+        max_high_conflict_total_drop=1,
+        max_invalid_severity_total_increase=0,
+        max_missing_topic_total_increase=0,
+        max_missing_conflict_type_total_increase=0,
+        max_missing_source_pair_total_increase=0,
+        max_missing_evidence_total_increase=0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("conflict_detected_total regression" in item for item in failures)
+    assert any("high_conflict_total regression" in item for item in failures)
+    assert any("invalid_severity_total regression" in item for item in failures)
+    assert any("missing_topic_total regression" in item for item in failures)
+    assert any("missing_conflict_type_total regression" in item for item in failures)
+    assert any("missing_source_pair_total regression" in item for item in failures)
+    assert any("missing_evidence_total regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)
