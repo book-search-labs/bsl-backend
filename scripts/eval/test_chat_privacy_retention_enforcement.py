@@ -111,3 +111,52 @@ def test_evaluate_gate_allows_empty_when_minimums_are_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_retention_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "expired_total": 30,
+            "purge_due_total": 25,
+            "purged_total": 25,
+            "purge_coverage_ratio": 1.0,
+            "purge_miss_total": 0,
+            "hold_violation_total": 0,
+            "invalid_retention_policy_total": 0,
+            "delete_audit_missing_total": 0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "expired_total": 1,
+            "purge_due_total": 1,
+            "purged_total": 0,
+            "purge_coverage_ratio": 0.1,
+            "purge_miss_total": 2,
+            "hold_violation_total": 1,
+            "invalid_retention_policy_total": 1,
+            "delete_audit_missing_total": 1,
+            "stale_minutes": 80.0,
+        },
+        max_expired_total_drop=1,
+        max_purge_due_total_drop=1,
+        max_purged_total_drop=1,
+        max_purge_coverage_ratio_drop=0.05,
+        max_purge_miss_total_increase=0,
+        max_hold_violation_total_increase=0,
+        max_invalid_retention_policy_total_increase=0,
+        max_delete_audit_missing_total_increase=0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("expired_total regression" in item for item in failures)
+    assert any("purge_due_total regression" in item for item in failures)
+    assert any("purged_total regression" in item for item in failures)
+    assert any("purge_coverage_ratio regression" in item for item in failures)
+    assert any("purge_miss_total regression" in item for item in failures)
+    assert any("hold_violation_total regression" in item for item in failures)
+    assert any("invalid_retention_policy_total regression" in item for item in failures)
+    assert any("delete_audit_missing_total regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

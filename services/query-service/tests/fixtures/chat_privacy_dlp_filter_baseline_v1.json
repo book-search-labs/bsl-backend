@@ -1,0 +1,73 @@
+{
+  "generated_at": "2026-03-04T00:00:00+00:00",
+  "events_jsonl": "var/chat_privacy/dlp_events.jsonl",
+  "source": {
+    "events_jsonl": "var/chat_privacy/dlp_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": null
+  },
+  "summary": {
+    "window_size": 0,
+    "run_total": 0,
+    "detected_total": 0,
+    "blocked_total": 0,
+    "masked_total": 0,
+    "review_total": 0,
+    "allowed_total": 0,
+    "protected_action_ratio": 1.0,
+    "invalid_action_total": 0,
+    "unknown_pii_type_total": 0,
+    "unmasked_violation_total": 0,
+    "false_positive_total": 0,
+    "missing_reason_total": 0,
+    "pii_type_distribution": [],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "run_total": 0,
+      "detected_total": 0,
+      "blocked_total": 0,
+      "masked_total": 0,
+      "review_total": 0,
+      "allowed_total": 0,
+      "protected_action_ratio": 1.0,
+      "invalid_action_total": 0,
+      "unknown_pii_type_total": 0,
+      "unmasked_violation_total": 0,
+      "false_positive_total": 0,
+      "missing_reason_total": 0,
+      "pii_type_distribution": [],
+      "latest_event_time": null,
+      "stale_minutes": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_detected_total": 0,
+      "min_protected_action_ratio": 0.0,
+      "max_unmasked_violation_total": 1000000,
+      "max_invalid_action_total": 1000000,
+      "max_unknown_pii_type_total": 1000000,
+      "max_false_positive_total": 1000000,
+      "max_missing_reason_total": 1000000,
+      "max_stale_minutes": 1000000.0,
+      "max_detected_total_drop": 10,
+      "max_protected_action_ratio_drop": 0.05,
+      "max_unmasked_violation_total_increase": 0,
+      "max_invalid_action_total_increase": 0,
+      "max_unknown_pii_type_total_increase": 0,
+      "max_false_positive_total_increase": 0,
+      "max_missing_reason_total_increase": 0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

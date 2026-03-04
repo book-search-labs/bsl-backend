@@ -115,3 +115,48 @@ def test_evaluate_gate_allows_empty_when_minimum_is_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_dlp_filter_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "detected_total": 20,
+            "protected_action_ratio": 0.95,
+            "unmasked_violation_total": 0,
+            "invalid_action_total": 0,
+            "unknown_pii_type_total": 0,
+            "false_positive_total": 0,
+            "missing_reason_total": 0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "detected_total": 1,
+            "protected_action_ratio": 0.1,
+            "unmasked_violation_total": 2,
+            "invalid_action_total": 1,
+            "unknown_pii_type_total": 1,
+            "false_positive_total": 1,
+            "missing_reason_total": 1,
+            "stale_minutes": 80.0,
+        },
+        max_detected_total_drop=1,
+        max_protected_action_ratio_drop=0.05,
+        max_unmasked_violation_total_increase=0,
+        max_invalid_action_total_increase=0,
+        max_unknown_pii_type_total_increase=0,
+        max_false_positive_total_increase=0,
+        max_missing_reason_total_increase=0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("detected_total regression" in item for item in failures)
+    assert any("protected_action_ratio regression" in item for item in failures)
+    assert any("unmasked_violation_total regression" in item for item in failures)
+    assert any("invalid_action_total regression" in item for item in failures)
+    assert any("unknown_pii_type_total regression" in item for item in failures)
+    assert any("false_positive_total regression" in item for item in failures)
+    assert any("missing_reason_total regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)

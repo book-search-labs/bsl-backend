@@ -3770,6 +3770,7 @@ python scripts/eval/chat_privacy_dlp_filter.py \
   --max-false-positive-total 1 \
   --max-missing-reason-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_privacy_dlp_filter_baseline_v1.json \
   --gate
 ```
 - 산출물:
@@ -3778,6 +3779,15 @@ python scripts/eval/chat_privacy_dlp_filter.py \
   - pii type 분포와 보호 액션 비율(protected action ratio)
 - CI 옵션:
   - `RUN_CHAT_PRIVACY_DLP_FILTER=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_PRIVACY_DLP_MAX_DETECTED_TOTAL_DROP`
+    - `CHAT_PRIVACY_DLP_MAX_PROTECTED_ACTION_RATIO_DROP`
+    - `CHAT_PRIVACY_DLP_MAX_UNMASKED_VIOLATION_TOTAL_INCREASE`
+    - `CHAT_PRIVACY_DLP_MAX_INVALID_ACTION_TOTAL_INCREASE`
+    - `CHAT_PRIVACY_DLP_MAX_UNKNOWN_PII_TYPE_TOTAL_INCREASE`
+    - `CHAT_PRIVACY_DLP_MAX_FALSE_POSITIVE_TOTAL_INCREASE`
+    - `CHAT_PRIVACY_DLP_MAX_MISSING_REASON_TOTAL_INCREASE`
+    - `CHAT_PRIVACY_DLP_MAX_STALE_MINUTES_INCREASE`
 
 ## Chat privacy retention enforcement gate (B-0379, Bundle 2)
 - 대화/요약/증거 데이터의 만료 후 삭제와 법적보존 예외를 검증:
@@ -3793,6 +3803,7 @@ python scripts/eval/chat_privacy_retention_enforcement.py \
   --max-invalid-retention-policy-total 0 \
   --max-delete-audit-missing-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_privacy_retention_enforcement_baseline_v1.json \
   --gate
 ```
 - 산출물:
@@ -3801,6 +3812,16 @@ python scripts/eval/chat_privacy_retention_enforcement.py \
   - retention policy 누락 및 purge 감사로그 누락 건수
 - CI 옵션:
   - `RUN_CHAT_PRIVACY_RETENTION_ENFORCEMENT=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_PRIVACY_RETENTION_MAX_EXPIRED_TOTAL_DROP`
+    - `CHAT_PRIVACY_RETENTION_MAX_PURGE_DUE_TOTAL_DROP`
+    - `CHAT_PRIVACY_RETENTION_MAX_PURGED_TOTAL_DROP`
+    - `CHAT_PRIVACY_RETENTION_MAX_PURGE_COVERAGE_RATIO_DROP`
+    - `CHAT_PRIVACY_RETENTION_MAX_PURGE_MISS_TOTAL_INCREASE`
+    - `CHAT_PRIVACY_RETENTION_MAX_HOLD_VIOLATION_TOTAL_INCREASE`
+    - `CHAT_PRIVACY_RETENTION_MAX_INVALID_RETENTION_POLICY_TOTAL_INCREASE`
+    - `CHAT_PRIVACY_RETENTION_MAX_DELETE_AUDIT_MISSING_TOTAL_INCREASE`
+    - `CHAT_PRIVACY_RETENTION_MAX_STALE_MINUTES_INCREASE`
 
 ## Chat privacy user rights alignment gate (B-0379, Bundle 3)
 - 사용자 삭제/내보내기 요청 처리 완료율과 cascade/정합성을 검증:
@@ -3819,6 +3840,7 @@ python scripts/eval/chat_privacy_user_rights_alignment.py \
   --max-missing-audit-total 0 \
   --max-unknown-request-type-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_privacy_user_rights_alignment_baseline_v1.json \
   --gate
 ```
 - 산출물:
@@ -3827,6 +3849,19 @@ python scripts/eval/chat_privacy_user_rights_alignment.py \
   - unauthorized request, audit 누락, unknown request type 건수
 - CI 옵션:
   - `RUN_CHAT_PRIVACY_USER_RIGHTS_ALIGNMENT=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_PRIVACY_RIGHTS_MAX_DELETE_REQUEST_TOTAL_DROP`
+    - `CHAT_PRIVACY_RIGHTS_MAX_EXPORT_REQUEST_TOTAL_DROP`
+    - `CHAT_PRIVACY_RIGHTS_MAX_DELETE_COMPLETED_TOTAL_DROP`
+    - `CHAT_PRIVACY_RIGHTS_MAX_EXPORT_COMPLETED_TOTAL_DROP`
+    - `CHAT_PRIVACY_RIGHTS_MAX_DELETE_COMPLETION_RATIO_DROP`
+    - `CHAT_PRIVACY_RIGHTS_MAX_EXPORT_COMPLETION_RATIO_DROP`
+    - `CHAT_PRIVACY_RIGHTS_MAX_DELETE_CASCADE_MISS_TOTAL_INCREASE`
+    - `CHAT_PRIVACY_RIGHTS_MAX_EXPORT_CONSISTENCY_MISMATCH_TOTAL_INCREASE`
+    - `CHAT_PRIVACY_RIGHTS_MAX_UNAUTHORIZED_REQUEST_TOTAL_INCREASE`
+    - `CHAT_PRIVACY_RIGHTS_MAX_MISSING_AUDIT_TOTAL_INCREASE`
+    - `CHAT_PRIVACY_RIGHTS_MAX_UNKNOWN_REQUEST_TYPE_TOTAL_INCREASE`
+    - `CHAT_PRIVACY_RIGHTS_MAX_STALE_MINUTES_INCREASE`
 
 ## Chat privacy incident handling gate (B-0379, Bundle 4)
 - PII incident 알림/운영자 큐/해결 루프를 검증:
@@ -3843,6 +3878,7 @@ python scripts/eval/chat_privacy_incident_handling.py \
   --max-p95-ack-latency-minutes 30 \
   --max-missing-runbook-link-total 0 \
   --max-stale-minutes 60 \
+  --baseline-report services/query-service/tests/fixtures/chat_privacy_incident_handling_baseline_v1.json \
   --gate
 ```
 - 산출물:
@@ -3851,6 +3887,18 @@ python scripts/eval/chat_privacy_incident_handling.py \
   - runbook/playbook 링크 누락 건수
 - CI 옵션:
   - `RUN_CHAT_PRIVACY_INCIDENT_HANDLING=1 ./scripts/test.sh`
+  - baseline drift gate env:
+    - `CHAT_PRIVACY_INCIDENTS_MAX_INCIDENT_TOTAL_DROP`
+    - `CHAT_PRIVACY_INCIDENTS_MAX_HIGH_SEVERITY_TOTAL_DROP`
+    - `CHAT_PRIVACY_INCIDENTS_MAX_ALERT_SENT_TOTAL_DROP`
+    - `CHAT_PRIVACY_INCIDENTS_MAX_RESOLVED_TOTAL_DROP`
+    - `CHAT_PRIVACY_INCIDENTS_MAX_ALERT_MISS_TOTAL_INCREASE`
+    - `CHAT_PRIVACY_INCIDENTS_MAX_HIGH_UNQUEUED_TOTAL_INCREASE`
+    - `CHAT_PRIVACY_INCIDENTS_MAX_MISSING_RUNBOOK_LINK_TOTAL_INCREASE`
+    - `CHAT_PRIVACY_INCIDENTS_MAX_HIGH_QUEUE_COVERAGE_RATIO_DROP`
+    - `CHAT_PRIVACY_INCIDENTS_MAX_RESOLVED_RATIO_DROP`
+    - `CHAT_PRIVACY_INCIDENTS_MAX_P95_ACK_LATENCY_MINUTES_INCREASE`
+    - `CHAT_PRIVACY_INCIDENTS_MAX_STALE_MINUTES_INCREASE`
 
 ## Chat temporal metadata model gate (B-0380, Bundle 1)
 - 정책 문서의 유효시점 메타데이터(`effective_from/effective_to/announced_at/timezone`) 정합성을 검증:

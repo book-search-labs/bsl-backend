@@ -94,3 +94,21 @@ Harden chat privacy controls:
   - `scripts/eval/test_chat_privacy_incident_handling.py`
 - [x] CI 진입점 추가
   - `RUN_CHAT_PRIVACY_INCIDENT_HANDLING=1 ./scripts/test.sh`
+
+## Implementation Update (2026-03-04, Bundle 5)
+- [x] Baseline drift governance 추가 (privacy 4종 공통)
+  - `scripts/eval/chat_privacy_dlp_filter.py`
+  - `scripts/eval/chat_privacy_retention_enforcement.py`
+  - `scripts/eval/chat_privacy_user_rights_alignment.py`
+  - `scripts/eval/chat_privacy_incident_handling.py`
+  - `--baseline-report` + `compare_with_baseline(...)` + `gate.baseline_failures` + `source/derived.summary` + `gate_pass` 출력 반영
+- [x] baseline 회귀 테스트 추가
+  - `scripts/eval/test_chat_privacy_dlp_filter.py`
+  - `scripts/eval/test_chat_privacy_retention_enforcement.py`
+  - `scripts/eval/test_chat_privacy_user_rights_alignment.py`
+  - `scripts/eval/test_chat_privacy_incident_handling.py`
+- [x] CI baseline wiring + drift env 확장
+  - `scripts/test.sh` (step 92~95)
+  - baseline fixture 자동 연결 + `*_DROP`, `*_INCREASE` env 반영
+- [x] 운영 문서 업데이트
+  - `docs/RUNBOOK.md` B-0379 섹션에 baseline 실행 예시/CI drift env 추가

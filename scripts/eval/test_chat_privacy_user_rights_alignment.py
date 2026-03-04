@@ -135,3 +135,64 @@ def test_evaluate_gate_allows_empty_when_minimums_are_zero():
         max_stale_minutes=1000000.0,
     )
     assert failures == []
+
+
+def test_compare_with_baseline_detects_user_rights_regressions():
+    module = _load_module()
+    baseline = {
+        "summary": {
+            "delete_request_total": 30,
+            "export_request_total": 30,
+            "delete_completed_total": 30,
+            "export_completed_total": 30,
+            "delete_completion_ratio": 1.0,
+            "export_completion_ratio": 1.0,
+            "delete_cascade_miss_total": 0,
+            "export_consistency_mismatch_total": 0,
+            "unauthorized_request_total": 0,
+            "missing_audit_total": 0,
+            "unknown_request_type_total": 0,
+            "stale_minutes": 10.0,
+        }
+    }
+    failures = module.compare_with_baseline(
+        baseline,
+        {
+            "delete_request_total": 1,
+            "export_request_total": 1,
+            "delete_completed_total": 0,
+            "export_completed_total": 0,
+            "delete_completion_ratio": 0.2,
+            "export_completion_ratio": 0.1,
+            "delete_cascade_miss_total": 2,
+            "export_consistency_mismatch_total": 2,
+            "unauthorized_request_total": 1,
+            "missing_audit_total": 1,
+            "unknown_request_type_total": 1,
+            "stale_minutes": 80.0,
+        },
+        max_delete_request_total_drop=1,
+        max_export_request_total_drop=1,
+        max_delete_completed_total_drop=1,
+        max_export_completed_total_drop=1,
+        max_delete_completion_ratio_drop=0.05,
+        max_export_completion_ratio_drop=0.05,
+        max_delete_cascade_miss_total_increase=0,
+        max_export_consistency_mismatch_total_increase=0,
+        max_unauthorized_request_total_increase=0,
+        max_missing_audit_total_increase=0,
+        max_unknown_request_type_total_increase=0,
+        max_stale_minutes_increase=30.0,
+    )
+    assert any("delete_request_total regression" in item for item in failures)
+    assert any("export_request_total regression" in item for item in failures)
+    assert any("delete_completed_total regression" in item for item in failures)
+    assert any("export_completed_total regression" in item for item in failures)
+    assert any("delete_completion_ratio regression" in item for item in failures)
+    assert any("export_completion_ratio regression" in item for item in failures)
+    assert any("delete_cascade_miss_total regression" in item for item in failures)
+    assert any("export_consistency_mismatch_total regression" in item for item in failures)
+    assert any("unauthorized_request_total regression" in item for item in failures)
+    assert any("missing_audit_total regression" in item for item in failures)
+    assert any("unknown_request_type_total regression" in item for item in failures)
+    assert any("stale minutes regression" in item for item in failures)
