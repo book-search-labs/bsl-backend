@@ -72,6 +72,23 @@ def test_run_tool_chat_shipping_policy_guide_without_login():
     assert result["sources"][0]["url"] == "POLICY / commerce-shipping-guide"
 
 
+def test_run_tool_chat_shipping_policy_guide_with_policy_keyword_without_login():
+    payload = {
+        "message": {"role": "user", "content": "배송 정책을 알려줘"},
+        "client": {"locale": "ko-KR"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_shipping_policy_keyword"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert result["reason_code"] == "OK"
+    assert "배송 정책" in result["answer"]["content"]
+    assert "기본 배송비" in result["answer"]["content"]
+    assert result["citations"]
+    assert result["sources"][0]["url"] == "POLICY / commerce-shipping-guide"
+
+
 def test_run_tool_chat_book_recommendation_without_login(monkeypatch):
     async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
         assert query in {"周易辭典", "도서 '周易辭典' 기준으로 비슷한 책을 추천해줘"}

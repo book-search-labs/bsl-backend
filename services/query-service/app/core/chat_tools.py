@@ -147,7 +147,7 @@ def _detect_intent(query: str) -> ToolIntent:
     ticket_create_keywords = ["문의 접수", "티켓 생성", "상담원 연결", "문의 남길", "ticket create", "support ticket"]
     cancel_keywords = ["주문 취소", "취소해", "cancel order", "cancel my order"]
     refund_create_keywords = ["환불 신청", "환불 접수", "refund request", "환불해"]
-    policy_keywords = ["조건", "정리", "안내", "절차", "규정", "기준", "수수료", "policy", "guide"]
+    policy_keywords = ["조건", "정리", "안내", "절차", "규정", "기준", "수수료", "정책", "policy", "guide"]
     recommendation_keywords = ["추천", "비슷한 책", "유사한 책", "related book", "similar book", "recommend"]
     has_policy_word = any(keyword in q for keyword in policy_keywords)
     has_recommend_word = any(keyword in q for keyword in recommendation_keywords)
