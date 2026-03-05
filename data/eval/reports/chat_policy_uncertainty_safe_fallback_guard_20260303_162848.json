@@ -1,0 +1,29 @@
+{
+  "generated_at": "2026-03-03T16:28:48.828553+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/grounded_answer/policy_uncertainty_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "policy_uncertain_total": 0,
+    "unsafe_definitive_total": 0,
+    "safe_guidance_missing_total": 0,
+    "fallback_downgrade_missing_total": 0,
+    "uncertainty_safe_ratio": 1.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_event_total": 0,
+      "min_uncertainty_safe_ratio": 0.0,
+      "max_unsafe_definitive_total": 1000000,
+      "max_safe_guidance_missing_total": 1000000,
+      "max_fallback_downgrade_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

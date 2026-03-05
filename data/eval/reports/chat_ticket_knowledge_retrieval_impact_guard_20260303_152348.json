@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-03-03T15:23:48.264419+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket_knowledge/retrieval_integration_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "query_total": 0,
+    "knowledge_hit_total": 0,
+    "knowledge_hit_ratio": 1.0,
+    "resolved_total": 0,
+    "resolved_with_knowledge_total": 0,
+    "resolved_with_knowledge_ratio": 1.0,
+    "repeat_issue_total": 0,
+    "repeat_issue_resolved_total": 0,
+    "repeat_issue_resolution_ratio": 1.0,
+    "stale_knowledge_hit_total": 0,
+    "rollback_knowledge_hit_total": 0,
+    "knowledge_conflict_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_query_total": 0,
+      "min_knowledge_hit_ratio": 0.0,
+      "min_resolved_with_knowledge_ratio": 0.0,
+      "min_repeat_issue_resolution_ratio": 0.0,
+      "max_stale_knowledge_hit_total": 1000000,
+      "max_rollback_knowledge_hit_total": 1000000,
+      "max_knowledge_conflict_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

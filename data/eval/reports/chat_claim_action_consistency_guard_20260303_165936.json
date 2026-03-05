@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-03-03T16:59:36.253125+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/actionability/claim_action_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "action_event_total": 0,
+    "consistency_pass_total": 0,
+    "consistency_pass_ratio": 1.0,
+    "mismatch_total": 0,
+    "mismatch_warning_missing_total": 0,
+    "mismatch_warning_coverage_ratio": 1.0,
+    "infeasible_action_total": 0,
+    "infeasible_action_removed_total": 0,
+    "infeasible_action_removal_missing_total": 0,
+    "infeasible_action_removal_ratio": 1.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_event_total": 0,
+      "min_consistency_pass_ratio": 0.0,
+      "min_mismatch_warning_coverage_ratio": 0.0,
+      "min_infeasible_action_removal_ratio": 0.0,
+      "max_mismatch_total": 1000000,
+      "max_mismatch_warning_missing_total": 1000000,
+      "max_infeasible_action_removal_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

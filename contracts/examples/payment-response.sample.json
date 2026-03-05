@@ -13,7 +13,7 @@
     "provider_payment_id": null,
     "failure_reason": null,
     "checkout_session_id": "localsim-5001-ab12cd34",
-    "checkout_url": "http://localhost:8090/checkout?session_id=localsim-5001-ab12cd34",
+    "checkout_url": "http://localhost:8092/checkout?session_id=localsim-5001-ab12cd34",
     "return_url": "http://localhost:5174/payment/result/1001",
     "webhook_url": "http://localhost:8091/api/v1/payments/webhook/local_sim",
     "expires_at": "2026-03-01T00:30:00Z",

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -17,8 +18,13 @@ import com.bsl.bff.client.QueryServiceClient;
 import com.bsl.bff.common.ApiExceptionHandler;
 import com.bsl.bff.common.BffRequestContextFilter;
 import com.bsl.bff.outbox.OutboxService;
+import com.bsl.bff.security.AuthContext;
+import com.bsl.bff.security.AuthContextHolder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -108,6 +114,41 @@ class ChatControllerTest {
 
         verify(queryServiceClient, timeout(1000)).chatStream(anyMap(), any(), any(SseEmitter.class));
         verify(queryServiceClient, never()).chat(anyMap(), any());
+    }
+
+    @Test
+    void chatStreamPropagatesAuthContextToAsyncThread() throws Exception {
+        AtomicReference<String> observedUserId = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+        QueryServiceClient.ChatStreamResult streamResult = new QueryServiceClient.ChatStreamResult();
+        when(queryServiceClient.chatStream(anyMap(), any(), any(SseEmitter.class)))
+            .thenAnswer(invocation -> {
+                AuthContext authContext = AuthContextHolder.get();
+                observedUserId.set(authContext == null ? null : authContext.getUserId());
+                latch.countDown();
+                return streamResult;
+            });
+
+        AuthContextHolder.set(new AuthContext("101", null));
+        try {
+            String body = "{"
+                + "\"version\":\"v1\","
+                + "\"trace_id\":\"trace_1\","
+                + "\"request_id\":\"req_1\","
+                + "\"message\":{\"role\":\"user\",\"content\":\"장바구니 기준 추천해줘\"}"
+                + "}";
+
+            mockMvc.perform(post("/chat")
+                    .param("stream", "true")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(body))
+                .andExpect(status().isOk());
+
+            assertTrue(latch.await(1, TimeUnit.SECONDS));
+            assertEquals("101", observedUserId.get());
+        } finally {
+            AuthContextHolder.clear();
+        }
     }
 
     @Test

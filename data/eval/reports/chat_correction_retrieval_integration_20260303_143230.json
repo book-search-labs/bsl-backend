@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-03-03T14:32:30.578448+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_correction/correction_retrieval_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "request_total": 0,
+    "correction_hit_total": 0,
+    "hit_ratio": 1.0,
+    "override_total": 0,
+    "stale_hit_total": 0,
+    "precedence_violation_total": 0,
+    "policy_conflict_total": 0,
+    "policy_conflict_unhandled_total": 0,
+    "missing_reason_code_total": 0,
+    "p95_retrieval_latency_ms": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_request_total": 0,
+      "min_hit_ratio": 0.0,
+      "max_stale_hit_total": 1000000,
+      "max_precedence_violation_total": 1000000,
+      "max_policy_conflict_unhandled_total": 1000000,
+      "max_missing_reason_code_total": 1000000,
+      "max_p95_retrieval_latency_ms": 1000000.0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

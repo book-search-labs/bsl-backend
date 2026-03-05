@@ -14,6 +14,8 @@ import com.bsl.bff.common.DownstreamException;
 import com.bsl.bff.common.RequestContext;
 import com.bsl.bff.common.RequestContextHolder;
 import com.bsl.bff.outbox.OutboxService;
+import com.bsl.bff.security.AuthContext;
+import com.bsl.bff.security.AuthContextHolder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
@@ -70,6 +72,7 @@ public class ChatController {
         }
 
         RequestContext context = RequestContextHolder.get();
+        AuthContext authContext = AuthContextHolder.get();
         Map<String, Object> body = objectMapper.convertValue(request, Map.class);
         boolean shouldStream = Boolean.TRUE.equals(stream)
             || (request.getOptions() != null && Boolean.TRUE.equals(request.getOptions().getStream()));
@@ -82,7 +85,18 @@ public class ChatController {
 
         if (shouldStream) {
             SseEmitter emitter = new SseEmitter(0L);
-            CompletableFuture.runAsync(() -> streamFromQueryService(emitter, body, context, conversationId, turnId, canonicalKey, queryText));
+            CompletableFuture.runAsync(
+                () -> streamFromQueryService(
+                    emitter,
+                    body,
+                    context,
+                    authContext,
+                    conversationId,
+                    turnId,
+                    canonicalKey,
+                    queryText
+                )
+            );
             return ResponseEntity.ok()
                 .contentType(MediaType.TEXT_EVENT_STREAM)
                 .body(emitter);
@@ -167,11 +181,18 @@ public class ChatController {
         SseEmitter emitter,
         Map<String, Object> body,
         RequestContext context,
+        AuthContext authContext,
         String conversationId,
         String turnId,
         String canonicalKey,
         String queryText
     ) {
+        AuthContext previousAuthContext = AuthContextHolder.get();
+        if (authContext != null) {
+            AuthContextHolder.set(authContext);
+        } else {
+            AuthContextHolder.clear();
+        }
         try {
             ChatStreamResult streamResult = queryServiceClient.chatStream(body, context, emitter);
             BffChatResponse response = new BffChatResponse();
@@ -210,6 +231,12 @@ public class ChatController {
                 // ignore
             }
             emitter.completeWithError(ex);
+        } finally {
+            if (previousAuthContext != null) {
+                AuthContextHolder.set(previousAuthContext);
+            } else {
+                AuthContextHolder.clear();
+            }
         }
     }
 

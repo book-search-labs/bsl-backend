@@ -1,0 +1,105 @@
+{
+  "generated_at": "2026-03-02T18:17:34.894359+00:00",
+  "triage_file": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_graph/triage/chat_launch_failure_cases.jsonl",
+  "triage_case_total": 0,
+  "top_reasons": [],
+  "scenarios": [
+    {
+      "id": "gd-llm-timeout-surge",
+      "title": "LLM timeout 급증",
+      "reason_hints": [
+        "PROVIDER_TIMEOUT"
+      ],
+      "detection": [
+        "chat fallback ratio 및 PROVIDER_TIMEOUT reason 급증 확인",
+        "LLM gateway 응답시간(p95/p99)와 오류율 확인"
+      ],
+      "mitigation": [
+        "capacity guard를 DEGRADE_LEVEL_1 이상으로 상향",
+        "필요 시 release train hold 및 canary stage 축소"
+      ],
+      "validation": [
+        "timeout reason 비율이 기준 이하로 복귀했는지 확인",
+        "commerce completion rate 회복 여부 확인"
+      ],
+      "evidence": [
+        "launch gate report",
+        "capacity/cost guard output",
+        "incident summary"
+      ]
+    },
+    {
+      "id": "gd-tool-outage",
+      "title": "Tool 장애(조회/쓰기 API 실패)",
+      "reason_hints": [
+        "TOOL_FAIL",
+        "AUTHZ_DENY"
+      ],
+      "detection": [
+        "tool failure reason/top source 확인",
+        "action audit에서 실패 전이(FAILED_RETRYABLE/FAILED_FINAL) 점검"
+      ],
+      "mitigation": [
+        "tool retry budget/circuit breaker 상태 점검",
+        "민감 write 경로를 fallback-safe 문구로 강등"
+      ],
+      "validation": [
+        "중복 실행(idempotency 위반) 0건 확인",
+        "claim verifier 오탐/미탐 샘플링 검토"
+      ],
+      "evidence": [
+        "action audit log",
+        "triage queue sample",
+        "on-call action plan"
+      ]
+    },
+    {
+      "id": "gd-insufficient-evidence",
+      "title": "근거부족 응답 급증",
+      "reason_hints": [
+        "insufficient_evidence"
+      ],
+      "detection": [
+        "insufficient_evidence_ratio 및 reason taxonomy 분포 확인",
+        "RAG/retrieval 경로의 source window 변화 확인"
+      ],
+      "mitigation": [
+        "query normalization/policy routing 임계치 재조정",
+        "fallback 템플릿/next_action 안내 문구 품질 점검"
+      ],
+      "validation": [
+        "insufficient ratio가 기준치 이하로 회복됐는지 확인",
+        "사용자 후속 전환율(REFINE_QUERY/OPEN_SUPPORT_TICKET) 확인"
+      ],
+      "evidence": [
+        "launch metrics",
+        "reason taxonomy eval output",
+        "chat replay samples"
+      ]
+    },
+    {
+      "id": "gd-cost-burst",
+      "title": "비용/토큰 사용량 급등",
+      "reason_hints": [
+        "budget_gate_failed"
+      ],
+      "detection": [
+        "LLM audit tokens/cost per hour 급등 확인",
+        "avg tool calls 및 llm path 비중 변화 확인"
+      ],
+      "mitigation": [
+        "capacity mode 상향(DEGRADE_LEVEL_1/2) 및 heavy path admission 제한",
+        "release hold 후 baseline 대비 변화량 점검"
+      ],
+      "validation": [
+        "cost/tokens per hour가 목표 범위로 복귀했는지 확인",
+        "핵심 커머스 intent 완결률 저하가 없는지 확인"
+      ],
+      "evidence": [
+        "llm audit summary",
+        "capacity/cost guard report",
+        "readiness score report"
+      ]
+    }
+  ]
+}

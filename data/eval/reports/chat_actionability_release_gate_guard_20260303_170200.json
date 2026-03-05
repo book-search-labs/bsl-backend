@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-03-03T17:02:00.674937+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/actionability/release_gate_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "bucket_total": 0,
+    "over_threshold_total": 0,
+    "blocked_promotion_total": 0,
+    "missed_block_total": 0,
+    "block_coverage_ratio": 1.0,
+    "partial_isolation_applied_total": 0,
+    "partial_isolation_missing_total": 0,
+    "partial_isolation_ratio": 1.0,
+    "false_block_total": 0,
+    "false_block_ratio": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_samples_per_bucket": 20,
+      "min_window": 0,
+      "min_event_total": 0,
+      "min_block_coverage_ratio": 0.0,
+      "min_partial_isolation_ratio": 0.0,
+      "max_missed_block_total": 1000000,
+      "max_partial_isolation_missing_total": 1000000,
+      "max_false_block_ratio": 1.0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

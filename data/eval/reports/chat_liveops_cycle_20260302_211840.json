@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-03-02T12:18:40.243233+00:00",
+  "release_profile": {
+    "model_version": "unknown",
+    "prompt_version": "unknown",
+    "policy_version": "unknown",
+    "release_signature": "392ee76bc1355c49"
+  },
+  "launch_gate_report_path": "data/eval/reports/chat_production_launch_gate_20260302_211840.json",
+  "launch_gate": {
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "stdout": "report_json=data/eval/reports/chat_production_launch_gate_20260302_211840.json\nreport_md=data/eval/reports/chat_production_launch_gate_20260302_211840.md\ngate_pass=true\ntriage_case_count=0\n",
+    "rc": 0
+  },
+  "release_train": {
+    "stage": 25,
+    "dwell_minutes": 45,
+    "decision": {
+      "action": "promote",
+      "reason": "budget_gate_passed",
+      "next_stage": 50,
+      "cutover": {
+        "action": "promote",
+        "reason": "budget_gate_passed",
+        "next_stage": 50
+      },
+      "launch_gate_passed": true,
+      "canary_passed": true,
+      "canary_reason": "within_threshold",
+      "canary_gate_status": "PASS"
+    },
+    "rollback": null
+  },
+  "failures": []
+}

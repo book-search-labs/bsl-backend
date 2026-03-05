@@ -117,6 +117,125 @@ def test_run_tool_chat_book_recommendation_without_login(monkeypatch):
     assert result["sources"][0]["url"] == "OS /books_doc_read/_search"
 
 
+def test_extract_recommendation_seed_query_for_topic_prompt():
+    seed = chat_tools._extract_recommendation_seed_query("연구 주제로 책 추천해줘")
+    assert seed == "연구"
+
+
+def test_run_tool_chat_book_recommendation_from_topic_prompt(monkeypatch):
+    observed_queries: list[str] = []
+
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        observed_queries.append(query)
+        if query == "연구":
+            return [
+                {"doc_id": "nlk:BK0000000101", "title": "질적 연구방법론", "author": "홍길동", "score": 8.1},
+                {"doc_id": "nlk:BK0000000102", "title": "사회과학 연구설계", "author": "김철수", "score": 7.8},
+            ]
+        return []
+
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+
+    payload = {
+        "message": {"role": "user", "content": "연구 주제로 책 추천해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_book_recommend_topic"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert result["reason_code"] == "OK"
+    assert observed_queries
+    assert observed_queries[0] == "연구"
+    assert "'연구' 기준 추천 도서입니다." in result["answer"]["content"]
+    assert "질적 연구방법론" in result["answer"]["content"]
+    assert "사회과학 연구설계" in result["answer"]["content"]
+
+
+def test_run_tool_chat_book_recommendation_topic_no_candidates(monkeypatch):
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        return []
+
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+
+    payload = {
+        "message": {"role": "user", "content": "연구 주제로 책 추천해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_book_recommend_topic_empty"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert result["reason_code"] == "OK"
+    assert "관심 주제를 2~3개 키워드로" in result["answer"]["content"]
+
+
+def test_detect_intent_book_search():
+    intent = chat_tools._detect_intent("문헌으로 책 검색해줘")
+    assert intent.name == "BOOK_SEARCH"
+
+
+def test_run_tool_chat_book_search(monkeypatch):
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        assert query == "문헌"
+        return [
+            {"doc_id": "nlk:BK0000000101", "title": "질적 연구방법론", "author": "홍길동", "score": 8.1},
+            {"doc_id": "nlk:BK0000000102", "title": "사회과학 연구설계", "author": "김철수", "score": 7.8},
+        ]
+
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+
+    payload = {
+        "message": {"role": "user", "content": "문헌으로 책 검색해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_book_search"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert result["reason_code"] == "OK"
+    assert "'문헌' 검색 결과입니다." in result["answer"]["content"]
+    assert "질적 연구방법론" in result["answer"]["content"]
+    assert result["sources"][0]["doc_id"] == "tool:book_search"
+
+
+def test_run_tool_chat_book_search_needs_input():
+    payload = {
+        "message": {"role": "user", "content": "책 검색해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_book_search_needs_input"))
+
+    assert result is not None
+    assert result["status"] == "needs_input"
+    assert result["reason_code"] == "MISSING_INPUT"
+
+
+def test_detect_intent_chat_help():
+    intent = chat_tools._detect_intent("어떤 명령어 입력할수있어?")
+    assert intent.name == "CHAT_HELP"
+
+
+def test_run_tool_chat_help_query():
+    payload = {
+        "message": {"role": "user", "content": "어떤 명령어 입력할수있어?"},
+        "client": {"locale": "ko-KR"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_help"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert result["reason_code"] == "OK"
+    assert "입력 가능한 예시" in result["answer"]["content"]
+    assert "도서 검색" in result["answer"]["content"]
+    assert result["sources"][0]["doc_id"] == "tool:chat_help"
+
+
 def test_run_tool_chat_cart_recommendation_with_login(monkeypatch):
     async def fake_call_commerce(method, path, **kwargs):
         assert method == "GET"
@@ -161,6 +280,204 @@ def test_run_tool_chat_cart_recommendation_with_login(monkeypatch):
     assert "中國民間宗教史" in result["answer"]["content"]
     assert result["citations"]
     assert result["sources"][0]["url"] == "GET /api/v1/cart"
+
+
+def test_run_tool_chat_cart_recommendation_accepts_numeric_user_id(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        assert kwargs.get("user_id") == "1"
+        return {
+            "cart": {
+                "items": [
+                    {"title": "周易辭典"},
+                ]
+            }
+        }
+
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        return [
+            {"doc_id": "nlk:CM0000000201", "title": "周易辭典", "author": "장선문", "score": 8.4},
+            {"doc_id": "nlk:CM0000000302", "title": "中國民間宗教史", "author": "마시사", "score": 7.8},
+        ]
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+
+    payload = {
+        "message": {"role": "user", "content": "장바구니 기준 추천해줘"},
+        "client": {"locale": "ko-KR", "user_id": 1},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_cart_recommend_numeric_user"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert "장바구니 도서를 기준으로 추천 도서를 정리했습니다." in result["answer"]["content"]
+    assert "中國民間宗教史" in result["answer"]["content"]
+
+
+def test_run_tool_chat_cart_recommendation_supports_nested_cart_payload(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        return {
+            "data": {
+                "cart": {
+                    "items": [
+                        {"title": "周易辭典"},
+                    ]
+                }
+            }
+        }
+
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        return [
+            {"doc_id": "nlk:CM0000000201", "title": "周易辭典", "author": "장선문", "score": 8.4},
+            {"doc_id": "nlk:CM0000000302", "title": "中國民間宗教史", "author": "마시사", "score": 7.8},
+        ]
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+
+    payload = {
+        "message": {"role": "user", "content": "장바구니 기준 추천해줘"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_cart_recommend_nested"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert "장바구니 도서를 기준으로 추천 도서를 정리했습니다." in result["answer"]["content"]
+    assert "中國民間宗教史" in result["answer"]["content"]
+
+
+def test_run_tool_chat_cart_recommendation_distinguishes_parse_failure_from_empty(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        return {"cart": {"item_count": 2}}
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+
+    payload = {
+        "message": {"role": "user", "content": "장바구니 기준 추천해줘"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_cart_recommend_parse_fail"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert "장바구니 항목 수는 확인했지만 도서 항목을 읽지 못했습니다." in result["answer"]["content"]
+    assert "cart_item_count_hint=2" in result["sources"][0]["snippet"]
+
+
+def test_run_tool_chat_book_recommend_intent_with_cart_phrase_reroutes(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        return {
+            "cart": {
+                "items": [
+                    {"title": "周易辭典"},
+                ]
+            }
+        }
+
+    async def fake_retrieve_candidates(query, trace_id, request_id, top_k=None):
+        return [
+            {"doc_id": "nlk:CM0000000201", "title": "周易辭典", "author": "장선문", "score": 8.4},
+            {"doc_id": "nlk:CM0000000302", "title": "中國民間宗教史", "author": "마시사", "score": 7.8},
+        ]
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+    monkeypatch.setattr(chat_tools, "retrieve_candidates", fake_retrieve_candidates)
+    monkeypatch.setattr(chat_tools, "_detect_intent", lambda _: chat_tools.ToolIntent("BOOK_RECOMMEND", 0.9))
+
+    payload = {
+        "message": {"role": "user", "content": "장바-구니 기준 책 추천해줘"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_cart_recommend_reroute"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert "장바구니 도서를 기준으로 추천 도서를 정리했습니다." in result["answer"]["content"]
+    assert result["sources"][0]["doc_id"] == "tool:cart_recommend"
+
+
+def test_detect_intent_cart_lookup():
+    intent = chat_tools._detect_intent("장바구니 책 조회해줘")
+    assert intent.name == "CART_LOOKUP"
+
+
+def test_detect_intent_cart_recommend_with_compact_keyword():
+    intent = chat_tools._detect_intent("장바-구니 기준 책 추천해줘")
+    assert intent.name == "CART_RECOMMEND"
+
+
+def test_detect_intent_shipment_lookup_with_eta_phrase():
+    intent = chat_tools._detect_intent("배송 언제와?")
+    assert intent.name == "SHIPMENT_LOOKUP"
+
+
+def test_run_tool_chat_cart_lookup_with_login(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        assert method == "GET"
+        assert path == "/cart"
+        return {
+            "cart": {
+                "items": [
+                    {"title": "분산 시스템 개론", "qty": 1, "sale_price": 21000},
+                    {"title": "운영체제 구조와 원리", "qty": 2, "sale_price": 18000},
+                ]
+            }
+        }
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+
+    payload = {
+        "message": {"role": "user", "content": "장바구니 책 조회해줘"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_cart_lookup"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert result["reason_code"] == "OK"
+    assert "현재 장바구니에는 2종, 총 3권" in result["answer"]["content"]
+    assert "분산 시스템 개론" in result["answer"]["content"]
+    assert "운영체제 구조와 원리" in result["answer"]["content"]
+    assert result["sources"][0]["url"] == "GET /api/v1/cart"
+
+
+def test_run_tool_chat_cart_lookup_distinguishes_parse_failure_from_empty(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        return {"cart": {"item_count": 2}}
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+
+    payload = {
+        "message": {"role": "user", "content": "장바구니 책 조회해줘"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_cart_lookup_parse_fail"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert "장바구니 항목 수는 확인했지만 상세 도서 정보를 읽지 못했습니다." in result["answer"]["content"]
+    assert "cart_item_count_hint=2" in result["sources"][0]["snippet"]
+
+
+def test_run_tool_chat_cart_lookup_requires_login():
+    payload = {
+        "message": {"role": "user", "content": "장바구니 책 조회해줘"},
+        "client": {"locale": "ko-KR"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_cart_lookup_auth"))
+
+    assert result is not None
+    assert result["status"] == "needs_auth"
+    assert result["reason_code"] == "AUTH_REQUIRED"
+    assert result["next_action"] == "LOGIN_REQUIRED"
 
 
 def test_run_tool_chat_book_recommendation_excludes_same_seed_only(monkeypatch):
@@ -218,6 +535,53 @@ def test_run_tool_chat_order_lookup_success(monkeypatch):
     assert result["sources"][0]["url"] == "GET /api/v1/orders/{orderId}"
 
 
+def test_detect_intent_order_list():
+    intent = chat_tools._detect_intent("내 주문목록 보여줘")
+    assert intent.name == "ORDER_LIST"
+
+
+def test_run_tool_chat_order_list_success(monkeypatch):
+    async def fake_call_commerce(method, path, **kwargs):
+        assert method == "GET"
+        assert path.startswith("/orders?limit=")
+        return {
+            "items": [
+                {
+                    "order_id": 34,
+                    "order_no": "ORD202603050034",
+                    "status": "PAID",
+                    "total_amount": 16300,
+                    "primary_item_title": "문화 책 A",
+                },
+                {
+                    "order_id": 33,
+                    "order_no": "ORD202603040033",
+                    "status": "SHIPPED",
+                    "total_amount": 29800,
+                    "primary_item_title": "문화 책 B",
+                },
+            ],
+            "count": 2,
+        }
+
+    monkeypatch.setattr(chat_tools, "_call_commerce", fake_call_commerce)
+
+    payload = {
+        "message": {"role": "user", "content": "내 주문목록 보여줘"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_order_list"))
+
+    assert result is not None
+    assert result["status"] == "ok"
+    assert result["reason_code"] == "OK"
+    assert "ORD202603050034" in result["answer"]["content"]
+    assert "문화 책 A" in result["answer"]["content"]
+    assert "주문ID 34" in result["answer"]["content"]
+    assert result["sources"][0]["url"] == "GET /api/v1/orders"
+
+
 def test_run_tool_chat_shipment_lookup_without_registered_shipment(monkeypatch):
     async def fake_call_commerce(method, path, **kwargs):
         if path == "/orders/12":
@@ -248,6 +612,20 @@ def test_run_tool_chat_shipment_lookup_without_registered_shipment(monkeypatch):
     assert result["status"] == "ok"
     assert result["reason_code"] == "OK"
     assert "배송 정보가 등록되지 않았습니다" in result["answer"]["content"]
+
+
+def test_run_tool_chat_shipment_eta_phrase_requires_order_ref():
+    payload = {
+        "message": {"role": "user", "content": "배송 언제와?"},
+        "client": {"locale": "ko-KR", "user_id": "1"},
+    }
+
+    result = asyncio.run(chat_tools.run_tool_chat(payload, "trace_test", "req_shipping_eta"))
+
+    assert result is not None
+    assert result["status"] == "needs_input"
+    assert result["reason_code"] == "MISSING_INPUT"
+    assert "주문번호" in result["answer"]["content"]
 
 
 def test_run_chat_stream_tool_path(monkeypatch):
@@ -281,7 +659,7 @@ def test_run_chat_stream_tool_path(monkeypatch):
 
     events = asyncio.run(collect())
 
-    assert any("event: meta" in event and '"tool_path"' in event for event in events)
+    assert any("event: meta" in event and '"status": "ok"' in event for event in events)
     assert any("event: done" in event and '"status": "ok"' in event for event in events)
 
 

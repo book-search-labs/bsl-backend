@@ -98,7 +98,7 @@ class PaymentServiceTest {
         Map<String, Object> existing = Map.of(
             "payment_id", 501L,
             "order_id", 77L,
-            "status", "PROCESSING",
+            "status", "CAPTURED",
             "amount", 12000,
             "idempotency_key", "race_key"
         );
@@ -125,13 +125,83 @@ class PaymentServiceTest {
     }
 
     @Test
+    void createPaymentRefreshesLegacyWebhookOnIdempotentReuse() {
+        PaymentService service = newService();
+        when(paymentGatewayFactory.get(PaymentProvider.LOCAL_SIM)).thenReturn(paymentGateway);
+        when(paymentGateway.provider()).thenReturn(PaymentProvider.LOCAL_SIM);
+        when(paymentGateway.initiatedEventType()).thenReturn("PAYMENT_PROCESSING");
+        when(paymentProperties.getDefaultWebhookUrl()).thenReturn("http://localhost:8091/api/v1/payments/webhook/{provider}");
+        when(paymentProperties.getMockCheckoutBaseUrl()).thenReturn("http://localhost:8092/checkout");
+        when(paymentProperties.getSessionTtlSeconds()).thenReturn(1800L);
+
+        Map<String, Object> order = Map.of(
+            "order_id", 35L,
+            "status", "PAYMENT_PENDING",
+            "total_amount", 16700,
+            "currency", "KRW"
+        );
+        Map<String, Object> existing = Map.of(
+            "payment_id", 46L,
+            "order_id", 35L,
+            "status", "PROCESSING",
+            "amount", 16700,
+            "currency", "KRW",
+            "provider", "LOCAL_SIM",
+            "return_url", "http://localhost:5173/payment/process/35",
+            "webhook_url", "http://localhost:8091/api/v1/payments/webhook/mock",
+            "checkout_url", "http://localhost:8092/checkout?session_id=old",
+            "idempotency_key", "pay_35"
+        );
+        Map<String, Object> refreshed = Map.of(
+            "payment_id", 46L,
+            "order_id", 35L,
+            "status", "PROCESSING",
+            "amount", 16700,
+            "provider", "LOCAL_SIM",
+            "webhook_url", "http://localhost:8091/api/v1/payments/webhook/local_sim",
+            "checkout_session_id", "localsim-46-new"
+        );
+        PaymentGateway.CheckoutSession session = new PaymentGateway.CheckoutSession(
+            "localsim-46-new",
+            "http://localhost:8092/checkout?session_id=localsim-46-new",
+            Instant.parse("2026-03-01T00:40:00Z")
+        );
+
+        when(orderRepository.findOrderById(35L)).thenReturn(order);
+        when(paymentRepository.findPaymentByIdempotencyKey("pay_35")).thenReturn(existing);
+        when(paymentGateway.createCheckoutSession(any())).thenReturn(session);
+        when(paymentRepository.findPayment(46L)).thenReturn(refreshed);
+
+        Map<String, Object> result = service.createPayment(
+            35L,
+            16700,
+            "CARD",
+            "pay_35",
+            "LOCAL_SIM",
+            "http://localhost:5173/payment/process/35",
+            null
+        );
+
+        assertThat(result).isEqualTo(refreshed);
+        verify(paymentRepository).updateCheckoutContext(
+            eq(46L),
+            eq("localsim-46-new"),
+            eq("http://localhost:5173/payment/process/35"),
+            eq("http://localhost:8091/api/v1/payments/webhook/local_sim"),
+            eq("http://localhost:8092/checkout?session_id=localsim-46-new"),
+            eq(Instant.parse("2026-03-01T00:40:00Z"))
+        );
+        verify(paymentRepository).insertPaymentEvent(eq(46L), eq("PAYMENT_PROCESSING"), isNull(), anyString());
+    }
+
+    @Test
     void createPaymentUsesConfiguredProviderCheckoutSessionAndMetadata() {
         PaymentService service = newService();
         stubCreateGateway(PaymentProvider.LOCAL_SIM, "PROCESSING");
         when(paymentGateway.initiatedEventType()).thenReturn("PAYMENT_PROCESSING");
         when(paymentProperties.getDefaultReturnUrl()).thenReturn("http://localhost:5174/payment/result");
         when(paymentProperties.getDefaultWebhookUrl()).thenReturn("http://localhost:8091/api/v1/payments/webhook/{provider}");
-        when(paymentProperties.getMockCheckoutBaseUrl()).thenReturn("http://localhost:8090/checkout");
+        when(paymentProperties.getMockCheckoutBaseUrl()).thenReturn("http://localhost:8092/checkout");
         when(paymentProperties.getSessionTtlSeconds()).thenReturn(1800L);
 
         Map<String, Object> order = Map.of(
@@ -151,7 +221,7 @@ class PaymentServiceTest {
 
         PaymentGateway.CheckoutSession session = new PaymentGateway.CheckoutSession(
             "localsim-901-a1b2c3d4",
-            "http://localhost:8090/checkout?session_id=localsim-901-a1b2c3d4",
+            "http://localhost:8092/checkout?session_id=localsim-901-a1b2c3d4",
             Instant.parse("2026-03-01T00:30:00Z")
         );
 
@@ -180,7 +250,7 @@ class PaymentServiceTest {
             eq("localsim-901-a1b2c3d4"),
             eq("http://localhost:5174/payment/result"),
             eq("http://localhost:8091/api/v1/payments/webhook/local_sim"),
-            eq("http://localhost:8090/checkout?session_id=localsim-901-a1b2c3d4"),
+            eq("http://localhost:8092/checkout?session_id=localsim-901-a1b2c3d4"),
             eq(Instant.parse("2026-03-01T00:30:00Z"))
         );
         verify(paymentRepository).insertPaymentEvent(eq(901L), eq("PAYMENT_PROCESSING"), isNull(), anyString());

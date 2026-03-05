@@ -1,0 +1,241 @@
+{
+  "run_id": "run_f8c74cb11fc7",
+  "trace_id": "bcc2394ec07306491083fb0b28fa71e4",
+  "request_id": "bcc2394ec07306491083fb0b28fa71e4-40c5fad856f1b8c9",
+  "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+  "status": "done",
+  "started_at": 1772668353,
+  "updated_at": 1772668353,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "배송 언제와?"
+    },
+    "history": [],
+    "options": {
+      "stream": true,
+      "top_k": 6
+    },
+    "trace_id": "bcc2394ec07306491083fb0b28fa71e4",
+    "request_id": "bcc2394ec07306491083fb0b28fa71e4-40c5fad856f1b8c9",
+    "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "bcc2394ec07306491083fb0b28fa71e4",
+    "request_id": "bcc2394ec07306491083fb0b28fa71e4-40c5fad856f1b8c9",
+    "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "배송 언제와?"
+      },
+      "history": [],
+      "options": {
+        "stream": true,
+        "top_k": 6
+      },
+      "trace_id": "bcc2394ec07306491083fb0b28fa71e4",
+      "request_id": "bcc2394ec07306491083fb0b28fa71e4-40c5fad856f1b8c9",
+      "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772668353,
+      "state_hash": "095ba3611db442e6",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "bcc2394ec07306491083fb0b28fa71e4",
+        "request_id": "bcc2394ec07306491083fb0b28fa71e4-40c5fad856f1b8c9",
+        "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772668353,
+      "state_hash": "5d20d920ed1af1e4",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "bcc2394ec07306491083fb0b28fa71e4",
+        "request_id": "bcc2394ec07306491083fb0b28fa71e4-40c5fad856f1b8c9",
+        "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+        "intent": "SHIPPING",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772668353,
+      "state_hash": "337ed9ecb8f85d45",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "bcc2394ec07306491083fb0b28fa71e4",
+        "request_id": "bcc2394ec07306491083fb0b28fa71e4-40c5fad856f1b8c9",
+        "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+        "intent": "SHIPPING",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772668353,
+      "state_hash": "337ed9ecb8f85d45",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "bcc2394ec07306491083fb0b28fa71e4",
+        "request_id": "bcc2394ec07306491083fb0b28fa71e4-40c5fad856f1b8c9",
+        "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+        "intent": "SHIPPING",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772668353,
+      "state_hash": "caae44de42d8fce6",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "bcc2394ec07306491083fb0b28fa71e4",
+        "request_id": "bcc2394ec07306491083fb0b28fa71e4-40c5fad856f1b8c9",
+        "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+        "intent": "SHIPPING",
+        "route": "FALLBACK",
+        "reason_code": "MISSING_INPUT",
+        "pending_action": null,
+        "response": {
+          "status": "needs_input",
+          "reason_code": "MISSING_INPUT",
+          "next_action": "PROVIDE_REQUIRED_INFO"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772668353,
+      "state_hash": "caae44de42d8fce6",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "bcc2394ec07306491083fb0b28fa71e4",
+        "request_id": "bcc2394ec07306491083fb0b28fa71e4-40c5fad856f1b8c9",
+        "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+        "intent": "SHIPPING",
+        "route": "FALLBACK",
+        "reason_code": "MISSING_INPUT",
+        "pending_action": null,
+        "response": {
+          "status": "needs_input",
+          "reason_code": "MISSING_INPUT",
+          "next_action": "PROVIDE_REQUIRED_INFO"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772668353,
+      "state_hash": "caae44de42d8fce6",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "bcc2394ec07306491083fb0b28fa71e4",
+        "request_id": "bcc2394ec07306491083fb0b28fa71e4-40c5fad856f1b8c9",
+        "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+        "intent": "SHIPPING",
+        "route": "FALLBACK",
+        "reason_code": "MISSING_INPUT",
+        "pending_action": null,
+        "response": {
+          "status": "needs_input",
+          "reason_code": "MISSING_INPUT",
+          "next_action": "PROVIDE_REQUIRED_INFO"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772668353,
+      "state_hash": "19da6d4f06fc7c2f",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "bcc2394ec07306491083fb0b28fa71e4",
+        "request_id": "bcc2394ec07306491083fb0b28fa71e4-40c5fad856f1b8c9",
+        "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+        "intent": "SHIPPING",
+        "route": "FALLBACK",
+        "reason_code": "MISSING_INPUT",
+        "pending_action": null,
+        "response": {
+          "status": "needs_input",
+          "reason_code": "MISSING_INPUT",
+          "next_action": "PROVIDE_REQUIRED_INFO"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "bcc2394ec07306491083fb0b28fa71e4",
+    "request_id": "bcc2394ec07306491083fb0b28fa71e4-40c5fad856f1b8c9",
+    "status": "needs_input",
+    "reason_code": "MISSING_INPUT",
+    "recoverable": true,
+    "next_action": "PROVIDE_REQUIRED_INFO",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "배송 조회를 위해 주문번호(예: ORD20260222XXXX) 또는 주문 ID를 입력해 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "bcc2394ec07306491083fb0b28fa71e4",
+    "request_id": "bcc2394ec07306491083fb0b28fa71e4-40c5fad856f1b8c9",
+    "status": "needs_input",
+    "reason_code": "MISSING_INPUT",
+    "recoverable": true,
+    "next_action": "PROVIDE_REQUIRED_INFO",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "배송 조회를 위해 주문번호(예: ORD20260222XXXX) 또는 주문 ID를 입력해 주세요."
+    },
+    "sources": [],
+    "citations": []
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-03-03T03:44:43.518346+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_trust/retrieval_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "query_total": 0,
+    "candidate_total": 0,
+    "topk_slot_total": 0,
+    "low_trust_topk_before_total": 0,
+    "low_trust_topk_after_total": 0,
+    "low_trust_topk_before_ratio": 0.0,
+    "low_trust_topk_after_ratio": 0.0,
+    "stale_topk_before_total": 0,
+    "stale_topk_after_total": 0,
+    "stale_topk_before_ratio": 0.0,
+    "stale_topk_after_ratio": 0.0,
+    "trust_lift_ratio": 1.0,
+    "stale_drop_ratio": 1.0,
+    "rerank_shift_query_total": 0,
+    "rerank_shift_ratio": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_query_total": 0,
+      "max_low_trust_topk_ratio": 0.4,
+      "max_stale_topk_ratio": 0.2,
+      "min_trust_lift_ratio": 0.0,
+      "min_stale_drop_ratio": 0.0,
+      "max_stale_minutes": 60.0
+    }
+  }
+}

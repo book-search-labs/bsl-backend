@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-03-03T14:57:49.381803+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_output_guard/claim_verifier_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "claim_total": 0,
+    "verified_claim_total": 0,
+    "verifier_coverage_ratio": 1.0,
+    "mismatch_total": 0,
+    "mismatch_ratio": 0.0,
+    "unsupported_total": 0,
+    "mismatch_mitigated_total": 0,
+    "mismatch_mitigated_ratio": 1.0,
+    "missing_evidence_ref_total": 0,
+    "p95_verifier_latency_ms": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_claim_total": 0,
+      "min_verifier_coverage_ratio": 0.0,
+      "max_mismatch_ratio": 1.0,
+      "max_unsupported_total": 1000000,
+      "min_mismatch_mitigated_ratio": 0.0,
+      "max_missing_evidence_ref_total": 1000000,
+      "max_p95_verifier_latency_ms": 1000000.0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
 
 import { fetchAutocomplete } from '../api/autocomplete'
@@ -27,7 +27,7 @@ const HOME_SECTIONS = [
     key: 'bestseller',
     title: '이번 주 베스트셀러',
     note: '지금 가장 많이 찾는 도서를 모았습니다.',
-    link: '/search?q=베스트셀러',
+    link: '/collections/bestseller',
   },
   {
     key: 'new',
@@ -39,7 +39,7 @@ const HOME_SECTIONS = [
     key: 'editor',
     title: '에디터 추천',
     note: '감성적인 에세이와 문학 작품을 큐레이션했습니다.',
-    link: '/search?q=에세이',
+    link: '/collections/editor',
   },
 ]
 
@@ -49,6 +49,16 @@ const SECTION_DECOR: Record<string, { icon: string; badge: string; tone: string 
   bestseller: { icon: '🔥', badge: '이번 주', tone: 'bestseller' },
   new: { icon: '🆕', badge: '신규', tone: 'new' },
   editor: { icon: '✍️', badge: '큐레이션', tone: 'editor' },
+}
+
+function resolveSectionLink(sectionKey: string, serverLink?: string, fallbackLink?: string) {
+  if (sectionKey === 'bestseller') {
+    return '/collections/bestseller'
+  }
+  if (sectionKey === 'editor') {
+    return '/collections/editor'
+  }
+  return serverLink ?? fallbackLink ?? '/search'
 }
 
 type AppShellContext = {
@@ -68,6 +78,80 @@ function formatViewedAgo(viewedAt: number) {
   if (elapsedHours < 24) return `${elapsedHours}시간 전`
   const elapsedDays = Math.floor(elapsedHours / 24)
   return `${elapsedDays}일 전`
+}
+
+type HorizontalScrollSectionProps = {
+  className: string
+  itemCount: number
+  sliderLabel: string
+  children: ReactNode
+}
+
+function HorizontalScrollSection({ className, itemCount, sliderLabel, children }: HorizontalScrollSectionProps) {
+  const railRef = useRef<HTMLDivElement | null>(null)
+  const [sliderMax, setSliderMax] = useState(0)
+  const [sliderValue, setSliderValue] = useState(0)
+
+  useEffect(() => {
+    const rail = railRef.current
+    if (!rail) return
+
+    const updateMetrics = () => {
+      const nextMax = Math.max(0, Math.ceil(rail.scrollWidth - rail.clientWidth))
+      const nextValue = Math.min(Math.max(0, Math.ceil(rail.scrollLeft)), nextMax)
+      setSliderMax(nextMax)
+      setSliderValue(nextValue)
+    }
+
+    const handleScroll = () => {
+      const nextMax = Math.max(0, Math.ceil(rail.scrollWidth - rail.clientWidth))
+      const nextValue = Math.min(Math.max(0, Math.ceil(rail.scrollLeft)), nextMax)
+      setSliderMax(nextMax)
+      setSliderValue(nextValue)
+    }
+
+    updateMetrics()
+    rail.addEventListener('scroll', handleScroll, { passive: true })
+    window.addEventListener('resize', updateMetrics)
+    const raf = window.requestAnimationFrame(updateMetrics)
+
+    return () => {
+      window.cancelAnimationFrame(raf)
+      rail.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('resize', updateMetrics)
+    }
+  }, [itemCount])
+
+  const sliderLimit = Math.max(sliderMax, 1)
+  const currentValue = Math.min(sliderValue, sliderLimit)
+
+  const handleSliderChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextValue = Number(event.target.value)
+    setSliderValue(nextValue)
+    if (!railRef.current) return
+    railRef.current.scrollTo({ left: nextValue, behavior: 'auto' })
+  }
+
+  return (
+    <div className="section-scroll-shell">
+      <div ref={railRef} className={className}>
+        {children}
+      </div>
+      <div className="section-scroll-slider-wrap">
+        <input
+          type="range"
+          className="section-scroll-slider"
+          min={0}
+          max={sliderLimit}
+          step={1}
+          value={currentValue}
+          onChange={handleSliderChange}
+          disabled={sliderMax <= 0}
+          aria-label={sliderLabel}
+        />
+      </div>
+    </div>
+  )
 }
 
 export default function HomePage() {
@@ -98,7 +182,7 @@ export default function HomePage() {
       key: section.key,
       title: section.title,
       note: section.note,
-      link: section.link,
+      link: resolveSectionLink(section.key, undefined, section.link),
       items: [],
     })),
   )
@@ -188,7 +272,7 @@ export default function HomePage() {
             key: section.key,
             title: server?.title ?? section.title,
             note: server?.note ?? section.note,
-            link: server?.link ?? section.link,
+            link: resolveSectionLink(section.key, server?.link, section.link),
             items: Array.isArray(server?.items) ? server.items : [],
           }
         })
@@ -201,7 +285,7 @@ export default function HomePage() {
             key: section.key,
             title: section.title,
             note: section.note,
-            link: section.link,
+            link: resolveSectionLink(section.key, undefined, section.link),
             items: [],
           })),
         )
@@ -357,7 +441,11 @@ export default function HomePage() {
                 통합검색
               </Link>
             </div>
-            <div className="trend-rank-grid">
+            <HorizontalScrollSection
+              className="trend-rank-grid"
+              itemCount={Math.max(trendingQueries.length, 8)}
+              sliderLabel="지금 많이 찾는 키워드 슬라이드"
+            >
               {trendingQueries.length > 0
                 ? trendingQueries.map((query, index) => (
                     <Link key={query} to={`/search?q=${encodeURIComponent(query)}`} className="trend-rank-card">
@@ -371,7 +459,7 @@ export default function HomePage() {
                 : Array.from({ length: 8 }).map((_, index) => (
                     <div key={`trend-skeleton-${index}`} className="trend-rank-card trend-rank-card--skeleton" />
                   ))}
-            </div>
+            </HorizontalScrollSection>
           </div>
 
           {homeSections.map((section) => {
@@ -396,93 +484,89 @@ export default function HomePage() {
                     전체 보기
                   </Link>
                 </div>
-                {homeSectionsLoading ? (
-                  <div className="shelf-row">
-                    {Array.from({ length: 6 }).map((_, index) => (
-                      <article key={`skeleton-${section.key}-${index}`} className="book-tile book-tile--compact skeleton" />
-                    ))}
-                  </div>
-                ) : homeSectionsError ? (
+                {homeSectionsError ? (
                   <div className="placeholder-card empty-state">
                     <div className="empty-title">추천 도서를 불러오지 못했습니다</div>
                     <div className="empty-copy">잠시 후 다시 시도해주세요.</div>
                   </div>
-                ) : hits.length === 0 ? (
-                  <div className="shelf-row">
-                    {Array.from({ length: 6 }).map((_, index) => (
-                      <article key={`empty-skeleton-${section.key}-${index}`} className="book-tile book-tile--compact skeleton" />
-                    ))}
-                  </div>
                 ) : (
-                  <div className="shelf-row">
-                    {hits.map((hit, index) => {
-                      const title = hit.title_ko ?? '제목 없음'
-                      const authors = Array.isArray(hit.authors) ? hit.authors : []
-                      const publisher = hit.publisher_name ?? '출판사 정보 없음'
-                      const year = hit.issued_year ?? '-'
-                      const docId = hit.doc_id
-                      const detailLink = docId
-                        ? `/book/${encodeURIComponent(docId)}?from=home`
-                        : `/search?q=${encodeURIComponent(title)}`
-                      const searchLink = (() => {
-                        const params = new URLSearchParams()
-                        params.set('q', title)
-                        params.set('vector', 'true')
-                        params.set('related_title', title)
-                        if (docId) {
-                          params.set('related', docId)
-                        }
-                        return `/search?${params.toString()}`
-                      })()
-                      const labels = Array.isArray(hit.edition_labels)
-                        ? hit.edition_labels.slice(0, 2)
-                        : []
+                  <HorizontalScrollSection
+                    className="shelf-row"
+                    itemCount={homeSectionsLoading || hits.length === 0 ? 6 : hits.length}
+                    sliderLabel={`${section.title} 슬라이드`}
+                  >
+                    {homeSectionsLoading || hits.length === 0
+                      ? Array.from({ length: 6 }).map((_, index) => (
+                          <article key={`skeleton-${section.key}-${index}`} className="book-tile book-tile--compact skeleton" />
+                        ))
+                      : hits.map((hit, index) => {
+                          const title = hit.title_ko ?? '제목 없음'
+                          const authors = Array.isArray(hit.authors) ? hit.authors : []
+                          const publisher = hit.publisher_name ?? '출판사 정보 없음'
+                          const year = hit.issued_year ?? '-'
+                          const docId = hit.doc_id
+                          const detailLink = docId
+                            ? `/book/${encodeURIComponent(docId)}?from=home`
+                            : `/search?q=${encodeURIComponent(title)}`
+                          const searchLink = (() => {
+                            const params = new URLSearchParams()
+                            params.set('q', title)
+                            params.set('vector', 'true')
+                            params.set('related_title', title)
+                            if (docId) {
+                              params.set('related', docId)
+                            }
+                            return `/search?${params.toString()}`
+                          })()
+                          const labels = Array.isArray(hit.edition_labels)
+                            ? hit.edition_labels.slice(0, 2)
+                            : []
 
-                      return (
-                        <article key={docId ?? `${section.key}-${index}`} className="book-tile book-tile--compact">
-                          <Link
-                            className={`book-tile-cover book-tile-cover-link book-tile-cover--${decor.tone}`}
-                            to={detailLink}
-                            aria-label={`${title} 상세보기`}
-                          >
-                            <BookCover
-                              className="book-cover-image"
-                              title={title}
-                              coverUrl={typeof hit.cover_url === 'string' ? hit.cover_url : null}
-                              isbn13={typeof hit.isbn13 === 'string' ? hit.isbn13 : null}
-                              docId={docId ?? null}
-                              size="M"
-                            />
-                            <span className="book-tile-rank">#{index + 1}</span>
-                          </Link>
-                          <div className="book-tile-body">
-                            <h3 className="book-tile-title">{title}</h3>
-                            <p className="book-tile-meta">{formatAuthors(authors)}</p>
-                            <p className="book-tile-meta">{publisher} · {year}</p>
-                            <div className="book-tile-tags">
-                              {labels.length > 0 ? (
-                                labels.map((label) => (
-                                  <span key={label} className="tag-chip">
-                                    {label}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="tag-chip muted">판형 정보 없음</span>
-                              )}
-                            </div>
-                            <div className="book-tile-actions">
-                              <Link className="btn btn-outline-dark btn-sm" to={detailLink}>
-                                상세보기
+                          return (
+                            <article key={docId ?? `${section.key}-${index}`} className="book-tile book-tile--compact">
+                              <Link
+                                className={`book-tile-cover book-tile-cover-link book-tile-cover--${decor.tone}`}
+                                to={detailLink}
+                                aria-label={`${title} 상세보기`}
+                              >
+                                <BookCover
+                                  className="book-cover-image"
+                                  title={title}
+                                  coverUrl={typeof hit.cover_url === 'string' ? hit.cover_url : null}
+                                  isbn13={typeof hit.isbn13 === 'string' ? hit.isbn13 : null}
+                                  docId={docId ?? null}
+                                  size="M"
+                                />
+                                <span className="book-tile-rank">#{index + 1}</span>
                               </Link>
-                              <Link className="btn btn-outline-secondary btn-sm" to={searchLink}>
-                                비슷한 책
-                              </Link>
-                            </div>
-                          </div>
-                        </article>
-                      )
-                    })}
-                  </div>
+                              <div className="book-tile-body">
+                                <h3 className="book-tile-title">{title}</h3>
+                                <p className="book-tile-meta">{formatAuthors(authors)}</p>
+                                <p className="book-tile-meta">{publisher} · {year}</p>
+                                <div className="book-tile-tags">
+                                  {labels.length > 0 ? (
+                                    labels.map((label) => (
+                                      <span key={label} className="tag-chip">
+                                        {label}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="tag-chip muted">판형 정보 없음</span>
+                                  )}
+                                </div>
+                                <div className="book-tile-actions">
+                                  <Link className="btn btn-outline-dark btn-sm" to={detailLink}>
+                                    상세보기
+                                  </Link>
+                                  <Link className="btn btn-outline-secondary btn-sm" to={searchLink}>
+                                    비슷한 책
+                                  </Link>
+                                </div>
+                              </div>
+                            </article>
+                          )
+                        })}
+                  </HorizontalScrollSection>
                 )}
               </div>
             )

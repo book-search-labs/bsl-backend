@@ -67,3 +67,29 @@ class HealthResponse(BaseModel):
     status: str
     trace_id: str
     request_id: str
+
+
+class OsSyncRepairRequest(BaseModel):
+    material_ids: list[str] = Field(default_factory=list)
+    action: Optional[str] = Field(default="upsert")
+
+
+class OsSyncRepairResult(BaseModel):
+    requested: int
+    inserted: int
+    skipped: int
+    event_type: str
+
+
+class OsSyncRepairResponse(BaseModel):
+    version: str = "v1"
+    trace_id: str
+    request_id: str
+    result: OsSyncRepairResult
+
+
+class OsSyncStatusResponse(BaseModel):
+    version: str = "v1"
+    trace_id: str
+    request_id: str
+    status: Dict[str, Any]

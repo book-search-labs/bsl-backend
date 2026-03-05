@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-03-03T15:11:27.731856+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_style/style_policy_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "response_total": 0,
+    "style_checked_total": 0,
+    "style_checked_ratio": 1.0,
+    "style_bypass_total": 0,
+    "style_violation_total": 0,
+    "style_compliance_ratio": 1.0,
+    "politeness_violation_total": 0,
+    "sentence_length_violation_total": 0,
+    "numeric_format_violation_total": 0,
+    "tone_violation_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_response_total": 0,
+      "min_style_checked_ratio": 0.0,
+      "min_style_compliance_ratio": 0.0,
+      "max_style_bypass_total": 1000000,
+      "max_politeness_violation_total": 1000000,
+      "max_sentence_length_violation_total": 1000000,
+      "max_numeric_format_violation_total": 1000000,
+      "max_tone_violation_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

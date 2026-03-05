@@ -1,0 +1,60 @@
+{
+  "generated_at": "2026-03-04T03:54:58.591638+00:00",
+  "packs_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket/evidence_packs.jsonl",
+  "source": {
+    "packs_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket/evidence_packs.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_ticket_evidence_integrity_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "pack_total": 0,
+    "missing_link_total": 0,
+    "invalid_url_total": 0,
+    "unresolved_link_total": 0,
+    "missing_policy_version_total": 0,
+    "missing_tool_version_total": 0,
+    "missing_evidence_hash_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "pack_total": 0,
+      "missing_link_total": 0,
+      "invalid_url_total": 0,
+      "unresolved_link_total": 0,
+      "missing_policy_version_total": 0,
+      "missing_tool_version_total": 0,
+      "missing_evidence_hash_total": 0,
+      "latest_event_time": null,
+      "stale_minutes": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_missing_link_total": 1000000,
+      "max_invalid_url_total": 1000000,
+      "max_unresolved_link_total": 1000000,
+      "max_missing_policy_version_total": 1000000,
+      "max_missing_tool_version_total": 1000000,
+      "max_missing_evidence_hash_total": 1000000,
+      "max_stale_minutes": 1000000.0,
+      "max_pack_total_drop": 10,
+      "max_missing_link_total_increase": 0,
+      "max_invalid_url_total_increase": 0,
+      "max_unresolved_link_total_increase": 0,
+      "max_missing_policy_version_total_increase": 0,
+      "max_missing_tool_version_total_increase": 0,
+      "max_missing_evidence_hash_total_increase": 0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

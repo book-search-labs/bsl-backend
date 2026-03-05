@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-03-03T12:54:21.073414+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_budget/audit_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "critical_event_total": 0,
+    "missing_reason_code_total": 0,
+    "unknown_reason_code_total": 0,
+    "missing_trace_id_total": 0,
+    "missing_request_id_total": 0,
+    "missing_budget_type_total": 0,
+    "explainability_missing_total": 0,
+    "dashboard_tag_missing_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_missing_reason_code_total": 1000000,
+      "max_unknown_reason_code_total": 1000000,
+      "max_missing_trace_id_total": 1000000,
+      "max_missing_request_id_total": 1000000,
+      "max_missing_budget_type_total": 1000000,
+      "max_explainability_missing_total": 1000000,
+      "max_dashboard_tag_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

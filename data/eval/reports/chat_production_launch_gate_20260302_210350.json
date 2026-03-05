@@ -1,0 +1,109 @@
+{
+  "generated_at": "2026-03-02T12:03:50.599102+00:00",
+  "source": {
+    "replay_dir": "var/chat_graph/replay",
+    "limits": {
+      "parity_limit": 200,
+      "perf_limit": 500,
+      "reason_limit": 500,
+      "legacy_limit": 500,
+      "run_limit": 300
+    }
+  },
+  "derived": {
+    "parity": {
+      "gate_status": "PASS",
+      "blocker_ratio": 0.0,
+      "mismatch_ratio": 0.0,
+      "summary": {
+        "window_size": 0,
+        "matched": 0,
+        "mismatched": 0,
+        "mismatch_ratio": 0.0,
+        "blocker_ratio": 0.0,
+        "by_type": {},
+        "by_severity": {},
+        "by_intent": {},
+        "by_topic": {},
+        "samples": []
+      }
+    },
+    "canary": {
+      "passed": true,
+      "gate_status": "PASS",
+      "reason": "within_threshold",
+      "mismatch_ratio": 0.0,
+      "blocker_ratio": 0.0
+    },
+    "perf": {
+      "window_size": 0,
+      "llm_count": 0,
+      "non_llm_count": 0,
+      "all_p95_ms": 0.0,
+      "all_p99_ms": 0.0,
+      "llm_p95_ms": 0.0,
+      "llm_p99_ms": 0.0,
+      "non_llm_p95_ms": 0.0,
+      "non_llm_p99_ms": 0.0,
+      "fallback_ratio": 0.0,
+      "avg_tool_calls": 0.0,
+      "samples": []
+    },
+    "budget": {
+      "passed": false,
+      "failures": [
+        "insufficient perf samples: window_size=0 < min_window=20"
+      ]
+    },
+    "reason": {
+      "window_size": 0,
+      "invalid_total": 0,
+      "unknown_total": 0,
+      "invalid_ratio": 0.0,
+      "unknown_ratio": 0.0,
+      "by_source": {},
+      "by_lane": {},
+      "by_reason_code": {},
+      "samples": []
+    },
+    "legacy": {
+      "window_size": 0,
+      "legacy_count": 0,
+      "legacy_ratio": 0.0,
+      "legacy_reason_counts": {},
+      "samples": []
+    },
+    "completion": {
+      "run_total": 0,
+      "insufficient_evidence_total": 0,
+      "insufficient_evidence_ratio": 0.0,
+      "commerce_total": 0,
+      "commerce_completed_total": 0,
+      "commerce_unresolved_total": 0,
+      "commerce_completion_rate": 0.0,
+      "by_intent": {},
+      "samples": []
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": false,
+    "failures": [
+      "budget gate failed: insufficient perf samples: window_size=0 < min_window=20"
+    ],
+    "thresholds": {
+      "min_reason_window": 0,
+      "min_legacy_window": 0,
+      "min_run_window": 0,
+      "min_commerce_samples": 0,
+      "max_mismatch_ratio": 0.1,
+      "max_blocker_ratio": 0.02,
+      "max_reason_invalid_ratio": 1.0,
+      "max_reason_unknown_ratio": 1.0,
+      "max_legacy_ratio": 1.0,
+      "max_legacy_count": 999,
+      "min_commerce_completion_rate": 0.0,
+      "max_insufficient_evidence_ratio": 1.0
+    }
+  }
+}

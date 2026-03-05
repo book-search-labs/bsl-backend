@@ -1,0 +1,48 @@
+{
+  "generated_at": "2026-03-02T22:29:18.638383+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_finops/session_cost_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "resolved_total": 0,
+    "unresolved_total": 0,
+    "resolution_rate": 0.0,
+    "cost_per_resolved_session": 0.0,
+    "total_cost_usd": 0.0,
+    "unresolved_cost_burn_total": 0.0,
+    "avg_tool_calls": 0.0,
+    "avg_rewrite_steps": 0.0,
+    "heavy_route_ratio": 0.0,
+    "light_route_ratio": 0.0,
+    "intents": []
+  },
+  "decision": {
+    "mode": "NORMAL",
+    "budget_utilization": 0.0,
+    "soft_budget_utilization": 0.75,
+    "hard_budget_utilization": 0.9,
+    "estimated_savings_total_usd": 0.0,
+    "intent_policies": [],
+    "recommended_actions": [
+      "기본 라우팅을 유지하고 고비용 저위험 intent만 감시합니다."
+    ],
+    "preserve_high_risk_intents": [
+      "ADDRESS_CHANGE",
+      "CANCEL_ORDER",
+      "PAYMENT_CHANGE",
+      "REFUND_REQUEST"
+    ]
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_resolution_rate": 0.8,
+      "max_cost_per_resolved_session": 2.5,
+      "soft_budget_utilization": 0.75,
+      "hard_budget_utilization": 0.9,
+      "require_clamp": false
+    }
+  }
+}

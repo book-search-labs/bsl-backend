@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-03-03T04:47:10.321483+00:00",
+  "dataset_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/evaluation/chat_safety/adversarial_cases.jsonl",
+  "summary": {
+    "case_total": 0,
+    "invalid_case_total": 0,
+    "korean_case_total": 0,
+    "korean_case_ratio": 0.0,
+    "cjk_mixed_total": 0,
+    "commerce_case_total": 0,
+    "attack_type_total": 0,
+    "missing_attack_types": [
+      "EMOTIONAL_PRESSURE",
+      "FAKE_POLICY",
+      "PROMPT_INJECTION",
+      "ROLE_CONFUSION"
+    ],
+    "attack_type_distribution": []
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_case_total": 0,
+      "max_missing_attack_type_total": 0,
+      "min_korean_case_ratio": 0.4,
+      "min_cjk_mixed_total": 0,
+      "min_commerce_case_total": 0,
+      "max_invalid_case_total": 0
+    }
+  }
+}

@@ -20,9 +20,15 @@ uvicorn app.main:app --host 0.0.0.0 --port 8090 --reload
 - `POST /internal/index/reindex-jobs/{id}/pause`
 - `POST /internal/index/reindex-jobs/{id}/resume`
 - `POST /internal/index/reindex-jobs/{id}/retry`
+- `POST /admin/os-sync/repair`
+- `GET /admin/os-sync/status`
 
 ## Notes
 - Uses the canonical MySQL schema (`db/migration/V3__catalog_core.sql`).
 - Writes progress into `reindex_job.progress_json` and failures into `reindex_error`.
 - Blue/green alias swap for `books_doc_read` / `books_doc_write`.
 - CORS defaults to local dev origins; override with `CORS_ALLOW_ORIGINS` / `CORS_ALLOW_ORIGIN_REGEX`.
+- Optional OS sync worker:
+  - Outbox relay publishes `material.upsert_requested` / `material.delete_requested` to Kafka.
+  - Index writer consumes `os.sync.material.v1`, rebuilds documents from MySQL, and upserts/deletes OpenSearch docs.
+  - Reconciler periodically detects drift and re-enqueues to outbox.

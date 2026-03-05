@@ -1,0 +1,29 @@
+{
+  "generated_at": "2026-03-03T04:07:32.830331+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket/ticket_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "lookup_total": 0,
+    "authz_denied_total": 0,
+    "lookup_error_total": 0,
+    "ownership_violation_total": 0,
+    "missing_owner_check_total": 0,
+    "pii_unmasked_total": 0,
+    "attachment_unmasked_link_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_ownership_violation_total": 0,
+      "max_missing_owner_check_total": 0,
+      "max_pii_unmasked_total": 0,
+      "max_attachment_unmasked_link_total": 0,
+      "max_stale_minutes": 60.0
+    }
+  }
+}

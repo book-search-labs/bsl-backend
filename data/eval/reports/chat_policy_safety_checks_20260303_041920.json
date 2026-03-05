@@ -1,0 +1,29 @@
+{
+  "generated_at": "2026-03-03T04:19:20.848415+00:00",
+  "bundle_json": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_policy/policy_bundle.json",
+  "summary": {
+    "policy_version": "",
+    "rule_total": 0,
+    "contradictory_rule_pair_total": 0,
+    "duplicate_condition_total": 0,
+    "missing_sensitive_guard_intent_total": 4,
+    "unsafe_high_risk_allow_total": 0,
+    "missing_reason_code_total": 0,
+    "latest_bundle_time": null,
+    "stale_minutes": 0.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_rule_total": 0,
+      "max_contradictory_rule_pair_total": 0,
+      "max_duplicate_condition_total": 0,
+      "max_missing_sensitive_guard_intent_total": 0,
+      "max_unsafe_high_risk_allow_total": 0,
+      "max_missing_reason_code_total": 0,
+      "max_stale_minutes": 60.0
+    }
+  }
+}

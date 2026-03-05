@@ -1,0 +1,61 @@
+{
+  "generated_at": "2026-03-03T23:29:09.490303+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_actions/sensitive_action_events.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_actions/sensitive_action_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_sensitive_action_undo_audit_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "action_total": 0,
+    "execute_without_request_total": 0,
+    "undo_supported_execute_total": 0,
+    "undo_requested_total": 0,
+    "undo_executed_total": 0,
+    "undo_success_ratio": 1.0,
+    "undo_after_window_total": 0,
+    "audit_trail_incomplete_total": 0,
+    "missing_audit_fields_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "action_total": 0,
+      "execute_without_request_total": 0,
+      "undo_supported_execute_total": 0,
+      "undo_requested_total": 0,
+      "undo_executed_total": 0,
+      "undo_success_ratio": 1.0,
+      "undo_after_window_total": 0,
+      "audit_trail_incomplete_total": 0,
+      "missing_audit_fields_total": 0,
+      "latest_event_time": null,
+      "stale_minutes": 0.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_execute_without_request_total": 0,
+      "max_undo_after_window_total": 0,
+      "min_undo_success_ratio": 0.8,
+      "max_audit_trail_incomplete_total": 0,
+      "max_missing_audit_fields_total": 0,
+      "max_stale_minutes": 60.0,
+      "max_execute_without_request_total_increase": 0,
+      "max_undo_after_window_total_increase": 0,
+      "max_undo_success_ratio_drop": 0.05,
+      "max_audit_trail_incomplete_total_increase": 0,
+      "max_missing_audit_fields_total_increase": 0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-03-03T13:29:52.625804+00:00",
+  "packs_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket/evidence_packs.jsonl",
+  "summary": {
+    "window_size": 0,
+    "pack_total": 0,
+    "duplicate_ticket_total": 0,
+    "missing_summary_total": 0,
+    "missing_intent_total": 0,
+    "missing_tool_trace_total": 0,
+    "missing_error_code_total": 0,
+    "missing_reference_total": 0,
+    "missing_policy_version_total": 0,
+    "missing_tool_version_total": 0,
+    "redaction_applied_total": 0,
+    "unmasked_pii_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_duplicate_ticket_total": 1000000,
+      "max_missing_summary_total": 1000000,
+      "max_missing_intent_total": 1000000,
+      "max_missing_tool_trace_total": 1000000,
+      "max_missing_error_code_total": 1000000,
+      "max_missing_reference_total": 1000000,
+      "max_missing_policy_version_total": 1000000,
+      "max_missing_tool_version_total": 1000000,
+      "max_unmasked_pii_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

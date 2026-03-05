@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-03-03T15:31:33.466525+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_prompt_supply/signature_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "artifact_total": 0,
+    "signature_verified_total": 0,
+    "signature_verified_ratio": 1.0,
+    "signature_verify_fail_total": 0,
+    "unsigned_artifact_total": 0,
+    "untrusted_signer_total": 0,
+    "checksum_mismatch_total": 0,
+    "deploy_block_total": 0,
+    "unblocked_tampered_total": 0,
+    "reason_code_missing_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_artifact_total": 0,
+      "min_signature_verified_ratio": 0.0,
+      "max_signature_verify_fail_total": 1000000,
+      "max_unsigned_artifact_total": 1000000,
+      "max_untrusted_signer_total": 1000000,
+      "max_checksum_mismatch_total": 1000000,
+      "max_unblocked_tampered_total": 1000000,
+      "max_reason_code_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

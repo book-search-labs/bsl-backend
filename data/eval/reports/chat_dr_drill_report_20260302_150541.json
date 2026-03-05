@@ -1,0 +1,34 @@
+{
+  "generated_at": "2026-03-02T15:05:41.063282+00:00",
+  "summary": {
+    "window_size": 1,
+    "drill_total": 0,
+    "recovered_total": 0,
+    "open_drill_total": 0,
+    "recovery_ratio": 1.0,
+    "avg_mttr_sec": 0.0,
+    "mttr_samples_sec": [],
+    "drills": [],
+    "open_drill": null,
+    "events": [
+      {
+        "path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_liveops_cycle_20260302_211840.json",
+        "generated_at": "2026-03-02T12:18:40.243233+00:00",
+        "action": "promote",
+        "pass": true
+      }
+    ]
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 1,
+      "require_drill": false,
+      "min_recovery_ratio": 1.0,
+      "max_open_drill_total": 0,
+      "max_avg_mttr_sec": 7200.0
+    }
+  }
+}

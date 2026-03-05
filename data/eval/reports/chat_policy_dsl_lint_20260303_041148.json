@@ -1,0 +1,47 @@
+{
+  "generated_at": "2026-03-03T04:11:48.803130+00:00",
+  "bundle_json": "/var/folders/gs/4crkg8_j2rgc_8j9ynj1jpg00000gn/T/tmp.QEgQp9rLSw",
+  "summary": {
+    "policy_version": "policy-v1",
+    "rule_total": 1,
+    "enabled_rule_total": 1,
+    "missing_rule_id_total": 0,
+    "duplicate_rule_id_total": 0,
+    "invalid_priority_total": 0,
+    "invalid_action_total": 0,
+    "empty_condition_total": 0,
+    "unknown_condition_key_total": 0,
+    "invalid_risk_level_total": 0,
+    "invalid_reliability_level_total": 0,
+    "invalid_locale_total": 0,
+    "invalid_effective_window_total": 0,
+    "action_distribution": [
+      {
+        "action": "REQUIRE_CONFIRMATION",
+        "count": 1
+      }
+    ],
+    "latest_bundle_time": "2026-03-03T03:30:00+00:00",
+    "stale_minutes": 41.81337906666667
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_rule_total": 1,
+      "require_policy_version": true,
+      "max_missing_rule_id_total": 0,
+      "max_duplicate_rule_id_total": 0,
+      "max_invalid_priority_total": 0,
+      "max_invalid_action_total": 0,
+      "max_empty_condition_total": 0,
+      "max_unknown_condition_key_total": 0,
+      "max_invalid_risk_level_total": 0,
+      "max_invalid_reliability_level_total": 0,
+      "max_invalid_locale_total": 0,
+      "max_invalid_effective_window_total": 0,
+      "max_stale_minutes": 100000.0
+    }
+  }
+}

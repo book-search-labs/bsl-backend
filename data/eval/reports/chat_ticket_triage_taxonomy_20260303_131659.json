@@ -1,0 +1,47 @@
+{
+  "generated_at": "2026-03-03T13:16:59.729889+00:00",
+  "taxonomy_json": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket/triage_taxonomy.json",
+  "summary": {
+    "taxonomy_version": "",
+    "version_missing": true,
+    "category_total": 0,
+    "severity_total": 0,
+    "duplicate_category_total": 0,
+    "duplicate_severity_total": 0,
+    "missing_categories": [
+      "ACCOUNT",
+      "ORDER",
+      "OTHER",
+      "PAYMENT",
+      "REFUND",
+      "SHIPPING"
+    ],
+    "missing_severities": [
+      "S1",
+      "S2",
+      "S3",
+      "S4"
+    ],
+    "missing_category_total": 6,
+    "missing_severity_total": 4,
+    "missing_severity_rule_total": 0,
+    "updated_at": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_category_total": 0,
+      "min_severity_total": 0,
+      "require_taxonomy_version": false,
+      "max_missing_category_total": 1000000,
+      "max_missing_severity_total": 1000000,
+      "max_duplicate_category_total": 1000000,
+      "max_duplicate_severity_total": 1000000,
+      "max_missing_severity_rule_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

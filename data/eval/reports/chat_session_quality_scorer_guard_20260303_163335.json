@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-03-03T16:33:35.048940+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/session_quality/session_quality_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "scored_total": 0,
+    "mean_quality_score": 0.0,
+    "low_quality_total": 0,
+    "model_drift_total": 0,
+    "commerce_scored_total": 0,
+    "general_scored_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "model_drift_tolerance": 0.05,
+      "min_window": 0,
+      "min_event_total": 0,
+      "min_mean_quality_score": 0.0,
+      "max_low_quality_total": 1000000,
+      "max_model_drift_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

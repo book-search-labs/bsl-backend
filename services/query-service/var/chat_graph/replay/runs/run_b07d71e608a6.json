@@ -1,0 +1,263 @@
+{
+  "run_id": "run_b07d71e608a6",
+  "trace_id": "864e2ac9e18da2cf1595558d3180a6cb",
+  "request_id": "864e2ac9e18da2cf1595558d3180a6cb-dfade32cd0a43a30",
+  "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+  "status": "done",
+  "started_at": 1772670200,
+  "updated_at": 1772670200,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "김정욱 책 검색해줘"
+    },
+    "history": [],
+    "options": {
+      "stream": true,
+      "top_k": 6
+    },
+    "trace_id": "864e2ac9e18da2cf1595558d3180a6cb",
+    "request_id": "864e2ac9e18da2cf1595558d3180a6cb-dfade32cd0a43a30",
+    "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "864e2ac9e18da2cf1595558d3180a6cb",
+    "request_id": "864e2ac9e18da2cf1595558d3180a6cb-dfade32cd0a43a30",
+    "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "김정욱 책 검색해줘"
+      },
+      "history": [],
+      "options": {
+        "stream": true,
+        "top_k": 6
+      },
+      "trace_id": "864e2ac9e18da2cf1595558d3180a6cb",
+      "request_id": "864e2ac9e18da2cf1595558d3180a6cb-dfade32cd0a43a30",
+      "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772670200,
+      "state_hash": "5efbf818b5a1355c",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "864e2ac9e18da2cf1595558d3180a6cb",
+        "request_id": "864e2ac9e18da2cf1595558d3180a6cb-dfade32cd0a43a30",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772670200,
+      "state_hash": "bc8d660cb977dc84",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "864e2ac9e18da2cf1595558d3180a6cb",
+        "request_id": "864e2ac9e18da2cf1595558d3180a6cb-dfade32cd0a43a30",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "GENERAL",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772670200,
+      "state_hash": "11fda08787f64e2b",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "864e2ac9e18da2cf1595558d3180a6cb",
+        "request_id": "864e2ac9e18da2cf1595558d3180a6cb-dfade32cd0a43a30",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "GENERAL",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772670200,
+      "state_hash": "11fda08787f64e2b",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "864e2ac9e18da2cf1595558d3180a6cb",
+        "request_id": "864e2ac9e18da2cf1595558d3180a6cb-dfade32cd0a43a30",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "GENERAL",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772670200,
+      "state_hash": "aa2ecab1fd8d6987",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "864e2ac9e18da2cf1595558d3180a6cb",
+        "request_id": "864e2ac9e18da2cf1595558d3180a6cb-dfade32cd0a43a30",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "GENERAL",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772670200,
+      "state_hash": "aa2ecab1fd8d6987",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "864e2ac9e18da2cf1595558d3180a6cb",
+        "request_id": "864e2ac9e18da2cf1595558d3180a6cb-dfade32cd0a43a30",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "GENERAL",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772670200,
+      "state_hash": "aa2ecab1fd8d6987",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "864e2ac9e18da2cf1595558d3180a6cb",
+        "request_id": "864e2ac9e18da2cf1595558d3180a6cb-dfade32cd0a43a30",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "GENERAL",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772670200,
+      "state_hash": "a564c43d1a908723",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "864e2ac9e18da2cf1595558d3180a6cb",
+        "request_id": "864e2ac9e18da2cf1595558d3180a6cb-dfade32cd0a43a30",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "GENERAL",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "864e2ac9e18da2cf1595558d3180a6cb",
+    "request_id": "864e2ac9e18da2cf1595558d3180a6cb-dfade32cd0a43a30",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "'김정욱' 검색 결과입니다.\n1) 中共軍事思想之硏究 (김정욱 / nlk:CDM000000001) · 유사도 14.18"
+    },
+    "sources": [
+      {
+        "citation_key": "tool:book_search:1772670200",
+        "doc_id": "tool:book_search",
+        "chunk_id": "tool:book_search:1772670200",
+        "title": "book_search 실시간 조회",
+        "url": "OS /books_doc_read/_search",
+        "snippet": "query=김정욱, candidate_count=1 (조회시각: 2026-03-05T00:23:20.562843+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:book_search:1772670200"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "864e2ac9e18da2cf1595558d3180a6cb",
+    "request_id": "864e2ac9e18da2cf1595558d3180a6cb-dfade32cd0a43a30",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "'김정욱' 검색 결과입니다.\n1) 中共軍事思想之硏究 (김정욱 / nlk:CDM000000001) · 유사도 14.18"
+    },
+    "sources": [
+      {
+        "citation_key": "tool:book_search:1772670200",
+        "doc_id": "tool:book_search",
+        "chunk_id": "tool:book_search:1772670200",
+        "title": "book_search 실시간 조회",
+        "url": "OS /books_doc_read/_search",
+        "snippet": "query=김정욱, candidate_count=1 (조회시각: 2026-03-05T00:23:20.562843+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:book_search:1772670200"
+    ]
+  }
+}

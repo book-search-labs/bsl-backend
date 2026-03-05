@@ -1,0 +1,229 @@
+{
+  "run_id": "run_53169d3c99b2",
+  "trace_id": "trace_test",
+  "request_id": "req_test",
+  "session_id": "sess-coverage-1",
+  "status": "done",
+  "started_at": 1772666489,
+  "updated_at": 1772666489,
+  "request_payload": {
+    "session_id": "sess-coverage-1",
+    "message": {
+      "role": "user",
+      "content": "질문"
+    },
+    "client": {
+      "user_id": "1",
+      "locale": "ko-KR"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "session_id": "sess-coverage-1",
+    "input": {
+      "session_id": "sess-coverage-1",
+      "message": {
+        "role": "user",
+        "content": "질문"
+      },
+      "client": {
+        "user_id": "1",
+        "locale": "ko-KR"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772666489,
+      "state_hash": "1caa80e13f99be04",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-coverage-1",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772666489,
+      "state_hash": "fffa0857c6b1d175",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-coverage-1",
+        "intent": "GENERAL",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772666489,
+      "state_hash": "7ef317ca794ebdb3",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-coverage-1",
+        "intent": "GENERAL",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772666489,
+      "state_hash": "7ef317ca794ebdb3",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-coverage-1",
+        "intent": "GENERAL",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772666489,
+      "state_hash": "8079ef3640dcd9cf",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-coverage-1",
+        "intent": "GENERAL",
+        "route": "FALLBACK",
+        "reason_code": "LLM_LOW_CITATION_COVERAGE",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "LLM_LOW_CITATION_COVERAGE",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772666489,
+      "state_hash": "8079ef3640dcd9cf",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-coverage-1",
+        "intent": "GENERAL",
+        "route": "FALLBACK",
+        "reason_code": "LLM_LOW_CITATION_COVERAGE",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "LLM_LOW_CITATION_COVERAGE",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772666489,
+      "state_hash": "8079ef3640dcd9cf",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-coverage-1",
+        "intent": "GENERAL",
+        "route": "FALLBACK",
+        "reason_code": "LLM_LOW_CITATION_COVERAGE",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "LLM_LOW_CITATION_COVERAGE",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772666489,
+      "state_hash": "d9dbef9586e78b32",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-coverage-1",
+        "intent": "GENERAL",
+        "route": "FALLBACK",
+        "reason_code": "LLM_LOW_CITATION_COVERAGE",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "LLM_LOW_CITATION_COVERAGE",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "status": "insufficient_evidence",
+    "reason_code": "LLM_LOW_CITATION_COVERAGE",
+    "recoverable": true,
+    "next_action": "REFINE_QUERY",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "답변이 참조한 근거 범위가 충분하지 않아 확정 답변을 보류했습니다. 질문을 조금 더 구체화해 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "fallback_count": 1,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "answer": {
+      "role": "assistant",
+      "content": "답변이 참조한 근거 범위가 충분하지 않아 확정 답변을 보류했습니다. 질문을 조금 더 구체화해 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "status": "insufficient_evidence",
+    "reason_code": "LLM_LOW_CITATION_COVERAGE",
+    "recoverable": true,
+    "next_action": "REFINE_QUERY",
+    "retry_after_ms": null,
+    "fallback_count": 1,
+    "escalated": false
+  }
+}

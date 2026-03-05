@@ -1,0 +1,243 @@
+{
+  "run_id": "run_ac550cda5baf",
+  "trace_id": "t-search",
+  "request_id": "r-search",
+  "session_id": "debug-search",
+  "status": "done",
+  "started_at": 1772667872,
+  "updated_at": 1772667872,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "문헌으로 책 검색해줘"
+    },
+    "history": [],
+    "options": {
+      "stream": false,
+      "top_k": 6
+    },
+    "trace_id": "t-search",
+    "request_id": "r-search",
+    "session_id": "debug-search",
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "t-search",
+    "request_id": "r-search",
+    "session_id": "debug-search",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "문헌으로 책 검색해줘"
+      },
+      "history": [],
+      "options": {
+        "stream": false,
+        "top_k": 6
+      },
+      "trace_id": "t-search",
+      "request_id": "r-search",
+      "session_id": "debug-search",
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772667872,
+      "state_hash": "ac55160fbee5e8a2",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-search",
+        "request_id": "r-search",
+        "session_id": "debug-search",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772667872,
+      "state_hash": "a75f655eab3d240d",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-search",
+        "request_id": "r-search",
+        "session_id": "debug-search",
+        "intent": "GENERAL",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772667872,
+      "state_hash": "a92d1e031aafd6e7",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-search",
+        "request_id": "r-search",
+        "session_id": "debug-search",
+        "intent": "GENERAL",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772667872,
+      "state_hash": "a92d1e031aafd6e7",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-search",
+        "request_id": "r-search",
+        "session_id": "debug-search",
+        "intent": "GENERAL",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772667872,
+      "state_hash": "f17f3915ac202d64",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-search",
+        "request_id": "r-search",
+        "session_id": "debug-search",
+        "intent": "GENERAL",
+        "route": "FALLBACK",
+        "reason_code": "RAG_NO_CHUNKS",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "RAG_NO_CHUNKS",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772667872,
+      "state_hash": "f17f3915ac202d64",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-search",
+        "request_id": "r-search",
+        "session_id": "debug-search",
+        "intent": "GENERAL",
+        "route": "FALLBACK",
+        "reason_code": "RAG_NO_CHUNKS",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "RAG_NO_CHUNKS",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772667872,
+      "state_hash": "f17f3915ac202d64",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-search",
+        "request_id": "r-search",
+        "session_id": "debug-search",
+        "intent": "GENERAL",
+        "route": "FALLBACK",
+        "reason_code": "RAG_NO_CHUNKS",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "RAG_NO_CHUNKS",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772667872,
+      "state_hash": "8c0bcd6eaae24700",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "t-search",
+        "request_id": "r-search",
+        "session_id": "debug-search",
+        "intent": "GENERAL",
+        "route": "FALLBACK",
+        "reason_code": "RAG_NO_CHUNKS",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "RAG_NO_CHUNKS",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "t-search",
+    "request_id": "r-search",
+    "status": "insufficient_evidence",
+    "reason_code": "RAG_NO_CHUNKS",
+    "recoverable": true,
+    "next_action": "REFINE_QUERY",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "현재 근거 문서를 찾지 못해 확정 답변을 드리기 어렵습니다. 키워드나 조건을 조금 더 구체적으로 입력해 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "fallback_count": 1,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "t-search",
+    "request_id": "r-search",
+    "answer": {
+      "role": "assistant",
+      "content": "현재 근거 문서를 찾지 못해 확정 답변을 드리기 어렵습니다. 키워드나 조건을 조금 더 구체적으로 입력해 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "status": "insufficient_evidence",
+    "reason_code": "RAG_NO_CHUNKS",
+    "recoverable": true,
+    "next_action": "REFINE_QUERY",
+    "retry_after_ms": null,
+    "fallback_count": 1,
+    "escalated": false
+  }
+}

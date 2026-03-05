@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-03-03T15:55:50.998530+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/crosslingual/fallback_policy_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "low_confidence_total": 0,
+    "fallback_triggered_total": 0,
+    "fallback_coverage_ratio": 1.0,
+    "source_based_response_total": 0,
+    "source_based_response_ratio": 1.0,
+    "clarification_asked_total": 0,
+    "clarification_ratio": 1.0,
+    "unsafe_high_risk_no_fallback_total": 0,
+    "direct_answer_without_fallback_total": 0,
+    "reason_missing_total": 0,
+    "fallback_reason_distribution": [],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "low_confidence_threshold": 0.6,
+      "min_window": 0,
+      "min_event_total": 0,
+      "min_fallback_coverage_ratio": 0.0,
+      "min_source_based_response_ratio": 0.0,
+      "min_clarification_ratio": 0.0,
+      "max_unsafe_high_risk_no_fallback_total": 1000000,
+      "max_direct_answer_without_fallback_total": 1000000,
+      "max_reason_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

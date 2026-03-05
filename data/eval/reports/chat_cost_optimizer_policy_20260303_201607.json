@@ -1,0 +1,94 @@
+{
+  "generated_at": "2026-03-03T20:16:07.247595+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_finops/session_cost_events.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_finops/session_cost_events.jsonl",
+    "window_days": 7,
+    "limit": 100000,
+    "budget_utilization_override": null,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_cost_optimizer_policy_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "resolved_total": 0,
+    "unresolved_total": 0,
+    "resolution_rate": 0.0,
+    "cost_per_resolved_session": 0.0,
+    "total_cost_usd": 0.0,
+    "unresolved_cost_burn_total": 0.0,
+    "avg_tool_calls": 0.0,
+    "avg_rewrite_steps": 0.0,
+    "heavy_route_ratio": 0.0,
+    "light_route_ratio": 0.0,
+    "intents": []
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "resolved_total": 0,
+      "unresolved_total": 0,
+      "resolution_rate": 0.0,
+      "cost_per_resolved_session": 0.0,
+      "total_cost_usd": 0.0,
+      "unresolved_cost_burn_total": 0.0,
+      "avg_tool_calls": 0.0,
+      "avg_rewrite_steps": 0.0,
+      "heavy_route_ratio": 0.0,
+      "light_route_ratio": 0.0,
+      "intents": []
+    },
+    "decision": {
+      "mode": "NORMAL",
+      "budget_utilization": 0.0,
+      "soft_budget_utilization": 0.75,
+      "hard_budget_utilization": 0.9,
+      "estimated_savings_total_usd": 0.0,
+      "intent_policies": [],
+      "recommended_actions": [
+        "기본 라우팅을 유지하고 고비용 저위험 intent만 감시합니다."
+      ],
+      "preserve_high_risk_intents": [
+        "ADDRESS_CHANGE",
+        "CANCEL_ORDER",
+        "PAYMENT_CHANGE",
+        "REFUND_REQUEST"
+      ]
+    }
+  },
+  "decision": {
+    "mode": "NORMAL",
+    "budget_utilization": 0.0,
+    "soft_budget_utilization": 0.75,
+    "hard_budget_utilization": 0.9,
+    "estimated_savings_total_usd": 0.0,
+    "intent_policies": [],
+    "recommended_actions": [
+      "기본 라우팅을 유지하고 고비용 저위험 intent만 감시합니다."
+    ],
+    "preserve_high_risk_intents": [
+      "ADDRESS_CHANGE",
+      "CANCEL_ORDER",
+      "PAYMENT_CHANGE",
+      "REFUND_REQUEST"
+    ]
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_resolution_rate": 0.8,
+      "max_cost_per_resolved_session": 2.5,
+      "soft_budget_utilization": 0.75,
+      "hard_budget_utilization": 0.9,
+      "require_clamp": false,
+      "max_resolution_rate_drop": 0.05,
+      "max_cost_per_resolved_session_increase": 0.5,
+      "max_heavy_route_ratio_increase": 0.1,
+      "max_avg_rewrite_steps_increase": 0.5,
+      "max_high_risk_light_increase": 0
+    }
+  }
+}

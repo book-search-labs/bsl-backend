@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.core import chat
 from app.core.cache import CacheClient
+from app.core.chat_graph import domain_nodes
 from app.core.chat_graph.runtime import ChatGraphRuntimeResult
 
 
@@ -341,36 +342,24 @@ def test_run_chat_shadow_mode_returns_legacy_response(monkeypatch):
 def test_run_chat_stream_emits_done_with_validated_citations(monkeypatch):
     chat._CACHE = CacheClient(None)
 
-    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
+    async def fake_run_chat(request, trace_id, request_id):
         return {
-            "ok": True,
-            "query": "harry potter",
-            "canonical_key": "ck:test",
-            "locale": "en-US",
-            "selected": [
-                {
-                    "chunk_id": "chunk-1",
-                    "citation_key": "citation-1",
-                    "doc_id": "doc-1",
-                    "title": "Book A",
-                    "url": "https://example.com/a",
-                    "snippet": "snippet",
-                    "score": 0.9,
-                }
-            ],
+            "version": "v1",
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "status": "ok",
+            "reason_code": "OK",
+            "recoverable": False,
+            "next_action": "NONE",
+            "retry_after_ms": None,
+            "answer": {"role": "assistant", "content": "hello"},
+            "sources": [{"chunk_id": "chunk-1", "doc_id": "doc-1"}],
+            "citations": ["chunk-1"],
+            "fallback_count": 0,
+            "escalated": False,
         }
 
-    async def fake_stream_llm(payload, trace_id, request_id):
-        async def generator():
-            yield chat._sse_event("meta", {"trace_id": trace_id, "request_id": request_id})
-            yield chat._sse_event("delta", {"delta": "hello"})
-
-        return generator(), {"answer": "hello", "citations": ["chunk-1"], "llm_error": None, "done_status": "ok"}
-
-    monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
-    monkeypatch.setattr(chat, "_stream_llm", fake_stream_llm)
-    monkeypatch.setattr(chat, "_llm_stream_enabled", lambda: True)
-    monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
+    monkeypatch.setattr(chat, "run_chat", fake_run_chat)
 
     events = _collect_stream_events({"message": {"role": "user", "content": "hi"}, "options": {"stream": True}})
 
@@ -381,41 +370,24 @@ def test_run_chat_stream_emits_done_with_validated_citations(monkeypatch):
 def test_run_chat_stream_emits_error_when_citation_mapping_fails(monkeypatch):
     chat._CACHE = CacheClient(None)
 
-    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
+    async def fake_run_chat(request, trace_id, request_id):
         return {
-            "ok": True,
-            "query": "harry potter",
-            "canonical_key": "ck:test",
-            "locale": "en-US",
-            "selected": [
-                {
-                    "chunk_id": "chunk-1",
-                    "citation_key": "citation-1",
-                    "doc_id": "doc-1",
-                    "title": "Book A",
-                    "url": "https://example.com/a",
-                    "snippet": "snippet",
-                    "score": 0.9,
-                }
-            ],
+            "version": "v1",
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "status": "insufficient_evidence",
+            "reason_code": "LLM_NO_CITATIONS",
+            "recoverable": True,
+            "next_action": "RETRY",
+            "retry_after_ms": 2000,
+            "answer": {"role": "assistant", "content": "근거 문서 매핑에 실패했습니다."},
+            "sources": [],
+            "citations": [],
+            "fallback_count": 1,
+            "escalated": False,
         }
 
-    async def fake_stream_llm(payload, trace_id, request_id):
-        async def generator():
-            yield chat._sse_event("meta", {"trace_id": trace_id, "request_id": request_id})
-            yield chat._sse_event("delta", {"delta": "hello"})
-
-        return generator(), {
-            "answer": "hello",
-            "citations": ["missing-chunk"],
-            "llm_error": None,
-            "done_status": "ok",
-        }
-
-    monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
-    monkeypatch.setattr(chat, "_stream_llm", fake_stream_llm)
-    monkeypatch.setattr(chat, "_llm_stream_enabled", lambda: True)
-    monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
+    monkeypatch.setattr(chat, "run_chat", fake_run_chat)
 
     events = _collect_stream_events({"message": {"role": "user", "content": "hi"}, "options": {"stream": True}})
 
@@ -426,43 +398,24 @@ def test_run_chat_stream_emits_error_when_citation_mapping_fails(monkeypatch):
 def test_run_chat_stream_guard_block_message_is_korean(monkeypatch):
     chat._CACHE = CacheClient(None)
 
-    async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
+    async def fake_run_chat(request, trace_id, request_id):
         return {
-            "ok": True,
-            "query": "환불 정책 알려줘",
-            "canonical_key": "ck:test",
-            "locale": "ko-KR",
-            "selected": [
-                {
-                    "chunk_id": "chunk-1",
-                    "citation_key": "chunk-1",
-                    "doc_id": "doc-1",
-                    "title": "환불 정책",
-                    "url": "https://example.com/refund",
-                    "snippet": "환불은 정책에 따라 달라집니다.",
-                    "score": 0.9,
-                }
-            ],
+            "version": "v1",
+            "trace_id": trace_id,
+            "request_id": request_id,
+            "status": "insufficient_evidence",
+            "reason_code": "OUTPUT_GUARD_FORBIDDEN_CLAIM",
+            "recoverable": True,
+            "next_action": "OPEN_SUPPORT_TICKET",
+            "retry_after_ms": None,
+            "answer": {"role": "assistant", "content": "응답 품질 검증에서 차단되었습니다."},
+            "sources": [],
+            "citations": [],
+            "fallback_count": 1,
+            "escalated": False,
         }
 
-    async def fake_stream_llm(payload, trace_id, request_id):
-        async def generator():
-            yield chat._sse_event("meta", {"trace_id": trace_id, "request_id": request_id})
-            yield chat._sse_event("delta", {"delta": "해당 주문은 반드시 100% 환불됩니다."})
-
-        return generator(), {
-            "answer": "해당 주문은 반드시 100% 환불됩니다.",
-            "citations": ["chunk-1"],
-            "llm_error": None,
-            "done_status": "ok",
-        }
-
-    monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
-    monkeypatch.setattr(chat, "_stream_llm", fake_stream_llm)
-    monkeypatch.setattr(chat, "_llm_stream_enabled", lambda: True)
-    monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
-    monkeypatch.setenv("QS_CHAT_OUTPUT_GUARD_ENABLED", "1")
-    monkeypatch.setenv("QS_CHAT_GUARD_FORBIDDEN_ANSWER_KEYWORDS", "반드시,100%")
+    monkeypatch.setattr(chat, "run_chat", fake_run_chat)
 
     events = _collect_stream_events({"message": {"role": "user", "content": "환불 정책 알려줘"}, "options": {"stream": True}})
 
@@ -472,6 +425,7 @@ def test_run_chat_stream_guard_block_message_is_korean(monkeypatch):
 
 def test_run_chat_blocks_forbidden_claim_on_high_risk_query(monkeypatch):
     chat._CACHE = CacheClient(None)
+    domain_nodes._CACHE = CacheClient(None)
 
     async def fake_prepare_chat(request, trace_id, request_id, **kwargs):
         return {
@@ -495,8 +449,12 @@ def test_run_chat_blocks_forbidden_claim_on_high_risk_query(monkeypatch):
     async def fake_call_llm_json(payload, trace_id, request_id):
         return {"content": "해당 주문은 반드시 100% 환불됩니다.", "citations": ["chunk-1"]}
 
+    async def fake_tool_chat(request, trace_id, request_id):
+        return None
+
     monkeypatch.setattr(chat, "_prepare_chat", fake_prepare_chat)
     monkeypatch.setattr(chat, "_call_llm_json", fake_call_llm_json)
+    monkeypatch.setattr(chat, "run_tool_chat", fake_tool_chat)
     monkeypatch.setattr(chat, "_answer_cache_enabled", lambda: False)
     monkeypatch.setenv("QS_CHAT_OUTPUT_GUARD_ENABLED", "1")
     monkeypatch.setenv("QS_CHAT_GUARD_FORBIDDEN_ANSWER_KEYWORDS", "반드시,100%")

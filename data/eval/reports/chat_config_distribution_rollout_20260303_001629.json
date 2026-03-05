@@ -1,0 +1,40 @@
+{
+  "generated_at": "2026-03-03T00:16:29.985712+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_control/config_rollout_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "success_total": 0,
+    "failure_total": 0,
+    "unknown_total": 0,
+    "success_ratio": 1.0,
+    "signature_invalid_total": 0,
+    "drift_total": 0,
+    "drift_ratio": 0.0,
+    "stage_regression_total": 0,
+    "required_stages": [
+      1,
+      10,
+      50,
+      100
+    ],
+    "bundle_stage_progress": [],
+    "missing_stage_bundles": [],
+    "drift_by_service": [],
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_success_ratio": 0.95,
+      "max_drift_ratio": 0.02,
+      "max_signature_invalid_total": 0,
+      "max_stage_regression_total": 0,
+      "max_stale_minutes": 60.0,
+      "require_stages": false
+    }
+  }
+}

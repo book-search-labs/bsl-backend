@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-03-03T16:35:48.532303+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/session_quality/session_state_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "classified_total": 0,
+    "state_healthy_total": 0,
+    "state_at_risk_total": 0,
+    "state_degraded_total": 0,
+    "state_mismatch_total": 0,
+    "invalid_transition_total": 0,
+    "false_alarm_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_event_total": 0,
+      "max_state_mismatch_total": 1000000,
+      "max_invalid_transition_total": 1000000,
+      "max_false_alarm_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

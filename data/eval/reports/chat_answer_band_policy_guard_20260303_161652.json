@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-03-03T16:16:52.348379+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/risk_banding/band_policy_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "missing_band_total": 0,
+    "high_risk_total": 0,
+    "policy_violation_total": 0,
+    "safe_policy_coverage_ratio": 1.0,
+    "forbidden_phrase_total": 0,
+    "missing_mandatory_phrase_total": 0,
+    "r3_execution_claim_total": 0,
+    "r3_handoff_missing_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_event_total": 0,
+      "min_safe_policy_coverage_ratio": 0.0,
+      "max_missing_band_total": 1000000,
+      "max_policy_violation_total": 1000000,
+      "max_forbidden_phrase_total": 1000000,
+      "max_missing_mandatory_phrase_total": 1000000,
+      "max_r3_execution_claim_total": 1000000,
+      "max_r3_handoff_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

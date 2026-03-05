@@ -1,0 +1,265 @@
+{
+  "run_id": "run_189af39490ba",
+  "trace_id": "t3",
+  "request_id": "r3",
+  "session_id": "debug-cart",
+  "status": "done",
+  "started_at": 1772667811,
+  "updated_at": 1772667811,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "장바-구니 기준 책 추천해줘"
+    },
+    "history": [],
+    "options": {
+      "stream": false,
+      "top_k": 6
+    },
+    "trace_id": "t3",
+    "request_id": "r3",
+    "session_id": "debug-cart",
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "t3",
+    "request_id": "r3",
+    "session_id": "debug-cart",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "장바-구니 기준 책 추천해줘"
+      },
+      "history": [],
+      "options": {
+        "stream": false,
+        "top_k": 6
+      },
+      "trace_id": "t3",
+      "request_id": "r3",
+      "session_id": "debug-cart",
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772667811,
+      "state_hash": "c0f8db96a13235ca",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t3",
+        "request_id": "r3",
+        "session_id": "debug-cart",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772667811,
+      "state_hash": "46e051fbd4ac4a62",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t3",
+        "request_id": "r3",
+        "session_id": "debug-cart",
+        "intent": "RECOMMEND",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772667811,
+      "state_hash": "bb4503085fb9fa37",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t3",
+        "request_id": "r3",
+        "session_id": "debug-cart",
+        "intent": "RECOMMEND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772667811,
+      "state_hash": "bb4503085fb9fa37",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t3",
+        "request_id": "r3",
+        "session_id": "debug-cart",
+        "intent": "RECOMMEND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772667811,
+      "state_hash": "c86ae5e836c5feca",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t3",
+        "request_id": "r3",
+        "session_id": "debug-cart",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772667811,
+      "state_hash": "c86ae5e836c5feca",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t3",
+        "request_id": "r3",
+        "session_id": "debug-cart",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772667811,
+      "state_hash": "c86ae5e836c5feca",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t3",
+        "request_id": "r3",
+        "session_id": "debug-cart",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772667811,
+      "state_hash": "635eebb7656fce56",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "t3",
+        "request_id": "r3",
+        "session_id": "debug-cart",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "t3",
+    "request_id": "r3",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "장바구니가 비어 있어 추천 기준이 없습니다. 도서를 먼저 장바구니에 담아주세요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:cart_recommend:1772667811",
+        "doc_id": "tool:cart_recommend",
+        "chunk_id": "tool:cart_recommend:1772667811",
+        "title": "cart_recommend 실시간 조회",
+        "url": "GET /api/v1/cart",
+        "snippet": "cart_item_count=0 (조회시각: 2026-03-04T23:43:31.855416+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:cart_recommend:1772667811"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "t3",
+    "request_id": "r3",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "장바구니가 비어 있어 추천 기준이 없습니다. 도서를 먼저 장바구니에 담아주세요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:cart_recommend:1772667811",
+        "doc_id": "tool:cart_recommend",
+        "chunk_id": "tool:cart_recommend:1772667811",
+        "title": "cart_recommend 실시간 조회",
+        "url": "GET /api/v1/cart",
+        "snippet": "cart_item_count=0 (조회시각: 2026-03-04T23:43:31.855416+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:cart_recommend:1772667811"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  }
+}

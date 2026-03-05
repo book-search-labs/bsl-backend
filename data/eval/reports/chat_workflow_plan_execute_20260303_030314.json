@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-03-03T03:03:14.778006+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_workflow/workflow_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "workflow_total": 0,
+    "sequence_valid_total": 0,
+    "sequence_valid_ratio": 1.0,
+    "execute_workflow_total": 0,
+    "validation_before_execute_total": 0,
+    "validation_before_execute_ratio": 1.0,
+    "step_error_total": 0,
+    "reentry_attempt_total": 0,
+    "reentry_success_total": 0,
+    "reentry_success_ratio": 1.0,
+    "step_errors": [],
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_sequence_valid_ratio": 0.95,
+      "min_validation_before_execute_ratio": 0.99,
+      "max_step_error_total": 0,
+      "min_reentry_success_ratio": 0.8,
+      "max_stale_minutes": 60.0
+    }
+  }
+}

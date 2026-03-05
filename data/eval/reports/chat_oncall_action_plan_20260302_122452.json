@@ -1,0 +1,9 @@
+{
+  "case_total": 0,
+  "severity_counts": {},
+  "source_counts": {},
+  "top_reasons": [],
+  "actions": [
+    "triage case가 없어 즉시 조치 항목은 없습니다. 다음 cycle까지 모니터링을 유지합니다."
+  ]
+}

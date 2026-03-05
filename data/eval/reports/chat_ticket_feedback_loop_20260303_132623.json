@@ -1,0 +1,39 @@
+{
+  "generated_at": "2026-03-03T13:26:23.324827+00:00",
+  "feedback_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket/triage_feedback.jsonl",
+  "outcomes_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket/sla_outcomes.jsonl",
+  "summary": {
+    "window_size": 0,
+    "feedback_total": 0,
+    "corrected_total": 0,
+    "correction_rate": 0.0,
+    "feedback_linked_total": 0,
+    "feedback_linkage_ratio": 1.0,
+    "missing_actor_total": 0,
+    "missing_corrected_time_total": 0,
+    "missing_model_version_total": 0,
+    "outcome_total": 0,
+    "closed_outcome_total": 0,
+    "monthly_bucket_total": 0,
+    "monthly_min_samples": 0,
+    "monthly_max_samples": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_feedback_total": 0,
+      "max_missing_actor_total": 1000000,
+      "max_missing_corrected_time_total": 1000000,
+      "max_missing_model_version_total": 1000000,
+      "min_feedback_linkage_ratio": 0.0,
+      "min_monthly_bucket_total": 0,
+      "min_monthly_samples_per_bucket": 0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

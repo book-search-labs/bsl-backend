@@ -1,0 +1,263 @@
+{
+  "run_id": "run_0a7578bba35b",
+  "trace_id": "t-help",
+  "request_id": "r-help",
+  "session_id": "debug-help",
+  "status": "done",
+  "started_at": 1772668037,
+  "updated_at": 1772668037,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "어떤 명령어 입력할수있어?"
+    },
+    "history": [],
+    "options": {
+      "stream": false,
+      "top_k": 6
+    },
+    "trace_id": "t-help",
+    "request_id": "r-help",
+    "session_id": "debug-help",
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "t-help",
+    "request_id": "r-help",
+    "session_id": "debug-help",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "어떤 명령어 입력할수있어?"
+      },
+      "history": [],
+      "options": {
+        "stream": false,
+        "top_k": 6
+      },
+      "trace_id": "t-help",
+      "request_id": "r-help",
+      "session_id": "debug-help",
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772668037,
+      "state_hash": "38529226468d66d6",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-help",
+        "request_id": "r-help",
+        "session_id": "debug-help",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772668037,
+      "state_hash": "f61e609ffce29665",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-help",
+        "request_id": "r-help",
+        "session_id": "debug-help",
+        "intent": "GENERAL",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772668037,
+      "state_hash": "8ee724c04164aade",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-help",
+        "request_id": "r-help",
+        "session_id": "debug-help",
+        "intent": "GENERAL",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772668037,
+      "state_hash": "8ee724c04164aade",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-help",
+        "request_id": "r-help",
+        "session_id": "debug-help",
+        "intent": "GENERAL",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772668037,
+      "state_hash": "73a27e98566e04b0",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-help",
+        "request_id": "r-help",
+        "session_id": "debug-help",
+        "intent": "GENERAL",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772668037,
+      "state_hash": "73a27e98566e04b0",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-help",
+        "request_id": "r-help",
+        "session_id": "debug-help",
+        "intent": "GENERAL",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772668037,
+      "state_hash": "73a27e98566e04b0",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-help",
+        "request_id": "r-help",
+        "session_id": "debug-help",
+        "intent": "GENERAL",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772668037,
+      "state_hash": "1a042c0b38ed39ef",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "t-help",
+        "request_id": "r-help",
+        "session_id": "debug-help",
+        "intent": "GENERAL",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "t-help",
+    "request_id": "r-help",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "입력 가능한 예시는 아래와 같습니다.\n1) 도서 검색: '문헌으로 책 검색해줘', '김정욱 검색 결과 줘'\n2) 도서 추천: \"도서 '周易辭典' 기준으로 비슷한 책 추천해줘\", '연구 주제로 책 추천해줘'\n3) 장바구니 추천(로그인): '장바구니 기준 추천해줘'\n4) 정책 안내: '배송 정책 알려줘', '환불 조건 알려줘', '주문/결제 정책 알려줘'\n5) 주문/배송/환불 조회(로그인): '주문 12 상태 알려줘', '배송 상태 확인해줘 주문 12'\n6) 민감 액션(로그인+확인코드): '주문 12 취소해줘', '주문 12 환불 신청해줘'\n7) 문의: '문의 접수해줘', '내 문의 상태 알려줘'\n원하는 항목을 그대로 입력하면 이어서 처리해드릴게요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:chat_help:1772668037",
+        "doc_id": "tool:chat_help",
+        "chunk_id": "tool:chat_help:1772668037",
+        "title": "chat_help 실시간 조회",
+        "url": "INTERNAL /chat-capabilities",
+        "snippet": "supported intents: search, recommend, cart, policy, order, shipment, refund, ticket (조회시각: 2026-03-04T23:47:17.359207+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:chat_help:1772668037"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "t-help",
+    "request_id": "r-help",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "입력 가능한 예시는 아래와 같습니다.\n1) 도서 검색: '문헌으로 책 검색해줘', '김정욱 검색 결과 줘'\n2) 도서 추천: \"도서 '周易辭典' 기준으로 비슷한 책 추천해줘\", '연구 주제로 책 추천해줘'\n3) 장바구니 추천(로그인): '장바구니 기준 추천해줘'\n4) 정책 안내: '배송 정책 알려줘', '환불 조건 알려줘', '주문/결제 정책 알려줘'\n5) 주문/배송/환불 조회(로그인): '주문 12 상태 알려줘', '배송 상태 확인해줘 주문 12'\n6) 민감 액션(로그인+확인코드): '주문 12 취소해줘', '주문 12 환불 신청해줘'\n7) 문의: '문의 접수해줘', '내 문의 상태 알려줘'\n원하는 항목을 그대로 입력하면 이어서 처리해드릴게요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:chat_help:1772668037",
+        "doc_id": "tool:chat_help",
+        "chunk_id": "tool:chat_help:1772668037",
+        "title": "chat_help 실시간 조회",
+        "url": "INTERNAL /chat-capabilities",
+        "snippet": "supported intents: search, recommend, cart, policy, order, shipment, refund, ticket (조회시각: 2026-03-04T23:47:17.359207+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:chat_help:1772668037"
+    ]
+  }
+}

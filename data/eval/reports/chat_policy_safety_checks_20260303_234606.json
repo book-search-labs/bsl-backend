@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-03-03T23:46:06.124975+00:00",
+  "bundle_json": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_policy/policy_bundle.json",
+  "source": {
+    "bundle_json": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_policy/policy_bundle.json",
+    "sensitive_intents": [
+      "ADDRESS_CHANGE",
+      "CANCEL_ORDER",
+      "PAYMENT_CHANGE",
+      "REFUND_REQUEST"
+    ],
+    "guard_actions": [
+      "DENY",
+      "HANDOFF",
+      "REQUIRE_CONFIRMATION"
+    ],
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_policy_safety_checks_baseline_v1.json"
+  },
+  "summary": {
+    "policy_version": "",
+    "rule_total": 0,
+    "contradictory_rule_pair_total": 0,
+    "duplicate_condition_total": 0,
+    "missing_sensitive_guard_intent_total": 4,
+    "unsafe_high_risk_allow_total": 0,
+    "missing_reason_code_total": 0,
+    "latest_bundle_time": null,
+    "stale_minutes": 0.0
+  },
+  "derived": {
+    "summary": {
+      "policy_version": "",
+      "rule_total": 0,
+      "contradictory_rule_pair_total": 0,
+      "duplicate_condition_total": 0,
+      "missing_sensitive_guard_intent_total": 4,
+      "unsafe_high_risk_allow_total": 0,
+      "missing_reason_code_total": 0,
+      "latest_bundle_time": null,
+      "stale_minutes": 0.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_rule_total": 0,
+      "max_contradictory_rule_pair_total": 0,
+      "max_duplicate_condition_total": 0,
+      "max_missing_sensitive_guard_intent_total": 0,
+      "max_unsafe_high_risk_allow_total": 0,
+      "max_missing_reason_code_total": 0,
+      "max_stale_minutes": 60.0,
+      "max_contradictory_rule_pair_total_increase": 0,
+      "max_duplicate_condition_total_increase": 0,
+      "max_missing_sensitive_guard_intent_total_increase": 0,
+      "max_unsafe_high_risk_allow_total_increase": 0,
+      "max_missing_reason_code_total_increase": 0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

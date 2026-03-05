@@ -1,0 +1,291 @@
+{
+  "run_id": "run_e93c2ffc15b0",
+  "trace_id": "cacee79a01dfc837f67224dd63e6b932",
+  "request_id": "cacee79a01dfc837f67224dd63e6b932-698bc6f64e2995a7",
+  "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+  "status": "done",
+  "started_at": 1772667737,
+  "updated_at": 1772667737,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "내 주문내역 보여줘"
+    },
+    "history": [
+      {
+        "role": "user",
+        "content": "문헌으로 책 검색해줘"
+      },
+      {
+        "role": "assistant",
+        "content": "현재 근거 문서를 찾지 못해 확정 답변을 드리기 어렵습니다. 키워드나 조건을 조금 더 구체적으로 입력해 주세요."
+      },
+      {
+        "role": "user",
+        "content": "어떤 명령어 입력할수있어?"
+      },
+      {
+        "role": "assistant",
+        "content": "현재 근거 문서를 찾지 못해 확정 답변을 드리기 어렵습니다. 키워드나 조건을 조금 더 구체적으로 입력해 주세요."
+      },
+      {
+        "role": "user",
+        "content": "배송 언제와?"
+      },
+      {
+        "role": "assistant",
+        "content": "현재 근거 문서를 찾지 못해 확정 답변을 드리기 어렵습니다. 키워드나 조건을 조금 더 구체적으로 입력해 주세요."
+      }
+    ],
+    "options": {
+      "stream": true,
+      "top_k": 6
+    },
+    "trace_id": "cacee79a01dfc837f67224dd63e6b932",
+    "request_id": "cacee79a01dfc837f67224dd63e6b932-698bc6f64e2995a7",
+    "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "cacee79a01dfc837f67224dd63e6b932",
+    "request_id": "cacee79a01dfc837f67224dd63e6b932-698bc6f64e2995a7",
+    "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "내 주문내역 보여줘"
+      },
+      "history": [
+        {
+          "role": "user",
+          "content": "문헌으로 책 검색해줘"
+        },
+        {
+          "role": "assistant",
+          "content": "현재 근거 문서를 찾지 못해 확정 답변을 드리기 어렵습니다. 키워드나 조건을 조금 더 구체적으로 입력해 주세요."
+        },
+        {
+          "role": "user",
+          "content": "어떤 명령어 입력할수있어?"
+        },
+        {
+          "role": "assistant",
+          "content": "현재 근거 문서를 찾지 못해 확정 답변을 드리기 어렵습니다. 키워드나 조건을 조금 더 구체적으로 입력해 주세요."
+        },
+        {
+          "role": "user",
+          "content": "배송 언제와?"
+        },
+        {
+          "role": "assistant",
+          "content": "현재 근거 문서를 찾지 못해 확정 답변을 드리기 어렵습니다. 키워드나 조건을 조금 더 구체적으로 입력해 주세요."
+        }
+      ],
+      "options": {
+        "stream": true,
+        "top_k": 6
+      },
+      "trace_id": "cacee79a01dfc837f67224dd63e6b932",
+      "request_id": "cacee79a01dfc837f67224dd63e6b932-698bc6f64e2995a7",
+      "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772667737,
+      "state_hash": "665b6ec0dedd31ce",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "cacee79a01dfc837f67224dd63e6b932",
+        "request_id": "cacee79a01dfc837f67224dd63e6b932-698bc6f64e2995a7",
+        "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772667737,
+      "state_hash": "d670d12118b37d94",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "cacee79a01dfc837f67224dd63e6b932",
+        "request_id": "cacee79a01dfc837f67224dd63e6b932-698bc6f64e2995a7",
+        "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+        "intent": "ORDER",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772667737,
+      "state_hash": "dc0c5cae130b69fe",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "cacee79a01dfc837f67224dd63e6b932",
+        "request_id": "cacee79a01dfc837f67224dd63e6b932-698bc6f64e2995a7",
+        "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+        "intent": "ORDER",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772667737,
+      "state_hash": "dc0c5cae130b69fe",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "cacee79a01dfc837f67224dd63e6b932",
+        "request_id": "cacee79a01dfc837f67224dd63e6b932-698bc6f64e2995a7",
+        "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+        "intent": "ORDER",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772667737,
+      "state_hash": "c5ac7a0ad7dcfc28",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "cacee79a01dfc837f67224dd63e6b932",
+        "request_id": "cacee79a01dfc837f67224dd63e6b932-698bc6f64e2995a7",
+        "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+        "intent": "ORDER",
+        "route": "FALLBACK",
+        "reason_code": "MISSING_INPUT",
+        "pending_action": null,
+        "response": {
+          "status": "needs_input",
+          "reason_code": "MISSING_INPUT",
+          "next_action": "PROVIDE_REQUIRED_INFO"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772667737,
+      "state_hash": "c5ac7a0ad7dcfc28",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "cacee79a01dfc837f67224dd63e6b932",
+        "request_id": "cacee79a01dfc837f67224dd63e6b932-698bc6f64e2995a7",
+        "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+        "intent": "ORDER",
+        "route": "FALLBACK",
+        "reason_code": "MISSING_INPUT",
+        "pending_action": null,
+        "response": {
+          "status": "needs_input",
+          "reason_code": "MISSING_INPUT",
+          "next_action": "PROVIDE_REQUIRED_INFO"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772667737,
+      "state_hash": "c5ac7a0ad7dcfc28",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "cacee79a01dfc837f67224dd63e6b932",
+        "request_id": "cacee79a01dfc837f67224dd63e6b932-698bc6f64e2995a7",
+        "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+        "intent": "ORDER",
+        "route": "FALLBACK",
+        "reason_code": "MISSING_INPUT",
+        "pending_action": null,
+        "response": {
+          "status": "needs_input",
+          "reason_code": "MISSING_INPUT",
+          "next_action": "PROVIDE_REQUIRED_INFO"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772667737,
+      "state_hash": "73d7ab140d772e57",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "cacee79a01dfc837f67224dd63e6b932",
+        "request_id": "cacee79a01dfc837f67224dd63e6b932-698bc6f64e2995a7",
+        "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+        "intent": "ORDER",
+        "route": "FALLBACK",
+        "reason_code": "MISSING_INPUT",
+        "pending_action": null,
+        "response": {
+          "status": "needs_input",
+          "reason_code": "MISSING_INPUT",
+          "next_action": "PROVIDE_REQUIRED_INFO"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "cacee79a01dfc837f67224dd63e6b932",
+    "request_id": "cacee79a01dfc837f67224dd63e6b932-698bc6f64e2995a7",
+    "status": "needs_input",
+    "reason_code": "MISSING_INPUT",
+    "recoverable": true,
+    "next_action": "PROVIDE_REQUIRED_INFO",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "주문 조회를 위해 주문번호(예: ORD20260222XXXX) 또는 주문 ID를 입력해 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "cacee79a01dfc837f67224dd63e6b932",
+    "request_id": "cacee79a01dfc837f67224dd63e6b932-698bc6f64e2995a7",
+    "status": "needs_input",
+    "reason_code": "MISSING_INPUT",
+    "recoverable": true,
+    "next_action": "PROVIDE_REQUIRED_INFO",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "주문 조회를 위해 주문번호(예: ORD20260222XXXX) 또는 주문 ID를 입력해 주세요."
+    },
+    "sources": [],
+    "citations": []
+  }
+}

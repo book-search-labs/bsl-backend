@@ -1,0 +1,55 @@
+{
+  "generated_at": "2026-03-03T15:53:29.402216+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/intent_calibration/calibration_metrics.jsonl",
+  "summary": {
+    "window_size": 0,
+    "intent_total": 0,
+    "comparable_intent_total": 0,
+    "drifted_intent_total": 0,
+    "drifted_intent_ratio": 1.0,
+    "missing_required_intent_total": 4,
+    "missing_required_intent": [
+      "DELIVERY_TRACKING",
+      "ORDER_STATUS",
+      "POLICY_QA",
+      "REFUND_REQUEST"
+    ],
+    "worst_ece_delta": 0.0,
+    "worst_brier_delta": 0.0,
+    "worst_overconfidence_rate_delta": 0.0,
+    "worst_underconfidence_rate_delta": 0.0,
+    "intent_drifts": [],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "required_intents": [
+        "DELIVERY_TRACKING",
+        "ORDER_STATUS",
+        "POLICY_QA",
+        "REFUND_REQUEST"
+      ],
+      "recent_hours": 72,
+      "min_baseline_samples": 3,
+      "min_recent_samples": 3,
+      "drift_ece_delta": 0.03,
+      "drift_brier_delta": 0.03,
+      "drift_overconfidence_rate_delta": 0.03,
+      "drift_underconfidence_rate_delta": 0.03,
+      "min_window": 0,
+      "min_intent_total": 0,
+      "min_comparable_intent_total": 0,
+      "max_drifted_intent_total": 1000000,
+      "max_worst_ece_delta": 1000000.0,
+      "max_worst_brier_delta": 1000000.0,
+      "max_worst_overconfidence_rate_delta": 1000000.0,
+      "max_worst_underconfidence_rate_delta": 1000000.0,
+      "max_missing_required_intent_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

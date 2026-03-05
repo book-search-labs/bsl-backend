@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-03-03T15:55:50.882968+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/crosslingual/query_bridge_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "query_total": 0,
+    "bridge_required_total": 0,
+    "bridge_applied_total": 0,
+    "bridge_applied_ratio": 1.0,
+    "parallel_retrieval_total": 0,
+    "parallel_retrieval_coverage_ratio": 1.0,
+    "low_confidence_bridge_total": 0,
+    "keyword_required_total": 0,
+    "keyword_preserved_total": 0,
+    "keyword_preservation_ratio": 1.0,
+    "lang_pair_distribution": [],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "low_confidence_threshold": 0.6,
+      "min_window": 0,
+      "min_query_total": 0,
+      "min_bridge_applied_ratio": 0.0,
+      "min_parallel_retrieval_coverage_ratio": 0.0,
+      "min_keyword_preservation_ratio": 0.0,
+      "max_low_confidence_bridge_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

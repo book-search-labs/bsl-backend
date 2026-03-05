@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-03-03T15:13:34.012530+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_style/terminology_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "response_total": 0,
+    "dictionary_version_missing_total": 0,
+    "dictionary_version_presence_ratio": 1.0,
+    "banned_term_violation_total": 0,
+    "preferred_term_miss_total": 0,
+    "synonym_normalization_applied_total": 0,
+    "terminology_normalization_applied_total": 0,
+    "normalization_ratio": 1.0,
+    "conflict_term_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_response_total": 0,
+      "min_dictionary_version_presence_ratio": 0.0,
+      "min_normalization_ratio": 0.0,
+      "max_banned_term_violation_total": 1000000,
+      "max_preferred_term_miss_total": 1000000,
+      "max_conflict_term_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

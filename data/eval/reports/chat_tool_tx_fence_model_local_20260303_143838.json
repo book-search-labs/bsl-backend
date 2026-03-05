@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-03-03T14:38:38.621541+00:00",
+  "events_jsonl": "/var/folders/gs/4crkg8_j2rgc_8j9ynj1jpg00000gn/T/tmp.kwXryAxCjn",
+  "summary": {
+    "window_size": 3,
+    "phase_total": 3,
+    "tx_total": 1,
+    "tx_started_total": 1,
+    "tx_committed_total": 1,
+    "tx_aborted_total": 0,
+    "sequence_violation_total": 0,
+    "optimistic_check_missing_total": 0,
+    "optimistic_mismatch_commit_total": 0,
+    "inconsistent_state_total": 0,
+    "commit_after_validate_ratio": 1.0,
+    "p95_prepare_to_commit_latency_ms": 9000.0,
+    "latest_event_time": "2026-03-03T10:00:09+00:00",
+    "stale_minutes": 278.4936913166667
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 1,
+      "min_tx_total": 1,
+      "min_commit_after_validate_ratio": 1.0,
+      "max_sequence_violation_total": 0,
+      "max_optimistic_check_missing_total": 0,
+      "max_optimistic_mismatch_commit_total": 0,
+      "max_inconsistent_state_total": 0,
+      "max_p95_prepare_to_commit_latency_ms": 10000.0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

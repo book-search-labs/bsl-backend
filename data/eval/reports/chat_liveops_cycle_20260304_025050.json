@@ -1,0 +1,94 @@
+{
+  "generated_at": "2026-03-03T17:50:50.324547+00:00",
+  "source": {
+    "cycle_baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_liveops_cycle_baseline_v1.json"
+  },
+  "release_profile": {
+    "model_version": "unknown",
+    "prompt_version": "unknown",
+    "policy_version": "unknown",
+    "release_signature": "392ee76bc1355c49"
+  },
+  "launch_gate_report_path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_production_launch_gate_20260304_025050.json",
+  "launch_gate": {
+    "generated_at": "2026-03-03T17:50:50.220971+00:00",
+    "pass": false,
+    "failures": [
+      "budget gate failed: insufficient perf samples: window_size=0 < min_window=20",
+      "insufficient reason samples: window_size=0 < min_reason_window=20",
+      "insufficient legacy samples: window_size=0 < min_legacy_window=20",
+      "insufficient replay samples: run_total=0 < min_run_window=20",
+      "insufficient commerce samples: commerce_total=0 < min_commerce_samples=10"
+    ],
+    "baseline_failures": [],
+    "stdout": "report_json=/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_production_launch_gate_20260304_025050.json\nreport_md=/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_production_launch_gate_20260304_025050.md\ngate_pass=false\ntriage_case_count=5\ntriage_path=var/chat_graph/triage/chat_launch_failure_cases.jsonl\n[gate-failure] budget gate failed: insufficient perf samples: window_size=0 < min_window=20\n[gate-failure] insufficient reason samples: window_size=0 < min_reason_window=20\n[gate-failure] insufficient legacy samples: window_size=0 < min_legacy_window=20\n[gate-failure] insufficient replay samples: run_total=0 < min_run_window=20\n[gate-failure] insufficient commerce samples: commerce_total=0 < min_commerce_samples=10\n",
+    "rc": 2
+  },
+  "release_train": {
+    "stage": 25,
+    "dwell_minutes": 45,
+    "decision": {
+      "action": "rollback",
+      "reason": "launch_gate_failed",
+      "next_stage": 12,
+      "cutover": {
+        "action": "rollback",
+        "reason": "budget_gate_failed",
+        "next_stage": 12
+      },
+      "launch_gate_passed": false,
+      "canary_passed": true,
+      "canary_reason": "within_threshold",
+      "canary_gate_status": "PASS"
+    },
+    "rollback": null
+  },
+  "runtime_failures": [
+    "budget gate failed: insufficient perf samples: window_size=0 < min_window=20",
+    "insufficient reason samples: window_size=0 < min_reason_window=20",
+    "insufficient legacy samples: window_size=0 < min_legacy_window=20",
+    "insufficient replay samples: run_total=0 < min_run_window=20",
+    "insufficient commerce samples: commerce_total=0 < min_commerce_samples=10"
+  ],
+  "baseline_failures": [
+    "cycle failure regression: baseline=0, current=5, allowed_increase=1",
+    "launch gate pass regression: baseline_pass=true current_pass=false"
+  ],
+  "failures": [
+    "budget gate failed: insufficient perf samples: window_size=0 < min_window=20",
+    "insufficient reason samples: window_size=0 < min_reason_window=20",
+    "insufficient legacy samples: window_size=0 < min_legacy_window=20",
+    "insufficient replay samples: run_total=0 < min_run_window=20",
+    "insufficient commerce samples: commerce_total=0 < min_commerce_samples=10",
+    "cycle failure regression: baseline=0, current=5, allowed_increase=1",
+    "launch gate pass regression: baseline_pass=true current_pass=false"
+  ],
+  "gate": {
+    "enabled": true,
+    "pass": false,
+    "failures": [
+      "budget gate failed: insufficient perf samples: window_size=0 < min_window=20",
+      "insufficient reason samples: window_size=0 < min_reason_window=20",
+      "insufficient legacy samples: window_size=0 < min_legacy_window=20",
+      "insufficient replay samples: run_total=0 < min_run_window=20",
+      "insufficient commerce samples: commerce_total=0 < min_commerce_samples=10",
+      "cycle failure regression: baseline=0, current=5, allowed_increase=1",
+      "launch gate pass regression: baseline_pass=true current_pass=false"
+    ],
+    "runtime_failures": [
+      "budget gate failed: insufficient perf samples: window_size=0 < min_window=20",
+      "insufficient reason samples: window_size=0 < min_reason_window=20",
+      "insufficient legacy samples: window_size=0 < min_legacy_window=20",
+      "insufficient replay samples: run_total=0 < min_run_window=20",
+      "insufficient commerce samples: commerce_total=0 < min_commerce_samples=10"
+    ],
+    "baseline_failures": [
+      "cycle failure regression: baseline=0, current=5, allowed_increase=1",
+      "launch gate pass regression: baseline_pass=true current_pass=false"
+    ],
+    "thresholds": {
+      "max_cycle_failure_increase": 1,
+      "max_cycle_action_drop": 2
+    }
+  }
+}

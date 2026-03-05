@@ -1,0 +1,28 @@
+{
+  "generated_at": "2026-03-03T03:28:34.404993+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_workflow/workflow_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "workflow_total": 0,
+    "sensitive_execute_total": 0,
+    "execute_without_confirmation_total": 0,
+    "confirmation_timeout_total": 0,
+    "timeout_auto_cancel_total": 0,
+    "timeout_auto_cancel_ratio": 1.0,
+    "confirmation_latency_p95_sec": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_execute_without_confirmation_total": 0,
+      "min_timeout_auto_cancel_ratio": 1.0,
+      "max_confirmation_latency_p95_sec": 300.0,
+      "max_stale_minutes": 60.0
+    }
+  }
+}

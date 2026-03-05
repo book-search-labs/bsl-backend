@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-03-03T14:41:00.580660+00:00",
+  "events_jsonl": "/var/folders/gs/4crkg8_j2rgc_8j9ynj1jpg00000gn/T/tmp.Hf8Fun9P4Q",
+  "summary": {
+    "window_size": 2,
+    "tool_call_total": 2,
+    "write_call_total": 2,
+    "missing_idempotency_key_total": 0,
+    "retry_call_total": 1,
+    "dedup_hit_total": 1,
+    "retry_safe_ratio": 1.0,
+    "duplicate_side_effect_total": 0,
+    "key_reuse_cross_payload_total": 0,
+    "p95_retry_resolution_latency_ms": 150.0,
+    "latest_event_time": "2026-03-03T10:00:05+00:00",
+    "stale_minutes": 280.92634350000003
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 1,
+      "min_write_call_total": 1,
+      "min_retry_safe_ratio": 1.0,
+      "max_missing_idempotency_key_total": 0,
+      "max_duplicate_side_effect_total": 0,
+      "max_key_reuse_cross_payload_total": 0,
+      "max_p95_retry_resolution_latency_ms": 1000.0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

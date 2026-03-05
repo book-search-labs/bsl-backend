@@ -4,6 +4,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -19,34 +20,39 @@ public class OutboxEventRepository {
 
     public List<OutboxEvent> fetchNewEvents(int limit) {
         return jdbcTemplate.query(
-            "SELECT event_id, event_type, aggregate_type, aggregate_id, dedup_key, payload_json, created_at "
+            "SELECT event_id, event_type, aggregate_type, aggregate_id, dedup_key, payload_json, occurred_at "
                 + "FROM outbox_event WHERE status='NEW' ORDER BY event_id ASC LIMIT ?",
             new OutboxRowMapper(),
             limit
         );
     }
 
-    public void markSent(List<Long> ids) {
+    public void markPublished(List<Long> ids) {
         if (ids.isEmpty()) {
             return;
         }
         jdbcTemplate.batchUpdate(
-            "UPDATE outbox_event SET status='SENT', sent_at=NOW() WHERE event_id=?",
+            "UPDATE outbox_event SET status='PUBLISHED', published_at=NOW(), last_error=NULL WHERE event_id=?",
             ids,
             ids.size(),
             (ps, argument) -> ps.setLong(1, argument)
         );
     }
 
-    public void markFailed(List<Long> ids) {
-        if (ids.isEmpty()) {
+    public void markFailed(List<FailedEvent> failedEvents) {
+        if (failedEvents.isEmpty()) {
             return;
         }
+        List<Object[]> args = new ArrayList<>(failedEvents.size());
+        for (FailedEvent failedEvent : failedEvents) {
+            args.add(new Object[] {
+                failedEvent.error() == null ? "" : failedEvent.error(),
+                failedEvent.eventId(),
+            });
+        }
         jdbcTemplate.batchUpdate(
-            "UPDATE outbox_event SET status='FAILED' WHERE event_id=?",
-            ids,
-            ids.size(),
-            (ps, argument) -> ps.setLong(1, argument)
+            "UPDATE outbox_event SET status='FAILED', retry_count=retry_count+1, last_error=?, published_at=NULL WHERE event_id=?",
+            args
         );
     }
 
@@ -61,11 +67,14 @@ public class OutboxEventRepository {
 
     public Instant minCreatedAtForStatus(String status) {
         Timestamp timestamp = jdbcTemplate.queryForObject(
-            "SELECT MIN(created_at) FROM outbox_event WHERE status=?",
+            "SELECT MIN(occurred_at) FROM outbox_event WHERE status=?",
             Timestamp.class,
             status
         );
         return timestamp == null ? null : timestamp.toInstant();
+    }
+
+    public record FailedEvent(long eventId, String error) {
     }
 
     private static class OutboxRowMapper implements RowMapper<OutboxEvent> {
@@ -77,7 +86,7 @@ public class OutboxEventRepository {
             String aggregateId = rs.getString("aggregate_id");
             String dedupKey = rs.getString("dedup_key");
             String payloadJson = rs.getString("payload_json");
-            Timestamp createdAt = rs.getTimestamp("created_at");
+            Timestamp createdAt = rs.getTimestamp("occurred_at");
             return new OutboxEvent(
                 eventId,
                 eventType,

@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-03-03T15:21:20.804484+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket_knowledge/privacy_scrub_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "candidate_total": 0,
+    "scrubbed_total": 0,
+    "scrub_coverage_ratio": 1.0,
+    "pii_detected_total": 0,
+    "pii_leak_total": 0,
+    "redaction_rule_missing_total": 0,
+    "retention_policy_missing_total": 0,
+    "unsafe_storage_mode_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_candidate_total": 0,
+      "min_scrub_coverage_ratio": 0.0,
+      "max_pii_leak_total": 1000000,
+      "max_redaction_rule_missing_total": 1000000,
+      "max_retention_policy_missing_total": 1000000,
+      "max_unsafe_storage_mode_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

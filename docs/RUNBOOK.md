@@ -295,7 +295,7 @@ python3 scripts/commerce/backfill_current_offers.py --all-materials --workers 12
 ./scripts/local_down.sh
 ```
 
-`local_up.sh`는 기본으로 `pg-simulator(:8090)`도 함께 올립니다.
+`local_up.sh`는 기본으로 `pg-simulator(:8092)`도 함께 올립니다.
 필요 없으면 비활성화:
 ```bash
 ENABLE_PG_SIMULATOR=0 ./scripts/local_up.sh
@@ -737,10 +737,10 @@ CI 기본 게이트: `RUN_CHAT_CONTRACT_COMPAT_EVAL=1 ./scripts/test.sh`
 
 ## Chat graph runtime skeleton (B-0703)
 - runtime entrypoint: `services/query-service/app/core/chat_graph/runtime.py`
-- node flow: `load_state -> understand -> policy_decide -> execute -> compose -> verify -> persist`
-- engine switch:
-  - `QS_CHAT_ENGINE_MODE=legacy` (default)
-  - `QS_CHAT_ENGINE_MODE=shadow|canary|agent`
+- node flow: `load_state -> understand -> policy_decide -> authz_gate -> execute -> compose -> verify -> persist`
+- engine mode:
+  - runtime 응답 경로는 `agent(LangGraph)` 단일 모드로 고정
+  - `QS_CHAT_ENGINE_MODE`/OpenFeature 모드 값은 감사(audit)용 입력으로만 기록되며 최종 실행은 `agent`로 정규화됨
 
 ## Chat confirm interrupt/resume FSM (B-0704)
 - FSM module: `services/query-service/app/core/chat_graph/confirm_fsm.py`
@@ -788,6 +788,8 @@ python scripts/eval/chat_langsmith_trace_summary.py --limit 200
   - `QS_CHAT_FORCE_LEGACY`
   - `QS_CHAT_LANGGRAPH_ENABLED`
   - `QS_CHAT_OPENFEATURE_FLAGS_JSON` (`chat.engine.mode`, `chat.force_legacy`, `chat.langgraph.enabled`)
+- note:
+  - 현재 `run_chat` 경로는 `chat.engine.mode` 입력과 무관하게 `agent(LangGraph)`로 실행됨
 
 ## Chat shadow comparator (B-0713)
 - comparator module: `services/query-service/app/core/chat_graph/shadow_comparator.py`

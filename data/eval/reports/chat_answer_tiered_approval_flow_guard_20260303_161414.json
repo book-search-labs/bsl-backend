@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-03-03T16:14:14.717229+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/risk_banding/tiered_approval_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "missing_band_total": 0,
+    "high_risk_total": 0,
+    "approval_routed_total": 0,
+    "high_risk_approval_coverage_ratio": 1.0,
+    "unsafe_auto_high_risk_total": 0,
+    "r3_auto_total": 0,
+    "approval_queue_missing_total": 0,
+    "low_risk_total": 0,
+    "low_risk_auto_total": 0,
+    "low_risk_auto_ratio": 1.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_event_total": 0,
+      "min_high_risk_approval_coverage_ratio": 0.0,
+      "min_low_risk_auto_ratio": 0.0,
+      "max_missing_band_total": 1000000,
+      "max_unsafe_auto_high_risk_total": 1000000,
+      "max_r3_auto_total": 1000000,
+      "max_approval_queue_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

@@ -1,6 +1,8 @@
 # Events & Idempotency (Phase 10)
 
 This document defines **event envelope standards** and **deduplication rules** for Kafka/outbox.
+OpenSearch sync event contracts and runtime guide:
+- `docs/events/OS_SYNC.md`
 
 ---
 

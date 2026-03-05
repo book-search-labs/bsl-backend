@@ -1,0 +1,34 @@
+{
+  "generated_at": "2026-03-03T03:00:55.090720+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_workflow/workflow_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "workflow_total": 0,
+    "state_record_total": 0,
+    "missing_state_fields_total": 0,
+    "unsupported_type_total": 0,
+    "recovery_checkpoint_total": 0,
+    "checkpoint_ratio": 0.0,
+    "missing_templates": [
+      "ADDRESS_CHANGE",
+      "CANCEL_ORDER",
+      "REFUND_REQUEST"
+    ],
+    "by_type": [],
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_missing_state_fields_total": 0,
+      "max_unsupported_type_total": 0,
+      "min_checkpoint_ratio": 0.8,
+      "max_stale_minutes": 60.0,
+      "require_templates": false
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "generated_at": "2026-03-03T23:09:52.244904+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_workflow/workflow_events.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_workflow/workflow_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_workflow_recovery_audit_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "workflow_total": 0,
+    "interrupted_workflow_total": 0,
+    "recovered_workflow_total": 0,
+    "recovery_success_ratio": 1.0,
+    "recovery_latency_p95_sec": 0.0,
+    "audit_step_total": 0,
+    "audit_missing_fields_total": 0,
+    "audit_completeness_ratio": 1.0,
+    "audit_write_without_idempotency_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "workflow_total": 0,
+      "interrupted_workflow_total": 0,
+      "recovered_workflow_total": 0,
+      "recovery_success_ratio": 1.0,
+      "recovery_latency_p95_sec": 0.0,
+      "audit_step_total": 0,
+      "audit_missing_fields_total": 0,
+      "audit_completeness_ratio": 1.0,
+      "audit_write_without_idempotency_total": 0,
+      "latest_event_time": null,
+      "stale_minutes": 0.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_recovery_success_ratio": 0.95,
+      "max_recovery_latency_p95_sec": 600.0,
+      "max_audit_missing_fields_total": 0,
+      "max_write_without_idempotency_total": 0,
+      "max_stale_minutes": 60.0,
+      "max_recovery_success_ratio_drop": 0.05,
+      "max_recovery_latency_p95_sec_increase": 60.0,
+      "max_audit_missing_fields_total_increase": 0,
+      "max_write_without_idempotency_total_increase": 0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "generated_at": "2026-03-03T23:45:52.682420+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_policy/policy_eval_audit.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_policy/policy_eval_audit.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_policy_eval_trace_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "eval_total": 0,
+    "missing_request_id_total": 0,
+    "missing_policy_version_total": 0,
+    "missing_matched_rule_total": 0,
+    "unknown_final_action_total": 0,
+    "non_deterministic_key_total": 0,
+    "conflict_total": 0,
+    "conflict_unresolved_total": 0,
+    "latency_p95_ms": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "eval_total": 0,
+      "missing_request_id_total": 0,
+      "missing_policy_version_total": 0,
+      "missing_matched_rule_total": 0,
+      "unknown_final_action_total": 0,
+      "non_deterministic_key_total": 0,
+      "conflict_total": 0,
+      "conflict_unresolved_total": 0,
+      "latency_p95_ms": 0.0,
+      "latest_event_time": null,
+      "stale_minutes": 0.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_missing_request_id_total": 0,
+      "max_missing_policy_version_total": 0,
+      "max_missing_matched_rule_total": 0,
+      "max_unknown_final_action_total": 0,
+      "max_non_deterministic_key_total": 0,
+      "max_conflict_unresolved_total": 0,
+      "max_latency_p95_ms": 2000.0,
+      "max_stale_minutes": 60.0,
+      "max_missing_request_id_total_increase": 0,
+      "max_missing_policy_version_total_increase": 0,
+      "max_missing_matched_rule_total_increase": 0,
+      "max_unknown_final_action_total_increase": 0,
+      "max_non_deterministic_key_total_increase": 0,
+      "max_conflict_unresolved_total_increase": 0,
+      "max_latency_p95_ms_increase": 300.0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

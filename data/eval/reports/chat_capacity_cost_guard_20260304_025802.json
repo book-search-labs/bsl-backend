@@ -1,0 +1,108 @@
+{
+  "generated_at": "2026-03-03T17:58:02.714951+00:00",
+  "source": {
+    "reports_dir": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports",
+    "report_prefix": "chat_production_launch_gate",
+    "launch_gate_report": null,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_capacity_cost_guard_baseline_v1.json",
+    "llm_audit_log": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/llm_gateway/audit.log",
+    "audit_window_minutes": 60,
+    "audit_limit": 5000
+  },
+  "report_path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_production_launch_gate_20260304_025050.json",
+  "audit_log_path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/llm_gateway/audit.log",
+  "audit_summary": {
+    "window_size": 0,
+    "ok_total": 0,
+    "error_total": 0,
+    "error_ratio": 0.0,
+    "total_tokens": 0,
+    "total_cost_usd": 0.0,
+    "tokens_per_hour": 0.0,
+    "cost_usd_per_hour": 0.0,
+    "top_reasons": []
+  },
+  "perf_summary": {
+    "window_size": 0,
+    "llm_count": 0,
+    "llm_p95_ms": 0.0,
+    "fallback_ratio": 0.0
+  },
+  "completion_summary": {
+    "run_total": 0,
+    "insufficient_evidence_ratio": 0.0,
+    "commerce_completion_rate": 0.0
+  },
+  "decision": {
+    "mode": "NORMAL",
+    "breaches": [],
+    "severe_breaches": [],
+    "recommended_actions": [
+      "현재 설정을 유지하고 비용/오류율 추이를 모니터링합니다."
+    ],
+    "priority_preserve_intents": [
+      "ORDER_STATUS",
+      "DELIVERY_TRACKING",
+      "CANCEL_ORDER",
+      "REFUND_REQUEST"
+    ]
+  },
+  "derived": {
+    "audit_summary": {
+      "window_size": 0,
+      "ok_total": 0,
+      "error_total": 0,
+      "error_ratio": 0.0,
+      "total_tokens": 0,
+      "total_cost_usd": 0.0,
+      "tokens_per_hour": 0.0,
+      "cost_usd_per_hour": 0.0,
+      "top_reasons": []
+    },
+    "perf_summary": {
+      "window_size": 0,
+      "llm_count": 0,
+      "llm_p95_ms": 0.0,
+      "fallback_ratio": 0.0
+    },
+    "completion_summary": {
+      "run_total": 0,
+      "insufficient_evidence_ratio": 0.0,
+      "commerce_completion_rate": 0.0
+    },
+    "decision": {
+      "mode": "NORMAL",
+      "breaches": [],
+      "severe_breaches": [],
+      "recommended_actions": [
+        "현재 설정을 유지하고 비용/오류율 추이를 모니터링합니다."
+      ],
+      "priority_preserve_intents": [
+        "ORDER_STATUS",
+        "DELIVERY_TRACKING",
+        "CANCEL_ORDER",
+        "REFUND_REQUEST"
+      ]
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "max_mode": "FAIL_CLOSED",
+      "max_audit_error_ratio": 0.08,
+      "max_cost_usd_per_hour": 5.0,
+      "max_tokens_per_hour": 300000.0,
+      "max_llm_p95_ms": 4000.0,
+      "max_fallback_ratio": 0.15,
+      "max_insufficient_evidence_ratio": 0.3,
+      "max_mode_step_increase": 3,
+      "max_audit_error_ratio_increase": 1.0,
+      "max_cost_usd_per_hour_increase": 100000.0,
+      "max_fallback_ratio_increase": 1.0,
+      "max_llm_p95_ms_increase": 100000.0
+    }
+  }
+}

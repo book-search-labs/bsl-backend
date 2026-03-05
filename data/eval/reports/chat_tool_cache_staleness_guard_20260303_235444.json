@@ -1,0 +1,56 @@
+{
+  "generated_at": "2026-03-03T23:54:44.771624+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_tool/cache_events.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_tool/cache_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "stale_threshold_seconds": 300,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_tool_cache_staleness_guard_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "cache_response_total": 0,
+    "stale_response_total": 0,
+    "stale_block_total": 0,
+    "stale_leak_total": 0,
+    "stale_block_ratio": 1.0,
+    "freshness_stamp_missing_total": 0,
+    "forced_origin_fetch_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "cache_response_total": 0,
+      "stale_response_total": 0,
+      "stale_block_total": 0,
+      "stale_leak_total": 0,
+      "stale_block_ratio": 1.0,
+      "freshness_stamp_missing_total": 0,
+      "forced_origin_fetch_total": 0,
+      "latest_event_time": null,
+      "stale_minutes": 0.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_stale_leak_total": 0,
+      "min_stale_block_ratio": 0.95,
+      "max_freshness_stamp_missing_total": 0,
+      "min_forced_origin_fetch_total": 0,
+      "max_stale_minutes": 60.0,
+      "max_stale_leak_total_increase": 0,
+      "max_stale_block_ratio_drop": 0.05,
+      "max_freshness_stamp_missing_total_increase": 0,
+      "max_forced_origin_fetch_total_drop": 0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

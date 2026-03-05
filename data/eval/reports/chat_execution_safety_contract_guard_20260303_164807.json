@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-03-03T16:48:07.502964+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/resolution_plan/execution_safety_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "write_action_total": 0,
+    "preflight_checked_total": 0,
+    "preflight_check_coverage_ratio": 1.0,
+    "missing_preflight_checks_total": 0,
+    "preflight_block_violation_total": 0,
+    "simulation_mismatch_total": 0,
+    "mismatch_abort_missing_total": 0,
+    "mismatch_alert_missing_total": 0,
+    "idempotency_missing_total": 0,
+    "idempotency_coverage_ratio": 1.0,
+    "duplicate_unsafe_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "max_outcome_drift": 0.0,
+      "min_window": 0,
+      "min_event_total": 0,
+      "min_preflight_check_coverage_ratio": 0.0,
+      "min_idempotency_coverage_ratio": 0.0,
+      "max_preflight_block_violation_total": 1000000,
+      "max_mismatch_abort_missing_total": 1000000,
+      "max_mismatch_alert_missing_total": 1000000,
+      "max_duplicate_unsafe_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

@@ -75,10 +75,13 @@ class HomeCollectionServiceTest {
 
         assertThat(sections).hasSize(3);
         assertThat(sections.get(0).get("key")).isEqualTo("bestseller");
+        assertThat(sections.get(0).get("link")).isEqualTo("/collections/bestseller");
         assertThat((List<?>) sections.get(0).get("items")).hasSize(2);
         assertThat(sections.get(1).get("key")).isEqualTo("new");
+        assertThat(sections.get(1).get("link")).isEqualTo("/preorders");
         assertThat((List<?>) sections.get(1).get("items")).hasSize(1);
         assertThat(sections.get(2).get("key")).isEqualTo("editor");
+        assertThat(sections.get(2).get("link")).isEqualTo("/collections/editor");
         assertThat((List<?>) sections.get(2).get("items")).hasSize(1);
 
         verify(homeCollectionRepository).listConfiguredItems(eq("BESTSELLER"), eq(2), anySet());

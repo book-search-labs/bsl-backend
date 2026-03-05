@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-03-03T14:52:49.100604+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_output_guard/output_guard_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "output_total": 0,
+    "guard_checked_total": 0,
+    "guard_bypass_total": 0,
+    "contract_pass_total": 0,
+    "contract_fail_total": 0,
+    "guard_coverage_ratio": 1.0,
+    "contract_pass_ratio": 1.0,
+    "forbidden_phrase_total": 0,
+    "forbidden_action_total": 0,
+    "required_field_missing_total": 0,
+    "invalid_amount_format_total": 0,
+    "invalid_date_format_total": 0,
+    "invalid_status_format_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_output_total": 0,
+      "min_guard_coverage_ratio": 0.0,
+      "min_contract_pass_ratio": 0.0,
+      "max_guard_bypass_total": 1000000,
+      "max_forbidden_phrase_total": 1000000,
+      "max_forbidden_action_total": 1000000,
+      "max_required_field_missing_total": 1000000,
+      "max_invalid_amount_format_total": 1000000,
+      "max_invalid_date_format_total": 1000000,
+      "max_invalid_status_format_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

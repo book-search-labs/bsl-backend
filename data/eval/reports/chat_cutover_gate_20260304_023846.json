@@ -1,0 +1,53 @@
+{
+  "generated_at": "2026-03-03T17:38:46.460923+00:00",
+  "source": {
+    "current_stage": 10,
+    "dwell_minutes": 0,
+    "shadow_limit": 200,
+    "perf_limit": 500,
+    "apply_rollback": false
+  },
+  "derived": {
+    "stage": 10,
+    "dwell_minutes": 0,
+    "parity_gate": {
+      "passed": true,
+      "gate_status": "PASS",
+      "reason": "within_threshold",
+      "blocker_ratio": 0.0,
+      "mismatch_ratio": 0.0
+    },
+    "perf_gate": {
+      "passed": true,
+      "failures": [],
+      "summary": {
+        "window_size": 0,
+        "llm_count": 0,
+        "non_llm_count": 0,
+        "all_p95_ms": 0.0,
+        "all_p99_ms": 0.0,
+        "llm_p95_ms": 0.0,
+        "llm_p99_ms": 0.0,
+        "non_llm_p95_ms": 0.0,
+        "non_llm_p99_ms": 0.0,
+        "fallback_ratio": 0.0,
+        "avg_tool_calls": 0.0,
+        "samples": []
+      }
+    },
+    "cutover": {
+      "action": "hold",
+      "next_stage": 10,
+      "reason": "dwell_not_met"
+    },
+    "rollback": null
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "require_promote": false
+    }
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "generated_at": "2026-03-04T00:13:59.682135+00:00",
+  "policy_json": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_budget/budget_policy.json",
+  "source": {
+    "policy_json": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_budget/budget_policy.json",
+    "required_sensitive_intents": [
+      "ADDRESS_CHANGE",
+      "CANCEL_ORDER",
+      "PAYMENT_CHANGE",
+      "REFUND_REQUEST"
+    ],
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_reasoning_budget_model_baseline_v1.json"
+  },
+  "summary": {
+    "policy_version": "",
+    "version_missing": true,
+    "policy_total": 0,
+    "override_total": 0,
+    "missing_budget_field_total": 0,
+    "invalid_limit_total": 0,
+    "duplicate_scope_total": 0,
+    "covered_sensitive_intent_total": 0,
+    "missing_sensitive_intents": [
+      "ADDRESS_CHANGE",
+      "CANCEL_ORDER",
+      "PAYMENT_CHANGE",
+      "REFUND_REQUEST"
+    ],
+    "missing_sensitive_intent_total": 4,
+    "updated_at": null,
+    "stale_minutes": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "policy_version": "",
+      "version_missing": true,
+      "policy_total": 0,
+      "override_total": 0,
+      "missing_budget_field_total": 0,
+      "invalid_limit_total": 0,
+      "duplicate_scope_total": 0,
+      "covered_sensitive_intent_total": 0,
+      "missing_sensitive_intents": [
+        "ADDRESS_CHANGE",
+        "CANCEL_ORDER",
+        "PAYMENT_CHANGE",
+        "REFUND_REQUEST"
+      ],
+      "missing_sensitive_intent_total": 4,
+      "updated_at": null,
+      "stale_minutes": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": false,
+    "failures": [],
+    "baseline_failures": [
+      "version_missing regression: baseline=0, current=1, allowed_increase=0",
+      "missing_sensitive_intent_total regression: baseline=0, current=4, allowed_increase=0",
+      "stale minutes regression: baseline=0.000000, current=999999.000000, allowed_increase=30.000000"
+    ],
+    "thresholds": {
+      "min_policy_total": 0,
+      "require_policy_version": false,
+      "max_missing_budget_field_total": 1000000,
+      "max_invalid_limit_total": 1000000,
+      "max_duplicate_scope_total": 1000000,
+      "max_missing_sensitive_intent_total": 1000000,
+      "max_stale_minutes": 1000000.0,
+      "max_policy_total_drop": 5,
+      "max_version_missing_total_increase": 0,
+      "max_missing_budget_field_total_increase": 0,
+      "max_invalid_limit_total_increase": 0,
+      "max_duplicate_scope_total_increase": 0,
+      "max_missing_sensitive_intent_total_increase": 0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

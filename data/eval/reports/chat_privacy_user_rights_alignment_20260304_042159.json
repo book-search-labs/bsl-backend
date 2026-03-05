@@ -1,0 +1,81 @@
+{
+  "generated_at": "2026-03-04T04:21:59.307468+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_privacy/user_rights_events.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_privacy/user_rights_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_privacy_user_rights_alignment_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "request_total": 0,
+    "delete_request_total": 0,
+    "export_request_total": 0,
+    "delete_completed_total": 0,
+    "export_completed_total": 0,
+    "delete_completion_ratio": 1.0,
+    "export_completion_ratio": 1.0,
+    "delete_cascade_verified_total": 0,
+    "delete_cascade_miss_total": 0,
+    "export_consistency_mismatch_total": 0,
+    "unauthorized_request_total": 0,
+    "missing_audit_total": 0,
+    "unknown_request_type_total": 0,
+    "request_type_distribution": [],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "request_total": 0,
+      "delete_request_total": 0,
+      "export_request_total": 0,
+      "delete_completed_total": 0,
+      "export_completed_total": 0,
+      "delete_completion_ratio": 1.0,
+      "export_completion_ratio": 1.0,
+      "delete_cascade_verified_total": 0,
+      "delete_cascade_miss_total": 0,
+      "export_consistency_mismatch_total": 0,
+      "unauthorized_request_total": 0,
+      "missing_audit_total": 0,
+      "unknown_request_type_total": 0,
+      "request_type_distribution": [],
+      "latest_event_time": null,
+      "stale_minutes": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_delete_request_total": 0,
+      "min_export_request_total": 0,
+      "min_delete_completion_ratio": 0.0,
+      "min_export_completion_ratio": 0.0,
+      "max_delete_cascade_miss_total": 1000000,
+      "max_export_consistency_mismatch_total": 1000000,
+      "max_unauthorized_request_total": 1000000,
+      "max_missing_audit_total": 1000000,
+      "max_unknown_request_type_total": 1000000,
+      "max_stale_minutes": 1000000.0,
+      "max_delete_request_total_drop": 10,
+      "max_export_request_total_drop": 10,
+      "max_delete_completed_total_drop": 10,
+      "max_export_completed_total_drop": 10,
+      "max_delete_completion_ratio_drop": 0.05,
+      "max_export_completion_ratio_drop": 0.05,
+      "max_delete_cascade_miss_total_increase": 0,
+      "max_export_consistency_mismatch_total_increase": 0,
+      "max_unauthorized_request_total_increase": 0,
+      "max_missing_audit_total_increase": 0,
+      "max_unknown_request_type_total_increase": 0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

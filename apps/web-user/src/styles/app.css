@@ -2136,10 +2136,34 @@
   color: var(--brand-strong);
 }
 
-.trend-rank-grid {
+.section-scroll-shell {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.section-scroll-slider-wrap {
+  padding: 0 0.2rem;
+}
+
+.section-scroll-slider {
+  width: 100%;
+  height: 0.85rem;
+  accent-color: var(--brand-strong);
+  cursor: pointer;
+}
+
+.section-scroll-slider:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.trend-rank-grid {
+  display: flex;
   gap: 0.55rem;
+  overflow-x: auto;
+  padding: 0.1rem 0.1rem 0.35rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(11, 79, 108, 0.28) rgba(11, 79, 108, 0.08);
 }
 
 .trend-rank-card {
@@ -2151,6 +2175,8 @@
   gap: 0.2rem;
   text-decoration: none;
   color: var(--ink);
+  min-width: clamp(220px, 17vw, 260px);
+  width: clamp(220px, 17vw, 260px);
 }
 
 .trend-rank-card:hover {
@@ -2198,11 +2224,12 @@
   overflow-x: auto;
   padding: 0.15rem 0.15rem 0.45rem;
   scrollbar-width: thin;
+  scrollbar-color: rgba(11, 79, 108, 0.28) rgba(11, 79, 108, 0.08);
 }
 
 .book-tile--compact {
-  min-width: 240px;
-  width: 240px;
+  min-width: clamp(210px, 16vw, 236px);
+  width: clamp(210px, 16vw, 236px);
   min-height: 258px;
   gap: 0.8rem;
   padding: 1rem;
@@ -3073,6 +3100,47 @@
   margin-top: 1.5rem;
 }
 
+.chat-command-guide {
+  margin-top: 1.3rem;
+  text-align: left;
+}
+
+.chat-command-guide-title {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-muted);
+  font-weight: 700;
+  margin-bottom: 0.55rem;
+}
+
+.chat-command-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.chat-command-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.65rem;
+  background: #fff;
+}
+
+.chat-command-card-title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  margin-bottom: 0.45rem;
+  color: #234459;
+}
+
+.chat-command-card-list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
 .chat-thread {
   display: flex;
   flex-direction: column;
@@ -3118,6 +3186,102 @@
   font-size: 0.82rem;
   color: #31526a;
   font-weight: 700;
+}
+
+.chat-book-links {
+  margin-top: 0.75rem;
+  border-top: 1px dashed var(--border);
+  padding-top: 0.7rem;
+}
+
+.chat-book-links-title {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #31526a;
+  font-weight: 700;
+  margin-bottom: 0.45rem;
+}
+
+.chat-book-link-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.chat-book-link-btn {
+  border: 1px solid rgba(11, 79, 108, 0.2);
+  background: #f8fbff;
+  border-radius: 12px;
+  padding: 0.6rem 0.72rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  text-align: left;
+}
+
+.chat-book-link-btn:hover {
+  border-color: #0b4f6c;
+  background: #eff7ff;
+}
+
+.chat-book-link-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0d2f45;
+}
+
+.chat-book-link-meta {
+  font-size: 0.77rem;
+  color: #3f5161;
+}
+
+.chat-order-links {
+  margin-top: 0.75rem;
+  border-top: 1px dashed var(--border);
+  padding-top: 0.7rem;
+}
+
+.chat-order-links-title {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #31526a;
+  font-weight: 700;
+  margin-bottom: 0.45rem;
+}
+
+.chat-order-link-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.chat-order-link-btn {
+  border: 1px solid rgba(27, 76, 129, 0.2);
+  background: #f6f9ff;
+  border-radius: 12px;
+  padding: 0.6rem 0.72rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  text-align: left;
+}
+
+.chat-order-link-btn:hover {
+  border-color: #20518a;
+  background: #edf4ff;
+}
+
+.chat-order-link-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #12375f;
+}
+
+.chat-order-link-meta {
+  font-size: 0.77rem;
+  color: #3f5161;
 }
 
 .chat-sources {
@@ -3281,6 +3445,55 @@
   padding: 0.38rem 0.62rem;
 }
 
+.floating-chat-command-guide {
+  margin-top: 0.35rem;
+  border-top: 1px dashed rgba(11, 79, 108, 0.18);
+  padding-top: 0.52rem;
+}
+
+.floating-chat-command-guide-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #31526a;
+  margin-bottom: 0.38rem;
+}
+
+.floating-chat-command-categories {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.floating-chat-command-category {
+  border: 1px solid rgba(11, 79, 108, 0.14);
+  background: #f8fbff;
+  border-radius: 10px;
+  padding: 0.38rem;
+}
+
+.floating-chat-command-category-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #20475e;
+  margin-bottom: 0.26rem;
+}
+
+.floating-chat-command-example-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+
+.floating-chat-command-example {
+  border: 1px solid rgba(11, 79, 108, 0.2);
+  background: #fff;
+  color: #103347;
+  border-radius: 999px;
+  font-size: 0.69rem;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 0.24rem 0.45rem;
+}
+
 .floating-chat-thread {
   display: flex;
   flex-direction: column;
@@ -3331,6 +3544,100 @@
   font-size: 0.88rem;
   color: var(--ink-strong);
   white-space: pre-wrap;
+}
+
+.floating-chat-books {
+  margin-top: 0.46rem;
+  border-top: 1px dashed rgba(11, 79, 108, 0.2);
+  padding-top: 0.42rem;
+}
+
+.floating-chat-books-title {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: #31526a;
+  font-weight: 700;
+  margin-bottom: 0.32rem;
+}
+
+.floating-chat-books-list {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.floating-chat-book-btn {
+  border: 1px solid rgba(11, 79, 108, 0.18);
+  background: #fff;
+  border-radius: 9px;
+  padding: 0.36rem 0.45rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.14rem;
+  text-align: left;
+}
+
+.floating-chat-book-btn:hover {
+  background: #eff7ff;
+  border-color: rgba(11, 79, 108, 0.35);
+}
+
+.floating-chat-book-title {
+  font-size: 0.77rem;
+  font-weight: 700;
+  color: #0b2f43;
+}
+
+.floating-chat-book-meta {
+  font-size: 0.69rem;
+  color: #4e6070;
+}
+
+.floating-chat-orders {
+  margin-top: 0.46rem;
+  border-top: 1px dashed rgba(27, 76, 129, 0.2);
+  padding-top: 0.42rem;
+}
+
+.floating-chat-orders-title {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: #31526a;
+  font-weight: 700;
+  margin-bottom: 0.32rem;
+}
+
+.floating-chat-orders-list {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.floating-chat-order-btn {
+  border: 1px solid rgba(27, 76, 129, 0.2);
+  background: #fff;
+  border-radius: 9px;
+  padding: 0.36rem 0.45rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.14rem;
+  text-align: left;
+}
+
+.floating-chat-order-btn:hover {
+  background: #edf4ff;
+  border-color: rgba(27, 76, 129, 0.38);
+}
+
+.floating-chat-order-title {
+  font-size: 0.77rem;
+  font-weight: 700;
+  color: #12375f;
+}
+
+.floating-chat-order-meta {
+  font-size: 0.69rem;
+  color: #4e6070;
 }
 
 .floating-chat-action-hint {
@@ -3429,6 +3736,10 @@
 }
 
 @media (max-width: 992px) {
+  .chat-command-guide-grid {
+    grid-template-columns: 1fr;
+  }
+
   .floating-chat-widget {
     right: 12px;
     bottom: 12px;
@@ -4564,6 +4875,20 @@
   margin-top: 0.35rem;
 }
 
+.home-collection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+}
+
+.home-collection-card .preorder-badge {
+  max-width: calc(100% - 16px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .refund-items input {
   text-align: center;
 }
@@ -4663,8 +4988,9 @@
     align-self: flex-start;
   }
 
-  .trend-rank-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .trend-rank-card {
+    min-width: 228px;
+    width: 228px;
   }
 
   .hero-copy {
@@ -4879,13 +5205,14 @@
     width: fit-content;
   }
 
-  .trend-rank-grid {
-    grid-template-columns: 1fr;
+  .trend-rank-card {
+    min-width: 210px;
+    width: 210px;
   }
 
   .book-tile--compact {
-    min-width: 210px;
-    width: 210px;
+    min-width: 198px;
+    width: 198px;
   }
 
   .result-cover {
@@ -4935,6 +5262,10 @@
   .benefits-title,
   .preorders-title {
     font-size: 1.55rem;
+  }
+
+  .home-collection-actions {
+    margin-top: -0.1rem;
   }
 
   .benefits-grid,

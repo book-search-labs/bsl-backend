@@ -1,0 +1,263 @@
+{
+  "run_id": "run_de732db76d0e",
+  "trace_id": "t2",
+  "request_id": "r2",
+  "session_id": "debug-topic",
+  "status": "done",
+  "started_at": 1772667803,
+  "updated_at": 1772667803,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "연구 주제로 책 추천해줘"
+    },
+    "history": [],
+    "options": {
+      "stream": false,
+      "top_k": 6
+    },
+    "trace_id": "t2",
+    "request_id": "r2",
+    "session_id": "debug-topic",
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "t2",
+    "request_id": "r2",
+    "session_id": "debug-topic",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "연구 주제로 책 추천해줘"
+      },
+      "history": [],
+      "options": {
+        "stream": false,
+        "top_k": 6
+      },
+      "trace_id": "t2",
+      "request_id": "r2",
+      "session_id": "debug-topic",
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772667803,
+      "state_hash": "b27479f7fd292ae1",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t2",
+        "request_id": "r2",
+        "session_id": "debug-topic",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772667803,
+      "state_hash": "40042727e15f18e2",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t2",
+        "request_id": "r2",
+        "session_id": "debug-topic",
+        "intent": "RECOMMEND",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772667803,
+      "state_hash": "7b6df22e0d714357",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t2",
+        "request_id": "r2",
+        "session_id": "debug-topic",
+        "intent": "RECOMMEND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772667803,
+      "state_hash": "7b6df22e0d714357",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t2",
+        "request_id": "r2",
+        "session_id": "debug-topic",
+        "intent": "RECOMMEND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772667803,
+      "state_hash": "b00bc420176774f2",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t2",
+        "request_id": "r2",
+        "session_id": "debug-topic",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772667803,
+      "state_hash": "b00bc420176774f2",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t2",
+        "request_id": "r2",
+        "session_id": "debug-topic",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772667803,
+      "state_hash": "b00bc420176774f2",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t2",
+        "request_id": "r2",
+        "session_id": "debug-topic",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772667803,
+      "state_hash": "38e9ff0e248034dd",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "t2",
+        "request_id": "r2",
+        "session_id": "debug-topic",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "t2",
+    "request_id": "r2",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "'연구' 기준 추천 도서입니다.\n1) 함경방언 연구 (리펑화 / nlk:CDM201600002) · 유사도 16.59\n2) 《침구자생경》 문헌연구 (유제호 / nlk:CDM201800005) · 유사도 15.16\n3) 초등영어교육의 영미문화지도에 관한 연구 (한은경 / nlk:CDM200900003) · 유사도 11.28\n4) 현대 문헌에 기초한 족양명위경 경혈 응용 법칙 연구 (이현주 / nlk:CDM201800002) · 유사도 10.60\n5) 현대 문헌에 기초한 족소양담경 경혈 응용 법칙 연구 (우선욱 / nlk:CDM201800003) · 유사도 10.60"
+    },
+    "sources": [
+      {
+        "citation_key": "tool:book_recommend:1772667803",
+        "doc_id": "tool:book_recommend",
+        "chunk_id": "tool:book_recommend:1772667803",
+        "title": "book_recommend 실시간 조회",
+        "url": "OS /books_doc_read/_search",
+        "snippet": "seed_query=연구, candidate_count=10 (조회시각: 2026-03-04T23:43:23.760139+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:book_recommend:1772667803"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "t2",
+    "request_id": "r2",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "'연구' 기준 추천 도서입니다.\n1) 함경방언 연구 (리펑화 / nlk:CDM201600002) · 유사도 16.59\n2) 《침구자생경》 문헌연구 (유제호 / nlk:CDM201800005) · 유사도 15.16\n3) 초등영어교육의 영미문화지도에 관한 연구 (한은경 / nlk:CDM200900003) · 유사도 11.28\n4) 현대 문헌에 기초한 족양명위경 경혈 응용 법칙 연구 (이현주 / nlk:CDM201800002) · 유사도 10.60\n5) 현대 문헌에 기초한 족소양담경 경혈 응용 법칙 연구 (우선욱 / nlk:CDM201800003) · 유사도 10.60"
+    },
+    "sources": [
+      {
+        "citation_key": "tool:book_recommend:1772667803",
+        "doc_id": "tool:book_recommend",
+        "chunk_id": "tool:book_recommend:1772667803",
+        "title": "book_recommend 실시간 조회",
+        "url": "OS /books_doc_read/_search",
+        "snippet": "seed_query=연구, candidate_count=10 (조회시각: 2026-03-04T23:43:23.760139+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:book_recommend:1772667803"
+    ]
+  }
+}

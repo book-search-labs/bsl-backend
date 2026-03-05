@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-03-03T08:44:03.155970+00:00",
+  "policy_json": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_budget/budget_policy.json",
+  "summary": {
+    "policy_version": "",
+    "version_missing": true,
+    "policy_total": 0,
+    "override_total": 0,
+    "missing_budget_field_total": 0,
+    "invalid_limit_total": 0,
+    "duplicate_scope_total": 0,
+    "covered_sensitive_intent_total": 0,
+    "missing_sensitive_intents": [
+      "ADDRESS_CHANGE",
+      "CANCEL_ORDER",
+      "PAYMENT_CHANGE",
+      "REFUND_REQUEST"
+    ],
+    "missing_sensitive_intent_total": 4,
+    "updated_at": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_policy_total": 0,
+      "require_policy_version": false,
+      "max_missing_budget_field_total": 1000000,
+      "max_invalid_limit_total": 1000000,
+      "max_duplicate_scope_total": 1000000,
+      "max_missing_sensitive_intent_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

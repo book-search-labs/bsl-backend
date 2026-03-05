@@ -12,9 +12,17 @@ from fastapi.responses import JSONResponse
 
 from app.config import Settings
 from app.db import Database, utc_now
+from app.os_sync import OsSyncService
 from app.opensearch import OpenSearchClient
 from app.reindex import ReindexRunner
-from app.schemas import HealthResponse, ReindexJobCreateRequest, ReindexJobResponse
+from app.schemas import (
+    HealthResponse,
+    OsSyncRepairRequest,
+    OsSyncRepairResponse,
+    OsSyncStatusResponse,
+    ReindexJobCreateRequest,
+    ReindexJobResponse,
+)
 
 settings = Settings.from_env()
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
@@ -23,6 +31,7 @@ logger = logging.getLogger("index-writer")
 db = Database(settings)
 client = OpenSearchClient(settings)
 runner = ReindexRunner(settings, db, client)
+os_sync_service = OsSyncService(settings, db, client)
 
 DEFAULT_CORS_ORIGINS = [
     "http://localhost:5173",
@@ -112,9 +121,18 @@ def worker_loop() -> None:
 
 @app.on_event("startup")
 def on_startup() -> None:
-    thread = threading.Thread(target=worker_loop, daemon=True)
-    thread.start()
-    app.state.worker_thread = thread
+    reindex_thread = threading.Thread(target=worker_loop, daemon=True)
+    reindex_thread.start()
+
+    os_sync_consumer_thread = threading.Thread(target=os_sync_service.consume_loop, args=(stop_event,), daemon=True)
+    os_sync_consumer_thread.start()
+
+    os_sync_reconcile_thread = threading.Thread(target=os_sync_service.reconcile_loop, args=(stop_event,), daemon=True)
+    os_sync_reconcile_thread.start()
+
+    app.state.worker_thread = reindex_thread
+    app.state.os_sync_consumer_thread = os_sync_consumer_thread
+    app.state.os_sync_reconcile_thread = os_sync_reconcile_thread
 
 
 @app.on_event("shutdown")
@@ -195,3 +213,17 @@ async def retry_reindex_job(job_id: int, request: Request) -> ReindexJobResponse
     db.update_job_status(job_id, "RETRY", progress=job.get("progress_json"))
     job = db.fetch_job(job_id)
     return ReindexJobResponse(version="v1", trace_id=ctx["trace_id"], request_id=ctx["request_id"], job=map_job(job))
+
+
+@app.post("/admin/os-sync/repair", response_model=OsSyncRepairResponse)
+async def os_sync_repair(request: Request, payload: OsSyncRepairRequest) -> OsSyncRepairResponse:
+    ctx = request_context(request)
+    result = os_sync_service.repair(payload.material_ids, action=(payload.action or "upsert").strip().lower())
+    return OsSyncRepairResponse(version="v1", trace_id=ctx["trace_id"], request_id=ctx["request_id"], result=result)
+
+
+@app.get("/admin/os-sync/status", response_model=OsSyncStatusResponse)
+async def os_sync_status(request: Request) -> OsSyncStatusResponse:
+    ctx = request_context(request)
+    status = os_sync_service.status()
+    return OsSyncStatusResponse(version="v1", trace_id=ctx["trace_id"], request_id=ctx["request_id"], status=status)

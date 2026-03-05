@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "material.upsert_requested.v1.json",
+  "title": "MaterialUpsertRequestedV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "material_id"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "v1"
+    },
+    "material_id": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

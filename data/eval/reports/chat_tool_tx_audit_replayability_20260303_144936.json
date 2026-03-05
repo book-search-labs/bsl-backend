@@ -1,0 +1,40 @@
+{
+  "generated_at": "2026-03-03T14:49:36.135041+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_tool_tx/tx_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "tx_total": 0,
+    "replayable_tx_total": 0,
+    "non_replayable_tx_total": 0,
+    "replayable_ratio": 1.0,
+    "missing_trace_id_total": 0,
+    "missing_request_id_total": 0,
+    "missing_reason_code_total": 0,
+    "missing_phase_total": 0,
+    "missing_actor_total": 0,
+    "unknown_phase_total": 0,
+    "transition_gap_total": 0,
+    "p95_replay_span_ms": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_tx_total": 0,
+      "min_replayable_ratio": 0.0,
+      "max_missing_trace_id_total": 1000000,
+      "max_missing_request_id_total": 1000000,
+      "max_missing_reason_code_total": 1000000,
+      "max_missing_phase_total": 1000000,
+      "max_missing_actor_total": 1000000,
+      "max_transition_gap_total": 1000000,
+      "max_non_replayable_tx_total": 1000000,
+      "max_p95_replay_span_ms": 1000000.0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

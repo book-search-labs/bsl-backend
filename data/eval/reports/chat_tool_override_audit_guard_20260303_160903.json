@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-03-03T16:09:03.513017+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/tool_health/override_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "override_event_total": 0,
+    "override_applied_total": 0,
+    "force_include_total": 0,
+    "force_exclude_total": 0,
+    "missing_actor_total": 0,
+    "missing_reason_total": 0,
+    "missing_audit_context_total": 0,
+    "missing_expiry_total": 0,
+    "unauthorized_override_total": 0,
+    "conflicting_override_total": 0,
+    "override_distribution": [],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_override_event_total": 0,
+      "max_missing_actor_total": 1000000,
+      "max_missing_reason_total": 1000000,
+      "max_missing_audit_context_total": 1000000,
+      "max_missing_expiry_total": 1000000,
+      "max_unauthorized_override_total": 1000000,
+      "max_conflicting_override_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

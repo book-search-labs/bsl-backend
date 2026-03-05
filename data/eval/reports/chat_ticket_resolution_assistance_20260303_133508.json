@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-03-03T13:35:08.845581+00:00",
+  "assistance_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket/resolution_assistance.jsonl",
+  "summary": {
+    "window_size": 0,
+    "assistance_total": 0,
+    "with_similar_case_total": 0,
+    "with_template_total": 0,
+    "with_question_total": 0,
+    "similar_case_coverage_ratio": 1.0,
+    "template_coverage_ratio": 1.0,
+    "question_coverage_ratio": 1.0,
+    "insufficient_assistance_total": 0,
+    "missing_reason_code_total": 0,
+    "low_confidence_unrouted_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "confidence_threshold": 0.6,
+      "max_insufficient_assistance_total": 1000000,
+      "min_similar_case_coverage_ratio": 0.0,
+      "min_template_coverage_ratio": 0.0,
+      "min_question_coverage_ratio": 0.0,
+      "max_missing_reason_code_total": 1000000,
+      "max_low_confidence_unrouted_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

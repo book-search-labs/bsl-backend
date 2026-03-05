@@ -10,10 +10,9 @@ import httpx
 from app.core.analyzer import analyze_query
 from app.core.cache import get_cache
 from app.core.chat_graph import (
+    EngineRouteDecision,
     ChatGraphStateValidationError,
     append_routing_audit,
-    append_shadow_diff,
-    compare_shadow_response,
     graph_state_to_legacy_session_snapshot,
     legacy_session_snapshot_to_graph_state,
     resolve_engine_mode,
@@ -505,10 +504,10 @@ def _llm_stream_enabled() -> bool:
 
 
 def _chat_engine_mode() -> str:
-    mode = str(os.getenv("QS_CHAT_ENGINE_MODE", "legacy")).strip().lower()
-    if mode in {"legacy", "shadow", "canary", "agent"}:
+    mode = str(os.getenv("QS_CHAT_ENGINE_MODE", "agent")).strip().lower()
+    if mode == "agent":
         return mode
-    return "legacy"
+    return "agent"
 
 
 def _resolve_chat_engine_mode(request: Dict[str, Any], trace_id: str, request_id: str) -> str:
@@ -529,15 +528,28 @@ def _resolve_chat_engine_mode(request: Dict[str, Any], trace_id: str, request_id
     }
 
     try:
-        decision = resolve_engine_mode(default_mode=default_mode, context=context)
+        requested = resolve_engine_mode(default_mode=default_mode, context=context)
     except Exception:
-        return default_mode
+        requested = EngineRouteDecision(mode=default_mode, reason="resolver_error", source="fallback", force_legacy=False)
+
+    decision = requested
+    if requested.mode != "agent":
+        decision = EngineRouteDecision(
+            mode="agent",
+            reason=f"LANGGRAPH_ONLY_OVERRIDE:{requested.mode}",
+            source="policy",
+            force_legacy=False,
+        )
+
+    audit_context = dict(context)
+    audit_context["requested_mode"] = requested.mode
+    audit_context["resolved_mode"] = decision.mode
 
     append_routing_audit(
         session_id,
         trace_id=trace_id,
         request_id=request_id,
-        context=context,
+        context=audit_context,
         decision=decision,
     )
     metrics.inc(
@@ -546,11 +558,15 @@ def _resolve_chat_engine_mode(request: Dict[str, Any], trace_id: str, request_id
             "mode": decision.mode,
             "reason": decision.reason,
             "source": decision.source,
-            "force_legacy": "true" if decision.force_legacy else "false",
+            "force_legacy": "false",
+            "requested_mode": requested.mode,
         },
     )
-    if decision.force_legacy:
-        metrics.inc("chat_engine_kill_switch_total", {"mode": decision.mode})
+    if requested.mode != decision.mode:
+        metrics.inc(
+            "chat_engine_mode_override_total",
+            {"requested_mode": requested.mode, "resolved_mode": decision.mode},
+        )
     return decision.mode
 
 
@@ -1104,6 +1120,8 @@ def _extract_user_id(request: Dict[str, Any]) -> Optional[str]:
     user_id = client.get("user_id") if isinstance(client, dict) else None
     if isinstance(user_id, str) and user_id.strip():
         return user_id.strip()
+    if isinstance(user_id, int):
+        return str(user_id)
     return None
 
 
@@ -1699,64 +1717,8 @@ async def _run_chat_legacy(request: Dict[str, Any], trace_id: str, request_id: s
     return response
 
 
-def _shadow_compare_responses(
-    request: Dict[str, Any],
-    trace_id: str,
-    request_id: str,
-    legacy: Dict[str, Any],
-    graph: Dict[str, Any],
-) -> None:
-    user_id = _extract_user_id(request)
-    session_id = _resolve_session_id(request, user_id)
-    query = _extract_query_text(request)
-    intent = _query_intent(query)
-    topic = _query_preview(query, max_len=48)
-
-    diff = compare_shadow_response(legacy, graph)
-    append_shadow_diff(
-        session_id=session_id,
-        trace_id=trace_id,
-        request_id=request_id,
-        intent=intent,
-        topic=topic,
-        result=diff,
-    )
-    metrics.inc(
-        "chat_graph_shadow_compare_total",
-        {
-            "matched": "true" if diff.matched else "false",
-            "severity": diff.severity,
-        },
-    )
-    for diff_type in diff.diff_types:
-        metrics.inc(
-            "chat_graph_shadow_diff_type_total",
-            {"type": diff_type, "severity": diff.severity},
-        )
-
-
 async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:
     mode = _resolve_chat_engine_mode(request, trace_id, request_id)
-    if mode == "legacy":
-        return await _run_chat_legacy(request, trace_id, request_id)
-
-    if mode == "shadow":
-        legacy_response = await _run_chat_legacy(request, trace_id, request_id)
-
-        async def _shadow_executor(_: dict[str, Any], __: str, ___: str) -> dict[str, Any]:
-            return legacy_response
-
-        graph_result = await run_chat_graph(
-            request,
-            trace_id,
-            request_id,
-            legacy_executor=_shadow_executor,
-            record_run=True,
-            engine_mode=mode,
-        )
-        _shadow_compare_responses(request, trace_id, request_id, legacy_response, graph_result.response)
-        metrics.inc("chat_graph_runtime_total", {"mode": mode, "result": graph_result.stage})
-        return legacy_response
 
     graph_result = await run_chat_graph(
         request,
@@ -1774,641 +1736,74 @@ async def run_chat(request: Dict[str, Any], trace_id: str, request_id: str) -> D
             "route": str(graph_result.state.get("route") or "NONE"),
         },
     )
-    return graph_result.response
-
-
-async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: str) -> AsyncIterator[str]:
-    user_id = _extract_user_id(request)
-    session_id = _resolve_session_id(request, user_id)
-    query_text = _extract_query_text(request)
-    validation_reason = _validate_chat_request(request)
-    if validation_reason:
-        metrics.inc("chat_validation_fail_total", {"reason": validation_reason})
-        response = _fallback(trace_id, request_id, None, validation_reason, session_id=session_id, user_id=user_id)
-        _save_unresolved_context(session_id, query_text, validation_reason, trace_id=trace_id, request_id=request_id)
-        risk_band = _compute_risk_band("", response.get("status", "insufficient_evidence"), [], validation_reason)
-        yield _sse_event(
-            "meta",
-            {
-                "trace_id": trace_id,
-                "request_id": request_id,
-                "status": response.get("status"),
-                "risk_band": risk_band,
-                "reason_code": response.get("reason_code"),
-                "recoverable": response.get("recoverable"),
-                "next_action": response.get("next_action"),
-                "retry_after_ms": response.get("retry_after_ms"),
-                "fallback_count": response.get("fallback_count"),
-                "escalated": response.get("escalated"),
-            },
-        )
-        yield _sse_event("delta", {"delta": str(response.get("answer", {}).get("content") if isinstance(response.get("answer"), dict) else "")})
-        yield _sse_event(
-            "done",
-            {
-                "status": response.get("status"),
-                "citations": [],
-                "risk_band": risk_band,
-                "reason_code": response.get("reason_code"),
-                "recoverable": response.get("recoverable"),
-                "next_action": response.get("next_action"),
-                "retry_after_ms": response.get("retry_after_ms"),
-                "fallback_count": response.get("fallback_count"),
-                "escalated": response.get("escalated"),
-            },
-        )
-        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
-        metrics.inc("chat_requests_total", {"decision": "fallback"})
-        return
-    tool_response = await run_tool_chat(request, trace_id, request_id)
-    if tool_response is not None:
+    response = graph_result.response
+    session_id = str(graph_result.state.get("session_id") or _resolve_session_id(request, _extract_user_id(request)))
+    status = str(response.get("status") or "")
+    reason_code = str(response.get("reason_code") or "CHAT_GRAPH_EXECUTION_ERROR")
+    if status == "ok":
         _reset_fallback_count(session_id)
         _clear_unresolved_context(session_id)
-        answer = tool_response.get("answer", {}) if isinstance(tool_response.get("answer"), dict) else {}
-        citations = [str(item) for item in (tool_response.get("citations") or []) if isinstance(item, str)]
-        sources = tool_response.get("sources") if isinstance(tool_response.get("sources"), list) else []
-        status = str(tool_response.get("status") or "ok")
-        reason_code = str(tool_response.get("reason_code") or "OK")
-        recoverable = bool(tool_response.get("recoverable")) if isinstance(tool_response.get("recoverable"), bool) else False
-        next_action = str(tool_response.get("next_action") or "NONE")
-        retry_after_ms = tool_response.get("retry_after_ms")
-        fallback_count = tool_response.get("fallback_count")
-        escalated = bool(tool_response.get("escalated")) if isinstance(tool_response.get("escalated"), bool) else False
-        risk_band = _compute_risk_band(_extract_query_text(request), status, citations, None)
-        yield _sse_event(
-            "meta",
-            {
-                "trace_id": trace_id,
-                "request_id": request_id,
-                "status": "tool_path",
-                "sources": sources,
-                "citations": citations,
-                "risk_band": risk_band,
-                "reason_code": reason_code,
-                "recoverable": recoverable,
-                "next_action": next_action,
-                "retry_after_ms": retry_after_ms,
-                "fallback_count": fallback_count,
-                "escalated": escalated,
-            },
-        )
-        yield _sse_event("delta", {"delta": str(answer.get("content") or "")})
-        yield _sse_event(
-            "done",
-            {
-                "status": status,
-                "citations": citations,
-                "risk_band": risk_band,
-                "reason_code": reason_code,
-                "recoverable": recoverable,
-                "next_action": next_action,
-                "retry_after_ms": retry_after_ms,
-                "fallback_count": fallback_count,
-                "escalated": escalated,
-            },
-        )
-        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
-        metrics.inc("chat_requests_total", {"decision": "tool_path"})
-        return
-
-    prepared = await _prepare_chat(request, trace_id, request_id, session_id=session_id, user_id=user_id)
-    if not prepared.get("ok"):
-        response = prepared.get("response") or _fallback(
-            trace_id,
-            request_id,
-            None,
-            "RAG_NO_CHUNKS",
-            session_id=session_id,
-            user_id=user_id,
-        )
-        answer = response.get("answer", {}).get("content") if isinstance(response.get("answer"), dict) else ""
-        reason_code = str(response.get("reason_code") or "RAG_NO_CHUNKS")
-        recoverable = bool(response.get("recoverable")) if isinstance(response.get("recoverable"), bool) else True
-        next_action = str(response.get("next_action") or "REFINE_QUERY")
-        retry_after_ms = response.get("retry_after_ms")
-        fallback_count = response.get("fallback_count")
-        escalated = bool(response.get("escalated")) if isinstance(response.get("escalated"), bool) else False
-        risk_band = _compute_risk_band("", response.get("status", "insufficient_evidence"), [], "RAG_NO_CHUNKS")
-        yield _sse_event(
-            "meta",
-            {
-                "trace_id": trace_id,
-                "request_id": request_id,
-                "status": "fallback",
-                "sources": [],
-                "citations": [],
-                "risk_band": risk_band,
-                "reason_code": reason_code,
-                "recoverable": recoverable,
-                "next_action": next_action,
-                "retry_after_ms": retry_after_ms,
-                "fallback_count": fallback_count,
-                "escalated": escalated,
-            },
-        )
-        yield _sse_event("delta", {"delta": answer})
-        yield _sse_event(
-            "done",
-            {
-                "status": response.get("status", "insufficient_evidence"),
-                "citations": [],
-                "risk_band": risk_band,
-                "reason_code": reason_code,
-                "recoverable": recoverable,
-                "next_action": next_action,
-                "retry_after_ms": retry_after_ms,
-                "fallback_count": fallback_count,
-                "escalated": escalated,
-            },
-        )
+    elif status in {"insufficient_evidence", "error"}:
         _save_unresolved_context(
             session_id,
-            query_text,
-            str(reason_code or str(prepared.get("reason") or "RAG_NO_CHUNKS")),
+            _extract_query_text(request),
+            reason_code,
             trace_id=trace_id,
             request_id=request_id,
         )
-        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
-        metrics.inc("chat_requests_total", {"decision": "fallback"})
-        return
+    return response
 
-    query = prepared.get("query") or ""
-    canonical_key = prepared.get("canonical_key")
-    locale = prepared.get("locale")
-    selected = prepared.get("selected") or []
-    sources = _format_sources(selected)
-    answer_cache_key = _answer_cache_key(canonical_key, locale)
 
-    if _answer_cache_enabled():
-        cached = _CACHE.get_json(answer_cache_key)
-        if isinstance(cached, dict) and isinstance(cached.get("response"), dict):
-            cached_response = cached.get("response")
-            cached_answer = cached_response.get("answer") if isinstance(cached_response.get("answer"), dict) else {}
-            cached_citations = [str(item) for item in (cached_response.get("citations") or []) if isinstance(item, str)]
-            cached_status = str(cached_response.get("status") or "ok")
-            cached_reason_code = str(cached_response.get("reason_code") or "OK")
-            cached_recoverable = (
-                bool(cached_response.get("recoverable")) if isinstance(cached_response.get("recoverable"), bool) else False
-            )
-            cached_next_action = str(cached_response.get("next_action") or "NONE")
-            cached_retry_after_ms = cached_response.get("retry_after_ms")
-            cached_fallback_count = cached_response.get("fallback_count")
-            cached_escalated = bool(cached_response.get("escalated")) if isinstance(cached_response.get("escalated"), bool) else False
-            risk_band = _compute_risk_band(query, cached_status, cached_citations, None)
-            yield _sse_event(
-                "meta",
-                {
-                    "trace_id": trace_id,
-                    "request_id": request_id,
-                    "status": "cached",
-                    "sources": sources,
-                    "citations": cached_citations,
-                    "risk_band": risk_band,
-                    "reason_code": cached_reason_code,
-                    "recoverable": cached_recoverable,
-                    "next_action": cached_next_action,
-                    "retry_after_ms": cached_retry_after_ms,
-                    "fallback_count": cached_fallback_count,
-                    "escalated": cached_escalated,
-                },
-            )
-            yield _sse_event("delta", {"delta": cached_answer.get("content") or ""})
-            yield _sse_event(
-                "done",
-                {
-                    "status": cached_status,
-                    "citations": cached_citations,
-                    "risk_band": risk_band,
-                    "reason_code": cached_reason_code,
-                    "recoverable": cached_recoverable,
-                    "next_action": cached_next_action,
-                    "retry_after_ms": cached_retry_after_ms,
-                    "fallback_count": cached_fallback_count,
-                    "escalated": cached_escalated,
-                },
-            )
-            _reset_fallback_count(session_id)
-            _clear_unresolved_context(session_id)
-            metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
-            metrics.inc("chat_requests_total", {"decision": "answer_cache_hit"})
-            return
-
-    payload = _build_llm_payload(request, trace_id, request_id, query, selected)
-    if not _llm_stream_enabled():
-        try:
-            data = await _call_llm_json(payload, trace_id, request_id)
-            answer_text = str(data.get("content") or "")
-            raw_citations = data.get("citations") if isinstance(data.get("citations"), list) else _extract_citations_from_text(answer_text)
-            citations = _validate_citations([str(item) for item in raw_citations if isinstance(item, str)], selected)
-            if not citations:
-                yield _sse_event("error", {"code": "LLM_NO_CITATIONS", "message": "근거 문서 매핑에 실패했습니다."})
-                risk_band = _compute_risk_band(query, "insufficient_evidence", [], "LLM_NO_CITATIONS")
-                fallback_response = _fallback(
-                    trace_id,
-                    request_id,
-                    None,
-                    "LLM_NO_CITATIONS",
-                    session_id=session_id,
-                    user_id=user_id,
-                )
-                yield _sse_event(
-                    "done",
-                    {
-                        "status": "insufficient_evidence",
-                        "citations": [],
-                        "risk_band": risk_band,
-                        "reason_code": fallback_response.get("reason_code"),
-                        "recoverable": fallback_response.get("recoverable"),
-                        "next_action": fallback_response.get("next_action"),
-                        "retry_after_ms": fallback_response.get("retry_after_ms"),
-                        "fallback_count": fallback_response.get("fallback_count"),
-                        "escalated": fallback_response.get("escalated"),
-                    },
-                )
-                _save_unresolved_context(session_id, query, "LLM_NO_CITATIONS", trace_id=trace_id, request_id=request_id)
-                metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
-                metrics.inc("chat_requests_total", {"decision": "fallback"})
-                return
-            coverage_ok, coverage, coverage_threshold = _is_citation_coverage_sufficient(query, citations, selected)
-            if not coverage_ok:
-                metrics.inc(
-                    "chat_citation_coverage_block_total",
-                    {
-                        "risk": "high" if _is_high_risk_query(query) else "normal",
-                        "threshold": f"{coverage_threshold:.2f}",
-                    },
-                )
-                yield _sse_event("error", {"code": "LLM_LOW_CITATION_COVERAGE", "message": "근거 커버리지가 부족합니다."})
-                risk_band = _compute_risk_band(query, "insufficient_evidence", [], "LLM_LOW_CITATION_COVERAGE")
-                fallback_response = _fallback(
-                    trace_id,
-                    request_id,
-                    None,
-                    "LLM_LOW_CITATION_COVERAGE",
-                    session_id=session_id,
-                    user_id=user_id,
-                )
-                yield _sse_event(
-                    "done",
-                    {
-                        "status": "insufficient_evidence",
-                        "citations": [],
-                        "risk_band": risk_band,
-                        "reason_code": fallback_response.get("reason_code"),
-                        "recoverable": fallback_response.get("recoverable"),
-                        "next_action": fallback_response.get("next_action"),
-                        "retry_after_ms": fallback_response.get("retry_after_ms"),
-                        "fallback_count": fallback_response.get("fallback_count"),
-                        "escalated": fallback_response.get("escalated"),
-                    },
-                )
-                _save_unresolved_context(session_id, query, "LLM_LOW_CITATION_COVERAGE", trace_id=trace_id, request_id=request_id)
-                metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
-                metrics.inc("chat_requests_total", {"decision": "fallback"})
-                return
-
-            guarded_response, guard_reason = _guard_answer(
-                query,
-                answer_text,
-                citations,
-                trace_id,
-                request_id,
-                session_id=session_id,
-                user_id=user_id,
-            )
-            if guarded_response is not None:
-                metrics.inc("chat_output_guard_total", {"result": "blocked", "reason": guard_reason or "unknown"})
-                risk_band = _compute_risk_band(query, guarded_response.get("status", "insufficient_evidence"), [], guard_reason)
-                yield _sse_event(
-                    "meta",
-                    {
-                        "trace_id": trace_id,
-                        "request_id": request_id,
-                        "status": "guard_blocked",
-                        "sources": sources,
-                        "citations": [],
-                        "risk_band": risk_band,
-                    },
-                )
-                yield _sse_event(
-                    "error",
-                    {"code": guard_reason or "OUTPUT_GUARD_BLOCKED", "message": _guard_blocked_message()},
-                )
-                yield _sse_event(
-                    "done",
-                    {
-                        "status": guarded_response.get("status", "insufficient_evidence"),
-                        "citations": [],
-                        "risk_band": risk_band,
-                        "reason_code": guarded_response.get("reason_code"),
-                        "recoverable": guarded_response.get("recoverable"),
-                        "next_action": guarded_response.get("next_action"),
-                        "retry_after_ms": guarded_response.get("retry_after_ms"),
-                        "fallback_count": guarded_response.get("fallback_count"),
-                        "escalated": guarded_response.get("escalated"),
-                    },
-                )
-                _save_unresolved_context(
-                    session_id,
-                    query,
-                    str(guarded_response.get("reason_code") or guard_reason or "OUTPUT_GUARD_BLOCKED"),
-                    trace_id=trace_id,
-                    request_id=request_id,
-                )
-                metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
-                metrics.inc("chat_requests_total", {"decision": "fallback"})
-                return
-
-            risk_band = _compute_risk_band(query, "ok", citations, None)
-            metrics.inc("chat_output_guard_total", {"result": "pass", "reason": "ok"})
-            yield _sse_event(
-                "meta",
-                {
-                    "trace_id": trace_id,
-                    "request_id": request_id,
-                    "status": "ok",
-                    "sources": sources,
-                    "citations": citations,
-                    "risk_band": risk_band,
-                "reason_code": "OK",
-                "recoverable": False,
-                "next_action": "NONE",
-                "retry_after_ms": None,
-                "fallback_count": 0,
-                "escalated": False,
-            },
-        )
-            yield _sse_event("delta", {"delta": answer_text})
-            yield _sse_event(
-                "done",
-                {
-                    "status": "ok",
-                    "citations": citations,
-                    "risk_band": risk_band,
-                    "reason_code": "OK",
-                    "recoverable": False,
-                    "next_action": "NONE",
-                    "retry_after_ms": None,
-                    "fallback_count": 0,
-                    "escalated": False,
-                },
-            )
-            response = {
-                "version": "v1",
-                "trace_id": trace_id,
-                "request_id": request_id,
-                "answer": {"role": "assistant", "content": answer_text},
-                "sources": _format_sources(selected),
-                "citations": citations,
-                "status": "ok",
-                "reason_code": "OK",
-                "recoverable": False,
-                "next_action": "NONE",
-                "retry_after_ms": None,
-                "fallback_count": 0,
-                "escalated": False,
-            }
-            if _answer_cache_enabled():
-                _CACHE.set_json(answer_cache_key, {"response": response}, ttl=max(1, _answer_cache_ttl_sec()))
-            _reset_fallback_count(session_id)
-            _clear_unresolved_context(session_id)
-            metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
-            metrics.inc("chat_requests_total", {"decision": "ok"})
-            return
-        except Exception:
-            yield _sse_event("error", {"code": "PROVIDER_TIMEOUT", "message": "LLM 응답 지연으로 처리하지 못했습니다."})
-            risk_band = _compute_risk_band(query, "error", [], "PROVIDER_TIMEOUT")
-            _record_chat_timeout("llm_generate")
-            fallback_response = _fallback(
-                trace_id,
-                request_id,
-                None,
-                "PROVIDER_TIMEOUT",
-                session_id=session_id,
-                user_id=user_id,
-            )
-            yield _sse_event(
-                "done",
-                {
-                    "status": "error",
-                    "citations": [],
-                    "risk_band": risk_band,
-                    "reason_code": fallback_response.get("reason_code"),
-                    "recoverable": fallback_response.get("recoverable"),
-                    "next_action": fallback_response.get("next_action"),
-                    "retry_after_ms": fallback_response.get("retry_after_ms"),
-                    "fallback_count": fallback_response.get("fallback_count"),
-                    "escalated": fallback_response.get("escalated"),
-                },
-            )
-            _save_unresolved_context(session_id, query, "PROVIDER_TIMEOUT", trace_id=trace_id, request_id=request_id)
-            metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
-            metrics.inc("chat_requests_total", {"decision": "fallback"})
-            return
+async def run_chat_stream(request: Dict[str, Any], trace_id: str, request_id: str) -> AsyncIterator[str]:
+    response = await run_chat(request, trace_id, request_id)
+    answer = response.get("answer") if isinstance(response.get("answer"), dict) else {}
+    answer_text = str(answer.get("content") or "")
+    citations = [str(item) for item in (response.get("citations") or []) if isinstance(item, str)]
+    sources = response.get("sources") if isinstance(response.get("sources"), list) else []
+    status = str(response.get("status") or "insufficient_evidence")
+    reason_code = str(response.get("reason_code") or ("OK" if status == "ok" else "CHAT_GRAPH_EXECUTION_ERROR"))
+    recoverable = bool(response.get("recoverable")) if isinstance(response.get("recoverable"), bool) else status != "ok"
+    next_action = str(response.get("next_action") or ("NONE" if status == "ok" else "RETRY"))
+    retry_after_ms = response.get("retry_after_ms")
+    fallback_count = response.get("fallback_count")
+    escalated = bool(response.get("escalated")) if isinstance(response.get("escalated"), bool) else False
+    guard_reason = None if status == "ok" else reason_code
+    risk_band = _compute_risk_band(_extract_query_text(request), status, citations, guard_reason)
 
     yield _sse_event(
         "meta",
         {
             "trace_id": trace_id,
             "request_id": request_id,
-            "status": "streaming",
+            "status": status,
             "sources": sources,
-            "citations": [],
-            "reason_code": "IN_PROGRESS",
-            "recoverable": True,
-            "next_action": "WAIT",
-            "retry_after_ms": None,
-            "fallback_count": None,
-            "escalated": False,
+            "citations": citations,
+            "risk_band": risk_band,
+            "reason_code": reason_code,
+            "recoverable": recoverable,
+            "next_action": next_action,
+            "retry_after_ms": retry_after_ms,
+            "fallback_count": fallback_count,
+            "escalated": escalated,
         },
     )
-    stream_iter, stream_state = await _stream_llm(payload, trace_id, request_id)
-    async for event in stream_iter:
-        if event.startswith("event: done"):
-            continue
-        if event.startswith("event: meta"):
-            continue
-        yield event
-
-    if stream_state.get("llm_error"):
-        risk_band = _compute_risk_band(query, "error", [], "PROVIDER_TIMEOUT")
-        _record_chat_timeout("llm_stream")
-        fallback_response = _fallback(
-            trace_id,
-            request_id,
-            None,
-            "PROVIDER_TIMEOUT",
-            session_id=session_id,
-            user_id=user_id,
-        )
-        yield _sse_event(
-            "done",
-            {
-                "status": "error",
-                "citations": [],
-                "risk_band": risk_band,
-                "reason_code": fallback_response.get("reason_code"),
-                "recoverable": fallback_response.get("recoverable"),
-                "next_action": fallback_response.get("next_action"),
-                "retry_after_ms": fallback_response.get("retry_after_ms"),
-                "fallback_count": fallback_response.get("fallback_count"),
-                "escalated": fallback_response.get("escalated"),
-            },
-        )
-        _save_unresolved_context(session_id, query, "PROVIDER_TIMEOUT", trace_id=trace_id, request_id=request_id)
-        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
-        metrics.inc("chat_requests_total", {"decision": "fallback"})
-        return
-
-    answer_text = stream_state.get("answer") or ""
-    raw_citations = stream_state.get("citations") or _extract_citations_from_text(answer_text)
-    citations = _validate_citations([str(item) for item in raw_citations if isinstance(item, str)], selected)
-    if not citations:
-        metrics.inc("chat_fallback_total", {"reason": "LLM_NO_CITATIONS"})
-        yield _sse_event("error", {"code": "LLM_NO_CITATIONS", "message": "근거 문서 매핑에 실패했습니다."})
-        risk_band = _compute_risk_band(query, "insufficient_evidence", [], "LLM_NO_CITATIONS")
-        fallback_response = _fallback(
-            trace_id,
-            request_id,
-            None,
-            "LLM_NO_CITATIONS",
-            session_id=session_id,
-            user_id=user_id,
-        )
-        yield _sse_event(
-            "done",
-            {
-                "status": "insufficient_evidence",
-                "citations": [],
-                "risk_band": risk_band,
-                "reason_code": fallback_response.get("reason_code"),
-                "recoverable": fallback_response.get("recoverable"),
-                "next_action": fallback_response.get("next_action"),
-                "retry_after_ms": fallback_response.get("retry_after_ms"),
-                "fallback_count": fallback_response.get("fallback_count"),
-                "escalated": fallback_response.get("escalated"),
-            },
-        )
-        _save_unresolved_context(session_id, query, "LLM_NO_CITATIONS", trace_id=trace_id, request_id=request_id)
-        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
-        metrics.inc("chat_requests_total", {"decision": "fallback"})
-        return
-    coverage_ok, coverage, coverage_threshold = _is_citation_coverage_sufficient(query, citations, selected)
-    if not coverage_ok:
-        metrics.inc(
-            "chat_citation_coverage_block_total",
-            {
-                "risk": "high" if _is_high_risk_query(query) else "normal",
-                "threshold": f"{coverage_threshold:.2f}",
-            },
-        )
-        yield _sse_event("error", {"code": "LLM_LOW_CITATION_COVERAGE", "message": "근거 커버리지가 부족합니다."})
-        risk_band = _compute_risk_band(query, "insufficient_evidence", [], "LLM_LOW_CITATION_COVERAGE")
-        fallback_response = _fallback(
-            trace_id,
-            request_id,
-            None,
-            "LLM_LOW_CITATION_COVERAGE",
-            session_id=session_id,
-            user_id=user_id,
-        )
-        yield _sse_event(
-            "done",
-            {
-                "status": "insufficient_evidence",
-                "citations": [],
-                "risk_band": risk_band,
-                "reason_code": fallback_response.get("reason_code"),
-                "recoverable": fallback_response.get("recoverable"),
-                "next_action": fallback_response.get("next_action"),
-                "retry_after_ms": fallback_response.get("retry_after_ms"),
-                "fallback_count": fallback_response.get("fallback_count"),
-                "escalated": fallback_response.get("escalated"),
-            },
-        )
-        _save_unresolved_context(session_id, query, "LLM_LOW_CITATION_COVERAGE", trace_id=trace_id, request_id=request_id)
-        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
-        metrics.inc("chat_requests_total", {"decision": "fallback"})
-        return
-
-    guarded_response, guard_reason = _guard_answer(
-        query,
-        answer_text,
-        citations,
-        trace_id,
-        request_id,
-        session_id=session_id,
-        user_id=user_id,
-    )
-    if guarded_response is not None:
-        metrics.inc("chat_output_guard_total", {"result": "blocked", "reason": guard_reason or "unknown"})
-        risk_band = _compute_risk_band(query, guarded_response.get("status", "insufficient_evidence"), [], guard_reason)
-        yield _sse_event(
-            "error",
-            {"code": guard_reason or "OUTPUT_GUARD_BLOCKED", "message": _guard_blocked_message()},
-        )
-        yield _sse_event(
-            "done",
-            {
-                "status": guarded_response.get("status", "insufficient_evidence"),
-                "citations": [],
-                "risk_band": risk_band,
-                "reason_code": guarded_response.get("reason_code"),
-                "recoverable": guarded_response.get("recoverable"),
-                "next_action": guarded_response.get("next_action"),
-                "retry_after_ms": guarded_response.get("retry_after_ms"),
-                "fallback_count": guarded_response.get("fallback_count"),
-                "escalated": guarded_response.get("escalated"),
-            },
-        )
-        _save_unresolved_context(
-            session_id,
-            query,
-            str(guarded_response.get("reason_code") or guard_reason or "OUTPUT_GUARD_BLOCKED"),
-            trace_id=trace_id,
-            request_id=request_id,
-        )
-        metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
-        metrics.inc("chat_requests_total", {"decision": "fallback"})
-        return
-
-    response = {
-        "version": "v1",
-        "trace_id": trace_id,
-        "request_id": request_id,
-        "answer": {"role": "assistant", "content": answer_text},
-        "sources": _format_sources(selected),
-        "citations": citations,
-        "status": "ok",
-        "reason_code": "OK",
-        "recoverable": False,
-        "next_action": "NONE",
-        "retry_after_ms": None,
-    }
-    if _answer_cache_enabled():
-        _CACHE.set_json(answer_cache_key, {"response": response}, ttl=max(1, _answer_cache_ttl_sec()))
-
-    final_status = stream_state.get("done_status") or "ok"
-    risk_band = _compute_risk_band(query, final_status, citations, None)
-    metrics.inc("chat_output_guard_total", {"result": "pass", "reason": "ok"})
-    metrics.inc("chat_answer_risk_band_total", {"band": risk_band})
-    _reset_fallback_count(session_id)
-    _clear_unresolved_context(session_id)
+    if status != "ok":
+        yield _sse_event("error", {"code": reason_code, "message": answer_text or _guard_blocked_message()})
+    yield _sse_event("delta", {"delta": answer_text})
     yield _sse_event(
         "done",
         {
-            "status": final_status,
+            "status": status,
             "citations": citations,
             "risk_band": risk_band,
-            "reason_code": "OK",
-            "recoverable": False,
-            "next_action": "NONE",
-            "retry_after_ms": None,
-            "fallback_count": 0,
-            "escalated": False,
+            "reason_code": reason_code,
+            "recoverable": recoverable,
+            "next_action": next_action,
+            "retry_after_ms": retry_after_ms,
+            "fallback_count": fallback_count,
+            "escalated": escalated,
         },
     )
-    metrics.inc("chat_requests_total", {"decision": "ok"})
 
 
 async def explain_chat_rag(request: Dict[str, Any], trace_id: str, request_id: str) -> Dict[str, Any]:

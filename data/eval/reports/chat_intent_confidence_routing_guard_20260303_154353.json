@@ -1,0 +1,42 @@
+{
+  "generated_at": "2026-03-03T15:43:53.237868+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/intent_calibration/routing_decisions.jsonl",
+  "summary": {
+    "window_size": 0,
+    "decision_total": 0,
+    "high_confidence_total": 0,
+    "mid_confidence_total": 0,
+    "low_confidence_total": 0,
+    "routing_mismatch_total": 0,
+    "routing_mismatch_ratio": 0.0,
+    "unsafe_tool_route_total": 0,
+    "low_confidence_clarification_total": 0,
+    "low_confidence_handoff_total": 0,
+    "low_confidence_clarification_ratio": 1.0,
+    "repeat_low_confidence_total": 0,
+    "repeat_low_confidence_handoff_total": 0,
+    "repeat_low_confidence_handoff_ratio": 1.0,
+    "repeat_low_confidence_unescalated_total": 0,
+    "intent_distribution": [],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "tool_route_threshold": 0.75,
+      "clarify_route_threshold": 0.45,
+      "repeat_low_confidence_threshold": 3,
+      "min_window": 0,
+      "min_decision_total": 0,
+      "max_routing_mismatch_ratio": 1000000.0,
+      "max_unsafe_tool_route_total": 1000000,
+      "min_low_confidence_clarification_ratio": 0.0,
+      "min_repeat_low_confidence_handoff_ratio": 0.0,
+      "max_repeat_low_confidence_unescalated_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

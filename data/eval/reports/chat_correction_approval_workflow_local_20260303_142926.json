@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-03-03T14:29:26.999161+00:00",
+  "events_jsonl": "/var/folders/gs/4crkg8_j2rgc_8j9ynj1jpg00000gn/T/tmp.RFCUbIJg7X",
+  "summary": {
+    "window_size": 3,
+    "event_total": 3,
+    "correction_total": 1,
+    "submitted_total": 1,
+    "approved_total": 1,
+    "activated_total": 1,
+    "rollback_total": 0,
+    "invalid_event_type_total": 0,
+    "invalid_transition_total": 0,
+    "missing_actor_total": 0,
+    "missing_reviewer_total": 0,
+    "p95_approval_latency_minutes": 10.0,
+    "p95_activation_latency_minutes": 10.0,
+    "latest_event_time": "2026-03-03T10:20:00+00:00",
+    "stale_minutes": 249.44998531666667
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 1,
+      "min_correction_total": 1,
+      "min_submitted_total": 1,
+      "max_invalid_event_type_total": 0,
+      "max_invalid_transition_total": 0,
+      "max_missing_actor_total": 0,
+      "max_missing_reviewer_total": 0,
+      "max_p95_approval_latency_minutes": 1000.0,
+      "max_p95_activation_latency_minutes": 1000.0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "generated_at": "2026-03-04T02:38:02.858669+00:00",
+  "estimates_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket/sla_estimates.jsonl",
+  "outcomes_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket/sla_outcomes.jsonl",
+  "source": {
+    "estimates_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket/sla_estimates.jsonl",
+    "outcomes_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket/sla_outcomes.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "breach_risk_threshold": 0.7,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_ticket_sla_estimator_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "estimate_total": 0,
+    "high_risk_total": 0,
+    "high_risk_alerted_total": 0,
+    "high_risk_unalerted_total": 0,
+    "missing_features_snapshot_total": 0,
+    "missing_model_version_total": 0,
+    "predicted_minutes_invalid_total": 0,
+    "actual_linked_total": 0,
+    "mae_minutes": 0.0,
+    "actual_breach_total": 0,
+    "detected_breach_total": 0,
+    "breach_recall": 1.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "estimate_total": 0,
+      "high_risk_total": 0,
+      "high_risk_alerted_total": 0,
+      "high_risk_unalerted_total": 0,
+      "missing_features_snapshot_total": 0,
+      "missing_model_version_total": 0,
+      "predicted_minutes_invalid_total": 0,
+      "actual_linked_total": 0,
+      "mae_minutes": 0.0,
+      "actual_breach_total": 0,
+      "detected_breach_total": 0,
+      "breach_recall": 1.0,
+      "latest_event_time": null,
+      "stale_minutes": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "breach_risk_threshold": 0.7,
+      "max_high_risk_unalerted_total": 1000000,
+      "max_missing_features_snapshot_total": 1000000,
+      "max_missing_model_version_total": 1000000,
+      "max_predicted_minutes_invalid_total": 1000000,
+      "max_mae_minutes": 1000000.0,
+      "min_breach_recall": 0.0,
+      "max_stale_minutes": 1000000.0,
+      "max_estimate_total_drop": 10,
+      "max_high_risk_unalerted_total_increase": 0,
+      "max_missing_features_snapshot_total_increase": 0,
+      "max_missing_model_version_total_increase": 0,
+      "max_predicted_minutes_invalid_total_increase": 0,
+      "max_mae_minutes_increase": 10.0,
+      "max_breach_recall_drop": 0.05,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

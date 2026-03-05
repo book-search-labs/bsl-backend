@@ -1,0 +1,29 @@
+{
+  "generated_at": "2026-03-03T16:22:11.100801+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/grounded_answer/composer_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "response_total": 0,
+    "claim_total": 0,
+    "grounded_claim_total": 0,
+    "ungrounded_claim_total": 0,
+    "claim_binding_coverage_ratio": 1.0,
+    "response_with_ungrounded_total": 0,
+    "ungrounded_exposed_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_response_total": 0,
+      "min_claim_binding_coverage_ratio": 0.0,
+      "max_response_with_ungrounded_total": 1000000,
+      "max_ungrounded_exposed_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

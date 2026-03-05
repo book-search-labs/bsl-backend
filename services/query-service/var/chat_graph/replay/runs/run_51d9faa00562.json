@@ -1,0 +1,281 @@
+{
+  "run_id": "run_51d9faa00562",
+  "trace_id": "8b0f39a1ddc21094e1f918e56b893824",
+  "request_id": "8b0f39a1ddc21094e1f918e56b893824-ad28a52abd5f9ad5",
+  "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+  "status": "done",
+  "started_at": 1772670204,
+  "updated_at": 1772670204,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "문화 책 검색해줘"
+    },
+    "history": [
+      {
+        "role": "user",
+        "content": "김정욱 책 검색해줘"
+      },
+      {
+        "role": "assistant",
+        "content": "'김정욱' 검색 결과입니다.\n1) 中共軍事思想之硏究 (김정욱 / nlk:CDM000000001) · 유사도 14.18"
+      }
+    ],
+    "options": {
+      "stream": true,
+      "top_k": 6
+    },
+    "trace_id": "8b0f39a1ddc21094e1f918e56b893824",
+    "request_id": "8b0f39a1ddc21094e1f918e56b893824-ad28a52abd5f9ad5",
+    "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "8b0f39a1ddc21094e1f918e56b893824",
+    "request_id": "8b0f39a1ddc21094e1f918e56b893824-ad28a52abd5f9ad5",
+    "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "문화 책 검색해줘"
+      },
+      "history": [
+        {
+          "role": "user",
+          "content": "김정욱 책 검색해줘"
+        },
+        {
+          "role": "assistant",
+          "content": "'김정욱' 검색 결과입니다.\n1) 中共軍事思想之硏究 (김정욱 / nlk:CDM000000001) · 유사도 14.18"
+        }
+      ],
+      "options": {
+        "stream": true,
+        "top_k": 6
+      },
+      "trace_id": "8b0f39a1ddc21094e1f918e56b893824",
+      "request_id": "8b0f39a1ddc21094e1f918e56b893824-ad28a52abd5f9ad5",
+      "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772670204,
+      "state_hash": "ff4e6a8f03226485",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "8b0f39a1ddc21094e1f918e56b893824",
+        "request_id": "8b0f39a1ddc21094e1f918e56b893824-ad28a52abd5f9ad5",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772670204,
+      "state_hash": "1ca36f3800e44b99",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "8b0f39a1ddc21094e1f918e56b893824",
+        "request_id": "8b0f39a1ddc21094e1f918e56b893824-ad28a52abd5f9ad5",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "GENERAL",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772670204,
+      "state_hash": "fbcde454fccd7cc0",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "8b0f39a1ddc21094e1f918e56b893824",
+        "request_id": "8b0f39a1ddc21094e1f918e56b893824-ad28a52abd5f9ad5",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "GENERAL",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772670204,
+      "state_hash": "fbcde454fccd7cc0",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "8b0f39a1ddc21094e1f918e56b893824",
+        "request_id": "8b0f39a1ddc21094e1f918e56b893824-ad28a52abd5f9ad5",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "GENERAL",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772670204,
+      "state_hash": "6527be00b79e5dd1",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "8b0f39a1ddc21094e1f918e56b893824",
+        "request_id": "8b0f39a1ddc21094e1f918e56b893824-ad28a52abd5f9ad5",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "GENERAL",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772670204,
+      "state_hash": "6527be00b79e5dd1",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "8b0f39a1ddc21094e1f918e56b893824",
+        "request_id": "8b0f39a1ddc21094e1f918e56b893824-ad28a52abd5f9ad5",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "GENERAL",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772670204,
+      "state_hash": "6527be00b79e5dd1",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "8b0f39a1ddc21094e1f918e56b893824",
+        "request_id": "8b0f39a1ddc21094e1f918e56b893824-ad28a52abd5f9ad5",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "GENERAL",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772670204,
+      "state_hash": "93593d194b653f03",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "8b0f39a1ddc21094e1f918e56b893824",
+        "request_id": "8b0f39a1ddc21094e1f918e56b893824-ad28a52abd5f9ad5",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "GENERAL",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "8b0f39a1ddc21094e1f918e56b893824",
+    "request_id": "8b0f39a1ddc21094e1f918e56b893824-ad28a52abd5f9ad5",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "'문화' 검색 결과입니다.\n1) 초등영어교육의 영미문화지도에 관한 연구 (한은경 / nlk:CDM200900003) · 유사도 16.09\n2) 族譜家訓集粹 (문화건설위원회 연합보문화기금국학문헌관 / nlk:CMO000000222) · 유사도 7.64\n3) 辭彙 (문화도서공사편심위원회 / nlk:CMO000000792) · 유사도 6.89"
+    },
+    "sources": [
+      {
+        "citation_key": "tool:book_search:1772670204",
+        "doc_id": "tool:book_search",
+        "chunk_id": "tool:book_search:1772670204",
+        "title": "book_search 실시간 조회",
+        "url": "OS /books_doc_read/_search",
+        "snippet": "query=문화, candidate_count=3 (조회시각: 2026-03-05T00:23:24.892766+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:book_search:1772670204"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "8b0f39a1ddc21094e1f918e56b893824",
+    "request_id": "8b0f39a1ddc21094e1f918e56b893824-ad28a52abd5f9ad5",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "'문화' 검색 결과입니다.\n1) 초등영어교육의 영미문화지도에 관한 연구 (한은경 / nlk:CDM200900003) · 유사도 16.09\n2) 族譜家訓集粹 (문화건설위원회 연합보문화기금국학문헌관 / nlk:CMO000000222) · 유사도 7.64\n3) 辭彙 (문화도서공사편심위원회 / nlk:CMO000000792) · 유사도 6.89"
+    },
+    "sources": [
+      {
+        "citation_key": "tool:book_search:1772670204",
+        "doc_id": "tool:book_search",
+        "chunk_id": "tool:book_search:1772670204",
+        "title": "book_search 실시간 조회",
+        "url": "OS /books_doc_read/_search",
+        "snippet": "query=문화, candidate_count=3 (조회시각: 2026-03-05T00:23:24.892766+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:book_search:1772670204"
+    ]
+  }
+}

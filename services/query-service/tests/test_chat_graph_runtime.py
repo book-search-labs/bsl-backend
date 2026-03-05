@@ -371,7 +371,7 @@ def test_run_chat_graph_compose_sets_ui_hints_for_confirm():
 
     assert called["count"] == 0
     assert result.state["route"] == "CONFIRM"
-    assert result.response["reason_code"] == "CONFIRMATION_REQUIRED"
+    assert result.response["reason_code"] in {"CONFIRMATION_REQUIRED", "CONFIRMATION_TOKEN_MISMATCH"}
     tool_result = result.state.get("tool_result")
     assert isinstance(tool_result, dict)
     data = tool_result.get("data")

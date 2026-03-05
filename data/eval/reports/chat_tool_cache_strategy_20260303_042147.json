@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-03-03T04:21:47.845459+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_tool/cache_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "lookup_total": 0,
+    "cache_hit_total": 0,
+    "cache_miss_total": 0,
+    "cache_bypass_total": 0,
+    "hit_ratio": 1.0,
+    "bypass_ratio": 0.0,
+    "key_missing_field_total": 0,
+    "ttl_class_unknown_total": 0,
+    "ttl_out_of_policy_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_hit_ratio": 0.5,
+      "max_bypass_ratio": 0.3,
+      "max_key_missing_field_total": 0,
+      "max_ttl_class_unknown_total": 0,
+      "max_ttl_out_of_policy_total": 0,
+      "max_stale_minutes": 60.0
+    }
+  }
+}

@@ -1,0 +1,348 @@
+{
+  "generated_at": "2026-03-03T17:38:53.561030+00:00",
+  "source": {
+    "cases_json": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_contract_compat_v1.json",
+    "responses_json": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_reason_taxonomy_responses_v1.json",
+    "replay_dir": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_graph/replay",
+    "shadow_limit": 200,
+    "parity_run_sample_limit": 50,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_eval_matrix_baseline_v1.json"
+  },
+  "baseline_meta": {},
+  "derived": {
+    "contract": {
+      "derived": {
+        "case_total": 4,
+        "schema_fail_total": 0,
+        "required_path_fail_total": 0,
+        "reason_code_fail_total": 0,
+        "failures_total": 0,
+        "results": [
+          {
+            "id": "chat_response_ok",
+            "schema": "contracts/chat-response.schema.json",
+            "schema_ok": true,
+            "required_paths_missing": [],
+            "reason_code_ok": true,
+            "signature": {
+              "schema": "contracts/chat-response.schema.json",
+              "path_types": {
+                "$": "object",
+                "$.answer": "object",
+                "$.answer.content": "string",
+                "$.answer.role": "string",
+                "$.citations": "array",
+                "$.citations.0": "string",
+                "$.escalated": "boolean",
+                "$.fallback_count": "integer",
+                "$.next_action": "string",
+                "$.reason_code": "string",
+                "$.recoverable": "boolean",
+                "$.request_id": "string",
+                "$.retry_after_ms": "null",
+                "$.sources": "array",
+                "$.sources.0": "object",
+                "$.sources.0.chunk_id": "string",
+                "$.sources.0.citation_key": "string",
+                "$.sources.0.doc_id": "string",
+                "$.sources.0.snippet": "string",
+                "$.sources.0.title": "string",
+                "$.sources.0.url": "string",
+                "$.status": "string",
+                "$.trace_id": "string",
+                "$.version": "string"
+              },
+              "focus_fields": {
+                "reason_code": "OK",
+                "next_action": "NONE",
+                "recoverable": false
+              }
+            },
+            "errors": []
+          },
+          {
+            "id": "chat_response_fallback",
+            "schema": "contracts/chat-response.schema.json",
+            "schema_ok": true,
+            "required_paths_missing": [],
+            "reason_code_ok": true,
+            "signature": {
+              "schema": "contracts/chat-response.schema.json",
+              "path_types": {
+                "$": "object",
+                "$.answer": "object",
+                "$.answer.content": "string",
+                "$.answer.role": "string",
+                "$.citations": "array",
+                "$.escalated": "boolean",
+                "$.fallback_count": "integer",
+                "$.next_action": "string",
+                "$.reason_code": "string",
+                "$.recoverable": "boolean",
+                "$.request_id": "string",
+                "$.retry_after_ms": "integer",
+                "$.sources": "array",
+                "$.status": "string",
+                "$.trace_id": "string",
+                "$.version": "string"
+              },
+              "focus_fields": {
+                "reason_code": "PROVIDER_TIMEOUT",
+                "next_action": "RETRY",
+                "recoverable": true
+              }
+            },
+            "errors": []
+          },
+          {
+            "id": "chat_session_state_response",
+            "schema": "contracts/chat-session-state-response.schema.json",
+            "schema_ok": true,
+            "required_paths_missing": [],
+            "reason_code_ok": true,
+            "signature": {
+              "schema": "contracts/chat-session-state-response.schema.json",
+              "path_types": {
+                "$": "object",
+                "$.request_id": "string",
+                "$.session": "object",
+                "$.session.escalation_ready": "boolean",
+                "$.session.fallback_count": "integer",
+                "$.session.fallback_escalation_threshold": "integer",
+                "$.session.recommended_action": "string",
+                "$.session.recommended_message": "string",
+                "$.session.session_id": "string",
+                "$.session.unresolved_context": "object",
+                "$.session.unresolved_context.next_action": "string",
+                "$.session.unresolved_context.query_preview": "string",
+                "$.session.unresolved_context.reason_code": "string",
+                "$.session.unresolved_context.reason_message": "string",
+                "$.session.unresolved_context.request_id": "string",
+                "$.session.unresolved_context.trace_id": "string",
+                "$.session.unresolved_context.updated_at": "integer",
+                "$.status": "string",
+                "$.trace_id": "string",
+                "$.version": "string"
+              },
+              "focus_fields": {}
+            },
+            "errors": []
+          },
+          {
+            "id": "chat_session_reset_response",
+            "schema": "contracts/chat-session-reset-response.schema.json",
+            "schema_ok": true,
+            "required_paths_missing": [],
+            "reason_code_ok": true,
+            "signature": {
+              "schema": "contracts/chat-session-reset-response.schema.json",
+              "path_types": {
+                "$": "object",
+                "$.request_id": "string",
+                "$.session": "object",
+                "$.session.previous_fallback_count": "integer",
+                "$.session.previous_unresolved_context": "boolean",
+                "$.session.reset_applied": "boolean",
+                "$.session.reset_at_ms": "integer",
+                "$.session.session_id": "string",
+                "$.status": "string",
+                "$.trace_id": "string",
+                "$.version": "string"
+              },
+              "focus_fields": {}
+            },
+            "errors": []
+          }
+        ]
+      },
+      "failures": []
+    },
+    "reason_taxonomy": {
+      "derived": {
+        "case_total": 7,
+        "response_total": 4,
+        "mismatch_total": 0,
+        "invalid_total": 0,
+        "unknown_total": 0,
+        "invalid_ratio": 0.0,
+        "unknown_ratio": 0.0,
+        "case_results": [
+          {
+            "id": "ok_response",
+            "source": "response",
+            "reason_code": "OK",
+            "expect": "valid",
+            "invalid": false,
+            "unknown": false,
+            "normalized_reason_code": "OK",
+            "matched": true
+          },
+          {
+            "id": "confirm_policy",
+            "source": "policy_decide",
+            "reason_code": "CONFIRMATION_REQUIRED",
+            "expect": "valid",
+            "invalid": false,
+            "unknown": false,
+            "normalized_reason_code": "CONFIRMATION_REQUIRED",
+            "matched": true
+          },
+          {
+            "id": "auth_forbidden",
+            "source": "authz_gate",
+            "reason_code": "AUTH_FORBIDDEN",
+            "expect": "valid",
+            "invalid": false,
+            "unknown": false,
+            "normalized_reason_code": "AUTH_FORBIDDEN",
+            "matched": true
+          },
+          {
+            "id": "provider_timeout_execute",
+            "source": "execute",
+            "reason_code": "PROVIDER_TIMEOUT",
+            "expect": "valid",
+            "invalid": false,
+            "unknown": false,
+            "normalized_reason_code": "PROVIDER_TIMEOUT",
+            "matched": true
+          },
+          {
+            "id": "forbidden_unknown",
+            "source": "response",
+            "reason_code": "UNKNOWN",
+            "expect": "invalid",
+            "invalid": true,
+            "unknown": false,
+            "normalized_reason_code": "CHAT_REASON_CODE_INVALID",
+            "matched": true
+          },
+          {
+            "id": "bad_format",
+            "source": "response",
+            "reason_code": "bad_reason",
+            "expect": "invalid",
+            "invalid": true,
+            "unknown": false,
+            "normalized_reason_code": "CHAT_REASON_CODE_INVALID",
+            "matched": true
+          },
+          {
+            "id": "source_violation",
+            "source": "policy_decide",
+            "reason_code": "PROVIDER_TIMEOUT",
+            "expect": "unknown",
+            "invalid": false,
+            "unknown": true,
+            "normalized_reason_code": "PROVIDER_TIMEOUT",
+            "matched": true
+          }
+        ],
+        "response_results": [
+          {
+            "id": "resp_ok",
+            "source": "response",
+            "status": "ok",
+            "reason_code": "OK",
+            "normalized_reason_code": "OK",
+            "invalid": false,
+            "unknown": false
+          },
+          {
+            "id": "resp_fallback_provider_timeout",
+            "source": "response",
+            "status": "insufficient_evidence",
+            "reason_code": "PROVIDER_TIMEOUT",
+            "normalized_reason_code": "PROVIDER_TIMEOUT",
+            "invalid": false,
+            "unknown": false
+          },
+          {
+            "id": "resp_confirm_required",
+            "source": "response",
+            "status": "pending_confirmation",
+            "reason_code": "CONFIRMATION_REQUIRED",
+            "normalized_reason_code": "CONFIRMATION_REQUIRED",
+            "invalid": false,
+            "unknown": false
+          },
+          {
+            "id": "resp_auth_forbidden",
+            "source": "response",
+            "status": "insufficient_evidence",
+            "reason_code": "AUTH_FORBIDDEN",
+            "normalized_reason_code": "AUTH_FORBIDDEN",
+            "invalid": false,
+            "unknown": false
+          }
+        ]
+      },
+      "failures": []
+    },
+    "parity": {
+      "derived": {
+        "window_size": 0,
+        "matched": 0,
+        "mismatched": 0,
+        "mismatch_ratio": 0.0,
+        "blocker_ratio": 0.0,
+        "by_type": {},
+        "by_severity": {},
+        "samples": [],
+        "mismatch_samples": [],
+        "mismatch_sample_count": 0,
+        "mismatch_classification": {
+          "by_primary_diff_type": {},
+          "by_intent": {},
+          "by_topic": {}
+        },
+        "graph_runs": [],
+        "graph_run_count": 0
+      },
+      "failures": []
+    },
+    "matrix": [
+      {
+        "gate": "contract_compat",
+        "engine": "contract",
+        "graph_run_id": "",
+        "node_path": [],
+        "pass": true,
+        "failures": []
+      },
+      {
+        "gate": "reason_taxonomy",
+        "engine": "graph",
+        "graph_run_id": "",
+        "node_path": [],
+        "pass": true,
+        "failures": []
+      },
+      {
+        "gate": "parity",
+        "engine": "shadow",
+        "graph_run_id": "",
+        "node_path": [],
+        "pass": true,
+        "failures": [],
+        "mismatch_ratio": 0.0,
+        "blocker_ratio": 0.0
+      }
+    ],
+    "gate_fail_total": 0,
+    "aggregate_failures": []
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "max_gate_fail_increase": 0,
+      "max_parity_mismatch_ratio_increase": 0.02,
+      "max_parity_blocker_ratio_increase": 0.01,
+      "require_baseline_approval": true,
+      "max_baseline_age_days": 0
+    }
+  }
+}

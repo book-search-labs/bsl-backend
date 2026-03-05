@@ -1,0 +1,51 @@
+{
+  "generated_at": "2026-03-03T16:54:28.945578+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/actionability/scorer_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "scored_total": 0,
+    "average_actionability_score": 0.0,
+    "score_hist": {
+      "lt40": 0,
+      "40_59": 0,
+      "60_79": 0,
+      "80_100": 0
+    },
+    "low_actionability_total": 0,
+    "low_actionability_ratio": 0.0,
+    "low_actionability_by_intent": {
+      "ORDER": 0,
+      "SHIPPING": 0,
+      "REFUND": 0,
+      "GENERAL": 0
+    },
+    "missing_current_state_total": 0,
+    "missing_next_action_total": 0,
+    "missing_expected_outcome_total": 0,
+    "missing_fallback_alternative_total": 0,
+    "missing_current_state_ratio": 0.0,
+    "missing_next_action_ratio": 0.0,
+    "missing_expected_outcome_ratio": 0.0,
+    "missing_fallback_alternative_ratio": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_event_total": 0,
+      "min_average_actionability_score": 0.0,
+      "max_low_actionability_ratio": 1.0,
+      "max_low_actionability_total": 1000000,
+      "max_missing_current_state_ratio": 1.0,
+      "max_missing_next_action_ratio": 1.0,
+      "max_missing_expected_outcome_ratio": 1.0,
+      "max_missing_fallback_alternative_ratio": 1.0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

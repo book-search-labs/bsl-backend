@@ -1,0 +1,145 @@
+{
+  "generated_at": "2026-03-02T11:32:00.268024+00:00",
+  "source": {
+    "cases_json": "services/query-service/tests/fixtures/chat_reason_taxonomy_cases_v1.json",
+    "responses_json": "services/query-service/tests/fixtures/chat_reason_taxonomy_responses_v1.json",
+    "baseline_report": null
+  },
+  "derived": {
+    "case_total": 7,
+    "response_total": 4,
+    "mismatch_total": 1,
+    "invalid_total": 1,
+    "unknown_total": 2,
+    "invalid_ratio": 0.09090909090909091,
+    "unknown_ratio": 0.18181818181818182,
+    "case_results": [
+      {
+        "id": "ok_response",
+        "source": "response",
+        "reason_code": "OK",
+        "expect": "valid",
+        "invalid": false,
+        "unknown": false,
+        "normalized_reason_code": "OK",
+        "matched": true
+      },
+      {
+        "id": "confirm_policy",
+        "source": "policy_decide",
+        "reason_code": "CONFIRMATION_REQUIRED",
+        "expect": "valid",
+        "invalid": false,
+        "unknown": false,
+        "normalized_reason_code": "CONFIRMATION_REQUIRED",
+        "matched": true
+      },
+      {
+        "id": "auth_forbidden",
+        "source": "authz_gate",
+        "reason_code": "AUTH_FORBIDDEN",
+        "expect": "valid",
+        "invalid": false,
+        "unknown": false,
+        "normalized_reason_code": "AUTH_FORBIDDEN",
+        "matched": true
+      },
+      {
+        "id": "provider_timeout_execute",
+        "source": "execute",
+        "reason_code": "PROVIDER_TIMEOUT",
+        "expect": "valid",
+        "invalid": false,
+        "unknown": false,
+        "normalized_reason_code": "PROVIDER_TIMEOUT",
+        "matched": true
+      },
+      {
+        "id": "forbidden_unknown",
+        "source": "response",
+        "reason_code": "UNKNOWN",
+        "expect": "invalid",
+        "invalid": true,
+        "unknown": false,
+        "normalized_reason_code": "CHAT_REASON_CODE_INVALID",
+        "matched": true
+      },
+      {
+        "id": "bad_format",
+        "source": "response",
+        "reason_code": "bad_reason",
+        "expect": "invalid",
+        "invalid": false,
+        "unknown": true,
+        "normalized_reason_code": "BAD_REASON",
+        "matched": false
+      },
+      {
+        "id": "source_violation",
+        "source": "policy_decide",
+        "reason_code": "PROVIDER_TIMEOUT",
+        "expect": "unknown",
+        "invalid": false,
+        "unknown": true,
+        "normalized_reason_code": "PROVIDER_TIMEOUT",
+        "matched": true
+      }
+    ],
+    "response_results": [
+      {
+        "id": "resp_ok",
+        "source": "response",
+        "status": "ok",
+        "reason_code": "OK",
+        "normalized_reason_code": "OK",
+        "invalid": false,
+        "unknown": false
+      },
+      {
+        "id": "resp_fallback_provider_timeout",
+        "source": "response",
+        "status": "insufficient_evidence",
+        "reason_code": "PROVIDER_TIMEOUT",
+        "normalized_reason_code": "PROVIDER_TIMEOUT",
+        "invalid": false,
+        "unknown": false
+      },
+      {
+        "id": "resp_confirm_required",
+        "source": "response",
+        "status": "pending_confirmation",
+        "reason_code": "CONFIRMATION_REQUIRED",
+        "normalized_reason_code": "CONFIRMATION_REQUIRED",
+        "invalid": false,
+        "unknown": false
+      },
+      {
+        "id": "resp_auth_forbidden",
+        "source": "response",
+        "status": "insufficient_evidence",
+        "reason_code": "AUTH_FORBIDDEN",
+        "normalized_reason_code": "AUTH_FORBIDDEN",
+        "invalid": false,
+        "unknown": false
+      }
+    ]
+  },
+  "gate": {
+    "enabled": true,
+    "pass": false,
+    "failures": [
+      "taxonomy fixture mismatches: 1",
+      "invalid ratio exceeded: ratio=0.090909 > max=0.000000",
+      "unknown ratio exceeded: ratio=0.181818 > max=0.050000"
+    ],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_cases": 5,
+      "min_response_total": 1,
+      "max_invalid_ratio": 0.0,
+      "max_unknown_ratio": 0.05,
+      "max_invalid_ratio_increase": 0.0,
+      "max_unknown_ratio_increase": 0.01
+    }
+  }
+}

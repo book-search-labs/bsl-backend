@@ -147,6 +147,83 @@ def max_raw_id(cursor) -> int:
     return int(row.get("max_id") or 0)
 
 
+def enqueue_material_upsert_from_tmp_changed(cursor) -> None:
+    cursor.execute(
+        """
+        INSERT IGNORE INTO outbox_event (
+          event_type,
+          aggregate_type,
+          aggregate_id,
+          dedup_key,
+          payload_json,
+          occurred_at,
+          status
+        )
+        SELECT
+          'material.upsert_requested' AS event_type,
+          'material' AS aggregate_type,
+          t.id AS aggregate_id,
+          SHA2(CONCAT('material.upsert_requested', ':', t.id, ':', CAST(t.raw_id AS CHAR)), 256) AS dedup_key,
+          JSON_OBJECT('version', 'v1', 'material_id', t.id) AS payload_json,
+          NOW() AS occurred_at,
+          'NEW' AS status
+        FROM tmp_changed t
+        WHERE t.id IS NOT NULL AND t.id <> ''
+        """
+    )
+
+
+def enqueue_material_upsert_from_agent_changes(cursor) -> None:
+    cursor.execute("DROP TEMPORARY TABLE IF EXISTS tmp_changed_agent")
+    cursor.execute(
+        """
+        CREATE TEMPORARY TABLE tmp_changed_agent AS
+        SELECT
+          COALESCE(JSON_UNQUOTE(JSON_EXTRACT(c.payload, '$.\"@id\"')), c.node_id) AS agent_id,
+          c.raw_id
+        FROM tmp_chunk c
+        JOIN tmp_changed t ON t.id = c.node_id
+        WHERE COALESCE(JSON_UNQUOTE(JSON_EXTRACT(c.payload, '$.\"@id\"')), c.node_id) IS NOT NULL
+          AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(c.payload, '$.\"@id\"')), c.node_id) <> ''
+        """
+    )
+    cursor.execute(
+        """
+        INSERT IGNORE INTO outbox_event (
+          event_type,
+          aggregate_type,
+          aggregate_id,
+          dedup_key,
+          payload_json,
+          occurred_at,
+          status
+        )
+        SELECT
+          'material.upsert_requested' AS event_type,
+          'material' AS aggregate_type,
+          ma.material_id AS aggregate_id,
+          SHA2(
+            CONCAT(
+              'material.upsert_requested',
+              ':',
+              ma.material_id,
+              ':',
+              CAST(MAX(tca.raw_id) AS CHAR)
+            ),
+            256
+          ) AS dedup_key,
+          JSON_OBJECT('version', 'v1', 'material_id', ma.material_id) AS payload_json,
+          NOW() AS occurred_at,
+          'NEW' AS status
+        FROM material_agent ma
+        JOIN tmp_changed_agent tca ON tca.agent_id = ma.agent_id
+        WHERE ma.material_id IS NOT NULL AND ma.material_id <> ''
+        GROUP BY ma.material_id
+        """
+    )
+    cursor.execute("DROP TEMPORARY TABLE IF EXISTS tmp_changed_agent")
+
+
 def process_concept(conn, batch_id: int, last_raw_id: int, batch_size: int) -> Tuple[int, ChunkStats]:
     chunk_sql = (
         "CREATE TEMPORARY TABLE tmp_chunk AS "
@@ -444,6 +521,7 @@ def process_agent(conn, batch_id: int, last_raw_id: int, batch_size: int) -> Tup
                 WHERE jt.lang IS NOT NULL AND jt.lang <> ''
                 """
             )
+            enqueue_material_upsert_from_agent_changes(cursor)
         max_id = max_raw_id(cursor)
         drop_temp_tables(cursor)
     conn.commit()
@@ -881,6 +959,7 @@ def process_material(conn, batch_id: int, last_raw_id: int, batch_size: int) -> 
                 )
                 """
             )
+            enqueue_material_upsert_from_tmp_changed(cursor)
         max_id = max_raw_id(cursor)
         drop_temp_tables(cursor)
     conn.commit()

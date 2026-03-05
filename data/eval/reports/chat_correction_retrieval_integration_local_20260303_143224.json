@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-03-03T14:32:24.084003+00:00",
+  "events_jsonl": "/var/folders/gs/4crkg8_j2rgc_8j9ynj1jpg00000gn/T/tmp.2Zgs4FmGzd",
+  "summary": {
+    "window_size": 2,
+    "request_total": 2,
+    "correction_hit_total": 1,
+    "hit_ratio": 0.5,
+    "override_total": 1,
+    "stale_hit_total": 0,
+    "precedence_violation_total": 1,
+    "policy_conflict_total": 1,
+    "policy_conflict_unhandled_total": 0,
+    "missing_reason_code_total": 0,
+    "p95_retrieval_latency_ms": 300.0,
+    "latest_event_time": "2026-03-03T10:01:00+00:00",
+    "stale_minutes": 271.40139931666664
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 1,
+      "min_request_total": 1,
+      "min_hit_ratio": 0.0,
+      "max_stale_hit_total": 10,
+      "max_precedence_violation_total": 10,
+      "max_policy_conflict_unhandled_total": 0,
+      "max_missing_reason_code_total": 0,
+      "max_p95_retrieval_latency_ms": 1000.0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

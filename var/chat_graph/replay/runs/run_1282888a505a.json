@@ -1,0 +1,233 @@
+{
+  "run_id": "run_1282888a505a",
+  "trace_id": "trace_test",
+  "request_id": "req_test",
+  "session_id": "u:1:default",
+  "status": "done",
+  "started_at": 1772666489,
+  "updated_at": 1772666489,
+  "request_payload": {
+    "session_id": "bad session!",
+    "message": {
+      "role": "user",
+      "content": "주문 상태 알려줘"
+    },
+    "options": {
+      "stream": true
+    },
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "session_id": "u:1:default",
+    "input": {
+      "session_id": "bad session!",
+      "message": {
+        "role": "user",
+        "content": "주문 상태 알려줘"
+      },
+      "options": {
+        "stream": true
+      },
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772666489,
+      "state_hash": "2832ce764b26af9e",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "u:1:default",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772666489,
+      "state_hash": "1f93e549099bf66b",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "u:1:default",
+        "intent": "ORDER",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772666489,
+      "state_hash": "06ae2bb3a97ad65c",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "u:1:default",
+        "intent": "ORDER",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772666489,
+      "state_hash": "06ae2bb3a97ad65c",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "u:1:default",
+        "intent": "ORDER",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772666489,
+      "state_hash": "d67f1c414934b823",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "u:1:default",
+        "intent": "ORDER",
+        "route": "FALLBACK",
+        "reason_code": "CHAT_INVALID_SESSION_ID",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "CHAT_INVALID_SESSION_ID",
+          "next_action": "RETRY"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772666489,
+      "state_hash": "d67f1c414934b823",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "u:1:default",
+        "intent": "ORDER",
+        "route": "FALLBACK",
+        "reason_code": "CHAT_INVALID_SESSION_ID",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "CHAT_INVALID_SESSION_ID",
+          "next_action": "RETRY"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772666489,
+      "state_hash": "d67f1c414934b823",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "u:1:default",
+        "intent": "ORDER",
+        "route": "FALLBACK",
+        "reason_code": "CHAT_INVALID_SESSION_ID",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "CHAT_INVALID_SESSION_ID",
+          "next_action": "RETRY"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772666489,
+      "state_hash": "c89ba3a3e483ad14",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "u:1:default",
+        "intent": "ORDER",
+        "route": "FALLBACK",
+        "reason_code": "CHAT_INVALID_SESSION_ID",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "CHAT_INVALID_SESSION_ID",
+          "next_action": "RETRY"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "status": "insufficient_evidence",
+    "reason_code": "CHAT_INVALID_SESSION_ID",
+    "recoverable": true,
+    "next_action": "RETRY",
+    "retry_after_ms": 1000,
+    "answer": {
+      "role": "assistant",
+      "content": "세션 정보 형식이 올바르지 않습니다. 다시 시도해 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "fallback_count": 1,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "answer": {
+      "role": "assistant",
+      "content": "세션 정보 형식이 올바르지 않습니다. 다시 시도해 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "status": "insufficient_evidence",
+    "reason_code": "CHAT_INVALID_SESSION_ID",
+    "recoverable": true,
+    "next_action": "RETRY",
+    "retry_after_ms": 1000,
+    "fallback_count": 1,
+    "escalated": false
+  }
+}

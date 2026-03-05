@@ -1,0 +1,65 @@
+{
+  "generated_at": "2026-03-03T18:05:16.323237+00:00",
+  "launch_gate_report_path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_production_launch_gate_20260304_025050.json",
+  "cycle_window_size": 3,
+  "sources": {
+    "reports_dir": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports",
+    "cycle_prefix": "chat_liveops_cycle",
+    "launch_prefix": "chat_production_launch_gate",
+    "llm_audit_log": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/llm_gateway/audit.log",
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_readiness_score_baseline_v1.json"
+  },
+  "signals": {
+    "launch_pass": false,
+    "canary_pass": true,
+    "liveops_pass_ratio": 0.6666666666666666,
+    "rollback_rate": 0.3333333333333333,
+    "open_incident_total": 0,
+    "mtta_sec": 0.103576,
+    "mttr_sec": 31.205436,
+    "capacity_mode": "NORMAL",
+    "dr_recovery_ratio": 1.0,
+    "dr_open_total": 0,
+    "dr_drill_total": 1
+  },
+  "readiness": {
+    "total_score": 68.5,
+    "tier": "HOLD",
+    "recommended_action": "hold",
+    "components": {
+      "quality": 40.0,
+      "safety": 80.0,
+      "reliability": 49.99999999999999,
+      "cost": 100.0,
+      "recovery": 100.0
+    },
+    "weights": {
+      "quality": 25.0,
+      "safety": 20.0,
+      "reliability": 25.0,
+      "cost": 15.0,
+      "recovery": 15.0
+    },
+    "blockers": [
+      "launch_gate_failed"
+    ],
+    "warnings": []
+  },
+  "gate": {
+    "enabled": true,
+    "pass": false,
+    "failures": [
+      "blocker: launch_gate_failed"
+    ],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_score": 0.0,
+      "capacity_max_mode": "FAIL_CLOSED",
+      "require_promote": false,
+      "max_score_drop": 100.0,
+      "max_open_incident_increase": 100,
+      "max_rollback_rate_increase": 1.0,
+      "max_capacity_mode_step_increase": 3
+    }
+  }
+}

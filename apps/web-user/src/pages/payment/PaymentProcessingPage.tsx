@@ -5,6 +5,7 @@ import { createPayment, getPayment, mockCompletePayment, type Payment } from '..
 import { getOrder } from '../../api/orders'
 
 const TERMINAL_STATUSES = new Set(['CAPTURED', 'FAILED', 'CANCELED', 'REFUNDED'])
+const RETRYABLE_TERMINAL_STATUSES = new Set(['FAILED', 'CANCELED'])
 
 function resolvePaymentId(searchParams: URLSearchParams): number | null {
   const raw = searchParams.get('payment_id') ?? searchParams.get('paymentId')
@@ -13,12 +14,24 @@ function resolvePaymentId(searchParams: URLSearchParams): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null
 }
 
+function buildPaymentIdempotencyKey(orderId: number, retryToken?: string | null) {
+  const token = retryToken?.trim()
+  if (!token) return `pay_${orderId}`
+  return `pay_${orderId}_${token}`
+}
+
 export default function PaymentProcessingPage() {
   const { orderId } = useParams()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
   const returnedPaymentId = useMemo(() => resolvePaymentId(searchParams), [searchParams])
+  const retryToken = useMemo(() => {
+    const raw = searchParams.get('retry') ?? searchParams.get('retry_token')
+    if (!raw) return null
+    const trimmed = raw.trim()
+    return trimmed.length > 0 ? trimmed : null
+  }, [searchParams])
 
   const [paymentId, setPaymentId] = useState<number | null>(returnedPaymentId)
   const [payment, setPayment] = useState<Payment | null>(null)
@@ -42,15 +55,26 @@ export default function PaymentProcessingPage() {
         const orderResponse = await getOrder(Number(orderId))
         const order = orderResponse.order
         const returnUrl = `${window.location.origin}/payment/process/${order.order_id}`
-
-        const created = await createPayment({
+        const paymentRequest = {
           orderId: order.order_id,
           amount: order.total_amount,
           method: order.payment_method ?? 'CARD',
-          idempotencyKey: `pay_${order.order_id}`,
-          provider: 'LOCAL_SIM',
+          provider: 'LOCAL_SIM' as const,
           returnUrl,
+        }
+
+        let created = await createPayment({
+          ...paymentRequest,
+          idempotencyKey: buildPaymentIdempotencyKey(order.order_id, retryToken),
         })
+
+        if (RETRYABLE_TERMINAL_STATUSES.has(created.status) && !retryToken) {
+          const autoRetryToken = `retry_${Date.now()}`
+          created = await createPayment({
+            ...paymentRequest,
+            idempotencyKey: buildPaymentIdempotencyKey(order.order_id, autoRetryToken),
+          })
+        }
         if (!active) return
 
         setPaymentId(created.payment_id)
@@ -80,7 +104,7 @@ export default function PaymentProcessingPage() {
     return () => {
       active = false
     }
-  }, [navigate, orderId, returnedPaymentId])
+  }, [navigate, orderId, returnedPaymentId, retryToken])
 
   useEffect(() => {
     if (!paymentId) return
@@ -157,7 +181,16 @@ export default function PaymentProcessingPage() {
             결제번호 {payment.payment_id} · 상태 {payment.status}
           </div>
         ) : null}
-        {errorMessage ? <div className="alert alert-danger">{errorMessage}</div> : null}
+        {errorMessage ? (
+          <div className="d-flex flex-column gap-2 mb-3">
+            <div className="alert alert-danger mb-0">{errorMessage}</div>
+            {paymentId ? (
+              <button className="btn btn-outline-primary align-self-start" onClick={retryPolling}>
+                결제 상태 다시 확인
+              </button>
+            ) : null}
+          </div>
+        ) : null}
 
         {status === 'LOADING' ? <div className="text-muted">결제 세션을 준비하고 있습니다...</div> : null}
         {status === 'REDIRECTING' ? <div className="text-muted">결제창으로 이동 중입니다...</div> : null}

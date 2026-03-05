@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-03-03T15:59:38.925281+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/tool_health/tool_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "tool_total": 0,
+    "tool_health": [],
+    "average_health_score": 0.0,
+    "unhealthy_tool_total": 0,
+    "missing_telemetry_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "max_latency_p95_ms": 1500.0,
+      "max_error_ratio": 0.2,
+      "min_window": 0,
+      "min_event_total": 0,
+      "min_tool_total": 0,
+      "min_tool_health_score": 0.0,
+      "min_average_health_score": 0.0,
+      "max_unhealthy_tool_total": 1000000,
+      "max_missing_telemetry_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

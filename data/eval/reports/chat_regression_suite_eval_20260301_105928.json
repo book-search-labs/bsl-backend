@@ -1,0 +1,48 @@
+{
+  "version": "v1",
+  "generated_at": "2026-03-01T10:59:28.383531+00:00",
+  "source": {
+    "fixture": "services/query-service/tests/fixtures/chat_state_regression_v1.json",
+    "ingest_dir": "tasks/backlog/generated/feedback",
+    "baseline_report": null
+  },
+  "thresholds": {
+    "min_scenarios": 30,
+    "min_turns": 45,
+    "min_multi_turn_scenarios": 12,
+    "min_book_scenarios": 8,
+    "require_ingest": false,
+    "min_ingest_cases": 1,
+    "max_scenario_drop": 0,
+    "max_turn_drop": 0,
+    "max_book_drop": 0
+  },
+  "derived": {
+    "suite_name": "chat_state_regression_v1",
+    "scenario_count": 36,
+    "turn_count": 59,
+    "multi_turn_scenario_count": 16,
+    "single_turn_scenario_count": 20,
+    "max_turns_per_scenario": 4,
+    "domain_counts": {
+      "commerce": 15,
+      "policy": 4,
+      "book": 10,
+      "support": 7
+    }
+  },
+  "ingest_count": 0,
+  "metrics": {
+    "chat_regression_suite_size{domain=all}": 36.0,
+    "chat_regression_suite_size{domain=commerce}": 15.0,
+    "chat_regression_suite_size{domain=policy}": 4.0,
+    "chat_regression_suite_size{domain=book}": 10.0,
+    "chat_regression_suite_size{domain=support}": 7.0,
+    "chat_regression_new_case_ingest_total": 0.0
+  },
+  "gate": {
+    "pass": true,
+    "failures": [],
+    "baseline_failures": []
+  }
+}

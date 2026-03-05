@@ -9,6 +9,7 @@ import EventDetailPage from '../pages/EventDetailPage'
 import EventsPage from '../pages/EventsPage'
 import BenefitsPage from '../pages/BenefitsPage'
 import HomePage from '../pages/HomePage'
+import HomeCollectionPage from '../pages/HomeCollectionPage'
 import LoginPage from '../pages/LoginPage'
 import NotFoundPage from '../pages/NotFoundPage'
 import PreordersPage from '../pages/PreordersPage'
@@ -47,6 +48,7 @@ export default function AppRouter() {
         <Route path="events" element={<EventsPage />} />
         <Route path="events/:itemId" element={<EventDetailPage />} />
         <Route path="benefits" element={<BenefitsPage />} />
+        <Route path="collections/:sectionKey" element={<HomeCollectionPage />} />
         <Route path="preorders" element={<PreordersPage />} />
         <Route path="book/:docId" element={<BookDetailPage />} />
         <Route element={<RequireAuth />}>

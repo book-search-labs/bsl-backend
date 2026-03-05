@@ -1,0 +1,34 @@
+{
+  "generated_at": "2026-03-03T16:09:03.473046+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/tool_health/degrade_strategy_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "request_total": 0,
+    "degrade_required_total": 0,
+    "fallback_attempted_total": 0,
+    "degrade_coverage_ratio": 1.0,
+    "sequential_retry_success_total": 0,
+    "safe_fallback_total": 0,
+    "resolved_degrade_total": 0,
+    "safe_fallback_ratio": 1.0,
+    "stalled_degrade_total": 0,
+    "duplicate_tool_retry_total": 0,
+    "requests": [],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_request_total": 0,
+      "min_degrade_coverage_ratio": 0.0,
+      "min_safe_fallback_ratio": 0.0,
+      "max_stalled_degrade_total": 1000000,
+      "max_duplicate_tool_retry_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

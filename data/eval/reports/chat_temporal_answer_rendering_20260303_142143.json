@@ -1,0 +1,40 @@
+{
+  "generated_at": "2026-03-03T14:21:43.544787+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_policy/temporal_answer_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "answer_total": 0,
+    "with_effective_date_total": 0,
+    "with_policy_version_total": 0,
+    "effective_date_ratio": 1.0,
+    "policy_version_ratio": 1.0,
+    "missing_reference_date_total": 0,
+    "ambiguous_query_total": 0,
+    "ambiguous_followup_total": 0,
+    "ambiguous_followup_ratio": 1.0,
+    "ambiguous_direct_answer_total": 0,
+    "missing_official_source_link_total": 0,
+    "render_contract_violation_total": 0,
+    "p95_render_latency_ms": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_answer_total": 0,
+      "min_effective_date_ratio": 0.0,
+      "min_policy_version_ratio": 0.0,
+      "min_ambiguous_followup_ratio": 0.0,
+      "max_missing_reference_date_total": 1000000,
+      "max_ambiguous_direct_answer_total": 1000000,
+      "max_missing_official_source_link_total": 1000000,
+      "max_render_contract_violation_total": 1000000,
+      "max_p95_render_latency_ms": 1000000.0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "generated_at": "2026-03-03T16:40:16.073794+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/session_quality/intervention_feedback_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "intervention_total": 0,
+    "recovered_total": 0,
+    "recovery_rate": 1.0,
+    "mean_completion_before": 0.0,
+    "mean_completion_after": 0.0,
+    "completion_uplift": 0.0,
+    "feedback_missing_total": 0,
+    "ineffective_total": 0,
+    "auto_decay_missing_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "decay_ineffective_streak_threshold": 3,
+      "min_window": 0,
+      "min_event_total": 0,
+      "min_recovery_rate": 0.0,
+      "min_completion_uplift": -1.0,
+      "max_feedback_missing_total": 1000000,
+      "max_auto_decay_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

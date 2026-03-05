@@ -1,0 +1,73 @@
+{
+  "generated_at": "2026-03-03T23:17:48.295188+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_trust/retrieval_events.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_trust/retrieval_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "top_k": 3,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_trust_rerank_integration_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "query_total": 0,
+    "candidate_total": 0,
+    "topk_slot_total": 0,
+    "low_trust_topk_before_total": 0,
+    "low_trust_topk_after_total": 0,
+    "low_trust_topk_before_ratio": 0.0,
+    "low_trust_topk_after_ratio": 0.0,
+    "stale_topk_before_total": 0,
+    "stale_topk_after_total": 0,
+    "stale_topk_before_ratio": 0.0,
+    "stale_topk_after_ratio": 0.0,
+    "trust_lift_ratio": 1.0,
+    "stale_drop_ratio": 1.0,
+    "rerank_shift_query_total": 0,
+    "rerank_shift_ratio": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "query_total": 0,
+      "candidate_total": 0,
+      "topk_slot_total": 0,
+      "low_trust_topk_before_total": 0,
+      "low_trust_topk_after_total": 0,
+      "low_trust_topk_before_ratio": 0.0,
+      "low_trust_topk_after_ratio": 0.0,
+      "stale_topk_before_total": 0,
+      "stale_topk_after_total": 0,
+      "stale_topk_before_ratio": 0.0,
+      "stale_topk_after_ratio": 0.0,
+      "trust_lift_ratio": 1.0,
+      "stale_drop_ratio": 1.0,
+      "rerank_shift_query_total": 0,
+      "rerank_shift_ratio": 0.0,
+      "latest_event_time": null,
+      "stale_minutes": 0.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_query_total": 0,
+      "max_low_trust_topk_ratio": 0.4,
+      "max_stale_topk_ratio": 0.2,
+      "min_trust_lift_ratio": 0.0,
+      "min_stale_drop_ratio": 0.0,
+      "max_stale_minutes": 60.0,
+      "max_low_trust_topk_after_ratio_increase": 0.05,
+      "max_stale_topk_after_ratio_increase": 0.05,
+      "max_trust_lift_ratio_drop": 0.1,
+      "max_stale_drop_ratio_drop": 0.1,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

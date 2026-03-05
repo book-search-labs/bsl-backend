@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-03-03T17:41:00.621516+00:00",
+  "source": {
+    "limit": 500,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_legacy_decommission_baseline_v1.json"
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "legacy_count": 0,
+      "legacy_ratio": 0.0,
+      "legacy_reason_counts": {},
+      "samples": []
+    },
+    "allow_legacy_reasons": [
+      "auto_rollback_override",
+      "legacy_emergency_recovery"
+    ]
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_legacy_count": 0,
+      "max_legacy_ratio": 0.0,
+      "allow_legacy_reasons": [
+        "auto_rollback_override",
+        "legacy_emergency_recovery"
+      ],
+      "max_legacy_count_increase": 0,
+      "max_legacy_ratio_increase": 0.0
+    }
+  }
+}

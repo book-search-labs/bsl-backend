@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-03-03T09:56:24.589529+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_budget/runtime_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "request_total": 0,
+    "exceeded_request_total": 0,
+    "abort_request_total": 0,
+    "graceful_abort_request_total": 0,
+    "warning_before_abort_total": 0,
+    "retry_prompt_request_total": 0,
+    "enforced_exceed_request_total": 0,
+    "unhandled_exceed_request_total": 0,
+    "hard_breach_total": 0,
+    "enforcement_coverage_ratio": 1.0,
+    "warning_before_abort_ratio": 1.0,
+    "graceful_abort_ratio": 1.0,
+    "retry_prompt_ratio": 1.0,
+    "exceed_by_type": [],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_hard_breach_total": 1000000,
+      "max_unhandled_exceed_request_total": 1000000,
+      "min_enforcement_coverage_ratio": 0.0,
+      "min_warning_before_abort_ratio": 0.0,
+      "min_graceful_abort_ratio": 0.0,
+      "min_retry_prompt_ratio": 0.0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

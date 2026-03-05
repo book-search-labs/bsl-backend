@@ -1,0 +1,67 @@
+{
+  "generated_at": "2026-03-03T23:17:48.331981+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_trust/answer_reliability_audit.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_trust/answer_reliability_audit.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_answer_reliability_label_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "answer_total": 0,
+    "high_total": 0,
+    "medium_total": 0,
+    "low_total": 0,
+    "invalid_level_total": 0,
+    "label_shift_total": 0,
+    "label_shift_ratio": 0.0,
+    "low_definitive_claim_total": 0,
+    "low_missing_guidance_total": 0,
+    "low_missing_reason_total": 0,
+    "low_guardrail_coverage_ratio": 1.0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "answer_total": 0,
+      "high_total": 0,
+      "medium_total": 0,
+      "low_total": 0,
+      "invalid_level_total": 0,
+      "label_shift_total": 0,
+      "label_shift_ratio": 0.0,
+      "low_definitive_claim_total": 0,
+      "low_missing_guidance_total": 0,
+      "low_missing_reason_total": 0,
+      "low_guardrail_coverage_ratio": 1.0,
+      "latest_event_time": null,
+      "stale_minutes": 0.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_invalid_level_total": 0,
+      "max_label_shift_ratio": 0.1,
+      "max_low_definitive_claim_total": 0,
+      "max_low_missing_guidance_total": 0,
+      "max_low_missing_reason_total": 0,
+      "min_low_guardrail_coverage_ratio": 0.95,
+      "max_stale_minutes": 60.0,
+      "max_invalid_level_total_increase": 0,
+      "max_label_shift_ratio_increase": 0.05,
+      "max_low_definitive_claim_total_increase": 0,
+      "max_low_missing_guidance_total_increase": 0,
+      "max_low_missing_reason_total_increase": 0,
+      "max_low_guardrail_coverage_ratio_drop": 0.05,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

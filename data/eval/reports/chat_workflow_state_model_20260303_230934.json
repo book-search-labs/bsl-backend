@@ -1,0 +1,67 @@
+{
+  "generated_at": "2026-03-03T23:09:34.781042+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_workflow/workflow_events.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_workflow/workflow_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_workflow_state_model_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "workflow_total": 0,
+    "state_record_total": 0,
+    "missing_state_fields_total": 0,
+    "unsupported_type_total": 0,
+    "recovery_checkpoint_total": 0,
+    "checkpoint_ratio": 0.0,
+    "missing_templates": [
+      "ADDRESS_CHANGE",
+      "CANCEL_ORDER",
+      "REFUND_REQUEST"
+    ],
+    "by_type": [],
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "workflow_total": 0,
+      "state_record_total": 0,
+      "missing_state_fields_total": 0,
+      "unsupported_type_total": 0,
+      "recovery_checkpoint_total": 0,
+      "checkpoint_ratio": 0.0,
+      "missing_templates": [
+        "ADDRESS_CHANGE",
+        "CANCEL_ORDER",
+        "REFUND_REQUEST"
+      ],
+      "by_type": [],
+      "latest_event_time": null,
+      "stale_minutes": 0.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": false,
+    "failures": [],
+    "baseline_failures": [
+      "missing template regression: baseline=0, current=3, allowed_increase=0"
+    ],
+    "thresholds": {
+      "min_window": 0,
+      "max_missing_state_fields_total": 0,
+      "max_unsupported_type_total": 0,
+      "min_checkpoint_ratio": 0.8,
+      "max_stale_minutes": 60.0,
+      "require_templates": false,
+      "max_missing_state_fields_total_increase": 0,
+      "max_unsupported_type_total_increase": 0,
+      "max_checkpoint_ratio_drop": 0.05,
+      "max_stale_minutes_increase": 30.0,
+      "max_missing_template_increase": 0
+    }
+  }
+}

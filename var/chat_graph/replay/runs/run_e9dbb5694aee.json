@@ -1,0 +1,229 @@
+{
+  "run_id": "run_e9dbb5694aee",
+  "trace_id": "trace_test",
+  "request_id": "req_test",
+  "session_id": "sess-timeout-1",
+  "status": "done",
+  "started_at": 1772666569,
+  "updated_at": 1772666569,
+  "request_payload": {
+    "session_id": "sess-timeout-1",
+    "message": {
+      "role": "user",
+      "content": "배송 상태 알려줘"
+    },
+    "client": {
+      "user_id": "1",
+      "locale": "ko-KR"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "session_id": "sess-timeout-1",
+    "input": {
+      "session_id": "sess-timeout-1",
+      "message": {
+        "role": "user",
+        "content": "배송 상태 알려줘"
+      },
+      "client": {
+        "user_id": "1",
+        "locale": "ko-KR"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772666569,
+      "state_hash": "229de19470c7ef20",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-timeout-1",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772666569,
+      "state_hash": "2b210be065d26f92",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-timeout-1",
+        "intent": "SHIPPING",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772666569,
+      "state_hash": "ce00a60d41532911",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-timeout-1",
+        "intent": "SHIPPING",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772666569,
+      "state_hash": "ce00a60d41532911",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-timeout-1",
+        "intent": "SHIPPING",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772666569,
+      "state_hash": "66ed5b58ddc739b0",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-timeout-1",
+        "intent": "SHIPPING",
+        "route": "FALLBACK",
+        "reason_code": "PROVIDER_TIMEOUT",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "PROVIDER_TIMEOUT",
+          "next_action": "RETRY"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772666569,
+      "state_hash": "66ed5b58ddc739b0",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-timeout-1",
+        "intent": "SHIPPING",
+        "route": "FALLBACK",
+        "reason_code": "PROVIDER_TIMEOUT",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "PROVIDER_TIMEOUT",
+          "next_action": "RETRY"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772666569,
+      "state_hash": "66ed5b58ddc739b0",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-timeout-1",
+        "intent": "SHIPPING",
+        "route": "FALLBACK",
+        "reason_code": "PROVIDER_TIMEOUT",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "PROVIDER_TIMEOUT",
+          "next_action": "RETRY"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772666569,
+      "state_hash": "059d86c826e00e9b",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-timeout-1",
+        "intent": "SHIPPING",
+        "route": "FALLBACK",
+        "reason_code": "PROVIDER_TIMEOUT",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "PROVIDER_TIMEOUT",
+          "next_action": "RETRY"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "status": "insufficient_evidence",
+    "reason_code": "PROVIDER_TIMEOUT",
+    "recoverable": true,
+    "next_action": "RETRY",
+    "retry_after_ms": 3000,
+    "answer": {
+      "role": "assistant",
+      "content": "응답 시간이 지연되어 답변을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "fallback_count": 1,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "answer": {
+      "role": "assistant",
+      "content": "응답 시간이 지연되어 답변을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "status": "insufficient_evidence",
+    "reason_code": "PROVIDER_TIMEOUT",
+    "recoverable": true,
+    "next_action": "RETRY",
+    "retry_after_ms": 3000,
+    "fallback_count": 1,
+    "escalated": false
+  }
+}

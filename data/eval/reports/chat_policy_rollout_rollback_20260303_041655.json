@@ -1,0 +1,34 @@
+{
+  "generated_at": "2026-03-03T04:16:55.211790+00:00",
+  "events_jsonl": "/var/folders/gs/4crkg8_j2rgc_8j9ynj1jpg00000gn/T/tmp.1w8KvTZJOT",
+  "summary": {
+    "window_size": 4,
+    "publish_total": 1,
+    "promote_total": 1,
+    "rollback_total": 1,
+    "activate_total": 1,
+    "rollout_failure_total": 0,
+    "missing_policy_version_total": 0,
+    "promote_without_approval_total": 0,
+    "checksum_missing_total": 0,
+    "rollback_to_unknown_version_total": 0,
+    "active_version_conflict_total": 0,
+    "latest_event_time": "2026-03-03T00:03:00+00:00",
+    "stale_minutes": 253.92019616666667
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 1,
+      "max_missing_policy_version_total": 0,
+      "max_promote_without_approval_total": 0,
+      "max_checksum_missing_total": 0,
+      "max_rollback_to_unknown_version_total": 0,
+      "max_active_version_conflict_total": 0,
+      "max_rollout_failure_total": 0,
+      "max_stale_minutes": 100000.0
+    }
+  }
+}

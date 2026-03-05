@@ -21,7 +21,8 @@ Outbox relay publishes JSON envelopes with consistent metadata:
 ```
 
 - `payload` matches the fields defined in `contracts/events/*.proto`.
-- Kafka key = `dedup_key` (idempotency key).
+- Kafka key = `dedup_key` (default idempotency key).
+- Exception: OpenSearch sync material events use key = `material_id` to guarantee per-material ordering.
 
 ## 2) Compatibility rules (minimum)
 - **Backward compatible by default** (consumers should tolerate new optional fields).
@@ -57,3 +58,5 @@ python3 scripts/outbox/replay_outbox.py --status FAILED --event-type search_clic
 - `search_dwell` → `search_dwell_v1`
 - `ac_impression` → `ac_impression_v1`
 - `ac_select` → `ac_select_v1`
+- `material.upsert_requested` → `os.sync.material.v1`
+- `material.delete_requested` → `os.sync.material.v1`

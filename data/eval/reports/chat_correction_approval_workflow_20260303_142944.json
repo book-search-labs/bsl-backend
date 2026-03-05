@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-03-03T14:29:44.679363+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_correction/correction_approval_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "correction_total": 0,
+    "submitted_total": 0,
+    "approved_total": 0,
+    "activated_total": 0,
+    "rollback_total": 0,
+    "invalid_event_type_total": 0,
+    "invalid_transition_total": 0,
+    "missing_actor_total": 0,
+    "missing_reviewer_total": 0,
+    "p95_approval_latency_minutes": 0.0,
+    "p95_activation_latency_minutes": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_correction_total": 0,
+      "min_submitted_total": 0,
+      "max_invalid_event_type_total": 1000000,
+      "max_invalid_transition_total": 1000000,
+      "max_missing_actor_total": 1000000,
+      "max_missing_reviewer_total": 1000000,
+      "max_p95_approval_latency_minutes": 1000000.0,
+      "max_p95_activation_latency_minutes": 1000000.0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

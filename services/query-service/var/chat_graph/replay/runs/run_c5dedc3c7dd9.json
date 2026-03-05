@@ -1,0 +1,263 @@
+{
+  "run_id": "run_c5dedc3c7dd9",
+  "trace_id": "0ef59f467f75094f53516ba4a3dca3dd",
+  "request_id": "0ef59f467f75094f53516ba4a3dca3dd-827088bf09dea352",
+  "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+  "status": "done",
+  "started_at": 1772667117,
+  "updated_at": 1772667117,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "도서 '帝範' 기준으로 비슷한 책을 추천해줘"
+    },
+    "history": [],
+    "options": {
+      "stream": true,
+      "top_k": 6
+    },
+    "trace_id": "0ef59f467f75094f53516ba4a3dca3dd",
+    "request_id": "0ef59f467f75094f53516ba4a3dca3dd-827088bf09dea352",
+    "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "0ef59f467f75094f53516ba4a3dca3dd",
+    "request_id": "0ef59f467f75094f53516ba4a3dca3dd-827088bf09dea352",
+    "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "도서 '帝範' 기준으로 비슷한 책을 추천해줘"
+      },
+      "history": [],
+      "options": {
+        "stream": true,
+        "top_k": 6
+      },
+      "trace_id": "0ef59f467f75094f53516ba4a3dca3dd",
+      "request_id": "0ef59f467f75094f53516ba4a3dca3dd-827088bf09dea352",
+      "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772667117,
+      "state_hash": "19c4e8401aeb6f0e",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "0ef59f467f75094f53516ba4a3dca3dd",
+        "request_id": "0ef59f467f75094f53516ba4a3dca3dd-827088bf09dea352",
+        "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772667117,
+      "state_hash": "34382236a7c74d21",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "0ef59f467f75094f53516ba4a3dca3dd",
+        "request_id": "0ef59f467f75094f53516ba4a3dca3dd-827088bf09dea352",
+        "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+        "intent": "RECOMMEND",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772667117,
+      "state_hash": "0ee5e53f58885bde",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "0ef59f467f75094f53516ba4a3dca3dd",
+        "request_id": "0ef59f467f75094f53516ba4a3dca3dd-827088bf09dea352",
+        "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+        "intent": "RECOMMEND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772667117,
+      "state_hash": "0ee5e53f58885bde",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "0ef59f467f75094f53516ba4a3dca3dd",
+        "request_id": "0ef59f467f75094f53516ba4a3dca3dd-827088bf09dea352",
+        "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+        "intent": "RECOMMEND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772667117,
+      "state_hash": "0a517e9a643e669a",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "0ef59f467f75094f53516ba4a3dca3dd",
+        "request_id": "0ef59f467f75094f53516ba4a3dca3dd-827088bf09dea352",
+        "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772667117,
+      "state_hash": "0a517e9a643e669a",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "0ef59f467f75094f53516ba4a3dca3dd",
+        "request_id": "0ef59f467f75094f53516ba4a3dca3dd-827088bf09dea352",
+        "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772667117,
+      "state_hash": "0a517e9a643e669a",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "0ef59f467f75094f53516ba4a3dca3dd",
+        "request_id": "0ef59f467f75094f53516ba4a3dca3dd-827088bf09dea352",
+        "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772667117,
+      "state_hash": "51deedf382e190b4",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "0ef59f467f75094f53516ba4a3dca3dd",
+        "request_id": "0ef59f467f75094f53516ba4a3dca3dd-827088bf09dea352",
+        "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "0ef59f467f75094f53516ba4a3dca3dd",
+    "request_id": "0ef59f467f75094f53516ba4a3dca3dd-827088bf09dea352",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "현재 기준으로 동일 도서 외 유사 후보를 찾지 못했습니다. 제목/저자/카테고리를 함께 입력해 주세요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:book_recommend:1772667117",
+        "doc_id": "tool:book_recommend",
+        "chunk_id": "tool:book_recommend:1772667117",
+        "title": "book_recommend 실시간 조회",
+        "url": "OS /books_doc_read/_search",
+        "snippet": "seed_query=帝範, candidate_count=1, filtered_count=0 (조회시각: 2026-03-04T23:31:57.900829+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:book_recommend:1772667117"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "0ef59f467f75094f53516ba4a3dca3dd",
+    "request_id": "0ef59f467f75094f53516ba4a3dca3dd-827088bf09dea352",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "현재 기준으로 동일 도서 외 유사 후보를 찾지 못했습니다. 제목/저자/카테고리를 함께 입력해 주세요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:book_recommend:1772667117",
+        "doc_id": "tool:book_recommend",
+        "chunk_id": "tool:book_recommend:1772667117",
+        "title": "book_recommend 실시간 조회",
+        "url": "OS /books_doc_read/_search",
+        "snippet": "seed_query=帝範, candidate_count=1, filtered_count=0 (조회시각: 2026-03-04T23:31:57.900829+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:book_recommend:1772667117"
+    ]
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-03-03T17:47:30.317261+00:00",
+  "source": {
+    "reports_dir": "/tmp/bsl_liveops_reports",
+    "prefix": "chat_liveops_cycle",
+    "limit": 20,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_liveops_incident_baseline_v1.json"
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "event_total": 0,
+      "incident_total": 0,
+      "open_incident_total": 0,
+      "mtta_sec": 0.0,
+      "mttr_sec": 0.0,
+      "detection_latency_samples": [],
+      "events": [],
+      "incidents": [],
+      "open_incident": null
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_mtta_sec": 600.0,
+      "max_mttr_sec": 7200.0,
+      "max_open_incidents": 0,
+      "max_mtta_sec_increase": 120.0,
+      "max_mttr_sec_increase": 600.0,
+      "max_open_incident_increase": 0
+    }
+  }
+}

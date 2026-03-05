@@ -62,7 +62,11 @@ def requeue_events(conn, event_ids: List[int]) -> int:
     if not event_ids:
         return 0
     placeholders = ",".join(["%s"] * len(event_ids))
-    sql = f"UPDATE outbox_event SET status='NEW', sent_at=NULL WHERE event_id IN ({placeholders})"
+    sql = (
+        "UPDATE outbox_event "
+        "SET status='NEW', published_at=NULL, sent_at=NULL, last_error=NULL "
+        f"WHERE event_id IN ({placeholders})"
+    )
     with conn.cursor() as cur:
         cur.execute(sql, event_ids)
     return len(event_ids)

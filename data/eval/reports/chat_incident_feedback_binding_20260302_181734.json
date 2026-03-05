@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-03-02T18:17:34.922645+00:00",
+  "reports_dir": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports",
+  "triage_file": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_graph/triage/chat_launch_failure_cases.jsonl",
+  "summary": {
+    "incident_reason_total": 0,
+    "triage_reason_total": 0,
+    "bound_category_total": 0,
+    "categories": []
+  },
+  "recommendations": [
+    "피드백 바인딩 데이터가 부족해 기존 drillpack 유지 후 다음 주기 데이터를 수집합니다."
+  ]
+}

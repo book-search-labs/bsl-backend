@@ -1,0 +1,44 @@
+{
+  "generated_at": "2026-03-02T19:37:05.183996+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_governance/egress_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "unique_request_total": 0,
+    "blocked_total": 0,
+    "masked_total": 0,
+    "violation_total": 0,
+    "unknown_destination_total": 0,
+    "unmasked_sensitive_total": 0,
+    "error_total": 0,
+    "error_ratio": 0.0,
+    "missing_trace_total": 0,
+    "trace_coverage_ratio": 1.0,
+    "alert_sent_total": 0,
+    "alerts_for_violation_total": 0,
+    "alert_coverage_ratio": 1.0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0,
+    "allow_destinations": [
+      "langsmith",
+      "llm_provider",
+      "support_api"
+    ],
+    "destinations": [],
+    "statuses": []
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_violation_total": 0,
+      "max_unmasked_sensitive_total": 0,
+      "max_unknown_destination_total": 0,
+      "max_error_ratio": 0.05,
+      "max_missing_trace_total": 0,
+      "min_alert_coverage_ratio": 1.0,
+      "max_stale_minutes": 180.0
+    }
+  }
+}

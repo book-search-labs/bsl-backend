@@ -1,0 +1,231 @@
+{
+  "run_id": "run_2b6ad7a0388c",
+  "trace_id": "trace_test",
+  "request_id": "req_test",
+  "session_id": "sess-clear-tool-1",
+  "status": "done",
+  "started_at": 1772666569,
+  "updated_at": 1772666569,
+  "request_payload": {
+    "session_id": "sess-clear-tool-1",
+    "message": {
+      "role": "user",
+      "content": "주문 상태 확인"
+    },
+    "client": {
+      "user_id": "1",
+      "locale": "ko-KR"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "session_id": "sess-clear-tool-1",
+    "input": {
+      "session_id": "sess-clear-tool-1",
+      "message": {
+        "role": "user",
+        "content": "주문 상태 확인"
+      },
+      "client": {
+        "user_id": "1",
+        "locale": "ko-KR"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772666569,
+      "state_hash": "34f80e862f9bf99f",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-clear-tool-1",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772666569,
+      "state_hash": "ed8a12801dddc8c0",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-clear-tool-1",
+        "intent": "ORDER",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772666569,
+      "state_hash": "b70c37442f01da7a",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-clear-tool-1",
+        "intent": "ORDER",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772666569,
+      "state_hash": "b70c37442f01da7a",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-clear-tool-1",
+        "intent": "ORDER",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772666569,
+      "state_hash": "0ba4276c703d9d63",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-clear-tool-1",
+        "intent": "ORDER",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772666569,
+      "state_hash": "0ba4276c703d9d63",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-clear-tool-1",
+        "intent": "ORDER",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772666569,
+      "state_hash": "0ba4276c703d9d63",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-clear-tool-1",
+        "intent": "ORDER",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772666569,
+      "state_hash": "d5708a229768eeee",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-clear-tool-1",
+        "intent": "ORDER",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "주문 상태는 결제 완료입니다."
+    },
+    "sources": [],
+    "citations": [
+      "tool:order_lookup:1"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "주문 상태는 결제 완료입니다."
+    },
+    "sources": [],
+    "citations": [
+      "tool:order_lookup:1"
+    ]
+  }
+}

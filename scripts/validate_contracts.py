@@ -54,6 +54,8 @@ SCHEMA_FILES = {
     "chat-provider-snapshot-response.sample.json": CONTRACTS_DIR / "chat-provider-snapshot-response.schema.json",
     "chat-session-state-response.sample.json": CONTRACTS_DIR / "chat-session-state-response.schema.json",
     "chat-session-reset-response.sample.json": CONTRACTS_DIR / "chat-session-reset-response.schema.json",
+    "material.upsert_requested.v1.sample.json": CONTRACTS_DIR / "events" / "material.upsert_requested.v1.json",
+    "material.delete_requested.v1.sample.json": CONTRACTS_DIR / "events" / "material.delete_requested.v1.json",
 }
 
 def load_json(p: Path) -> dict:

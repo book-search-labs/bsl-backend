@@ -26,8 +26,8 @@ commerce:
 payments:
   default-provider: ${PAYMENTS_DEFAULT_PROVIDER:MOCK}
   default-return-url: ${PAYMENTS_DEFAULT_RETURN_URL:http://localhost:5174/payment/result}
-  default-webhook-url: ${PAYMENTS_DEFAULT_WEBHOOK_URL:http://localhost:8091/api/v1/payments/webhook/mock}
-  mock-checkout-base-url: ${PAYMENTS_MOCK_CHECKOUT_BASE_URL:http://localhost:8090/checkout}
+  default-webhook-url: ${PAYMENTS_DEFAULT_WEBHOOK_URL:http://localhost:8091/api/v1/payments/webhook/{provider}}
+  mock-checkout-base-url: ${PAYMENTS_MOCK_CHECKOUT_BASE_URL:http://localhost:8092/checkout}
   session-ttl-seconds: ${PAYMENTS_SESSION_TTL_SECONDS:1800}
   mock-webhook-secret: ${PAYMENTS_MOCK_WEBHOOK_SECRET:dev_mock_webhook_secret}
   local-sim-webhook-secret: ${PAYMENTS_LOCAL_SIM_WEBHOOK_SECRET:dev_local_sim_webhook_secret}

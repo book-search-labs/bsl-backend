@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-03-03T14:38:43.779012+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_tool_tx/tx_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "phase_total": 0,
+    "tx_total": 0,
+    "tx_started_total": 0,
+    "tx_committed_total": 0,
+    "tx_aborted_total": 0,
+    "sequence_violation_total": 0,
+    "optimistic_check_missing_total": 0,
+    "optimistic_mismatch_commit_total": 0,
+    "inconsistent_state_total": 0,
+    "commit_after_validate_ratio": 1.0,
+    "p95_prepare_to_commit_latency_ms": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_tx_total": 0,
+      "min_commit_after_validate_ratio": 0.0,
+      "max_sequence_violation_total": 1000000,
+      "max_optimistic_check_missing_total": 1000000,
+      "max_optimistic_mismatch_commit_total": 1000000,
+      "max_inconsistent_state_total": 1000000,
+      "max_p95_prepare_to_commit_latency_ms": 1000000.0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

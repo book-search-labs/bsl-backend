@@ -1,0 +1,73 @@
+{
+  "generated_at": "2026-03-04T00:14:56.583984+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_budget/runtime_events.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_budget/runtime_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_reasoning_budget_runtime_enforcement_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "request_total": 0,
+    "exceeded_request_total": 0,
+    "abort_request_total": 0,
+    "graceful_abort_request_total": 0,
+    "warning_before_abort_total": 0,
+    "retry_prompt_request_total": 0,
+    "enforced_exceed_request_total": 0,
+    "unhandled_exceed_request_total": 0,
+    "hard_breach_total": 0,
+    "enforcement_coverage_ratio": 1.0,
+    "warning_before_abort_ratio": 1.0,
+    "graceful_abort_ratio": 1.0,
+    "retry_prompt_ratio": 1.0,
+    "exceed_by_type": [],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "request_total": 0,
+      "exceeded_request_total": 0,
+      "abort_request_total": 0,
+      "graceful_abort_request_total": 0,
+      "warning_before_abort_total": 0,
+      "retry_prompt_request_total": 0,
+      "enforced_exceed_request_total": 0,
+      "unhandled_exceed_request_total": 0,
+      "hard_breach_total": 0,
+      "enforcement_coverage_ratio": 1.0,
+      "warning_before_abort_ratio": 1.0,
+      "graceful_abort_ratio": 1.0,
+      "retry_prompt_ratio": 1.0,
+      "exceed_by_type": [],
+      "latest_event_time": null,
+      "stale_minutes": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_hard_breach_total": 1000000,
+      "max_unhandled_exceed_request_total": 1000000,
+      "min_enforcement_coverage_ratio": 0.0,
+      "min_warning_before_abort_ratio": 0.0,
+      "min_graceful_abort_ratio": 0.0,
+      "min_retry_prompt_ratio": 0.0,
+      "max_stale_minutes": 1000000.0,
+      "max_hard_breach_total_increase": 0,
+      "max_unhandled_exceed_request_total_increase": 0,
+      "max_enforcement_coverage_ratio_drop": 0.05,
+      "max_warning_before_abort_ratio_drop": 0.05,
+      "max_graceful_abort_ratio_drop": 0.05,
+      "max_retry_prompt_ratio_drop": 0.05,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

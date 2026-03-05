@@ -3,6 +3,7 @@ package com.bsl.outboxrelay.relay;
 import com.bsl.outboxrelay.config.OutboxRelayProperties;
 import com.bsl.outboxrelay.outbox.OutboxEvent;
 import com.bsl.outboxrelay.outbox.OutboxEventRepository;
+import com.bsl.outboxrelay.outbox.OutboxEventRepository.FailedEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -61,20 +62,20 @@ public class OutboxRelayService {
             return;
         }
 
-        List<Long> sentIds = new ArrayList<>();
-        List<Long> failedIds = new ArrayList<>();
+        List<Long> publishedIds = new ArrayList<>();
+        List<FailedEvent> failedEvents = new ArrayList<>();
 
         for (OutboxEvent event : events) {
-            boolean ok = publishWithRetry(event);
-            if (ok) {
-                sentIds.add(event.getEventId());
+            PublishResult result = publishWithRetry(event);
+            if (result.success()) {
+                publishedIds.add(event.getEventId());
             } else {
-                failedIds.add(event.getEventId());
+                failedEvents.add(new FailedEvent(event.getEventId(), result.error()));
             }
         }
 
-        repository.markSent(sentIds);
-        repository.markFailed(failedIds);
+        repository.markPublished(publishedIds);
+        repository.markFailed(failedEvents);
     }
 
     public OutboxRelayMetrics getMetrics() {
@@ -89,14 +90,14 @@ public class OutboxRelayService {
         return lastRunAt.get();
     }
 
-    private boolean publishWithRetry(OutboxEvent event) {
+    private PublishResult publishWithRetry(OutboxEvent event) {
         String topic = resolveTopic(event.getEventType());
         if (topic == null) {
             String message = "Missing topic mapping for event_type=" + event.getEventType();
             lastError.set(message);
             logger.warn(message);
             metrics.incrementFailure();
-            return false;
+            return new PublishResult(false, message);
         }
 
         String payload = buildEnvelope(event);
@@ -105,26 +106,28 @@ public class OutboxRelayService {
             lastError.set(message);
             logger.warn(message);
             metrics.incrementFailure();
-            return false;
+            return new PublishResult(false, message);
         }
 
         int maxRetries = Math.max(1, properties.getMaxRetries());
+        String finalError = null;
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                ProducerRecord<String, String> record = new ProducerRecord<>(topic, event.getDedupKey(), payload);
+                ProducerRecord<String, String> record = new ProducerRecord<>(topic, resolveRecordKey(event), payload);
                 addHeaders(record, event, topic, false, null);
                 kafkaTemplate.send(record).get(DEFAULT_SEND_TIMEOUT_MS, TimeUnit.MILLISECONDS);
                 metrics.incrementSuccess();
-                return true;
+                return new PublishResult(true, null);
             } catch (Exception ex) {
-                lastError.set(ex.getMessage());
+                finalError = ex.getMessage();
+                lastError.set(finalError);
                 logger.warn(
                     "Outbox publish failed event_id={} event_type={} attempt={}/{} error={}",
                     event.getEventId(),
                     event.getEventType(),
                     attempt,
                     maxRetries,
-                    ex.getMessage()
+                    finalError
                 );
                 if (attempt < maxRetries) {
                     backoff(attempt);
@@ -134,9 +137,9 @@ public class OutboxRelayService {
 
         metrics.incrementFailure();
         if (properties.isDlqEnabled()) {
-            publishToDlq(event, topic, lastError.get());
+            publishToDlq(event, topic, finalError);
         }
-        return false;
+        return new PublishResult(false, finalError);
     }
 
     private void publishToDlq(OutboxEvent event, String topic, String error) {
@@ -200,6 +203,14 @@ public class OutboxRelayService {
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    private String resolveRecordKey(OutboxEvent event) {
+        if ("material.upsert_requested".equals(event.getEventType())
+            || "material.delete_requested".equals(event.getEventType())) {
+            return event.getAggregateId();
+        }
+        return event.getDedupKey();
     }
 
     private String resolveTopic(String eventType) {
@@ -275,5 +286,8 @@ public class OutboxRelayService {
             logger.warn("Failed to parse payload json: {}", ex.getMessage());
             return null;
         }
+    }
+
+    private record PublishResult(boolean success, String error) {
     }
 }

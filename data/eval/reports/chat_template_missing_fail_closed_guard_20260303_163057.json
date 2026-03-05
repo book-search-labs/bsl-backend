@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-03-03T16:30:57.684479+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/grounded_answer/template_runtime_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "template_required_total": 0,
+    "template_missing_total": 0,
+    "fail_closed_enforced_total": 0,
+    "fail_open_violation_total": 0,
+    "unsafe_rendered_when_missing_total": 0,
+    "template_missing_reason_missing_total": 0,
+    "fail_closed_enforcement_ratio": 1.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_event_total": 0,
+      "min_fail_closed_enforcement_ratio": 0.0,
+      "max_fail_open_violation_total": 1000000,
+      "max_unsafe_rendered_when_missing_total": 1000000,
+      "max_template_missing_reason_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

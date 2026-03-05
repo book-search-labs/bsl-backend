@@ -1,0 +1,55 @@
+{
+  "generated_at": "2026-03-03T23:54:44.808020+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_tool/cache_events.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_tool/cache_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_tool_cache_safety_fallback_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "corruption_detected_total": 0,
+    "origin_fallback_total": 0,
+    "cache_disabled_total": 0,
+    "fail_open_total": 0,
+    "recovery_failed_total": 0,
+    "corruption_unhandled_total": 0,
+    "recovery_success_ratio": 1.0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "corruption_detected_total": 0,
+      "origin_fallback_total": 0,
+      "cache_disabled_total": 0,
+      "fail_open_total": 0,
+      "recovery_failed_total": 0,
+      "corruption_unhandled_total": 0,
+      "recovery_success_ratio": 1.0,
+      "latest_event_time": null,
+      "stale_minutes": 0.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_corruption_unhandled_total": 0,
+      "max_fail_open_total": 0,
+      "min_recovery_success_ratio": 0.95,
+      "max_recovery_failed_total": 0,
+      "max_stale_minutes": 60.0,
+      "max_corruption_unhandled_total_increase": 0,
+      "max_fail_open_total_increase": 0,
+      "max_recovery_success_ratio_drop": 0.05,
+      "max_recovery_failed_total_increase": 0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

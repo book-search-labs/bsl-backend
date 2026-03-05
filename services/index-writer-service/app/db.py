@@ -1,7 +1,8 @@
+import hashlib
 import json
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import pymysql
 
@@ -212,3 +213,106 @@ class Database:
                     utc_now(),
                 ),
             )
+
+    def is_event_processed(self, event_id: int, handler: str) -> bool:
+        with self.cursor() as cursor:
+            cursor.execute(
+                "SELECT 1 FROM processed_event WHERE event_id=%s AND handler=%s LIMIT 1",
+                (event_id, handler),
+            )
+            row = cursor.fetchone()
+        return row is not None
+
+    def mark_event_processed(self, event_id: int, handler: str) -> None:
+        with self.cursor() as cursor:
+            cursor.execute(
+                "INSERT IGNORE INTO processed_event (event_id, handler, processed_at) VALUES (%s, %s, %s)",
+                (event_id, handler, utc_now()),
+            )
+
+    def insert_outbox_event(self, event_type: str, aggregate_type: str, aggregate_id: str, version: str, payload: Dict[str, Any]) -> bool:
+        dedup_key = hashlib.sha256(f"{event_type}:{aggregate_id}:{version}".encode("utf-8")).hexdigest()
+        payload_json = json.dumps(payload, ensure_ascii=False)
+        with self.cursor() as cursor:
+            affected = cursor.execute(
+                "INSERT IGNORE INTO outbox_event "
+                "(event_type, aggregate_type, aggregate_id, dedup_key, payload_json, occurred_at, status) "
+                "VALUES (%s, %s, %s, %s, %s, %s, 'NEW')",
+                (event_type, aggregate_type, aggregate_id, dedup_key, payload_json, utc_now()),
+            )
+        return bool(affected)
+
+    def fetch_reconcile_checkpoint(self, checkpoint_name: str) -> Optional[Dict[str, Any]]:
+        with self.cursor() as cursor:
+            cursor.execute(
+                "SELECT checkpoint_name, last_updated_at, last_material_id, updated_at "
+                "FROM reconcile_checkpoint WHERE checkpoint_name=%s",
+                (checkpoint_name,),
+            )
+            row = cursor.fetchone()
+        return row
+
+    def upsert_reconcile_checkpoint(
+        self,
+        checkpoint_name: str,
+        last_updated_at: Optional[datetime],
+        last_material_id: Optional[str],
+    ) -> None:
+        with self.cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO reconcile_checkpoint (checkpoint_name, last_updated_at, last_material_id, updated_at) "
+                "VALUES (%s, %s, %s, %s) "
+                "ON DUPLICATE KEY UPDATE last_updated_at=VALUES(last_updated_at), "
+                "last_material_id=VALUES(last_material_id), updated_at=VALUES(updated_at)",
+                (checkpoint_name, last_updated_at, last_material_id, utc_now()),
+            )
+
+    def fetch_material_delta(
+        self,
+        last_updated_at: Optional[datetime],
+        last_material_id: Optional[str],
+        limit: int,
+    ) -> List[Dict[str, Any]]:
+        with self.cursor() as cursor:
+            if last_updated_at is None:
+                cursor.execute(
+                    "SELECT material_id, updated_at, deleted_at "
+                    "FROM material ORDER BY updated_at ASC, material_id ASC LIMIT %s",
+                    (limit,),
+                )
+            else:
+                cursor.execute(
+                    "SELECT material_id, updated_at, deleted_at "
+                    "FROM material "
+                    "WHERE updated_at > %s OR (updated_at = %s AND material_id > %s) "
+                    "ORDER BY updated_at ASC, material_id ASC LIMIT %s",
+                    (last_updated_at, last_updated_at, last_material_id or "", limit),
+                )
+            rows = cursor.fetchall()
+        return rows
+
+    def fetch_os_sync_lag_seconds(self) -> int:
+        with self.cursor() as cursor:
+            cursor.execute(
+                "SELECT TIMESTAMPDIFF(SECOND, MIN(occurred_at), NOW()) AS lag_sec "
+                "FROM outbox_event "
+                "WHERE status='NEW' "
+                "AND event_type IN ('material.upsert_requested', 'material.delete_requested')"
+            )
+            row = cursor.fetchone()
+        if not row or row.get("lag_sec") is None:
+            return 0
+        return max(int(row["lag_sec"]), 0)
+
+    def fetch_recent_os_sync_failures(self, limit: int = 20) -> List[Dict[str, Any]]:
+        with self.cursor() as cursor:
+            cursor.execute(
+                "SELECT event_id, event_type, aggregate_id, retry_count, last_error, occurred_at "
+                "FROM outbox_event "
+                "WHERE status='FAILED' "
+                "AND event_type IN ('material.upsert_requested', 'material.delete_requested') "
+                "ORDER BY event_id DESC LIMIT %s",
+                (limit,),
+            )
+            rows = cursor.fetchall()
+        return rows

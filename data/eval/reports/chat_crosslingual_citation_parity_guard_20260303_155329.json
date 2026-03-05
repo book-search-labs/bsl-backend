@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-03-03T15:53:29.550634+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/crosslingual/citation_parity_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "claim_total": 0,
+    "cited_claim_total": 0,
+    "citation_parity_pass_total": 0,
+    "citation_parity_ratio": 1.0,
+    "citation_mismatch_total": 0,
+    "missing_citation_total": 0,
+    "entailment_mismatch_total": 0,
+    "reason_code_missing_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_alignment_score": 0.7,
+      "min_window": 0,
+      "min_claim_total": 0,
+      "min_citation_parity_ratio": 0.0,
+      "max_citation_mismatch_total": 1000000,
+      "max_missing_citation_total": 1000000,
+      "max_entailment_mismatch_total": 1000000,
+      "max_reason_code_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

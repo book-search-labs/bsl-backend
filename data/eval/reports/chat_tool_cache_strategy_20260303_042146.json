@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-03-03T04:21:46.111825+00:00",
+  "events_jsonl": "/var/folders/gs/4crkg8_j2rgc_8j9ynj1jpg00000gn/T/tmp.MgH2TXLwYu",
+  "summary": {
+    "window_size": 3,
+    "lookup_total": 2,
+    "cache_hit_total": 1,
+    "cache_miss_total": 1,
+    "cache_bypass_total": 0,
+    "hit_ratio": 0.5,
+    "bypass_ratio": 0.0,
+    "key_missing_field_total": 0,
+    "ttl_class_unknown_total": 0,
+    "ttl_out_of_policy_total": 0,
+    "latest_event_time": "2026-03-03T00:00:02+00:00",
+    "stale_minutes": 261.73519675
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 1,
+      "min_hit_ratio": 0.5,
+      "max_bypass_ratio": 0.3,
+      "max_key_missing_field_total": 0,
+      "max_ttl_class_unknown_total": 0,
+      "max_ttl_out_of_policy_total": 0,
+      "max_stale_minutes": 100000.0
+    }
+  }
+}

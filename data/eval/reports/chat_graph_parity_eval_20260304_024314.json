@@ -1,0 +1,46 @@
+{
+  "generated_at": "2026-03-03T17:43:14.643918+00:00",
+  "source": {
+    "shadow_limit": 200,
+    "replay_dir": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_graph/replay",
+    "run_sample_limit": 50,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_graph_parity_eval_baseline_v1.json"
+  },
+  "baseline_meta": {},
+  "derived": {
+    "window_size": 0,
+    "matched": 0,
+    "mismatched": 0,
+    "mismatch_ratio": 0.0,
+    "blocker_ratio": 0.0,
+    "by_type": {},
+    "by_severity": {},
+    "samples": [],
+    "mismatch_samples": [],
+    "mismatch_sample_count": 0,
+    "mismatch_classification": {
+      "by_primary_diff_type": {},
+      "by_intent": {},
+      "by_topic": {}
+    },
+    "graph_runs": [],
+    "graph_run_count": 0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_graph_run_count": 0,
+      "max_mismatch_ratio": 0.1,
+      "max_blocker_ratio": 0.02,
+      "max_mismatch_ratio_increase": 0.02,
+      "max_blocker_ratio_increase": 0.01,
+      "max_action_diff_ratio_increase": 0.02,
+      "require_baseline_approval": true,
+      "max_baseline_age_days": 0
+    }
+  }
+}

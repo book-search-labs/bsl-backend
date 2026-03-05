@@ -1,0 +1,87 @@
+{
+  "generated_at": "2026-03-03T15:55:50.843801+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/intent_calibration/recalibration_runs.jsonl",
+  "summary": {
+    "window_size": 0,
+    "run_total": 0,
+    "successful_run_total": 0,
+    "failed_run_total": 0,
+    "success_ratio": 1.0,
+    "threshold_update_total": 0,
+    "required_intent_total": 4,
+    "covered_required_intent_total": 0,
+    "required_intent_coverage_ratio": 0.0,
+    "stale_intent_total": 4,
+    "stale_required_intents": [
+      "DELIVERY_TRACKING",
+      "ORDER_STATUS",
+      "POLICY_QA",
+      "REFUND_REQUEST"
+    ],
+    "cadence_violation_total": 0,
+    "cadence_violations": [],
+    "intent_freshness": [
+      {
+        "intent": "DELIVERY_TRACKING",
+        "required": true,
+        "run_total": 0,
+        "success_total": 0,
+        "last_success_time": null,
+        "last_success_age_days": 999999.0,
+        "covered": false
+      },
+      {
+        "intent": "ORDER_STATUS",
+        "required": true,
+        "run_total": 0,
+        "success_total": 0,
+        "last_success_time": null,
+        "last_success_age_days": 999999.0,
+        "covered": false
+      },
+      {
+        "intent": "POLICY_QA",
+        "required": true,
+        "run_total": 0,
+        "success_total": 0,
+        "last_success_time": null,
+        "last_success_age_days": 999999.0,
+        "covered": false
+      },
+      {
+        "intent": "REFUND_REQUEST",
+        "required": true,
+        "run_total": 0,
+        "success_total": 0,
+        "last_success_time": null,
+        "last_success_age_days": 999999.0,
+        "covered": false
+      }
+    ],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "required_intents": [
+        "DELIVERY_TRACKING",
+        "ORDER_STATUS",
+        "POLICY_QA",
+        "REFUND_REQUEST"
+      ],
+      "max_recalibration_age_days": 35,
+      "min_window": 0,
+      "min_run_total": 0,
+      "min_success_ratio": 0.0,
+      "min_required_intent_coverage_ratio": 0.0,
+      "max_failed_run_total": 1000000,
+      "max_stale_intent_total": 1000000,
+      "max_cadence_violation_total": 1000000,
+      "min_threshold_update_total": 0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

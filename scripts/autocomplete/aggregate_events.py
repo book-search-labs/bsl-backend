@@ -95,7 +95,7 @@ def fetch_events(conn: pymysql.connections.Connection, limit: int) -> List[Dict[
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT event_id, event_type, payload_json, created_at
+            SELECT event_id, event_type, payload_json, occurred_at AS created_at
             FROM outbox_event
             WHERE status='NEW' AND event_type IN ('ac_impression', 'ac_select')
             ORDER BY event_id ASC
@@ -113,7 +113,7 @@ def mark_events(conn: pymysql.connections.Connection, ids: Iterable[int]) -> Non
         return
     with conn.cursor() as cur:
         cur.executemany(
-            "UPDATE outbox_event SET status='SENT', sent_at=NOW() WHERE event_id=%s",
+            "UPDATE outbox_event SET status='PUBLISHED', published_at=NOW(), last_error=NULL WHERE event_id=%s",
             [(event_id,) for event_id in ids_list],
         )
 

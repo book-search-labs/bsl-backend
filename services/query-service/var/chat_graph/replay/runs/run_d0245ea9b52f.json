@@ -1,0 +1,265 @@
+{
+  "run_id": "run_d0245ea9b52f",
+  "trace_id": "c6437405197a592c64d2df9828b8e6e1",
+  "request_id": "c6437405197a592c64d2df9828b8e6e1-46c715e84093917a",
+  "session_id": "a37a0c1a-34d8-4e97-b46e-76003f776cbd",
+  "status": "done",
+  "started_at": 1772669418,
+  "updated_at": 1772669418,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "장바구니 기준 추천해줘"
+    },
+    "history": [],
+    "options": {
+      "stream": true,
+      "top_k": 6
+    },
+    "trace_id": "c6437405197a592c64d2df9828b8e6e1",
+    "request_id": "c6437405197a592c64d2df9828b8e6e1-46c715e84093917a",
+    "session_id": "a37a0c1a-34d8-4e97-b46e-76003f776cbd",
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "c6437405197a592c64d2df9828b8e6e1",
+    "request_id": "c6437405197a592c64d2df9828b8e6e1-46c715e84093917a",
+    "session_id": "a37a0c1a-34d8-4e97-b46e-76003f776cbd",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "장바구니 기준 추천해줘"
+      },
+      "history": [],
+      "options": {
+        "stream": true,
+        "top_k": 6
+      },
+      "trace_id": "c6437405197a592c64d2df9828b8e6e1",
+      "request_id": "c6437405197a592c64d2df9828b8e6e1-46c715e84093917a",
+      "session_id": "a37a0c1a-34d8-4e97-b46e-76003f776cbd",
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772669418,
+      "state_hash": "06af6a2758670b86",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "c6437405197a592c64d2df9828b8e6e1",
+        "request_id": "c6437405197a592c64d2df9828b8e6e1-46c715e84093917a",
+        "session_id": "a37a0c1a-34d8-4e97-b46e-76003f776cbd",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772669418,
+      "state_hash": "b6a1c7e8582c2863",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "c6437405197a592c64d2df9828b8e6e1",
+        "request_id": "c6437405197a592c64d2df9828b8e6e1-46c715e84093917a",
+        "session_id": "a37a0c1a-34d8-4e97-b46e-76003f776cbd",
+        "intent": "RECOMMEND",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772669418,
+      "state_hash": "320c512f949e71c6",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "c6437405197a592c64d2df9828b8e6e1",
+        "request_id": "c6437405197a592c64d2df9828b8e6e1-46c715e84093917a",
+        "session_id": "a37a0c1a-34d8-4e97-b46e-76003f776cbd",
+        "intent": "RECOMMEND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772669418,
+      "state_hash": "320c512f949e71c6",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "c6437405197a592c64d2df9828b8e6e1",
+        "request_id": "c6437405197a592c64d2df9828b8e6e1-46c715e84093917a",
+        "session_id": "a37a0c1a-34d8-4e97-b46e-76003f776cbd",
+        "intent": "RECOMMEND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772669418,
+      "state_hash": "3b66431bae7ddbf8",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "c6437405197a592c64d2df9828b8e6e1",
+        "request_id": "c6437405197a592c64d2df9828b8e6e1-46c715e84093917a",
+        "session_id": "a37a0c1a-34d8-4e97-b46e-76003f776cbd",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772669418,
+      "state_hash": "3b66431bae7ddbf8",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "c6437405197a592c64d2df9828b8e6e1",
+        "request_id": "c6437405197a592c64d2df9828b8e6e1-46c715e84093917a",
+        "session_id": "a37a0c1a-34d8-4e97-b46e-76003f776cbd",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772669418,
+      "state_hash": "3b66431bae7ddbf8",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "c6437405197a592c64d2df9828b8e6e1",
+        "request_id": "c6437405197a592c64d2df9828b8e6e1-46c715e84093917a",
+        "session_id": "a37a0c1a-34d8-4e97-b46e-76003f776cbd",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772669418,
+      "state_hash": "112972f1a9dd6c61",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "c6437405197a592c64d2df9828b8e6e1",
+        "request_id": "c6437405197a592c64d2df9828b8e6e1-46c715e84093917a",
+        "session_id": "a37a0c1a-34d8-4e97-b46e-76003f776cbd",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "c6437405197a592c64d2df9828b8e6e1",
+    "request_id": "c6437405197a592c64d2df9828b8e6e1-46c715e84093917a",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "장바구니가 비어 있어 추천 기준이 없습니다. 도서를 먼저 장바구니에 담아주세요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:cart_recommend:1772669404",
+        "doc_id": "tool:cart_recommend",
+        "chunk_id": "tool:cart_recommend:1772669404",
+        "title": "cart_recommend 실시간 조회",
+        "url": "GET /api/v1/cart",
+        "snippet": "cart_item_count=0 (조회시각: 2026-03-05T00:10:04.941198+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:cart_recommend:1772669404"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "c6437405197a592c64d2df9828b8e6e1",
+    "request_id": "c6437405197a592c64d2df9828b8e6e1-46c715e84093917a",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "장바구니가 비어 있어 추천 기준이 없습니다. 도서를 먼저 장바구니에 담아주세요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:cart_recommend:1772669404",
+        "doc_id": "tool:cart_recommend",
+        "chunk_id": "tool:cart_recommend:1772669404",
+        "title": "cart_recommend 실시간 조회",
+        "url": "GET /api/v1/cart",
+        "snippet": "cart_item_count=0 (조회시각: 2026-03-05T00:10:04.941198+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:cart_recommend:1772669404"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  }
+}

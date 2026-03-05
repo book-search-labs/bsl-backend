@@ -1,0 +1,34 @@
+{
+  "generated_at": "2026-03-03T08:25:59.982904+00:00",
+  "dataset_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/evaluation/chat_safety/adversarial_cases.jsonl",
+  "incident_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ops/incident_feedback.jsonl",
+  "summary": {
+    "dataset_case_total": 0,
+    "dataset_version_total": 0,
+    "dataset_month_total": 0,
+    "missing_monthly_refresh_total": 13,
+    "refresh_age_days": 999999.0,
+    "incident_total": 0,
+    "incident_linked_total": 0,
+    "incident_unlinked_total": 0,
+    "incident_link_ratio": 1.0,
+    "latest_dataset_time": null,
+    "latest_incident_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_dataset_case_total": 0,
+      "min_dataset_version_total": 0,
+      "max_refresh_age_days": 1000000.0,
+      "max_missing_monthly_refresh_total": 1000000,
+      "min_incident_total": 0,
+      "min_incident_link_ratio": 0.0,
+      "max_unlinked_incident_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

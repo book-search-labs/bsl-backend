@@ -1,0 +1,263 @@
+{
+  "run_id": "run_3dee03225190",
+  "trace_id": "1dbc7d78f7e15c049e7d3ec395fd8827",
+  "request_id": "1dbc7d78f7e15c049e7d3ec395fd8827-3c2ab8ee7d34881e",
+  "session_id": "39e03977-a5c6-4d8a-ad03-6d0b87856ba0",
+  "status": "done",
+  "started_at": 1772669446,
+  "updated_at": 1772669446,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "배송 정책 알려줘"
+    },
+    "history": [],
+    "options": {
+      "stream": true,
+      "top_k": 6
+    },
+    "trace_id": "1dbc7d78f7e15c049e7d3ec395fd8827",
+    "request_id": "1dbc7d78f7e15c049e7d3ec395fd8827-3c2ab8ee7d34881e",
+    "session_id": "39e03977-a5c6-4d8a-ad03-6d0b87856ba0",
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "1dbc7d78f7e15c049e7d3ec395fd8827",
+    "request_id": "1dbc7d78f7e15c049e7d3ec395fd8827-3c2ab8ee7d34881e",
+    "session_id": "39e03977-a5c6-4d8a-ad03-6d0b87856ba0",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "배송 정책 알려줘"
+      },
+      "history": [],
+      "options": {
+        "stream": true,
+        "top_k": 6
+      },
+      "trace_id": "1dbc7d78f7e15c049e7d3ec395fd8827",
+      "request_id": "1dbc7d78f7e15c049e7d3ec395fd8827-3c2ab8ee7d34881e",
+      "session_id": "39e03977-a5c6-4d8a-ad03-6d0b87856ba0",
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772669446,
+      "state_hash": "c4e5c7ffc2ae7f4e",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "1dbc7d78f7e15c049e7d3ec395fd8827",
+        "request_id": "1dbc7d78f7e15c049e7d3ec395fd8827-3c2ab8ee7d34881e",
+        "session_id": "39e03977-a5c6-4d8a-ad03-6d0b87856ba0",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772669446,
+      "state_hash": "28939097be26625d",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "1dbc7d78f7e15c049e7d3ec395fd8827",
+        "request_id": "1dbc7d78f7e15c049e7d3ec395fd8827-3c2ab8ee7d34881e",
+        "session_id": "39e03977-a5c6-4d8a-ad03-6d0b87856ba0",
+        "intent": "SHIPPING",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772669446,
+      "state_hash": "a42874f5c5e5e1c9",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "1dbc7d78f7e15c049e7d3ec395fd8827",
+        "request_id": "1dbc7d78f7e15c049e7d3ec395fd8827-3c2ab8ee7d34881e",
+        "session_id": "39e03977-a5c6-4d8a-ad03-6d0b87856ba0",
+        "intent": "SHIPPING",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772669446,
+      "state_hash": "a42874f5c5e5e1c9",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "1dbc7d78f7e15c049e7d3ec395fd8827",
+        "request_id": "1dbc7d78f7e15c049e7d3ec395fd8827-3c2ab8ee7d34881e",
+        "session_id": "39e03977-a5c6-4d8a-ad03-6d0b87856ba0",
+        "intent": "SHIPPING",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772669446,
+      "state_hash": "5298bdde9582b98c",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "1dbc7d78f7e15c049e7d3ec395fd8827",
+        "request_id": "1dbc7d78f7e15c049e7d3ec395fd8827-3c2ab8ee7d34881e",
+        "session_id": "39e03977-a5c6-4d8a-ad03-6d0b87856ba0",
+        "intent": "SHIPPING",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772669446,
+      "state_hash": "5298bdde9582b98c",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "1dbc7d78f7e15c049e7d3ec395fd8827",
+        "request_id": "1dbc7d78f7e15c049e7d3ec395fd8827-3c2ab8ee7d34881e",
+        "session_id": "39e03977-a5c6-4d8a-ad03-6d0b87856ba0",
+        "intent": "SHIPPING",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772669446,
+      "state_hash": "5298bdde9582b98c",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "1dbc7d78f7e15c049e7d3ec395fd8827",
+        "request_id": "1dbc7d78f7e15c049e7d3ec395fd8827-3c2ab8ee7d34881e",
+        "session_id": "39e03977-a5c6-4d8a-ad03-6d0b87856ba0",
+        "intent": "SHIPPING",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772669446,
+      "state_hash": "1c250f3b894b55e4",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "1dbc7d78f7e15c049e7d3ec395fd8827",
+        "request_id": "1dbc7d78f7e15c049e7d3ec395fd8827-3c2ab8ee7d34881e",
+        "session_id": "39e03977-a5c6-4d8a-ad03-6d0b87856ba0",
+        "intent": "SHIPPING",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "1dbc7d78f7e15c049e7d3ec395fd8827",
+    "request_id": "1dbc7d78f7e15c049e7d3ec395fd8827-3c2ab8ee7d34881e",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "배송 정책을 요약해드릴게요.\n- 기본 배송비는 3,000원, 빠른 배송비는 5,000원입니다.\n- 주문 금액이 20,000원 이상이면 기본 배송비가 0원 처리됩니다.\n- 빠른 배송은 기본 배송보다 우선 출고되며, 결제 시 선택한 배송 방식으로 고정됩니다.\n- 배송 준비 이후에는 주소/옵션 변경이 제한될 수 있습니다.\n주문번호를 알려주시면 현재 배송 상태와 변경 가능 여부를 바로 확인해드릴게요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:shipping_policy:1772669446",
+        "doc_id": "tool:shipping_policy",
+        "chunk_id": "tool:shipping_policy:1772669446",
+        "title": "shipping_policy 실시간 조회",
+        "url": "POLICY / commerce-shipping-guide",
+        "snippet": "shipping policy summary: base/fast fee, free-shipping threshold, change restrictions (조회시각: 2026-03-05T00:10:46.061637+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:shipping_policy:1772669446"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "1dbc7d78f7e15c049e7d3ec395fd8827",
+    "request_id": "1dbc7d78f7e15c049e7d3ec395fd8827-3c2ab8ee7d34881e",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "배송 정책을 요약해드릴게요.\n- 기본 배송비는 3,000원, 빠른 배송비는 5,000원입니다.\n- 주문 금액이 20,000원 이상이면 기본 배송비가 0원 처리됩니다.\n- 빠른 배송은 기본 배송보다 우선 출고되며, 결제 시 선택한 배송 방식으로 고정됩니다.\n- 배송 준비 이후에는 주소/옵션 변경이 제한될 수 있습니다.\n주문번호를 알려주시면 현재 배송 상태와 변경 가능 여부를 바로 확인해드릴게요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:shipping_policy:1772669446",
+        "doc_id": "tool:shipping_policy",
+        "chunk_id": "tool:shipping_policy:1772669446",
+        "title": "shipping_policy 실시간 조회",
+        "url": "POLICY / commerce-shipping-guide",
+        "snippet": "shipping policy summary: base/fast fee, free-shipping threshold, change restrictions (조회시각: 2026-03-05T00:10:46.061637+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:shipping_policy:1772669446"
+    ]
+  }
+}

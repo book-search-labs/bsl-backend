@@ -1,0 +1,1 @@
+{"timestamp": "2026-03-01T06:31:27.944201+00:00", "trace_id": "trace_test", "request_id": "req_test", "provider": "toy", "model": "toy-rag-v1", "tokens": 10, "cost_usd": 2e-05, "status": "ok"}

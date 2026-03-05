@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-03-03T14:24:19.629144+00:00",
+  "events_jsonl": "/var/folders/gs/4crkg8_j2rgc_8j9ynj1jpg00000gn/T/tmp.9sANRoo8F5",
+  "summary": {
+    "window_size": 2,
+    "event_total": 2,
+    "temporal_conflict_total": 2,
+    "fallback_expected_total": 2,
+    "safe_fallback_total": 2,
+    "fallback_coverage_ratio": 1.0,
+    "unsafe_resolution_total": 0,
+    "missing_followup_prompt_total": 0,
+    "missing_official_source_link_total": 0,
+    "missing_reason_code_total": 0,
+    "p95_fallback_latency_ms": 240.0,
+    "latest_event_time": "2026-03-03T10:01:00+00:00",
+    "stale_minutes": 263.32715178333336
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 1,
+      "min_temporal_conflict_total": 1,
+      "min_fallback_coverage_ratio": 1.0,
+      "max_unsafe_resolution_total": 0,
+      "max_missing_followup_prompt_total": 0,
+      "max_missing_official_source_link_total": 0,
+      "max_missing_reason_code_total": 0,
+      "max_p95_fallback_latency_ms": 1000.0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

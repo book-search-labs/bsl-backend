@@ -1,0 +1,34 @@
+{
+  "generated_at": "2026-03-03T16:50:26.383116+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/resolution_plan/plan_persistence_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "resume_attempt_total": 0,
+    "resume_state_restored_total": 0,
+    "resume_success_rate": 1.0,
+    "checkpoint_missing_total": 0,
+    "plan_persistence_missing_total": 0,
+    "resume_from_failed_step_required_total": 0,
+    "resume_from_failed_step_missing_total": 0,
+    "ticket_handoff_total": 0,
+    "ticket_handoff_summary_missing_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_event_total": 0,
+      "min_resume_success_rate": 0.0,
+      "max_checkpoint_missing_total": 1000000,
+      "max_plan_persistence_missing_total": 1000000,
+      "max_resume_from_failed_step_missing_total": 1000000,
+      "max_ticket_handoff_summary_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

@@ -1,0 +1,249 @@
+{
+  "run_id": "run_90e7d74de1ed",
+  "trace_id": "trace_test",
+  "request_id": "req_test",
+  "session_id": "sess-limits-2",
+  "status": "done",
+  "started_at": 1772666357,
+  "updated_at": 1772666357,
+  "request_payload": {
+    "session_id": "sess-limits-2",
+    "message": {
+      "role": "user",
+      "content": "배송 상태 알려줘"
+    },
+    "history": [
+      {
+        "role": "assistant",
+        "content": "첫 번째"
+      },
+      {
+        "role": "user",
+        "content": "두 번째"
+      }
+    ],
+    "client": {
+      "user_id": "1",
+      "locale": "ko-KR"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "session_id": "sess-limits-2",
+    "input": {
+      "session_id": "sess-limits-2",
+      "message": {
+        "role": "user",
+        "content": "배송 상태 알려줘"
+      },
+      "history": [
+        {
+          "role": "assistant",
+          "content": "첫 번째"
+        },
+        {
+          "role": "user",
+          "content": "두 번째"
+        }
+      ],
+      "client": {
+        "user_id": "1",
+        "locale": "ko-KR"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772666357,
+      "state_hash": "49de69d38523e8b3",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-limits-2",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772666357,
+      "state_hash": "1ec2a5e993363d2d",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-limits-2",
+        "intent": "SHIPPING",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772666357,
+      "state_hash": "6b4b75e7a33eaa67",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-limits-2",
+        "intent": "SHIPPING",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772666357,
+      "state_hash": "6b4b75e7a33eaa67",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-limits-2",
+        "intent": "SHIPPING",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772666357,
+      "state_hash": "2ea3dd1e37c35baa",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-limits-2",
+        "intent": "SHIPPING",
+        "route": "FALLBACK",
+        "reason_code": "CHAT_HISTORY_TOO_LONG",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "CHAT_HISTORY_TOO_LONG",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772666357,
+      "state_hash": "2ea3dd1e37c35baa",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-limits-2",
+        "intent": "SHIPPING",
+        "route": "FALLBACK",
+        "reason_code": "CHAT_HISTORY_TOO_LONG",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "CHAT_HISTORY_TOO_LONG",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772666357,
+      "state_hash": "2ea3dd1e37c35baa",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-limits-2",
+        "intent": "SHIPPING",
+        "route": "FALLBACK",
+        "reason_code": "CHAT_HISTORY_TOO_LONG",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "CHAT_HISTORY_TOO_LONG",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772666357,
+      "state_hash": "8f8592b1683dcdc5",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-limits-2",
+        "intent": "SHIPPING",
+        "route": "FALLBACK",
+        "reason_code": "CHAT_HISTORY_TOO_LONG",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "CHAT_HISTORY_TOO_LONG",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "status": "insufficient_evidence",
+    "reason_code": "CHAT_HISTORY_TOO_LONG",
+    "recoverable": true,
+    "next_action": "REFINE_QUERY",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "대화 기록이 너무 깁니다. 최근 1개 발화만 남겨 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "fallback_count": 1,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "answer": {
+      "role": "assistant",
+      "content": "대화 기록이 너무 깁니다. 최근 1개 발화만 남겨 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "status": "insufficient_evidence",
+    "reason_code": "CHAT_HISTORY_TOO_LONG",
+    "recoverable": true,
+    "next_action": "REFINE_QUERY",
+    "retry_after_ms": null,
+    "fallback_count": 1,
+    "escalated": false
+  }
+}

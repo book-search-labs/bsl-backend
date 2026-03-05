@@ -1,0 +1,74 @@
+{
+  "generated_at": "2026-03-03T19:36:42.839216+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_governance/session_gateway_events.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_governance/session_gateway_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_session_gateway_durability_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "session_total": 0,
+    "active_connection_total": 0,
+    "connect_total": 0,
+    "disconnect_total": 0,
+    "heartbeat_total": 0,
+    "heartbeat_miss_total": 0,
+    "heartbeat_miss_ratio": 0.0,
+    "reconnect_total": 0,
+    "reconnect_success_total": 0,
+    "reconnect_success_rate": 1.0,
+    "resume_total": 0,
+    "resume_success_total": 0,
+    "resume_success_rate": 1.0,
+    "failover_total": 0,
+    "affinity_miss_total": 0,
+    "affinity_miss_ratio": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0,
+    "reconnect_reasons": []
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "session_total": 0,
+      "active_connection_total": 0,
+      "connect_total": 0,
+      "disconnect_total": 0,
+      "heartbeat_total": 0,
+      "heartbeat_miss_total": 0,
+      "heartbeat_miss_ratio": 0.0,
+      "reconnect_total": 0,
+      "reconnect_success_total": 0,
+      "reconnect_success_rate": 1.0,
+      "resume_total": 0,
+      "resume_success_total": 0,
+      "resume_success_rate": 1.0,
+      "failover_total": 0,
+      "affinity_miss_total": 0,
+      "affinity_miss_ratio": 0.0,
+      "latest_event_time": null,
+      "stale_minutes": 0.0,
+      "reconnect_reasons": []
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_reconnect_success_rate": 0.95,
+      "min_resume_success_rate": 0.98,
+      "max_heartbeat_miss_ratio": 0.05,
+      "max_affinity_miss_ratio": 0.02,
+      "max_stale_minutes": 60.0,
+      "max_reconnect_success_rate_drop": 0.02,
+      "max_resume_success_rate_drop": 0.02,
+      "max_heartbeat_miss_ratio_increase": 0.02,
+      "max_affinity_miss_ratio_increase": 0.01
+    }
+  }
+}

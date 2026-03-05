@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-03-03T15:34:40.954996+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_prompt_supply/runtime_integrity_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "runtime_load_total": 0,
+    "integrity_checked_total": 0,
+    "integrity_checked_ratio": 1.0,
+    "integrity_mismatch_total": 0,
+    "fallback_applied_total": 0,
+    "fallback_success_total": 0,
+    "fallback_coverage_ratio": 1.0,
+    "fallback_success_ratio": 1.0,
+    "fallback_missing_total": 0,
+    "trusted_version_loaded_total": 0,
+    "unsafe_load_total": 0,
+    "reason_code_missing_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_runtime_load_total": 0,
+      "min_integrity_checked_ratio": 0.0,
+      "min_fallback_coverage_ratio": 0.0,
+      "min_fallback_success_ratio": 0.0,
+      "max_fallback_missing_total": 1000000,
+      "max_unsafe_load_total": 1000000,
+      "max_reason_code_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

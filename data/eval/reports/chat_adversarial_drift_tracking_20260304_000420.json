@@ -1,0 +1,68 @@
+{
+  "generated_at": "2026-03-04T00:04:20.168812+00:00",
+  "dataset_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/evaluation/chat_safety/adversarial_cases.jsonl",
+  "incident_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ops/incident_feedback.jsonl",
+  "source": {
+    "dataset_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/evaluation/chat_safety/adversarial_cases.jsonl",
+    "incident_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ops/incident_feedback.jsonl",
+    "window_days": 365,
+    "limit": 200000,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_adversarial_drift_tracking_baseline_v1.json"
+  },
+  "summary": {
+    "dataset_case_total": 0,
+    "dataset_version_total": 0,
+    "dataset_month_total": 0,
+    "missing_monthly_refresh_total": 13,
+    "refresh_age_days": 999999.0,
+    "incident_total": 0,
+    "incident_linked_total": 0,
+    "incident_unlinked_total": 0,
+    "incident_link_ratio": 1.0,
+    "latest_dataset_time": null,
+    "latest_incident_time": null,
+    "stale_minutes": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "dataset_case_total": 0,
+      "dataset_version_total": 0,
+      "dataset_month_total": 0,
+      "missing_monthly_refresh_total": 13,
+      "refresh_age_days": 999999.0,
+      "incident_total": 0,
+      "incident_linked_total": 0,
+      "incident_unlinked_total": 0,
+      "incident_link_ratio": 1.0,
+      "latest_dataset_time": null,
+      "latest_incident_time": null,
+      "stale_minutes": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": false,
+    "failures": [],
+    "baseline_failures": [
+      "missing_monthly_refresh_total regression: baseline=0, current=13, allowed_increase=1"
+    ],
+    "thresholds": {
+      "min_dataset_case_total": 0,
+      "min_dataset_version_total": 0,
+      "max_refresh_age_days": 1000000.0,
+      "max_missing_monthly_refresh_total": 1000000,
+      "min_incident_total": 0,
+      "min_incident_link_ratio": 0.0,
+      "max_unlinked_incident_total": 1000000,
+      "max_stale_minutes": 1000000.0,
+      "max_dataset_case_total_drop": 10,
+      "max_dataset_version_total_drop": 1,
+      "max_refresh_age_days_increase": 7.0,
+      "max_missing_monthly_refresh_total_increase": 1,
+      "max_incident_total_drop": 5,
+      "max_incident_link_ratio_drop": 0.05,
+      "max_unlinked_incident_total_increase": 2,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

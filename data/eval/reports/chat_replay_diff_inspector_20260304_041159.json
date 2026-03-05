@@ -1,0 +1,58 @@
+{
+  "generated_at": "2026-03-04T04:11:59.633833+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_graph/replay/diff_inspector_runs.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_graph/replay/diff_inspector_runs.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_replay_diff_inspector_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "run_total": 0,
+    "matched_total": 0,
+    "divergence_detected_total": 0,
+    "first_divergence_total": 0,
+    "missing_first_divergence_total": 0,
+    "unknown_divergence_type_total": 0,
+    "invalid_step_total": 0,
+    "divergence_type_distribution": [],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "run_total": 0,
+      "matched_total": 0,
+      "divergence_detected_total": 0,
+      "first_divergence_total": 0,
+      "missing_first_divergence_total": 0,
+      "unknown_divergence_type_total": 0,
+      "invalid_step_total": 0,
+      "divergence_type_distribution": [],
+      "latest_event_time": null,
+      "stale_minutes": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_divergence_detected_total": 0,
+      "max_missing_first_divergence_total": 1000000,
+      "max_unknown_divergence_type_total": 1000000,
+      "max_invalid_step_total": 1000000,
+      "max_stale_minutes": 1000000.0,
+      "max_divergence_detected_total_drop": 10,
+      "max_first_divergence_total_drop": 10,
+      "max_missing_first_divergence_total_increase": 0,
+      "max_unknown_divergence_type_total_increase": 0,
+      "max_invalid_step_total_increase": 0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

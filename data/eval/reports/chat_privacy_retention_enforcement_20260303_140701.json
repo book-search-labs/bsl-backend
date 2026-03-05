@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-03-03T14:07:01.686571+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_privacy/retention_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "run_total": 0,
+    "expired_total": 0,
+    "purge_due_total": 0,
+    "purged_total": 0,
+    "purge_miss_total": 0,
+    "purge_coverage_ratio": 1.0,
+    "legal_hold_total": 0,
+    "hold_exempt_total": 0,
+    "hold_violation_total": 0,
+    "invalid_retention_policy_total": 0,
+    "delete_audit_missing_total": 0,
+    "data_type_distribution": [],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_expired_total": 0,
+      "min_purge_coverage_ratio": 0.0,
+      "max_purge_miss_total": 1000000,
+      "max_hold_violation_total": 1000000,
+      "max_invalid_retention_policy_total": 1000000,
+      "max_delete_audit_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

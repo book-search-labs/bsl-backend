@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-03-03T15:18:41.376471+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket_knowledge/candidate_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "ticket_total": 0,
+    "closed_ticket_total": 0,
+    "candidate_total": 0,
+    "candidate_rate": 1.0,
+    "invalid_status_candidate_total": 0,
+    "low_confidence_candidate_total": 0,
+    "candidate_taxonomy_missing_total": 0,
+    "source_provenance_missing_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_reusable_score": 0.6,
+      "min_window": 0,
+      "min_ticket_total": 0,
+      "min_closed_ticket_total": 0,
+      "min_candidate_total": 0,
+      "min_candidate_rate": 0.0,
+      "max_invalid_status_candidate_total": 1000000,
+      "max_low_confidence_candidate_total": 1000000,
+      "max_candidate_taxonomy_missing_total": 1000000,
+      "max_source_provenance_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

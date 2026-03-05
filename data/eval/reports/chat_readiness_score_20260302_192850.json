@@ -1,0 +1,57 @@
+{
+  "generated_at": "2026-03-02T19:28:50.900748+00:00",
+  "launch_gate_report_path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_production_launch_gate_20260302_211840.json",
+  "cycle_window_size": 1,
+  "sources": {
+    "reports_dir": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports",
+    "cycle_prefix": "chat_liveops_cycle",
+    "launch_prefix": "chat_production_launch_gate",
+    "llm_audit_log": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/llm_gateway/audit.log"
+  },
+  "signals": {
+    "launch_pass": true,
+    "canary_pass": true,
+    "liveops_pass_ratio": 1.0,
+    "rollback_rate": 0.0,
+    "open_incident_total": 0,
+    "mtta_sec": 0.0,
+    "mttr_sec": 0.0,
+    "capacity_mode": "NORMAL",
+    "dr_recovery_ratio": 1.0,
+    "dr_open_total": 0,
+    "dr_drill_total": 0
+  },
+  "readiness": {
+    "total_score": 95.5,
+    "tier": "READY",
+    "recommended_action": "promote",
+    "components": {
+      "quality": 100.0,
+      "safety": 100.0,
+      "reliability": 100.0,
+      "cost": 100.0,
+      "recovery": 70.0
+    },
+    "weights": {
+      "quality": 25.0,
+      "safety": 20.0,
+      "reliability": 25.0,
+      "cost": 15.0,
+      "recovery": 15.0
+    },
+    "blockers": [],
+    "warnings": [
+      "no_recent_drill"
+    ]
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_score": 80.0,
+      "capacity_max_mode": "DEGRADE_LEVEL_1",
+      "require_promote": false
+    }
+  }
+}

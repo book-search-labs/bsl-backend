@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-03-03T16:19:34.163174+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/risk_banding/misband_feedback_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "feedback_total": 0,
+    "misband_total": 0,
+    "resolved_misband_total": 0,
+    "misband_resolution_ratio": 1.0,
+    "feedback_linked_total": 0,
+    "feedback_linkage_ratio": 1.0,
+    "reason_missing_total": 0,
+    "audit_context_missing_total": 0,
+    "unresolved_feedback_total": 0,
+    "p95_feedback_latency_minutes": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "unresolved_sla_minutes": 60.0,
+      "min_window": 0,
+      "min_event_total": 0,
+      "min_feedback_total": 0,
+      "min_feedback_linkage_ratio": 0.0,
+      "min_misband_resolution_ratio": 0.0,
+      "max_reason_missing_total": 1000000,
+      "max_audit_context_missing_total": 1000000,
+      "max_unresolved_feedback_total": 1000000,
+      "max_p95_feedback_latency_minutes": 1000000.0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

@@ -1,0 +1,265 @@
+{
+  "run_id": "run_eec9288d37fe",
+  "trace_id": "750957a69f4b18f6d40093a08e7852d0",
+  "request_id": "750957a69f4b18f6d40093a08e7852d0-33df6902f45e85bb",
+  "session_id": "9595a994-d435-4ded-a731-7ae22f4eb12f",
+  "status": "done",
+  "started_at": 1772667167,
+  "updated_at": 1772667167,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "장바구니 기준 책 추천해줘"
+    },
+    "history": [],
+    "options": {
+      "stream": true,
+      "top_k": 6
+    },
+    "trace_id": "750957a69f4b18f6d40093a08e7852d0",
+    "request_id": "750957a69f4b18f6d40093a08e7852d0-33df6902f45e85bb",
+    "session_id": "9595a994-d435-4ded-a731-7ae22f4eb12f",
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "750957a69f4b18f6d40093a08e7852d0",
+    "request_id": "750957a69f4b18f6d40093a08e7852d0-33df6902f45e85bb",
+    "session_id": "9595a994-d435-4ded-a731-7ae22f4eb12f",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "장바구니 기준 책 추천해줘"
+      },
+      "history": [],
+      "options": {
+        "stream": true,
+        "top_k": 6
+      },
+      "trace_id": "750957a69f4b18f6d40093a08e7852d0",
+      "request_id": "750957a69f4b18f6d40093a08e7852d0-33df6902f45e85bb",
+      "session_id": "9595a994-d435-4ded-a731-7ae22f4eb12f",
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772667167,
+      "state_hash": "adde2fb752f5d3be",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "750957a69f4b18f6d40093a08e7852d0",
+        "request_id": "750957a69f4b18f6d40093a08e7852d0-33df6902f45e85bb",
+        "session_id": "9595a994-d435-4ded-a731-7ae22f4eb12f",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772667167,
+      "state_hash": "40135d58a95a9442",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "750957a69f4b18f6d40093a08e7852d0",
+        "request_id": "750957a69f4b18f6d40093a08e7852d0-33df6902f45e85bb",
+        "session_id": "9595a994-d435-4ded-a731-7ae22f4eb12f",
+        "intent": "RECOMMEND",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772667167,
+      "state_hash": "c23dd9631f685cfc",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "750957a69f4b18f6d40093a08e7852d0",
+        "request_id": "750957a69f4b18f6d40093a08e7852d0-33df6902f45e85bb",
+        "session_id": "9595a994-d435-4ded-a731-7ae22f4eb12f",
+        "intent": "RECOMMEND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772667167,
+      "state_hash": "c23dd9631f685cfc",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "750957a69f4b18f6d40093a08e7852d0",
+        "request_id": "750957a69f4b18f6d40093a08e7852d0-33df6902f45e85bb",
+        "session_id": "9595a994-d435-4ded-a731-7ae22f4eb12f",
+        "intent": "RECOMMEND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772667167,
+      "state_hash": "a9ee3673fd441116",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "750957a69f4b18f6d40093a08e7852d0",
+        "request_id": "750957a69f4b18f6d40093a08e7852d0-33df6902f45e85bb",
+        "session_id": "9595a994-d435-4ded-a731-7ae22f4eb12f",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772667167,
+      "state_hash": "a9ee3673fd441116",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "750957a69f4b18f6d40093a08e7852d0",
+        "request_id": "750957a69f4b18f6d40093a08e7852d0-33df6902f45e85bb",
+        "session_id": "9595a994-d435-4ded-a731-7ae22f4eb12f",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772667167,
+      "state_hash": "a9ee3673fd441116",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "750957a69f4b18f6d40093a08e7852d0",
+        "request_id": "750957a69f4b18f6d40093a08e7852d0-33df6902f45e85bb",
+        "session_id": "9595a994-d435-4ded-a731-7ae22f4eb12f",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772667167,
+      "state_hash": "4b7c5dcce9ad8d16",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "750957a69f4b18f6d40093a08e7852d0",
+        "request_id": "750957a69f4b18f6d40093a08e7852d0-33df6902f45e85bb",
+        "session_id": "9595a994-d435-4ded-a731-7ae22f4eb12f",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "750957a69f4b18f6d40093a08e7852d0",
+    "request_id": "750957a69f4b18f6d40093a08e7852d0-33df6902f45e85bb",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "현재 기준으로 동일 도서 외 유사 후보를 찾지 못했습니다. 제목/저자/카테고리를 함께 입력해 주세요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:book_recommend:1772667117",
+        "doc_id": "tool:book_recommend",
+        "chunk_id": "tool:book_recommend:1772667117",
+        "title": "book_recommend 실시간 조회",
+        "url": "OS /books_doc_read/_search",
+        "snippet": "seed_query=帝範, candidate_count=1, filtered_count=0 (조회시각: 2026-03-04T23:31:57.900829+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:book_recommend:1772667117"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "750957a69f4b18f6d40093a08e7852d0",
+    "request_id": "750957a69f4b18f6d40093a08e7852d0-33df6902f45e85bb",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "현재 기준으로 동일 도서 외 유사 후보를 찾지 못했습니다. 제목/저자/카테고리를 함께 입력해 주세요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:book_recommend:1772667117",
+        "doc_id": "tool:book_recommend",
+        "chunk_id": "tool:book_recommend:1772667117",
+        "title": "book_recommend 실시간 조회",
+        "url": "OS /books_doc_read/_search",
+        "snippet": "seed_query=帝範, candidate_count=1, filtered_count=0 (조회시각: 2026-03-04T23:31:57.900829+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:book_recommend:1772667117"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  }
+}

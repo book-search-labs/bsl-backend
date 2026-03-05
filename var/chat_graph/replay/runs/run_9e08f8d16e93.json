@@ -1,0 +1,219 @@
+{
+  "run_id": "run_9e08f8d16e93",
+  "trace_id": "trace_test",
+  "request_id": "req_test",
+  "session_id": "anon:default",
+  "status": "done",
+  "started_at": 1772666489,
+  "updated_at": 1772666489,
+  "request_payload": {
+    "message": {
+      "role": "user",
+      "content": "환불 정책 알려줘"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "session_id": "anon:default",
+    "input": {
+      "message": {
+        "role": "user",
+        "content": "환불 정책 알려줘"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772666489,
+      "state_hash": "be0b0bdaa03e579f",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772666489,
+      "state_hash": "67f2e9a4f7e36712",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "REFUND",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772666489,
+      "state_hash": "0ca3b82a9a7f4aec",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "REFUND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772666489,
+      "state_hash": "0ca3b82a9a7f4aec",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "REFUND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772666489,
+      "state_hash": "d56ffc518f086414",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "REFUND",
+        "route": "FALLBACK",
+        "reason_code": "OUTPUT_GUARD_FORBIDDEN_CLAIM",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "OUTPUT_GUARD_FORBIDDEN_CLAIM",
+          "next_action": "OPEN_SUPPORT_TICKET"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772666489,
+      "state_hash": "d56ffc518f086414",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "REFUND",
+        "route": "FALLBACK",
+        "reason_code": "OUTPUT_GUARD_FORBIDDEN_CLAIM",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "OUTPUT_GUARD_FORBIDDEN_CLAIM",
+          "next_action": "OPEN_SUPPORT_TICKET"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772666489,
+      "state_hash": "d56ffc518f086414",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "REFUND",
+        "route": "FALLBACK",
+        "reason_code": "OUTPUT_GUARD_FORBIDDEN_CLAIM",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "OUTPUT_GUARD_FORBIDDEN_CLAIM",
+          "next_action": "OPEN_SUPPORT_TICKET"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772666489,
+      "state_hash": "756afb0265cd30ec",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "REFUND",
+        "route": "FALLBACK",
+        "reason_code": "OUTPUT_GUARD_FORBIDDEN_CLAIM",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "OUTPUT_GUARD_FORBIDDEN_CLAIM",
+          "next_action": "OPEN_SUPPORT_TICKET"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "status": "insufficient_evidence",
+    "reason_code": "OUTPUT_GUARD_FORBIDDEN_CLAIM",
+    "recoverable": true,
+    "next_action": "OPEN_SUPPORT_TICKET",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "정책상 확정 답변이 어려운 요청입니다. 주문번호/상세 조건을 포함해 다시 질문해 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "fallback_count": 1,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "answer": {
+      "role": "assistant",
+      "content": "정책상 확정 답변이 어려운 요청입니다. 주문번호/상세 조건을 포함해 다시 질문해 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "status": "insufficient_evidence",
+    "reason_code": "OUTPUT_GUARD_FORBIDDEN_CLAIM",
+    "recoverable": true,
+    "next_action": "OPEN_SUPPORT_TICKET",
+    "retry_after_ms": null,
+    "fallback_count": 1,
+    "escalated": false
+  }
+}

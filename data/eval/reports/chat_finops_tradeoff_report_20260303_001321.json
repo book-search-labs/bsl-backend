@@ -1,0 +1,45 @@
+{
+  "generated_at": "2026-03-03T00:13:21.762234+00:00",
+  "unit_report_count": 3,
+  "budget_report_count": 1,
+  "llm_audit_log": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/llm_gateway/audit.log",
+  "audit_summary": {
+    "window_size": 0,
+    "total_cost_usd": 0.0,
+    "total_tokens": 0,
+    "top_reasons": []
+  },
+  "summary": {
+    "report_count": 3,
+    "budget_report_count": 1,
+    "avg_cost_per_resolved_session": 0.0,
+    "avg_resolution_rate": 0.0,
+    "avg_unresolved_cost_burn_total": 0.0,
+    "avg_budget_utilization": 0.0,
+    "total_cost_usd": 0.0,
+    "tradeoff_index": 0.0,
+    "cost_delta": 0.0,
+    "resolution_delta": 0.0,
+    "quality_drop_with_cost_cut": false,
+    "optimizer_mode_counts": {
+      "NORMAL": 1
+    },
+    "release_state_counts": {
+      "PROMOTE": 1
+    },
+    "audit_reason_top": []
+  },
+  "gate": {
+    "enabled": true,
+    "pass": false,
+    "failures": [
+      "tradeoff index below threshold: 0.0000 < 0.2000"
+    ],
+    "thresholds": {
+      "min_reports": 0,
+      "min_tradeoff_index": 0.2,
+      "max_avg_cost_per_resolved_session": 2.5,
+      "max_avg_unresolved_cost_burn_total": 200.0
+    }
+  }
+}

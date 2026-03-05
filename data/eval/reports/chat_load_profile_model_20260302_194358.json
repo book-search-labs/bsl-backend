@@ -1,0 +1,28 @@
+{
+  "generated_at": "2026-03-02T19:43:58.283071+00:00",
+  "traffic_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_governance/load_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "profiles": {},
+    "hourly_profile": [],
+    "intent_distribution": [],
+    "derived": {
+      "normal_request_total": 0,
+      "promotion_request_total": 0,
+      "incident_request_total": 0,
+      "promotion_vs_normal_ratio": 0.0,
+      "incident_vs_normal_ratio": 0.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_normal_error_ratio": 0.05,
+      "max_normal_p95_latency_ms": 3000.0,
+      "max_normal_p95_queue_depth": 50.0
+    }
+  }
+}

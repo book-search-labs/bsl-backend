@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -86,13 +87,6 @@ public class PaymentService {
         String returnUrl,
         String webhookUrl
     ) {
-        if (idempotencyKey != null) {
-            Map<String, Object> existing = paymentRepository.findPaymentByIdempotencyKey(idempotencyKey);
-            if (existing != null) {
-                return existing;
-            }
-        }
-
         Map<String, Object> order = orderRepository.findOrderById(orderId);
         if (order == null) {
             throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "주문 정보를 찾을 수 없습니다.");
@@ -113,6 +107,20 @@ public class PaymentService {
 
         PaymentProvider provider = resolveRequestedProvider(providerHint);
         PaymentGateway gateway = paymentGatewayFactory.get(provider);
+        if (idempotencyKey != null) {
+            Map<String, Object> existing = paymentRepository.findPaymentByIdempotencyKey(idempotencyKey);
+            if (existing != null) {
+                return reuseOrRefreshExistingPayment(
+                    existing,
+                    orderId,
+                    amount,
+                    currency,
+                    gateway,
+                    returnUrl,
+                    webhookUrl
+                );
+            }
+        }
 
         long paymentId;
         try {
@@ -130,20 +138,158 @@ public class PaymentService {
             if (idempotencyKey != null) {
                 Map<String, Object> existing = paymentRepository.findPaymentByIdempotencyKey(idempotencyKey);
                 if (existing != null) {
-                    return existing;
+                    return reuseOrRefreshExistingPayment(
+                        existing,
+                        orderId,
+                        amount,
+                        currency,
+                        gateway,
+                        returnUrl,
+                        webhookUrl
+                    );
                 }
             }
             throw ex;
         }
 
-        String resolvedReturnUrl = firstNonBlank(trimToNull(returnUrl), trimToNull(paymentProperties.getDefaultReturnUrl()));
+        return createOrRefreshCheckout(
+            paymentId,
+            orderId,
+            amount,
+            currency,
+            gateway,
+            returnUrl,
+            webhookUrl
+        );
+    }
+
+    private Map<String, Object> reuseOrRefreshExistingPayment(
+        Map<String, Object> existing,
+        long orderId,
+        int amount,
+        String currency,
+        PaymentGateway requestedGateway,
+        String returnUrlHint,
+        String webhookUrlHint
+    ) {
+        Long existingOrderId = JdbcUtils.asLong(existing.get("order_id"));
+        if (existingOrderId != null && existingOrderId != orderId) {
+            throw new ApiException(HttpStatus.CONFLICT, "invalid_state", "동일 idempotency_key가 다른 주문에서 이미 사용되었습니다.");
+        }
+        Integer existingAmount = JdbcUtils.asInt(existing.get("amount"));
+        if (existingAmount != null && existingAmount != amount) {
+            throw new ApiException(HttpStatus.CONFLICT, "amount_mismatch", "결제 금액이 주문 금액과 일치하지 않습니다.");
+        }
+
+        String statusRaw = JdbcUtils.asString(existing.get("status"));
+        PaymentStatus currentStatus = null;
+        if (statusRaw != null) {
+            try {
+                currentStatus = PaymentStatus.from(statusRaw);
+            } catch (IllegalArgumentException ignored) {
+                currentStatus = null;
+            }
+        }
+        if (currentStatus != null && currentStatus.isTerminal()) {
+            return existing;
+        }
+
+        Long paymentId = JdbcUtils.asLong(existing.get("payment_id"));
+        if (paymentId == null) {
+            return existing;
+        }
+
+        PaymentGateway existingGateway = resolveGatewayForPayment(existing);
+        if (existingGateway.provider() != requestedGateway.provider()) {
+            logger.info(
+                "payment_provider_mismatch_on_idempotent_reuse payment_id={} requested_provider={} existing_provider={}",
+                paymentId,
+                requestedGateway.provider().name(),
+                existingGateway.provider().name()
+            );
+        }
+
+        String existingReturnUrl = trimToNull(JdbcUtils.asString(existing.get("return_url")));
+        String existingWebhookUrl = trimToNull(JdbcUtils.asString(existing.get("webhook_url")));
+        String existingCheckoutUrl = trimToNull(JdbcUtils.asString(existing.get("checkout_url")));
+        Instant existingExpiresAt = JdbcUtils.asInstant(existing.get("expires_at"));
+
+        String defaultWebhookUrl = buildDefaultWebhookUrl(existingGateway.provider());
+        boolean legacyWebhookMismatch = isLegacyProviderWebhookMismatch(
+            existingGateway.provider(),
+            existingWebhookUrl,
+            defaultWebhookUrl
+        );
+        String resolvedReturnUrl = firstNonBlank(
+            trimToNull(returnUrlHint),
+            existingReturnUrl,
+            trimToNull(paymentProperties.getDefaultReturnUrl())
+        );
         String resolvedWebhookUrl = firstNonBlank(
-            trimToNull(webhookUrl),
-            buildDefaultWebhookUrl(provider)
+            trimToNull(webhookUrlHint),
+            legacyWebhookMismatch ? defaultWebhookUrl : existingWebhookUrl,
+            defaultWebhookUrl
+        );
+
+        boolean sessionExpired = existingExpiresAt != null && existingExpiresAt.isBefore(Instant.now());
+        boolean shouldRefreshCheckout =
+            existingCheckoutUrl == null
+                || sessionExpired
+                || !Objects.equals(existingReturnUrl, resolvedReturnUrl)
+                || !Objects.equals(existingWebhookUrl, resolvedWebhookUrl);
+        if (!shouldRefreshCheckout) {
+            return existing;
+        }
+
+        int resolvedAmount = existingAmount == null ? amount : existingAmount;
+        String resolvedCurrency = firstNonBlank(
+            trimToNull(JdbcUtils.asString(existing.get("currency"))),
+            trimToNull(currency),
+            "KRW"
+        );
+        return createOrRefreshCheckout(
+            paymentId,
+            orderId,
+            resolvedAmount,
+            resolvedCurrency,
+            existingGateway,
+            resolvedReturnUrl,
+            resolvedWebhookUrl
+        );
+    }
+
+    private boolean isLegacyProviderWebhookMismatch(
+        PaymentProvider provider,
+        String existingWebhookUrl,
+        String expectedWebhookUrl
+    ) {
+        if (existingWebhookUrl == null) {
+            return false;
+        }
+        if (provider == PaymentProvider.MOCK || Objects.equals(existingWebhookUrl, expectedWebhookUrl)) {
+            return false;
+        }
+        String normalized = existingWebhookUrl.toLowerCase(Locale.ROOT);
+        return normalized.endsWith("/api/v1/payments/webhook/mock") || normalized.endsWith("/payments/webhook/mock");
+    }
+
+    private Map<String, Object> createOrRefreshCheckout(
+        long paymentId,
+        long orderId,
+        int amount,
+        String currency,
+        PaymentGateway gateway,
+        String returnUrlHint,
+        String webhookUrlHint
+    ) {
+        String resolvedReturnUrl = firstNonBlank(trimToNull(returnUrlHint), trimToNull(paymentProperties.getDefaultReturnUrl()));
+        String resolvedWebhookUrl = firstNonBlank(
+            trimToNull(webhookUrlHint),
+            buildDefaultWebhookUrl(gateway.provider())
         );
         String checkoutBaseUrl = firstNonBlank(
             trimToNull(paymentProperties.getMockCheckoutBaseUrl()),
-            "http://localhost:8090/checkout"
+            "http://localhost:8092/checkout"
         );
 
         PaymentGateway.CheckoutSession session = gateway.createCheckoutSession(

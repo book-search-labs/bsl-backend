@@ -1,0 +1,235 @@
+{
+  "run_id": "run_40e4c1dad91a",
+  "trace_id": "trace_test",
+  "request_id": "req_test",
+  "session_id": "anon:default",
+  "status": "done",
+  "started_at": 1772666357,
+  "updated_at": 1772666357,
+  "request_payload": {
+    "message": {
+      "role": "user",
+      "content": "주문 12"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "session_id": "anon:default",
+    "input": {
+      "message": {
+        "role": "user",
+        "content": "주문 12"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772666357,
+      "state_hash": "be0b0bdaa03e579f",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772666357,
+      "state_hash": "58c3079fde7f6157",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "ORDER",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772666357,
+      "state_hash": "d7bf326a34c16306",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "ORDER",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772666357,
+      "state_hash": "d7bf326a34c16306",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "ORDER",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772666357,
+      "state_hash": "752cdb19f33dcf70",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "ORDER",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "RETRY"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772666357,
+      "state_hash": "752cdb19f33dcf70",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "ORDER",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "RETRY"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772666357,
+      "state_hash": "752cdb19f33dcf70",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "ORDER",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "RETRY"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772666357,
+      "state_hash": "1d00c9b3f7b9e061",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "ORDER",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "RETRY"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": true,
+    "next_action": "RETRY",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "실시간 주문 정보입니다."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:order_lookup:1",
+        "doc_id": "tool:order_lookup",
+        "chunk_id": "tool:order_lookup:1",
+        "title": "order_lookup 실시간 조회",
+        "url": "GET /api/v1/orders/{orderId}",
+        "snippet": "order_no=ORD202602220001"
+      }
+    ],
+    "citations": [
+      "tool:order_lookup:1"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "status": "ok",
+    "answer": {
+      "role": "assistant",
+      "content": "실시간 주문 정보입니다."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:order_lookup:1",
+        "doc_id": "tool:order_lookup",
+        "chunk_id": "tool:order_lookup:1",
+        "title": "order_lookup 실시간 조회",
+        "url": "GET /api/v1/orders/{orderId}",
+        "snippet": "order_no=ORD202602220001"
+      }
+    ],
+    "citations": [
+      "tool:order_lookup:1"
+    ]
+  }
+}

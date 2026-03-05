@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-03-03T04:02:12.231827+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket/ticket_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "lookup_total": 0,
+    "lookup_ok_total": 0,
+    "lookup_not_found_total": 0,
+    "lookup_forbidden_total": 0,
+    "lookup_error_total": 0,
+    "lookup_ok_ratio": 1.0,
+    "invalid_status_total": 0,
+    "missing_ticket_ref_total": 0,
+    "stale_status_total": 0,
+    "source_distribution": [],
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_lookup_ok_ratio": 0.9,
+      "max_invalid_status_total": 0,
+      "max_missing_ticket_ref_total": 0,
+      "max_stale_status_total": 0,
+      "max_stale_minutes": 60.0
+    }
+  }
+}

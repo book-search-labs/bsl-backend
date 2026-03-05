@@ -1,0 +1,263 @@
+{
+  "run_id": "run_b26f558526e2",
+  "trace_id": "t-search3",
+  "request_id": "r-search3",
+  "session_id": "debug-search3",
+  "status": "done",
+  "started_at": 1772667960,
+  "updated_at": 1772667960,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "문헌으로 책 검색해줘"
+    },
+    "history": [],
+    "options": {
+      "stream": false,
+      "top_k": 6
+    },
+    "trace_id": "t-search3",
+    "request_id": "r-search3",
+    "session_id": "debug-search3",
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "t-search3",
+    "request_id": "r-search3",
+    "session_id": "debug-search3",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "문헌으로 책 검색해줘"
+      },
+      "history": [],
+      "options": {
+        "stream": false,
+        "top_k": 6
+      },
+      "trace_id": "t-search3",
+      "request_id": "r-search3",
+      "session_id": "debug-search3",
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772667960,
+      "state_hash": "426133dede5f843c",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-search3",
+        "request_id": "r-search3",
+        "session_id": "debug-search3",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772667960,
+      "state_hash": "f8284241696d4c9b",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-search3",
+        "request_id": "r-search3",
+        "session_id": "debug-search3",
+        "intent": "GENERAL",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772667960,
+      "state_hash": "b814e385cc17dd8f",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-search3",
+        "request_id": "r-search3",
+        "session_id": "debug-search3",
+        "intent": "GENERAL",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772667960,
+      "state_hash": "b814e385cc17dd8f",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-search3",
+        "request_id": "r-search3",
+        "session_id": "debug-search3",
+        "intent": "GENERAL",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772667960,
+      "state_hash": "7ceb7d198f6efa43",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-search3",
+        "request_id": "r-search3",
+        "session_id": "debug-search3",
+        "intent": "GENERAL",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772667960,
+      "state_hash": "7ceb7d198f6efa43",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-search3",
+        "request_id": "r-search3",
+        "session_id": "debug-search3",
+        "intent": "GENERAL",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772667960,
+      "state_hash": "7ceb7d198f6efa43",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "t-search3",
+        "request_id": "r-search3",
+        "session_id": "debug-search3",
+        "intent": "GENERAL",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772667960,
+      "state_hash": "91d86aaf60844c0b",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "t-search3",
+        "request_id": "r-search3",
+        "session_id": "debug-search3",
+        "intent": "GENERAL",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "t-search3",
+    "request_id": "r-search3",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "'문헌' 검색 결과입니다.\n1) 《침구자생경》 문헌연구 (유제호 / nlk:CDM201800005) · 유사도 18.82\n2) 현대 문헌에 기초한 족양명위경 경혈 응용 법칙 연구 (이현주 / nlk:CDM201800002) · 유사도 13.15\n3) 현대 문헌에 기초한 족소양담경 경혈 응용 법칙 연구 (우선욱 / nlk:CDM201800003) · 유사도 13.15"
+    },
+    "sources": [
+      {
+        "citation_key": "tool:book_search:1772667960",
+        "doc_id": "tool:book_search",
+        "chunk_id": "tool:book_search:1772667960",
+        "title": "book_search 실시간 조회",
+        "url": "OS /books_doc_read/_search",
+        "snippet": "query=문헌, candidate_count=3 (조회시각: 2026-03-04T23:46:00.650180+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:book_search:1772667960"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "t-search3",
+    "request_id": "r-search3",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "'문헌' 검색 결과입니다.\n1) 《침구자생경》 문헌연구 (유제호 / nlk:CDM201800005) · 유사도 18.82\n2) 현대 문헌에 기초한 족양명위경 경혈 응용 법칙 연구 (이현주 / nlk:CDM201800002) · 유사도 13.15\n3) 현대 문헌에 기초한 족소양담경 경혈 응용 법칙 연구 (우선욱 / nlk:CDM201800003) · 유사도 13.15"
+    },
+    "sources": [
+      {
+        "citation_key": "tool:book_search:1772667960",
+        "doc_id": "tool:book_search",
+        "chunk_id": "tool:book_search:1772667960",
+        "title": "book_search 실시간 조회",
+        "url": "OS /books_doc_read/_search",
+        "snippet": "query=문헌, candidate_count=3 (조회시각: 2026-03-04T23:46:00.650180+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:book_search:1772667960"
+    ]
+  }
+}

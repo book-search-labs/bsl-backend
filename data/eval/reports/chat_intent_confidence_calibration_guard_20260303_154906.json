@@ -1,0 +1,49 @@
+{
+  "generated_at": "2026-03-03T15:49:06.808610+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/intent_calibration/intent_predictions.jsonl",
+  "summary": {
+    "window_size": 0,
+    "prediction_total": 0,
+    "raw_brier_score": 0.0,
+    "calibrated_brier_score": 0.0,
+    "raw_ece": 0.0,
+    "calibrated_ece": 0.0,
+    "ece_gain": 0.0,
+    "brier_gain": 0.0,
+    "overconfidence_total": 0,
+    "underconfidence_total": 0,
+    "required_domain_total": 4,
+    "covered_required_domain_total": 0,
+    "covered_required_domains": [],
+    "domain_coverage_ratio": 0.0,
+    "domain_distribution": [],
+    "intent_distribution": [],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "required_domains": [
+        "ORDER",
+        "POLICY",
+        "REFUND",
+        "SHIPPING"
+      ],
+      "overconfidence_threshold": 0.85,
+      "underconfidence_threshold": 0.35,
+      "min_window": 0,
+      "min_prediction_total": 0,
+      "min_domain_coverage_ratio": 0.0,
+      "max_calibrated_ece": 1000000.0,
+      "max_calibrated_brier_score": 1000000.0,
+      "min_ece_gain": -1000000.0,
+      "min_brier_gain": -1000000.0,
+      "max_overconfidence_total": 1000000,
+      "max_underconfidence_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-03-02T21:02:30.320197+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_governance/event_delivery_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "stream_total": 0,
+    "delivered_total": 0,
+    "delivery_success_ratio": 1.0,
+    "order_violation_total": 0,
+    "duplicate_total": 0,
+    "duplicate_ratio": 0.0,
+    "ack_missing_total": 0,
+    "ack_missing_ratio": 0.0,
+    "redelivery_total": 0,
+    "ttl_drop_total": 0,
+    "sync_gap_total": 0,
+    "max_sync_gap": 0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0,
+    "top_reasons": []
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_delivery_success_ratio": 0.99,
+      "max_order_violation_total": 0,
+      "max_duplicate_ratio": 0.01,
+      "max_ack_missing_ratio": 0.02,
+      "max_sync_gap": 5,
+      "max_ttl_drop_total": 0,
+      "max_stale_minutes": 60.0
+    }
+  }
+}

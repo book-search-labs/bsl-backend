@@ -1,0 +1,283 @@
+{
+  "run_id": "run_fa896123c82c",
+  "trace_id": "2b951290b4ff1e1d70ba1117a48277e3",
+  "request_id": "2b951290b4ff1e1d70ba1117a48277e3-3baaef8c9a912149",
+  "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+  "status": "done",
+  "started_at": 1772667142,
+  "updated_at": 1772667142,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "도서 '격약구제법으로 습열하주형 남성 발기 기능성 장애를 치료하는 임상 연구' 기준으로 비슷한 책을 추천해줘"
+    },
+    "history": [
+      {
+        "role": "user",
+        "content": "도서 '帝範' 기준으로 비슷한 책을 추천해줘"
+      },
+      {
+        "role": "assistant",
+        "content": "현재 기준으로 동일 도서 외 유사 후보를 찾지 못했습니다. 제목/저자/카테고리를 함께 입력해 주세요."
+      }
+    ],
+    "options": {
+      "stream": true,
+      "top_k": 6
+    },
+    "trace_id": "2b951290b4ff1e1d70ba1117a48277e3",
+    "request_id": "2b951290b4ff1e1d70ba1117a48277e3-3baaef8c9a912149",
+    "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "2b951290b4ff1e1d70ba1117a48277e3",
+    "request_id": "2b951290b4ff1e1d70ba1117a48277e3-3baaef8c9a912149",
+    "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "도서 '격약구제법으로 습열하주형 남성 발기 기능성 장애를 치료하는 임상 연구' 기준으로 비슷한 책을 추천해줘"
+      },
+      "history": [
+        {
+          "role": "user",
+          "content": "도서 '帝範' 기준으로 비슷한 책을 추천해줘"
+        },
+        {
+          "role": "assistant",
+          "content": "현재 기준으로 동일 도서 외 유사 후보를 찾지 못했습니다. 제목/저자/카테고리를 함께 입력해 주세요."
+        }
+      ],
+      "options": {
+        "stream": true,
+        "top_k": 6
+      },
+      "trace_id": "2b951290b4ff1e1d70ba1117a48277e3",
+      "request_id": "2b951290b4ff1e1d70ba1117a48277e3-3baaef8c9a912149",
+      "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772667142,
+      "state_hash": "765ea898bc96ad38",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "2b951290b4ff1e1d70ba1117a48277e3",
+        "request_id": "2b951290b4ff1e1d70ba1117a48277e3-3baaef8c9a912149",
+        "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772667142,
+      "state_hash": "290732ecd89fdd72",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "2b951290b4ff1e1d70ba1117a48277e3",
+        "request_id": "2b951290b4ff1e1d70ba1117a48277e3-3baaef8c9a912149",
+        "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+        "intent": "RECOMMEND",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772667142,
+      "state_hash": "928ab80b2d90c2eb",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "2b951290b4ff1e1d70ba1117a48277e3",
+        "request_id": "2b951290b4ff1e1d70ba1117a48277e3-3baaef8c9a912149",
+        "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+        "intent": "RECOMMEND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772667142,
+      "state_hash": "928ab80b2d90c2eb",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "2b951290b4ff1e1d70ba1117a48277e3",
+        "request_id": "2b951290b4ff1e1d70ba1117a48277e3-3baaef8c9a912149",
+        "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+        "intent": "RECOMMEND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772667142,
+      "state_hash": "1ad13075368acdb8",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "2b951290b4ff1e1d70ba1117a48277e3",
+        "request_id": "2b951290b4ff1e1d70ba1117a48277e3-3baaef8c9a912149",
+        "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772667142,
+      "state_hash": "1ad13075368acdb8",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "2b951290b4ff1e1d70ba1117a48277e3",
+        "request_id": "2b951290b4ff1e1d70ba1117a48277e3-3baaef8c9a912149",
+        "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772667142,
+      "state_hash": "1ad13075368acdb8",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "2b951290b4ff1e1d70ba1117a48277e3",
+        "request_id": "2b951290b4ff1e1d70ba1117a48277e3-3baaef8c9a912149",
+        "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772667142,
+      "state_hash": "24e465c0b431e9c6",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "2b951290b4ff1e1d70ba1117a48277e3",
+        "request_id": "2b951290b4ff1e1d70ba1117a48277e3-3baaef8c9a912149",
+        "session_id": "eba06a78-83d8-4de3-a319-c33d809f4fe0",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "2b951290b4ff1e1d70ba1117a48277e3",
+    "request_id": "2b951290b4ff1e1d70ba1117a48277e3-3baaef8c9a912149",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "현재 기준으로 동일 도서 외 유사 후보를 찾지 못했습니다. 제목/저자/카테고리를 함께 입력해 주세요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:book_recommend:1772667117",
+        "doc_id": "tool:book_recommend",
+        "chunk_id": "tool:book_recommend:1772667117",
+        "title": "book_recommend 실시간 조회",
+        "url": "OS /books_doc_read/_search",
+        "snippet": "seed_query=帝範, candidate_count=1, filtered_count=0 (조회시각: 2026-03-04T23:31:57.900829+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:book_recommend:1772667117"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "2b951290b4ff1e1d70ba1117a48277e3",
+    "request_id": "2b951290b4ff1e1d70ba1117a48277e3-3baaef8c9a912149",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "현재 기준으로 동일 도서 외 유사 후보를 찾지 못했습니다. 제목/저자/카테고리를 함께 입력해 주세요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:book_recommend:1772667117",
+        "doc_id": "tool:book_recommend",
+        "chunk_id": "tool:book_recommend:1772667117",
+        "title": "book_recommend 실시간 조회",
+        "url": "OS /books_doc_read/_search",
+        "snippet": "seed_query=帝範, candidate_count=1, filtered_count=0 (조회시각: 2026-03-04T23:31:57.900829+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:book_recommend:1772667117"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  }
+}

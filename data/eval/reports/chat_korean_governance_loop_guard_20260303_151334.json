@@ -1,0 +1,40 @@
+{
+  "generated_at": "2026-03-03T15:13:34.127499+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_style/governance_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "update_event_total": 0,
+    "update_deployed_total": 0,
+    "approved_update_total": 0,
+    "approval_evidence_missing_total": 0,
+    "unaudited_deploy_total": 0,
+    "pending_update_total": 0,
+    "pending_update_sla_breach_total": 0,
+    "feedback_event_total": 0,
+    "feedback_triaged_total": 0,
+    "feedback_closed_total": 0,
+    "feedback_triage_ratio": 1.0,
+    "feedback_closure_ratio": 1.0,
+    "reason_code_missing_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "pending_sla_hours": 24.0,
+      "min_window": 0,
+      "min_update_event_total": 0,
+      "min_feedback_event_total": 0,
+      "min_feedback_triage_ratio": 0.0,
+      "min_feedback_closure_ratio": 0.0,
+      "max_unaudited_deploy_total": 1000000,
+      "max_approval_evidence_missing_total": 1000000,
+      "max_pending_update_sla_breach_total": 1000000,
+      "max_reason_code_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

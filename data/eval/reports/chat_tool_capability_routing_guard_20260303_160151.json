@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-03-03T16:01:51.968008+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/tool_health/capability_routing_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "route_event_total": 0,
+    "routed_total": 0,
+    "capability_match_total": 0,
+    "capability_match_ratio": 1.0,
+    "capability_miss_total": 0,
+    "below_health_routed_total": 0,
+    "intent_without_candidate_total": 0,
+    "fallback_route_total": 0,
+    "route_distribution": [],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_route_event_total": 0,
+      "min_capability_match_ratio": 0.0,
+      "max_capability_miss_total": 1000000,
+      "max_below_health_routed_total": 1000000,
+      "max_intent_without_candidate_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

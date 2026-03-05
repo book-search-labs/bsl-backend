@@ -9,7 +9,7 @@
       "key": "bestseller",
       "title": "이번 주 베스트셀러",
       "note": "지금 가장 많이 찾는 도서를 모았습니다.",
-      "link": "/search?q=베스트셀러",
+      "link": "/collections/bestseller",
       "items": [
         {
           "doc_id": "nlk:CDM0000000006",
@@ -41,7 +41,7 @@
       "key": "editor",
       "title": "에디터 추천",
       "note": "감성적인 에세이와 문학 작품을 큐레이션했습니다.",
-      "link": "/search?q=에세이",
+      "link": "/collections/editor",
       "items": [
         {
           "doc_id": "nlk:CDM0000000003",

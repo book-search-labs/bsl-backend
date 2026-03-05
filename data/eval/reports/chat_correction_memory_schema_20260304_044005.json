@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-03-04T04:40:05.639849+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_correction/correction_memory_records.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_correction/correction_memory_records.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_correction_memory_schema_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "record_total": 0,
+    "active_total": 0,
+    "missing_required_total": 0,
+    "missing_scope_total": 0,
+    "invalid_approval_state_total": 0,
+    "unapproved_active_total": 0,
+    "expired_active_total": 0,
+    "duplicate_active_pattern_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "record_total": 0,
+      "active_total": 0,
+      "missing_required_total": 0,
+      "missing_scope_total": 0,
+      "invalid_approval_state_total": 0,
+      "unapproved_active_total": 0,
+      "expired_active_total": 0,
+      "duplicate_active_pattern_total": 0,
+      "latest_event_time": null,
+      "stale_minutes": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_record_total": 0,
+      "max_missing_required_total": 1000000,
+      "max_missing_scope_total": 1000000,
+      "max_invalid_approval_state_total": 1000000,
+      "max_unapproved_active_total": 1000000,
+      "max_expired_active_total": 1000000,
+      "max_duplicate_active_pattern_total": 1000000,
+      "max_stale_minutes": 1000000.0,
+      "max_record_total_drop": 10,
+      "max_active_total_drop": 10,
+      "max_missing_required_total_increase": 0,
+      "max_missing_scope_total_increase": 0,
+      "max_invalid_approval_state_total_increase": 0,
+      "max_unapproved_active_total_increase": 0,
+      "max_expired_active_total_increase": 0,
+      "max_duplicate_active_pattern_total_increase": 0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

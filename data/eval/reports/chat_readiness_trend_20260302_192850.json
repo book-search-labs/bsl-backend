@@ -1,0 +1,78 @@
+{
+  "generated_at": "2026-03-02T19:28:50.930864+00:00",
+  "summary": {
+    "report_total": 6,
+    "week_buckets": {
+      "2026-W10": 95.5
+    },
+    "month_buckets": {
+      "2026-03": 95.5
+    },
+    "current_week": "2026-W10",
+    "previous_week": "",
+    "current_week_avg": 95.5,
+    "previous_week_avg": 0.0,
+    "weekly_delta": 0.0,
+    "current_month": "2026-03",
+    "previous_month": "",
+    "current_month_avg": 95.5,
+    "previous_month_avg": 0.0,
+    "monthly_delta": 0.0,
+    "target_next_week": 96.5,
+    "target_next_month": 96.5,
+    "samples": [
+      {
+        "path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_readiness_score_20260302_181323.json",
+        "generated_at": "2026-03-02T18:13:23.546753+00:00",
+        "score": 95.5,
+        "tier": "READY",
+        "action": "promote"
+      },
+      {
+        "path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_readiness_score_20260302_181521.json",
+        "generated_at": "2026-03-02T18:15:21.706430+00:00",
+        "score": 95.5,
+        "tier": "READY",
+        "action": "promote"
+      },
+      {
+        "path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_readiness_score_20260302_181734.json",
+        "generated_at": "2026-03-02T18:17:34.866282+00:00",
+        "score": 95.5,
+        "tier": "READY",
+        "action": "promote"
+      },
+      {
+        "path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_readiness_score_20260302_181751.json",
+        "generated_at": "2026-03-02T18:17:51.511920+00:00",
+        "score": 95.5,
+        "tier": "READY",
+        "action": "promote"
+      },
+      {
+        "path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_readiness_score_20260302_192634.json",
+        "generated_at": "2026-03-02T19:26:34.735287+00:00",
+        "score": 95.5,
+        "tier": "READY",
+        "action": "promote"
+      },
+      {
+        "path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_readiness_score_20260302_192850.json",
+        "generated_at": "2026-03-02T19:28:50.900748+00:00",
+        "score": 95.5,
+        "tier": "READY",
+        "action": "promote"
+      }
+    ]
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_reports": 1,
+      "min_week_avg": 80.0,
+      "min_month_avg": 80.0
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 
 import { getPayment } from '../../api/payment'
@@ -45,6 +45,11 @@ export default function PaymentResultPage() {
   const normalizedStatus = payment?.status ?? status ?? 'UNKNOWN'
   const isSuccess = normalizedStatus === 'CAPTURED'
   const isProcessing = normalizedStatus === 'READY' || normalizedStatus === 'PROCESSING'
+  const isRetryableFailure = normalizedStatus === 'FAILED' || normalizedStatus === 'CANCELED'
+  const retryPaymentPath = useMemo(() => {
+    if (!payment || !isRetryableFailure) return null
+    return `/payment/process/${payment.order_id}?retry=retry_${Date.now()}`
+  }, [payment, isRetryableFailure])
 
   return (
     <div className="container py-5">
@@ -64,6 +69,10 @@ export default function PaymentResultPage() {
           {isProcessing && payment ? (
             <Link to={`/payment/process/${payment.order_id}?payment_id=${payment.payment_id}`} className="btn btn-primary">
               결제 상태 확인
+            </Link>
+          ) : retryPaymentPath ? (
+            <Link to={retryPaymentPath} className="btn btn-primary">
+              다시 결제 시도
             </Link>
           ) : (
             <Link to="/orders" className="btn btn-primary">

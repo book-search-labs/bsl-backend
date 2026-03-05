@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-03-02T11:49:50.723820+00:00",
+  "source": {
+    "shadow_limit": 200,
+    "replay_dir": "var/chat_graph/replay",
+    "run_sample_limit": 50,
+    "baseline_report": null
+  },
+  "derived": {
+    "window_size": 0,
+    "matched": 0,
+    "mismatched": 0,
+    "mismatch_ratio": 0.0,
+    "blocker_ratio": 0.0,
+    "by_type": {},
+    "by_severity": {},
+    "samples": [],
+    "graph_runs": [],
+    "graph_run_count": 0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_graph_run_count": 0,
+      "max_mismatch_ratio": 0.1,
+      "max_blocker_ratio": 0.02,
+      "max_mismatch_ratio_increase": 0.02,
+      "max_blocker_ratio_increase": 0.01
+    }
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "generated_at": "2026-03-04T04:21:59.341111+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_privacy/privacy_incidents.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_privacy/privacy_incidents.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_privacy_incident_handling_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "incident_total": 0,
+    "high_severity_total": 0,
+    "alert_sent_total": 0,
+    "alert_miss_total": 0,
+    "queued_total": 0,
+    "high_unqueued_total": 0,
+    "high_queue_coverage_ratio": 1.0,
+    "acked_total": 0,
+    "p95_ack_latency_minutes": 0.0,
+    "resolved_total": 0,
+    "resolved_ratio": 1.0,
+    "missing_runbook_link_total": 0,
+    "severity_distribution": [],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "incident_total": 0,
+      "high_severity_total": 0,
+      "alert_sent_total": 0,
+      "alert_miss_total": 0,
+      "queued_total": 0,
+      "high_unqueued_total": 0,
+      "high_queue_coverage_ratio": 1.0,
+      "acked_total": 0,
+      "p95_ack_latency_minutes": 0.0,
+      "resolved_total": 0,
+      "resolved_ratio": 1.0,
+      "missing_runbook_link_total": 0,
+      "severity_distribution": [],
+      "latest_event_time": null,
+      "stale_minutes": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_incident_total": 0,
+      "min_high_queue_coverage_ratio": 0.0,
+      "min_resolved_ratio": 0.0,
+      "max_alert_miss_total": 1000000,
+      "max_high_unqueued_total": 1000000,
+      "max_p95_ack_latency_minutes": 1000000.0,
+      "max_missing_runbook_link_total": 1000000,
+      "max_stale_minutes": 1000000.0,
+      "max_incident_total_drop": 10,
+      "max_high_severity_total_drop": 5,
+      "max_alert_sent_total_drop": 10,
+      "max_resolved_total_drop": 10,
+      "max_alert_miss_total_increase": 0,
+      "max_high_unqueued_total_increase": 0,
+      "max_missing_runbook_link_total_increase": 0,
+      "max_high_queue_coverage_ratio_drop": 0.05,
+      "max_resolved_ratio_drop": 0.05,
+      "max_p95_ack_latency_minutes_increase": 30.0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

@@ -1,0 +1,265 @@
+{
+  "run_id": "run_99dff31796ad",
+  "trace_id": "802f5576b11f3435a7d97df3fb2f8cf7",
+  "request_id": "req_2cfc1c0b2f8948b5b03f0674c119bf85",
+  "session_id": "u:1:default",
+  "status": "done",
+  "started_at": 1772669982,
+  "updated_at": 1772669982,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "장바구니 기준 추천해줘"
+    },
+    "history": null,
+    "options": {
+      "stream": false,
+      "top_k": null
+    },
+    "trace_id": null,
+    "request_id": null,
+    "session_id": null,
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "802f5576b11f3435a7d97df3fb2f8cf7",
+    "request_id": "req_2cfc1c0b2f8948b5b03f0674c119bf85",
+    "session_id": "u:1:default",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "장바구니 기준 추천해줘"
+      },
+      "history": null,
+      "options": {
+        "stream": false,
+        "top_k": null
+      },
+      "trace_id": null,
+      "request_id": null,
+      "session_id": null,
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772669982,
+      "state_hash": "ef29b0c6dc364493",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "802f5576b11f3435a7d97df3fb2f8cf7",
+        "request_id": "req_2cfc1c0b2f8948b5b03f0674c119bf85",
+        "session_id": "u:1:default",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772669982,
+      "state_hash": "7a1e4dc4a34d26c0",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "802f5576b11f3435a7d97df3fb2f8cf7",
+        "request_id": "req_2cfc1c0b2f8948b5b03f0674c119bf85",
+        "session_id": "u:1:default",
+        "intent": "RECOMMEND",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772669982,
+      "state_hash": "df33f5844abf900d",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "802f5576b11f3435a7d97df3fb2f8cf7",
+        "request_id": "req_2cfc1c0b2f8948b5b03f0674c119bf85",
+        "session_id": "u:1:default",
+        "intent": "RECOMMEND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772669982,
+      "state_hash": "df33f5844abf900d",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "802f5576b11f3435a7d97df3fb2f8cf7",
+        "request_id": "req_2cfc1c0b2f8948b5b03f0674c119bf85",
+        "session_id": "u:1:default",
+        "intent": "RECOMMEND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772669982,
+      "state_hash": "4c7e549e6d7a3f3b",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "802f5576b11f3435a7d97df3fb2f8cf7",
+        "request_id": "req_2cfc1c0b2f8948b5b03f0674c119bf85",
+        "session_id": "u:1:default",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772669982,
+      "state_hash": "4c7e549e6d7a3f3b",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "802f5576b11f3435a7d97df3fb2f8cf7",
+        "request_id": "req_2cfc1c0b2f8948b5b03f0674c119bf85",
+        "session_id": "u:1:default",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772669982,
+      "state_hash": "4c7e549e6d7a3f3b",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "802f5576b11f3435a7d97df3fb2f8cf7",
+        "request_id": "req_2cfc1c0b2f8948b5b03f0674c119bf85",
+        "session_id": "u:1:default",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772669982,
+      "state_hash": "673c02f8db26297d",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "802f5576b11f3435a7d97df3fb2f8cf7",
+        "request_id": "req_2cfc1c0b2f8948b5b03f0674c119bf85",
+        "session_id": "u:1:default",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "802f5576b11f3435a7d97df3fb2f8cf7",
+    "request_id": "req_2cfc1c0b2f8948b5b03f0674c119bf85",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "장바구니 기준 추천 후보를 찾지 못했습니다. 장바구니 도서를 변경한 뒤 다시 시도해 주세요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:cart_recommend:1772669801",
+        "doc_id": "tool:cart_recommend",
+        "chunk_id": "tool:cart_recommend:1772669801",
+        "title": "cart_recommend 실시간 조회",
+        "url": "GET /api/v1/cart",
+        "snippet": "cart_item_count=1, seed_count=1, recommendation_count=0 (조회시각: 2026-03-05T00:16:41.472531+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:cart_recommend:1772669801"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "802f5576b11f3435a7d97df3fb2f8cf7",
+    "request_id": "req_2cfc1c0b2f8948b5b03f0674c119bf85",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "장바구니 기준 추천 후보를 찾지 못했습니다. 장바구니 도서를 변경한 뒤 다시 시도해 주세요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:cart_recommend:1772669801",
+        "doc_id": "tool:cart_recommend",
+        "chunk_id": "tool:cart_recommend:1772669801",
+        "title": "cart_recommend 실시간 조회",
+        "url": "GET /api/v1/cart",
+        "snippet": "cart_item_count=1, seed_count=1, recommendation_count=0 (조회시각: 2026-03-05T00:16:41.472531+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:cart_recommend:1772669801"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  }
+}

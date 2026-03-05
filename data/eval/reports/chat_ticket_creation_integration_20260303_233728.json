@@ -1,0 +1,57 @@
+{
+  "generated_at": "2026-03-03T23:37:28.186864+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket/ticket_events.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_ticket/ticket_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_ticket_creation_integration_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "create_requested_total": 0,
+    "create_success_total": 0,
+    "create_failed_total": 0,
+    "dedup_reused_total": 0,
+    "create_success_ratio": 1.0,
+    "payload_missing_fields_total": 0,
+    "missing_ticket_no_total": 0,
+    "missing_eta_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "create_requested_total": 0,
+      "create_success_total": 0,
+      "create_failed_total": 0,
+      "dedup_reused_total": 0,
+      "create_success_ratio": 1.0,
+      "payload_missing_fields_total": 0,
+      "missing_ticket_no_total": 0,
+      "missing_eta_total": 0,
+      "latest_event_time": null,
+      "stale_minutes": 0.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_create_success_ratio": 0.95,
+      "max_payload_missing_fields_total": 0,
+      "max_missing_ticket_no_total": 0,
+      "max_missing_eta_total": 0,
+      "max_stale_minutes": 60.0,
+      "max_create_success_ratio_drop": 0.05,
+      "max_payload_missing_fields_total_increase": 0,
+      "max_missing_ticket_no_total_increase": 0,
+      "max_missing_eta_total_increase": 0,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

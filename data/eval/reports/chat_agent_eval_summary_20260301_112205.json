@@ -1,0 +1,47 @@
+{
+  "version": "v1",
+  "generated_at": "2026-03-01T11:22:05.409138+00:00",
+  "source": {
+    "reports_dir": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports"
+  },
+  "components": {
+    "recommend": {
+      "present": false,
+      "path": null,
+      "generated_at": null,
+      "gate_pass": null,
+      "failures": []
+    },
+    "rollout": {
+      "present": false,
+      "path": null,
+      "generated_at": null,
+      "gate_pass": null,
+      "failures": []
+    },
+    "semantic_cache": {
+      "present": false,
+      "path": null,
+      "generated_at": null,
+      "gate_pass": null,
+      "failures": []
+    },
+    "regression_suite": {
+      "present": true,
+      "path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_regression_suite_eval_20260301_112205.json",
+      "generated_at": "2026-03-01T11:22:05.370590+00:00",
+      "gate_pass": true,
+      "failures": []
+    }
+  },
+  "gate": {
+    "pass": false,
+    "failures": [
+      "missing component report: recommend",
+      "missing component report: rollout",
+      "missing component report: semantic_cache"
+    ],
+    "require_all": true,
+    "max_age_minutes": 240
+  }
+}

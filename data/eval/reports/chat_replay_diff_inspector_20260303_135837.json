@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-03-03T13:58:37.710920+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_graph/replay/diff_inspector_runs.jsonl",
+  "summary": {
+    "window_size": 0,
+    "run_total": 0,
+    "matched_total": 0,
+    "divergence_detected_total": 0,
+    "first_divergence_total": 0,
+    "missing_first_divergence_total": 0,
+    "unknown_divergence_type_total": 0,
+    "invalid_step_total": 0,
+    "divergence_type_distribution": [],
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_divergence_detected_total": 0,
+      "max_missing_first_divergence_total": 1000000,
+      "max_unknown_divergence_type_total": 1000000,
+      "max_invalid_step_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

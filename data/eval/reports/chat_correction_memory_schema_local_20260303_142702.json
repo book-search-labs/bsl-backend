@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-03-03T14:27:02.447911+00:00",
+  "events_jsonl": "/var/folders/gs/4crkg8_j2rgc_8j9ynj1jpg00000gn/T/tmp.5JvImiUDRw",
+  "summary": {
+    "window_size": 2,
+    "record_total": 2,
+    "active_total": 1,
+    "missing_required_total": 0,
+    "missing_scope_total": 0,
+    "invalid_approval_state_total": 0,
+    "unapproved_active_total": 0,
+    "expired_active_total": 0,
+    "duplicate_active_pattern_total": 0,
+    "latest_event_time": "2026-03-03T10:01:00+00:00",
+    "stale_minutes": 266.04079778333335
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 1,
+      "min_record_total": 1,
+      "max_missing_required_total": 0,
+      "max_missing_scope_total": 0,
+      "max_invalid_approval_state_total": 0,
+      "max_unapproved_active_total": 0,
+      "max_expired_active_total": 0,
+      "max_duplicate_active_pattern_total": 0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

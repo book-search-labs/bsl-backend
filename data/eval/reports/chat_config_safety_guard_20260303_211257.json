@@ -1,0 +1,63 @@
+{
+  "generated_at": "2026-03-03T21:12:57.990710+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_control/config_guard_events.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_control/config_guard_events.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "forbidden_killswitch_scopes": [
+      "GLOBAL_ALL_SERVICES"
+    ],
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_config_safety_guard_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "anomaly_total": 0,
+    "handled_anomaly_total": 0,
+    "unhandled_anomaly_total": 0,
+    "mitigation_ratio": 1.0,
+    "auto_stop_total": 0,
+    "auto_rollback_total": 0,
+    "killswitch_total": 0,
+    "forbidden_killswitch_total": 0,
+    "detection_lag_p95_sec": 0.0,
+    "killswitch_by_scope": [],
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "anomaly_total": 0,
+      "handled_anomaly_total": 0,
+      "unhandled_anomaly_total": 0,
+      "mitigation_ratio": 1.0,
+      "auto_stop_total": 0,
+      "auto_rollback_total": 0,
+      "killswitch_total": 0,
+      "forbidden_killswitch_total": 0,
+      "detection_lag_p95_sec": 0.0,
+      "killswitch_by_scope": [],
+      "latest_event_time": null,
+      "stale_minutes": 0.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_unhandled_anomaly_total": 0,
+      "min_mitigation_ratio": 0.95,
+      "max_detection_lag_p95_sec": 120.0,
+      "max_forbidden_killswitch_total": 0,
+      "max_stale_minutes": 60.0,
+      "max_unhandled_anomaly_total_increase": 0,
+      "max_mitigation_ratio_drop": 0.05,
+      "max_detection_lag_p95_sec_increase": 30.0,
+      "max_forbidden_killswitch_total_increase": 0
+    }
+  }
+}

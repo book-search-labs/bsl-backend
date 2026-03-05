@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-03-02T21:04:29.928650+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_governance/backpressure_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "drop_total": 0,
+    "admitted_total": 0,
+    "drop_ratio": 0.0,
+    "critical_drop_total": 0,
+    "core_total": 0,
+    "core_admitted_total": 0,
+    "core_protected_ratio": 1.0,
+    "p95_queue_depth": 0.0,
+    "p95_queue_latency_ms": 0.0,
+    "circuit_open_total": 0,
+    "guidance_missing_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0,
+    "by_priority": [],
+    "modes": []
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_drop_ratio": 0.2,
+      "max_critical_drop_total": 0,
+      "min_core_protected_ratio": 0.98,
+      "max_p95_queue_depth": 80.0,
+      "max_p95_queue_latency_ms": 3000.0,
+      "max_guidance_missing_total": 0,
+      "max_stale_minutes": 60.0
+    }
+  }
+}

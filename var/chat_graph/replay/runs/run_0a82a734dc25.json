@@ -1,0 +1,245 @@
+{
+  "run_id": "run_0a82a734dc25",
+  "trace_id": "trace_test",
+  "request_id": "req_test",
+  "session_id": "anon:default",
+  "status": "done",
+  "started_at": 1772666357,
+  "updated_at": 1772666357,
+  "request_payload": {
+    "message": {
+      "role": "user",
+      "content": "환불 정책 알려줘"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "session_id": "anon:default",
+    "input": {
+      "message": {
+        "role": "user",
+        "content": "환불 정책 알려줘"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772666357,
+      "state_hash": "be0b0bdaa03e579f",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772666357,
+      "state_hash": "67f2e9a4f7e36712",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "REFUND",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772666357,
+      "state_hash": "0ca3b82a9a7f4aec",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "REFUND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772666357,
+      "state_hash": "0ca3b82a9a7f4aec",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "REFUND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772666357,
+      "state_hash": "df629775f1567212",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "REFUND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772666357,
+      "state_hash": "df629775f1567212",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "REFUND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772666357,
+      "state_hash": "df629775f1567212",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "REFUND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772666357,
+      "state_hash": "275c896f883372e9",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "anon:default",
+        "intent": "REFUND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "추천 결과 안내"
+    },
+    "sources": [
+      {
+        "title": "정책 문서",
+        "doc_id": "policy-1",
+        "snippet": "요약"
+      },
+      {
+        "title": "도서 메타",
+        "doc_id": "book-1",
+        "snippet": "메타"
+      }
+    ],
+    "citations": [
+      "policy-1#0"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "추천 결과 안내"
+    },
+    "sources": [
+      {
+        "title": "정책 문서",
+        "doc_id": "policy-1",
+        "snippet": "요약"
+      },
+      {
+        "title": "도서 메타",
+        "doc_id": "book-1",
+        "snippet": "메타"
+      }
+    ],
+    "citations": [
+      "policy-1#0"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  }
+}

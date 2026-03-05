@@ -202,11 +202,16 @@ export default function SearchPage() {
 
   const topCategories = useMemo(() => getTopLevelKdc(kdcCategories), [kdcCategories])
   const categoryIndex = useMemo(() => flattenKdcCategories(kdcCategories), [kdcCategories])
-  const selectedCategory = kdcCode ? categoryIndex.get(kdcCode) : undefined
+  const selectedCategory = kdcCode && categoryIndex.size > 0 ? categoryIndex.get(kdcCode) : undefined
   const selectedCategoryCodes = useMemo(
     () => collectKdcDescendantCodes(selectedCategory),
     [selectedCategory],
   )
+  const effectiveCategoryCodes = useMemo(() => {
+    if (!kdcCode) return []
+    if (selectedCategoryCodes.length > 0) return selectedCategoryCodes
+    return [kdcCode]
+  }, [kdcCode, selectedCategoryCodes])
   const categoryQuick = useMemo(() => {
     if (topCategories.length > 0) {
       return topCategories.map((node) => ({ label: node.name, code: node.code }))
@@ -272,7 +277,7 @@ export default function SearchPage() {
   }, [searchParams, setSearchParams, sizeValue, trimmedQuery, vectorEnabled])
 
   const executeSearch = useCallback(async () => {
-    const hasCategoryFilter = selectedCategoryCodes.length > 0
+    const hasCategoryFilter = effectiveCategoryCodes.length > 0
     const shouldSearch = trimmedQuery.length > 0 || kdcCode.length > 0
 
     if (!shouldSearch) {
@@ -281,14 +286,6 @@ export default function SearchPage() {
       setError(null)
       setResponse(null)
       setHasSearched(false)
-      return
-    }
-
-    if (kdcCode && kdcCategories.length === 0) {
-      setLoading(true)
-      setHasSearched(true)
-      setError(null)
-      setResponse(null)
       return
     }
 
@@ -326,7 +323,7 @@ export default function SearchPage() {
                     scope: 'CATALOG',
                     logicalField: 'kdc_path_codes',
                     op: 'eq',
-                    value: selectedCategoryCodes,
+                    value: effectiveCategoryCodes,
                   },
                 ],
               },
@@ -353,7 +350,7 @@ export default function SearchPage() {
     kdcCategories.length,
     kdcCode,
     selectedCategory,
-    selectedCategoryCodes,
+    effectiveCategoryCodes,
     sizeValue,
     fromValue,
     trimmedQuery,
@@ -632,6 +629,8 @@ export default function SearchPage() {
       : `"${displayQuery}" 검색 결과`
     : selectedCategory
       ? `${selectedCategory.name} 카테고리`
+      : kdcCode
+        ? `${kdcCode} 카테고리`
       : '검색 결과'
 
   return (

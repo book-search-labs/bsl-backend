@@ -1,0 +1,59 @@
+{
+  "run_id": "run_0234b763faa9",
+  "trace_id": "trace_test",
+  "request_id": "req_test",
+  "session_id": "sess-timeout-1",
+  "status": "done",
+  "started_at": 1772666320,
+  "updated_at": 1772666320,
+  "request_payload": {
+    "session_id": "sess-timeout-1",
+    "message": {
+      "role": "user",
+      "content": "배송 상태 알려줘"
+    },
+    "client": {
+      "user_id": "1",
+      "locale": "ko-KR"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "session_id": "sess-timeout-1",
+    "input": {
+      "session_id": "sess-timeout-1",
+      "message": {
+        "role": "user",
+        "content": "배송 상태 알려줘"
+      },
+      "client": {
+        "user_id": "1",
+        "locale": "ko-KR"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [],
+  "response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "status": "insufficient_evidence",
+    "reason_code": "CHAT_GRAPH_STATE_INVALID",
+    "recoverable": true,
+    "next_action": "OPEN_SUPPORT_TICKET",
+    "retry_after_ms": 3000,
+    "answer": {
+      "role": "assistant",
+      "content": "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "error_handler",
+  "stub_response": null
+}

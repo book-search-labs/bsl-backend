@@ -1,0 +1,111 @@
+{
+  "generated_at": "2026-03-03T18:01:58.182931+00:00",
+  "source": {
+    "reports_dir": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports",
+    "prefix": "chat_liveops_cycle",
+    "limit": 40,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_dr_drill_report_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 3,
+    "drill_total": 1,
+    "recovered_total": 1,
+    "open_drill_total": 0,
+    "recovery_ratio": 1.0,
+    "avg_mttr_sec": 31.205436,
+    "mttr_samples_sec": [
+      31.205436
+    ],
+    "drills": [
+      {
+        "opened_at": "2026-03-03T17:50:50.324547+00:00",
+        "opened_path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_liveops_cycle_20260304_025050.json",
+        "opened_reason": "launch_gate_failed",
+        "recovered_at": "2026-03-03T17:51:21.529983+00:00",
+        "recovered_path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_liveops_cycle_20260304_025121.json",
+        "mttr_sec": 31.205436
+      }
+    ],
+    "open_drill": null,
+    "events": [
+      {
+        "path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_liveops_cycle_20260302_211840.json",
+        "generated_at": "2026-03-02T12:18:40.243233+00:00",
+        "action": "promote",
+        "pass": true
+      },
+      {
+        "path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_liveops_cycle_20260304_025050.json",
+        "generated_at": "2026-03-03T17:50:50.324547+00:00",
+        "action": "rollback",
+        "pass": false
+      },
+      {
+        "path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_liveops_cycle_20260304_025121.json",
+        "generated_at": "2026-03-03T17:51:21.529983+00:00",
+        "action": "promote",
+        "pass": true
+      }
+    ]
+  },
+  "derived": {
+    "summary": {
+      "window_size": 3,
+      "drill_total": 1,
+      "recovered_total": 1,
+      "open_drill_total": 0,
+      "recovery_ratio": 1.0,
+      "avg_mttr_sec": 31.205436,
+      "mttr_samples_sec": [
+        31.205436
+      ],
+      "drills": [
+        {
+          "opened_at": "2026-03-03T17:50:50.324547+00:00",
+          "opened_path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_liveops_cycle_20260304_025050.json",
+          "opened_reason": "launch_gate_failed",
+          "recovered_at": "2026-03-03T17:51:21.529983+00:00",
+          "recovered_path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_liveops_cycle_20260304_025121.json",
+          "mttr_sec": 31.205436
+        }
+      ],
+      "open_drill": null,
+      "events": [
+        {
+          "path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_liveops_cycle_20260302_211840.json",
+          "generated_at": "2026-03-02T12:18:40.243233+00:00",
+          "action": "promote",
+          "pass": true
+        },
+        {
+          "path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_liveops_cycle_20260304_025050.json",
+          "generated_at": "2026-03-03T17:50:50.324547+00:00",
+          "action": "rollback",
+          "pass": false
+        },
+        {
+          "path": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/data/eval/reports/chat_liveops_cycle_20260304_025121.json",
+          "generated_at": "2026-03-03T17:51:21.529983+00:00",
+          "action": "promote",
+          "pass": true
+        }
+      ]
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 1,
+      "require_drill": false,
+      "min_recovery_ratio": 0.0,
+      "max_open_drill_total": 100,
+      "max_avg_mttr_sec": 100000.0,
+      "max_recovery_ratio_drop": 1.0,
+      "max_open_drill_increase": 100,
+      "max_avg_mttr_sec_increase": 100000.0
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "generated_at": "2026-03-02T21:06:27.611464+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_governance/session_resilience_drills.jsonl",
+  "required_scenarios": [
+    "BROKER_DELAY",
+    "CONNECTION_STORM",
+    "PARTIAL_REGION_FAIL"
+  ],
+  "summary": {
+    "window_size": 0,
+    "scenario_total": 0,
+    "success_total": 0,
+    "failure_total": 0,
+    "open_drill_total": 0,
+    "success_ratio": 0.0,
+    "avg_rto_sec": 0.0,
+    "max_rto_sec": 0.0,
+    "message_loss_total": 0,
+    "message_total": 0,
+    "message_loss_ratio": 0.0,
+    "missing_required_scenarios": [
+      "BROKER_DELAY",
+      "CONNECTION_STORM",
+      "PARTIAL_REGION_FAIL"
+    ],
+    "latest_event_time": null,
+    "stale_days": 0.0,
+    "scenarios": []
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_open_drill_total": 0,
+      "max_avg_rto_sec": 900.0,
+      "max_message_loss_ratio": 0.001,
+      "max_stale_days": 35.0,
+      "require_scenarios": false
+    }
+  }
+}

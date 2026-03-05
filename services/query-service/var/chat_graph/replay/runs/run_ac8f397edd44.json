@@ -1,0 +1,243 @@
+{
+  "run_id": "run_ac8f397edd44",
+  "trace_id": "1b91dafdd2d9741e9f74e7b7abb476b4",
+  "request_id": "1b91dafdd2d9741e9f74e7b7abb476b4-24b2e27477c62484",
+  "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+  "status": "done",
+  "started_at": 1772667332,
+  "updated_at": 1772667332,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "문헌으로 책 검색해줘"
+    },
+    "history": [],
+    "options": {
+      "stream": true,
+      "top_k": 6
+    },
+    "trace_id": "1b91dafdd2d9741e9f74e7b7abb476b4",
+    "request_id": "1b91dafdd2d9741e9f74e7b7abb476b4-24b2e27477c62484",
+    "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "1b91dafdd2d9741e9f74e7b7abb476b4",
+    "request_id": "1b91dafdd2d9741e9f74e7b7abb476b4-24b2e27477c62484",
+    "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "문헌으로 책 검색해줘"
+      },
+      "history": [],
+      "options": {
+        "stream": true,
+        "top_k": 6
+      },
+      "trace_id": "1b91dafdd2d9741e9f74e7b7abb476b4",
+      "request_id": "1b91dafdd2d9741e9f74e7b7abb476b4-24b2e27477c62484",
+      "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772667332,
+      "state_hash": "324881fa63d63ee7",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "1b91dafdd2d9741e9f74e7b7abb476b4",
+        "request_id": "1b91dafdd2d9741e9f74e7b7abb476b4-24b2e27477c62484",
+        "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772667332,
+      "state_hash": "890582a44e76390a",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "1b91dafdd2d9741e9f74e7b7abb476b4",
+        "request_id": "1b91dafdd2d9741e9f74e7b7abb476b4-24b2e27477c62484",
+        "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+        "intent": "GENERAL",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772667332,
+      "state_hash": "5f03eb4f1347da4f",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "1b91dafdd2d9741e9f74e7b7abb476b4",
+        "request_id": "1b91dafdd2d9741e9f74e7b7abb476b4-24b2e27477c62484",
+        "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+        "intent": "GENERAL",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772667332,
+      "state_hash": "5f03eb4f1347da4f",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "1b91dafdd2d9741e9f74e7b7abb476b4",
+        "request_id": "1b91dafdd2d9741e9f74e7b7abb476b4-24b2e27477c62484",
+        "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+        "intent": "GENERAL",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772667332,
+      "state_hash": "06f05a698466b3ee",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "1b91dafdd2d9741e9f74e7b7abb476b4",
+        "request_id": "1b91dafdd2d9741e9f74e7b7abb476b4-24b2e27477c62484",
+        "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+        "intent": "GENERAL",
+        "route": "FALLBACK",
+        "reason_code": "RAG_NO_CHUNKS",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "RAG_NO_CHUNKS",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772667332,
+      "state_hash": "06f05a698466b3ee",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "1b91dafdd2d9741e9f74e7b7abb476b4",
+        "request_id": "1b91dafdd2d9741e9f74e7b7abb476b4-24b2e27477c62484",
+        "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+        "intent": "GENERAL",
+        "route": "FALLBACK",
+        "reason_code": "RAG_NO_CHUNKS",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "RAG_NO_CHUNKS",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772667332,
+      "state_hash": "06f05a698466b3ee",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "1b91dafdd2d9741e9f74e7b7abb476b4",
+        "request_id": "1b91dafdd2d9741e9f74e7b7abb476b4-24b2e27477c62484",
+        "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+        "intent": "GENERAL",
+        "route": "FALLBACK",
+        "reason_code": "RAG_NO_CHUNKS",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "RAG_NO_CHUNKS",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772667332,
+      "state_hash": "b72638b04e200685",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "1b91dafdd2d9741e9f74e7b7abb476b4",
+        "request_id": "1b91dafdd2d9741e9f74e7b7abb476b4-24b2e27477c62484",
+        "session_id": "bcca44f9-5ed5-42c6-8f0f-7f9a5b536cee",
+        "intent": "GENERAL",
+        "route": "FALLBACK",
+        "reason_code": "RAG_NO_CHUNKS",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "RAG_NO_CHUNKS",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "1b91dafdd2d9741e9f74e7b7abb476b4",
+    "request_id": "1b91dafdd2d9741e9f74e7b7abb476b4-24b2e27477c62484",
+    "status": "insufficient_evidence",
+    "reason_code": "RAG_NO_CHUNKS",
+    "recoverable": true,
+    "next_action": "REFINE_QUERY",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "현재 근거 문서를 찾지 못해 확정 답변을 드리기 어렵습니다. 키워드나 조건을 조금 더 구체적으로 입력해 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "fallback_count": 1,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "1b91dafdd2d9741e9f74e7b7abb476b4",
+    "request_id": "1b91dafdd2d9741e9f74e7b7abb476b4-24b2e27477c62484",
+    "answer": {
+      "role": "assistant",
+      "content": "현재 근거 문서를 찾지 못해 확정 답변을 드리기 어렵습니다. 키워드나 조건을 조금 더 구체적으로 입력해 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "status": "insufficient_evidence",
+    "reason_code": "RAG_NO_CHUNKS",
+    "recoverable": true,
+    "next_action": "REFINE_QUERY",
+    "retry_after_ms": null,
+    "fallback_count": 1,
+    "escalated": false
+  }
+}

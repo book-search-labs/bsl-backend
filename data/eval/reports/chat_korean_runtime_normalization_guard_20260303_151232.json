@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-03-03T15:12:32.074150+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_style/runtime_normalization_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "response_total": 0,
+    "normalization_checked_total": 0,
+    "normalization_checked_ratio": 1.0,
+    "normalization_bypass_total": 0,
+    "term_normalization_applied_total": 0,
+    "style_normalization_applied_total": 0,
+    "normalization_applied_total": 0,
+    "normalization_applied_ratio": 1.0,
+    "excessive_edit_total": 0,
+    "excessive_edit_without_fallback_total": 0,
+    "meaning_drift_total": 0,
+    "fallback_applied_total": 0,
+    "fallback_coverage_ratio": 1.0,
+    "reason_code_missing_total": 0,
+    "p95_edit_ratio": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_response_total": 0,
+      "min_normalization_checked_ratio": 0.0,
+      "min_fallback_coverage_ratio": 0.0,
+      "max_normalization_bypass_total": 1000000,
+      "max_meaning_drift_total": 1000000,
+      "max_excessive_edit_without_fallback_total": 1000000,
+      "max_reason_code_missing_total": 1000000,
+      "max_p95_edit_ratio": 1.0,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

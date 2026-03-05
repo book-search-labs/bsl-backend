@@ -1,0 +1,45 @@
+{
+  "generated_at": "2026-03-03T04:47:08.593572+00:00",
+  "dataset_jsonl": "/var/folders/gs/4crkg8_j2rgc_8j9ynj1jpg00000gn/T/tmp.pKINuGgsN7",
+  "summary": {
+    "case_total": 4,
+    "invalid_case_total": 0,
+    "korean_case_total": 4,
+    "korean_case_ratio": 1.0,
+    "cjk_mixed_total": 1,
+    "commerce_case_total": 4,
+    "attack_type_total": 4,
+    "missing_attack_types": [],
+    "attack_type_distribution": [
+      {
+        "attack_type": "EMOTIONAL_PRESSURE",
+        "count": 1
+      },
+      {
+        "attack_type": "FAKE_POLICY",
+        "count": 1
+      },
+      {
+        "attack_type": "PROMPT_INJECTION",
+        "count": 1
+      },
+      {
+        "attack_type": "ROLE_CONFUSION",
+        "count": 1
+      }
+    ]
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_case_total": 1,
+      "max_missing_attack_type_total": 0,
+      "min_korean_case_ratio": 0.4,
+      "min_cjk_mixed_total": 1,
+      "min_commerce_case_total": 1,
+      "max_invalid_case_total": 0
+    }
+  }
+}

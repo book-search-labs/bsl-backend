@@ -7,8 +7,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class PaymentProperties {
     private PaymentProvider defaultProvider = PaymentProvider.MOCK;
     private String defaultReturnUrl = "http://localhost:5174/payment/result";
-    private String defaultWebhookUrl = "http://localhost:8091/api/v1/payments/webhook/mock";
-    private String mockCheckoutBaseUrl = "http://localhost:8090/checkout";
+    private String defaultWebhookUrl = "http://localhost:8091/api/v1/payments/webhook/{provider}";
+    private String mockCheckoutBaseUrl = "http://localhost:8092/checkout";
     private long sessionTtlSeconds = 1800L;
     private String mockWebhookSecret = "dev_mock_webhook_secret";
     private String localSimWebhookSecret = "dev_local_sim_webhook_secret";

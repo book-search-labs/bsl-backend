@@ -1,0 +1,253 @@
+{
+  "run_id": "run_d55e4037732d",
+  "trace_id": "trace_5cd1126f42394c99ac66945e780bd0bc",
+  "request_id": "req_21554b98926d4c739621f338c2150112",
+  "session_id": "u:1:default",
+  "status": "done",
+  "started_at": 1772669801,
+  "updated_at": 1772669801,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "장바구니 기준 추천해줘"
+    },
+    "options": {
+      "stream": false
+    },
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "trace_5cd1126f42394c99ac66945e780bd0bc",
+    "request_id": "req_21554b98926d4c739621f338c2150112",
+    "session_id": "u:1:default",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "장바구니 기준 추천해줘"
+      },
+      "options": {
+        "stream": false
+      },
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772669801,
+      "state_hash": "a812975975e1a32f",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_5cd1126f42394c99ac66945e780bd0bc",
+        "request_id": "req_21554b98926d4c739621f338c2150112",
+        "session_id": "u:1:default",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772669801,
+      "state_hash": "0f74a35fdeb69a7a",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_5cd1126f42394c99ac66945e780bd0bc",
+        "request_id": "req_21554b98926d4c739621f338c2150112",
+        "session_id": "u:1:default",
+        "intent": "RECOMMEND",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772669801,
+      "state_hash": "ba00648ddaf94f5a",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_5cd1126f42394c99ac66945e780bd0bc",
+        "request_id": "req_21554b98926d4c739621f338c2150112",
+        "session_id": "u:1:default",
+        "intent": "RECOMMEND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772669801,
+      "state_hash": "ba00648ddaf94f5a",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_5cd1126f42394c99ac66945e780bd0bc",
+        "request_id": "req_21554b98926d4c739621f338c2150112",
+        "session_id": "u:1:default",
+        "intent": "RECOMMEND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772669801,
+      "state_hash": "411ce97477740396",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_5cd1126f42394c99ac66945e780bd0bc",
+        "request_id": "req_21554b98926d4c739621f338c2150112",
+        "session_id": "u:1:default",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772669801,
+      "state_hash": "411ce97477740396",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_5cd1126f42394c99ac66945e780bd0bc",
+        "request_id": "req_21554b98926d4c739621f338c2150112",
+        "session_id": "u:1:default",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772669801,
+      "state_hash": "411ce97477740396",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_5cd1126f42394c99ac66945e780bd0bc",
+        "request_id": "req_21554b98926d4c739621f338c2150112",
+        "session_id": "u:1:default",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772669801,
+      "state_hash": "d53de7fa891e6e35",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "trace_5cd1126f42394c99ac66945e780bd0bc",
+        "request_id": "req_21554b98926d4c739621f338c2150112",
+        "session_id": "u:1:default",
+        "intent": "RECOMMEND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "trace_5cd1126f42394c99ac66945e780bd0bc",
+    "request_id": "req_21554b98926d4c739621f338c2150112",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "장바구니 기준 추천 후보를 찾지 못했습니다. 장바구니 도서를 변경한 뒤 다시 시도해 주세요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:cart_recommend:1772669801",
+        "doc_id": "tool:cart_recommend",
+        "chunk_id": "tool:cart_recommend:1772669801",
+        "title": "cart_recommend 실시간 조회",
+        "url": "GET /api/v1/cart",
+        "snippet": "cart_item_count=1, seed_count=1, recommendation_count=0 (조회시각: 2026-03-05T00:16:41.472531+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:cart_recommend:1772669801"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "trace_5cd1126f42394c99ac66945e780bd0bc",
+    "request_id": "req_21554b98926d4c739621f338c2150112",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "장바구니 기준 추천 후보를 찾지 못했습니다. 장바구니 도서를 변경한 뒤 다시 시도해 주세요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:cart_recommend:1772669801",
+        "doc_id": "tool:cart_recommend",
+        "chunk_id": "tool:cart_recommend:1772669801",
+        "title": "cart_recommend 실시간 조회",
+        "url": "GET /api/v1/cart",
+        "snippet": "cart_item_count=1, seed_count=1, recommendation_count=0 (조회시각: 2026-03-05T00:16:41.472531+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:cart_recommend:1772669801"
+    ]
+  }
+}

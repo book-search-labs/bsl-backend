@@ -1,0 +1,51 @@
+{
+  "generated_at": "2026-03-03T17:51:21.529983+00:00",
+  "source": {
+    "cycle_baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_liveops_cycle_baseline_v1.json"
+  },
+  "release_profile": {
+    "release_signature": "sig-liveops"
+  },
+  "launch_gate_report_path": "/tmp/bsl_launch_gate_report.json",
+  "launch_gate": {
+    "generated_at": "2026-03-04T00:00:00+00:00",
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "stdout": null,
+    "rc": 0
+  },
+  "release_train": {
+    "stage": 25,
+    "dwell_minutes": 45,
+    "decision": {
+      "action": "promote",
+      "reason": "budget_gate_passed",
+      "next_stage": 50,
+      "cutover": {
+        "action": "promote",
+        "reason": "budget_gate_passed",
+        "next_stage": 50
+      },
+      "launch_gate_passed": true,
+      "canary_passed": true,
+      "canary_reason": "within_threshold",
+      "canary_gate_status": "PASS"
+    },
+    "rollback": null
+  },
+  "runtime_failures": [],
+  "baseline_failures": [],
+  "failures": [],
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "runtime_failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "max_cycle_failure_increase": 1,
+      "max_cycle_action_drop": 2
+    }
+  }
+}

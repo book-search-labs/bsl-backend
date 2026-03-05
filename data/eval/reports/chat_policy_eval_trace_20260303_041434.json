@@ -1,0 +1,34 @@
+{
+  "generated_at": "2026-03-03T04:14:34.041061+00:00",
+  "events_jsonl": "/var/folders/gs/4crkg8_j2rgc_8j9ynj1jpg00000gn/T/tmp.piyVYrfc4B",
+  "summary": {
+    "window_size": 2,
+    "eval_total": 2,
+    "missing_request_id_total": 0,
+    "missing_policy_version_total": 0,
+    "missing_matched_rule_total": 0,
+    "unknown_final_action_total": 0,
+    "non_deterministic_key_total": 0,
+    "conflict_total": 1,
+    "conflict_unresolved_total": 0,
+    "latency_p95_ms": 180.0,
+    "latest_event_time": "2026-03-03T00:00:01+00:00",
+    "stale_minutes": 254.55068365
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 1,
+      "max_missing_request_id_total": 0,
+      "max_missing_policy_version_total": 0,
+      "max_missing_matched_rule_total": 0,
+      "max_unknown_final_action_total": 0,
+      "max_non_deterministic_key_total": 0,
+      "max_conflict_unresolved_total": 0,
+      "max_latency_p95_ms": 1000.0,
+      "max_stale_minutes": 100000.0
+    }
+  }
+}

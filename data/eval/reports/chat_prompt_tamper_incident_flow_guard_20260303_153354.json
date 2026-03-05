@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-03-03T15:33:54.216413+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_prompt_supply/tamper_incident_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "tamper_event_total": 0,
+    "alert_emitted_total": 0,
+    "alert_coverage_ratio": 1.0,
+    "incident_created_total": 0,
+    "incident_coverage_ratio": 1.0,
+    "triage_started_total": 0,
+    "quarantine_applied_total": 0,
+    "quarantine_coverage_ratio": 1.0,
+    "uncontained_tamper_total": 0,
+    "reason_code_missing_total": 0,
+    "alert_latency_p95_sec": 0.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_tamper_event_total": 0,
+      "min_alert_coverage_ratio": 0.0,
+      "min_incident_coverage_ratio": 0.0,
+      "min_quarantine_coverage_ratio": 0.0,
+      "max_alert_latency_p95_sec": 1000000.0,
+      "max_uncontained_tamper_total": 1000000,
+      "max_reason_code_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

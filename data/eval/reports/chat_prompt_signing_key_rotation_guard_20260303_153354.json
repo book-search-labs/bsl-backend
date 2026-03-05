@@ -1,0 +1,39 @@
+{
+  "generated_at": "2026-03-03T15:33:54.181302+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_prompt_supply/key_rotation_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "key_rotation_total": 0,
+    "key_rotation_success_total": 0,
+    "key_rotation_success_ratio": 1.0,
+    "key_rotation_failed_total": 0,
+    "unauthorized_key_access_total": 0,
+    "least_privilege_violation_total": 0,
+    "deprecated_key_sign_total": 0,
+    "kms_sync_failed_total": 0,
+    "audit_log_missing_total": 0,
+    "reason_code_missing_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "min_event_total": 0,
+      "min_key_rotation_total": 0,
+      "min_key_rotation_success_ratio": 0.0,
+      "max_key_rotation_failed_total": 1000000,
+      "max_unauthorized_key_access_total": 1000000,
+      "max_least_privilege_violation_total": 1000000,
+      "max_deprecated_key_sign_total": 1000000,
+      "max_kms_sync_failed_total": 1000000,
+      "max_audit_log_missing_total": 1000000,
+      "max_reason_code_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

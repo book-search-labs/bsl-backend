@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Mapping
+from typing import Any, Awaitable, Callable, Mapping, cast
 import hashlib
 import os
+import re
 import time
+
+from langgraph.graph import END, START, StateGraph
 
 from app.core.chat_graph.state import (
     ChatGraphState,
@@ -58,6 +61,10 @@ from app.core.metrics import metrics
 
 LegacyExecutor = Callable[[dict[str, Any], str, str], Awaitable[dict[str, Any]]]
 NodeFn = Callable[[ChatGraphState], Awaitable[ChatGraphState]]
+GraphStateHolder = dict[str, ChatGraphState]
+
+_SESSION_ID_PATTERN = re.compile(r"^[A-Za-z0-9:_-]+$")
+_SESSION_ID_MAX_LEN = 64
 
 
 @dataclass(frozen=True)
@@ -172,98 +179,35 @@ async def run_chat_graph(
             },
         )
 
+    authz_node = _authz_gate_node_factory(request, trace_id, request_id)
+    execute_node = _execute_node_factory(request, trace_id, request_id, legacy_executor)
+    state_holder: GraphStateHolder = {"state": state}
+    graph = _build_compiled_graph(
+        trace_decision=trace_decision,
+        run_id=resolved_run_id,
+        trace_context=trace_context,
+        record_run=record_run,
+        state_holder=state_holder,
+        nodes={
+            "load_state": _load_state_node,
+            "understand": _understand_node,
+            "policy_decide": _policy_decide_node,
+            "authz_gate": authz_node,
+            "execute": execute_node,
+            "compose": _compose_node,
+            "verify": _verify_node,
+            "persist": _persist_node,
+        },
+    )
+
     try:
-        state = await _run_node("load_state", state, _load_state_node)
-        _record_state_reason_code(state, source="load_state")
-        await _emit_node_trace(
-            trace_decision=trace_decision,
-            run_id=resolved_run_id,
-            node="load_state",
-            state=state,
-            trace_context=trace_context,
-        )
-        if record_run:
-            append_checkpoint(resolved_run_id, "load_state", state)
-        state = await _run_node("understand", state, _understand_node)
-        _record_state_reason_code(state, source="understand")
-        await _emit_node_trace(
-            trace_decision=trace_decision,
-            run_id=resolved_run_id,
-            node="understand",
-            state=state,
-            trace_context=trace_context,
-        )
-        if record_run:
-            append_checkpoint(resolved_run_id, "understand", state)
-        state = await _run_node("policy_decide", state, _policy_decide_node)
-        _record_state_reason_code(state, source="policy_decide")
-        await _emit_node_trace(
-            trace_decision=trace_decision,
-            run_id=resolved_run_id,
-            node="policy_decide",
-            state=state,
-            trace_context=trace_context,
-        )
-        if record_run:
-            append_checkpoint(resolved_run_id, "policy_decide", state)
-        state = await _run_node("authz_gate", state, _authz_gate_node_factory(request, trace_id, request_id))
-        _record_state_reason_code(state, source="authz_gate")
-        await _emit_node_trace(
-            trace_decision=trace_decision,
-            run_id=resolved_run_id,
-            node="authz_gate",
-            state=state,
-            trace_context=trace_context,
-        )
-        if record_run:
-            append_checkpoint(resolved_run_id, "authz_gate", state)
-        state = await _run_node("execute", state, _execute_node_factory(request, trace_id, request_id, legacy_executor))
-        _record_state_reason_code(state, source="execute")
-        await _emit_node_trace(
-            trace_decision=trace_decision,
-            run_id=resolved_run_id,
-            node="execute",
-            state=state,
-            trace_context=trace_context,
-        )
-        if record_run:
-            append_checkpoint(resolved_run_id, "execute", state)
-        state = await _run_node("compose", state, _compose_node)
-        _record_state_reason_code(state, source="compose")
-        await _emit_node_trace(
-            trace_decision=trace_decision,
-            run_id=resolved_run_id,
-            node="compose",
-            state=state,
-            trace_context=trace_context,
-        )
-        if record_run:
-            append_checkpoint(resolved_run_id, "compose", state)
-        state = await _run_node("verify", state, _verify_node)
-        _record_state_reason_code(state, source="verify")
-        await _emit_node_trace(
-            trace_decision=trace_decision,
-            run_id=resolved_run_id,
-            node="verify",
-            state=state,
-            trace_context=trace_context,
-        )
-        if record_run:
-            append_checkpoint(resolved_run_id, "verify", state)
-        state = await _run_node("persist", state, _persist_node)
-        _record_state_reason_code(state, source="persist")
-        await _emit_node_trace(
-            trace_decision=trace_decision,
-            run_id=resolved_run_id,
-            node="persist",
-            state=state,
-            trace_context=trace_context,
-        )
-        if record_run:
-            append_checkpoint(resolved_run_id, "persist", state)
+        raw_final_state = await graph.ainvoke(state)
+        state = validate_chat_graph_state(cast(Mapping[str, Any], raw_final_state), stage="runtime:output")
+        state_holder["state"] = state
     except ChatGraphStateValidationError as exc:
+        current_state = state_holder.get("state", state)
         handled = _error_handler_state(
-            state,
+            current_state,
             trace_id=trace_id,
             request_id=request_id,
             stage=exc.stage,
@@ -293,8 +237,9 @@ async def run_chat_graph(
         _record_perf_budget_sample(handled, error_response, started_at=started_at, engine_mode=engine_mode)
         return ChatGraphRuntimeResult(state=handled, response=error_response, stage="error_handler", run_id=resolved_run_id)
     except Exception:
+        current_state = state_holder.get("state", state)
         handled = _error_handler_state(
-            state,
+            current_state,
             trace_id=trace_id,
             request_id=request_id,
             stage="runtime",
@@ -361,6 +306,70 @@ async def run_chat_graph(
     _record_launch_readiness_metrics(state, final_response)
     _record_perf_budget_sample(state, final_response, started_at=started_at, engine_mode=engine_mode)
     return ChatGraphRuntimeResult(state=state, response=final_response, stage="persist", run_id=resolved_run_id)
+
+
+def _build_compiled_graph(
+    *,
+    trace_decision: TraceDecision,
+    run_id: str,
+    trace_context: Mapping[str, str],
+    record_run: bool,
+    state_holder: GraphStateHolder,
+    nodes: Mapping[str, NodeFn],
+):
+    graph = StateGraph(ChatGraphState)
+    for name, fn in nodes.items():
+        graph.add_node(
+            name,
+            _wrap_graph_node(
+                name=name,
+                fn=fn,
+                trace_decision=trace_decision,
+                run_id=run_id,
+                trace_context=trace_context,
+                record_run=record_run,
+                state_holder=state_holder,
+            ),
+        )
+
+    graph.add_edge(START, "load_state")
+    graph.add_edge("load_state", "understand")
+    graph.add_edge("understand", "policy_decide")
+    graph.add_edge("policy_decide", "authz_gate")
+    graph.add_edge("authz_gate", "execute")
+    graph.add_edge("execute", "compose")
+    graph.add_edge("compose", "verify")
+    graph.add_edge("verify", "persist")
+    graph.add_edge("persist", END)
+    return graph.compile()
+
+
+def _wrap_graph_node(
+    *,
+    name: str,
+    fn: NodeFn,
+    trace_decision: TraceDecision,
+    run_id: str,
+    trace_context: Mapping[str, str],
+    record_run: bool,
+    state_holder: GraphStateHolder,
+) -> NodeFn:
+    async def _wrapped(state: ChatGraphState) -> ChatGraphState:
+        updated = await _run_node(name, cast(ChatGraphState, state), fn)
+        state_holder["state"] = updated
+        _record_state_reason_code(updated, source=name)
+        await _emit_node_trace(
+            trace_decision=trace_decision,
+            run_id=run_id,
+            node=name,
+            state=updated,
+            trace_context=trace_context,
+        )
+        if record_run:
+            append_checkpoint(run_id, name, updated)
+        return updated
+
+    return _wrapped
 
 
 def _record_state_reason_code(state: ChatGraphState, *, source: str) -> None:
@@ -1490,14 +1499,27 @@ def _extract_user_id(request: dict[str, Any]) -> str | None:
     user_id = client.get("user_id") if isinstance(client, dict) else None
     if isinstance(user_id, str) and user_id.strip():
         return user_id.strip()
+    if isinstance(user_id, int):
+        return str(user_id)
     return None
 
 
 def _resolve_session_id(request: dict[str, Any]) -> str:
     raw = request.get("session_id")
-    if isinstance(raw, str) and raw.strip():
-        return raw.strip()
+    if isinstance(raw, str):
+        session_id = raw.strip()
+        if _is_valid_session_id(session_id):
+            return session_id
     user_id = _extract_user_id(request)
     if user_id:
         return f"u:{user_id}:default"
     return "anon:default"
+
+
+def _is_valid_session_id(session_id: str) -> bool:
+    candidate = str(session_id or "").strip()
+    if not candidate:
+        return False
+    if len(candidate) > _SESSION_ID_MAX_LEN:
+        return False
+    return _SESSION_ID_PATTERN.fullmatch(candidate) is not None

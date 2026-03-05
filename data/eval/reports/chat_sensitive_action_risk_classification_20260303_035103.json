@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-03-03T03:51:03.741488+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_actions/sensitive_action_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "action_total": 0,
+    "unknown_risk_total": 0,
+    "high_risk_without_stepup_total": 0,
+    "irreversible_not_high_risk_total": 0,
+    "missing_actor_total": 0,
+    "missing_target_total": 0,
+    "risk_distribution": {
+      "LOW": 0,
+      "MEDIUM": 0,
+      "HIGH": 0,
+      "UNKNOWN": 0
+    },
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_unknown_risk_total": 0,
+      "max_high_risk_without_stepup_total": 0,
+      "max_irreversible_not_high_risk_total": 0,
+      "max_missing_actor_total": 0,
+      "max_missing_target_total": 0,
+      "max_stale_minutes": 60.0
+    }
+  }
+}

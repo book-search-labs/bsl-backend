@@ -1,0 +1,67 @@
+{
+  "generated_at": "2026-03-04T04:02:27.131917+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_trust/source_conflict_user_messages.jsonl",
+  "source": {
+    "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_trust/source_conflict_user_messages.jsonl",
+    "window_hours": 24,
+    "limit": 50000,
+    "baseline_report": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/services/query-service/tests/fixtures/chat_source_conflict_safe_abstention_baseline_v1.json"
+  },
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "high_conflict_total": 0,
+    "should_abstain_total": 0,
+    "abstain_total": 0,
+    "abstain_compliance_ratio": 1.0,
+    "unsafe_definitive_total": 0,
+    "missing_standard_phrase_total": 0,
+    "missing_source_link_total": 0,
+    "missing_reason_code_total": 0,
+    "message_quality_ratio": 1.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "derived": {
+    "summary": {
+      "window_size": 0,
+      "event_total": 0,
+      "high_conflict_total": 0,
+      "should_abstain_total": 0,
+      "abstain_total": 0,
+      "abstain_compliance_ratio": 1.0,
+      "unsafe_definitive_total": 0,
+      "missing_standard_phrase_total": 0,
+      "missing_source_link_total": 0,
+      "missing_reason_code_total": 0,
+      "message_quality_ratio": 1.0,
+      "latest_event_time": null,
+      "stale_minutes": 999999.0
+    }
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "baseline_failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_unsafe_definitive_total": 1000000,
+      "min_abstain_compliance_ratio": 0.0,
+      "max_missing_standard_phrase_total": 1000000,
+      "max_missing_source_link_total": 1000000,
+      "max_missing_reason_code_total": 1000000,
+      "min_message_quality_ratio": 0.0,
+      "max_stale_minutes": 1000000.0,
+      "max_should_abstain_total_drop": 10,
+      "max_abstain_total_drop": 10,
+      "max_unsafe_definitive_total_increase": 0,
+      "max_abstain_compliance_ratio_drop": 0.05,
+      "max_missing_standard_phrase_total_increase": 0,
+      "max_missing_source_link_total_increase": 0,
+      "max_missing_reason_code_total_increase": 0,
+      "max_message_quality_ratio_drop": 0.05,
+      "max_stale_minutes_increase": 30.0
+    }
+  }
+}

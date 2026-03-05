@@ -1157,6 +1157,13 @@ If supported, the server should treat it as:
 - `POST /admin/shipments/{shipmentId}/status`
 - `POST /admin/support/tickets/{ticketId}/status`
 
+## Index Writer Admin (v1)
+- `POST /admin/os-sync/repair`
+  - Body: `material_ids[]`, `action` (`upsert|delete`, default `upsert`)
+  - Enqueues standard outbox event (`material.upsert_requested` or `material.delete_requested`)
+- `GET /admin/os-sync/status`
+  - Returns lag, recent failures, DLQ/processing counters, reconcile stats
+
 ---
 
 ## Minimal Smoke Commands (Local)

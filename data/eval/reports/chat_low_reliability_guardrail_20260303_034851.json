@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-03-03T03:48:51.222535+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_trust/guardrail_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "low_sensitive_total": 0,
+    "low_sensitive_block_total": 0,
+    "low_sensitive_execute_total": 0,
+    "low_sensitive_guardrail_ratio": 1.0,
+    "invalid_decision_total": 0,
+    "missing_policy_version_total": 0,
+    "missing_reason_code_total": 0,
+    "policy_version_total": 0,
+    "intent_distribution": [],
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_low_sensitive_execute_total": 0,
+      "min_low_sensitive_guardrail_ratio": 1.0,
+      "max_invalid_decision_total": 0,
+      "max_missing_policy_version_total": 0,
+      "max_missing_reason_code_total": 0,
+      "max_stale_minutes": 60.0
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "generated_at": "2026-03-03T16:57:18.206069+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/actionability/repair_loop_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "repair_required_total": 0,
+    "repair_triggered_total": 0,
+    "repair_trigger_coverage_ratio": 1.0,
+    "repair_success_total": 0,
+    "repair_success_rate": 1.0,
+    "repair_failed_total": 0,
+    "repair_fail_closed_total": 0,
+    "fail_closed_enforcement_ratio": 1.0,
+    "repair_trigger_missing_total": 0,
+    "fail_closed_missing_total": 0,
+    "attempt_limit_violation_total": 0,
+    "slot_gap_before_total": 0,
+    "slot_gap_after_total": 0,
+    "slot_gap_reduced_total": 0,
+    "slot_gap_reduction_ratio": 1.0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "max_repair_attempts": 2,
+      "min_window": 0,
+      "min_event_total": 0,
+      "min_repair_trigger_coverage_ratio": 0.0,
+      "min_repair_success_rate": 0.0,
+      "min_fail_closed_enforcement_ratio": 0.0,
+      "min_slot_gap_reduction_ratio": 0.0,
+      "max_repair_trigger_missing_total": 1000000,
+      "max_fail_closed_missing_total": 1000000,
+      "max_attempt_limit_violation_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

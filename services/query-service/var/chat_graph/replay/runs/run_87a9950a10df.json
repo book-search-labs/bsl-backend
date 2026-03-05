@@ -1,0 +1,297 @@
+{
+  "run_id": "run_87a9950a10df",
+  "trace_id": "0401798176f84f63b4620051772109c5",
+  "request_id": "0401798176f84f63b4620051772109c5-6fe92303b1e269bf",
+  "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+  "status": "done",
+  "started_at": 1772670208,
+  "updated_at": 1772670209,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "환불 정책 알려줘"
+    },
+    "history": [
+      {
+        "role": "user",
+        "content": "김정욱 책 검색해줘"
+      },
+      {
+        "role": "assistant",
+        "content": "'김정욱' 검색 결과입니다.\n1) 中共軍事思想之硏究 (김정욱 / nlk:CDM000000001) · 유사도 14.18"
+      },
+      {
+        "role": "user",
+        "content": "문화 책 검색해줘"
+      },
+      {
+        "role": "assistant",
+        "content": "'문화' 검색 결과입니다.\n1) 초등영어교육의 영미문화지도에 관한 연구 (한은경 / nlk:CDM200900003) · 유사도 16.09\n2) 族譜家訓集粹 (문화건설위원회 연합보문화기금국학문헌관 / nlk:CMO000000222) · 유사도 7.64\n3) 辭彙 (문화도서공사편심위원회 / nlk:CMO000000792) · 유사도 6.89"
+      }
+    ],
+    "options": {
+      "stream": true,
+      "top_k": 6
+    },
+    "trace_id": "0401798176f84f63b4620051772109c5",
+    "request_id": "0401798176f84f63b4620051772109c5-6fe92303b1e269bf",
+    "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "0401798176f84f63b4620051772109c5",
+    "request_id": "0401798176f84f63b4620051772109c5-6fe92303b1e269bf",
+    "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "환불 정책 알려줘"
+      },
+      "history": [
+        {
+          "role": "user",
+          "content": "김정욱 책 검색해줘"
+        },
+        {
+          "role": "assistant",
+          "content": "'김정욱' 검색 결과입니다.\n1) 中共軍事思想之硏究 (김정욱 / nlk:CDM000000001) · 유사도 14.18"
+        },
+        {
+          "role": "user",
+          "content": "문화 책 검색해줘"
+        },
+        {
+          "role": "assistant",
+          "content": "'문화' 검색 결과입니다.\n1) 초등영어교육의 영미문화지도에 관한 연구 (한은경 / nlk:CDM200900003) · 유사도 16.09\n2) 族譜家訓集粹 (문화건설위원회 연합보문화기금국학문헌관 / nlk:CMO000000222) · 유사도 7.64\n3) 辭彙 (문화도서공사편심위원회 / nlk:CMO000000792) · 유사도 6.89"
+        }
+      ],
+      "options": {
+        "stream": true,
+        "top_k": 6
+      },
+      "trace_id": "0401798176f84f63b4620051772109c5",
+      "request_id": "0401798176f84f63b4620051772109c5-6fe92303b1e269bf",
+      "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772670209,
+      "state_hash": "70b27ae680ea93e2",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "0401798176f84f63b4620051772109c5",
+        "request_id": "0401798176f84f63b4620051772109c5-6fe92303b1e269bf",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772670209,
+      "state_hash": "dd975126cc70981e",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "0401798176f84f63b4620051772109c5",
+        "request_id": "0401798176f84f63b4620051772109c5-6fe92303b1e269bf",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "REFUND",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772670209,
+      "state_hash": "1ad6d362dd6e394a",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "0401798176f84f63b4620051772109c5",
+        "request_id": "0401798176f84f63b4620051772109c5-6fe92303b1e269bf",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "REFUND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772670209,
+      "state_hash": "1ad6d362dd6e394a",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "0401798176f84f63b4620051772109c5",
+        "request_id": "0401798176f84f63b4620051772109c5-6fe92303b1e269bf",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "REFUND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772670209,
+      "state_hash": "a3602b5ccfe261e8",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "0401798176f84f63b4620051772109c5",
+        "request_id": "0401798176f84f63b4620051772109c5-6fe92303b1e269bf",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "REFUND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772670209,
+      "state_hash": "a3602b5ccfe261e8",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "0401798176f84f63b4620051772109c5",
+        "request_id": "0401798176f84f63b4620051772109c5-6fe92303b1e269bf",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "REFUND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772670209,
+      "state_hash": "a3602b5ccfe261e8",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "0401798176f84f63b4620051772109c5",
+        "request_id": "0401798176f84f63b4620051772109c5-6fe92303b1e269bf",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "REFUND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772670209,
+      "state_hash": "a566017004f43aeb",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "0401798176f84f63b4620051772109c5",
+        "request_id": "0401798176f84f63b4620051772109c5-6fe92303b1e269bf",
+        "session_id": "de496390-ae40-47ca-bf8b-1590aab4482d",
+        "intent": "REFUND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "0401798176f84f63b4620051772109c5",
+    "request_id": "0401798176f84f63b4620051772109c5-6fe92303b1e269bf",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "환불/반품 조건을 요약해드릴게요.\n- 결제 완료/배송 준비 단계에서 전체 취소 시 상품금액과 배송비를 환불합니다.\n- 배송 중/배송 완료 이후에는 환불 사유에 따라 환불 금액이 달라집니다.\n- 판매자 귀책(파손/오배송/하자/지연)은 배송비 포함 환불이 가능합니다.\n- 단순 변심은 반품비가 차감되며, 기본 배송 3,000원, 빠른 배송 5,000원 기준으로 계산됩니다.\n- 최종 환불액은 '상품금액 + 환불배송비 - 반품비'로 계산됩니다.\n- 무료배송 기준은 20,000원입니다.\n주문번호를 알려주시면 해당 주문 기준 예상 환불 금액을 바로 조회해드릴 수 있어요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:refund_policy:1772670209",
+        "doc_id": "tool:refund_policy",
+        "chunk_id": "tool:refund_policy:1772670209",
+        "title": "refund_policy 실시간 조회",
+        "url": "POLICY / commerce-refund-guide",
+        "snippet": "refund policy summary: order status, reason code, return fee, shipping refund (조회시각: 2026-03-05T00:23:29.006600+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:refund_policy:1772670209"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "0401798176f84f63b4620051772109c5",
+    "request_id": "0401798176f84f63b4620051772109c5-6fe92303b1e269bf",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "환불/반품 조건을 요약해드릴게요.\n- 결제 완료/배송 준비 단계에서 전체 취소 시 상품금액과 배송비를 환불합니다.\n- 배송 중/배송 완료 이후에는 환불 사유에 따라 환불 금액이 달라집니다.\n- 판매자 귀책(파손/오배송/하자/지연)은 배송비 포함 환불이 가능합니다.\n- 단순 변심은 반품비가 차감되며, 기본 배송 3,000원, 빠른 배송 5,000원 기준으로 계산됩니다.\n- 최종 환불액은 '상품금액 + 환불배송비 - 반품비'로 계산됩니다.\n- 무료배송 기준은 20,000원입니다.\n주문번호를 알려주시면 해당 주문 기준 예상 환불 금액을 바로 조회해드릴 수 있어요."
+    },
+    "sources": [
+      {
+        "citation_key": "tool:refund_policy:1772670209",
+        "doc_id": "tool:refund_policy",
+        "chunk_id": "tool:refund_policy:1772670209",
+        "title": "refund_policy 실시간 조회",
+        "url": "POLICY / commerce-refund-guide",
+        "snippet": "refund policy summary: order status, reason code, return fee, shipping refund (조회시각: 2026-03-05T00:23:29.006600+00:00)"
+      }
+    ],
+    "citations": [
+      "tool:refund_policy:1772670209"
+    ]
+  }
+}

@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import { streamChat, submitChatFeedback, type ChatSource, type ChatStreamMeta } from '../../api/chat'
+import { parseChatBookCandidates } from './bookCandidates'
+import { CHAT_COMMAND_CATALOG } from './commandCatalog'
+import { parseChatOrderCandidates } from './orderCandidates'
 import { OPEN_FLOATING_CHAT_EVENT, type OpenFloatingChatDetail } from './chatWidgetEvents'
 
 type ChatBubble = {
@@ -76,8 +79,10 @@ function nextActionPrompt(action?: string) {
 
 export default function FloatingChatWidget() {
   const location = useLocation()
+  const navigate = useNavigate()
   const sessionIdRef = useRef(uuid())
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const bodyRef = useRef<HTMLDivElement | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<ChatBubble[]>([])
   const [input, setInput] = useState('')
@@ -98,8 +103,9 @@ export default function FloatingChatWidget() {
     return base
   }, [location.pathname])
 
-  const send = useCallback(async () => {
-    const trimmed = input.trim()
+  const send = useCallback(async (presetInput?: string) => {
+    const rawInput = typeof presetInput === 'string' ? presetInput : input
+    const trimmed = rawInput.trim()
     if (!trimmed || streaming) return
 
     const userMessage: ChatBubble = { id: uuid(), role: 'user', content: trimmed }
@@ -203,6 +209,13 @@ export default function FloatingChatWidget() {
   }, [isOpen])
 
   useEffect(() => {
+    if (!isOpen) return
+    const body = bodyRef.current
+    if (!body) return
+    body.scrollTop = body.scrollHeight
+  }, [isOpen, messages])
+
+  useEffect(() => {
     const handleOpen = (event: Event) => {
       const customEvent = event as CustomEvent<OpenFloatingChatDetail>
       const prompt = customEvent.detail?.prompt?.trim()
@@ -235,67 +248,150 @@ export default function FloatingChatWidget() {
             </button>
           </header>
 
-          <div className="floating-chat-body">
+          <div ref={bodyRef} className="floating-chat-body">
             {messages.length === 0 ? (
               <div className="floating-chat-empty">
                 <div className="floating-chat-empty-title">무엇을 도와드릴까요?</div>
                 <div className="floating-chat-prompt-list">
                   {prompts.map((prompt) => (
-                    <button key={prompt} type="button" className="floating-chat-prompt" onClick={() => setInput(prompt)}>
+                    <button key={prompt} type="button" className="floating-chat-prompt" onClick={() => void send(prompt)}>
                       {prompt}
                     </button>
                   ))}
                 </div>
+                <div className="floating-chat-command-guide">
+                  <div className="floating-chat-command-guide-title">가능한 명령어 예시</div>
+                  <div className="floating-chat-command-categories">
+                    {CHAT_COMMAND_CATALOG.map((category) => (
+                      <div key={category.title} className="floating-chat-command-category">
+                        <div className="floating-chat-command-category-title">{category.title}</div>
+                        <div className="floating-chat-command-example-list">
+                          {category.examples.map((example) => (
+                            <button
+                              key={`${category.title}-${example}`}
+                              type="button"
+                              className="floating-chat-command-example"
+                              onClick={() => void send(example)}
+                            >
+                              {example}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="floating-chat-thread">
-                {messages.map((message) => (
-                  <article key={message.id} className={`floating-chat-bubble ${message.role}`}>
-                    <div className="floating-chat-role">{message.role === 'user' ? '나' : '책봇'}</div>
-                    {message.role === 'assistant' ? (
-                      <div className="floating-chat-badges">
-                        <span className="floating-chat-badge">{statusLabel(message.status)}</span>
-                        {riskLabel(message.riskBand) ? <span className="floating-chat-badge muted">{riskLabel(message.riskBand)}</span> : null}
-                      </div>
-                    ) : null}
-                    <div className="floating-chat-content">{message.content || '...'}</div>
-                    {message.role === 'assistant' && nextActionLabel(message.nextAction) ? (
-                      <div className="floating-chat-action-hint">
-                        {nextActionLabel(message.nextAction)}
-                        {message.retryAfterMs && message.retryAfterMs > 0 ? ` (${Math.ceil(message.retryAfterMs / 1000)}초 후)` : ''}
-                        {typeof message.fallbackCount === 'number' && message.fallbackCount > 0 ? ` · 실패 누적 ${message.fallbackCount}회` : ''}
-                      </div>
-                    ) : null}
-                    {message.role === 'assistant' && message.escalated && nextActionPrompt(message.nextAction) ? (
-                      <button type="button" className="floating-chat-action-btn" onClick={() => setInput(nextActionPrompt(message.nextAction) ?? '')}>
-                        상담 전환 진행
-                      </button>
-                    ) : null}
-                    {message.role === 'assistant' && message.sources && message.sources.length > 0 ? (
-                      <details className="floating-chat-sources">
-                        <summary>근거 출처 {message.sources.length}건</summary>
-                        <ul>
-                          {message.sources.map((source) => (
-                            <li key={source.citation_key}>
-                              <strong>{source.title || source.doc_id}</strong>
-                              <p>{source.snippet}</p>
-                            </li>
-                          ))}
-                        </ul>
-                      </details>
-                    ) : null}
-                    {message.role === 'assistant' ? (
-                      <div className="floating-chat-feedback">
-                        <button type="button" onClick={() => submitFeedback(message.id, 'up')}>
-                          👍
+                {messages.map((message) => {
+                  const bookCandidates = message.role === 'assistant' ? parseChatBookCandidates(message.content) : []
+                  const orderCandidates = message.role === 'assistant' ? parseChatOrderCandidates(message.content) : []
+                  return (
+                    <article key={message.id} className={`floating-chat-bubble ${message.role}`}>
+                      <div className="floating-chat-role">{message.role === 'user' ? '나' : '책봇'}</div>
+                      {message.role === 'assistant' ? (
+                        <div className="floating-chat-badges">
+                          <span className="floating-chat-badge">{statusLabel(message.status)}</span>
+                          {riskLabel(message.riskBand) ? <span className="floating-chat-badge muted">{riskLabel(message.riskBand)}</span> : null}
+                        </div>
+                      ) : null}
+                      <div className="floating-chat-content">{message.content || '...'}</div>
+                      {message.role === 'assistant' && bookCandidates.length > 0 ? (
+                        <div className="floating-chat-books">
+                          <div className="floating-chat-books-title">도서 상세 바로가기</div>
+                          <div className="floating-chat-books-list">
+                            {bookCandidates.map((candidate) => (
+                              <button
+                                key={`${message.id}-${candidate.docId}`}
+                                type="button"
+                                className="floating-chat-book-btn"
+                                onClick={() => {
+                                  setIsOpen(false)
+                                  navigate(`/book/${encodeURIComponent(candidate.docId)}?from=chat`)
+                                }}
+                              >
+                                <span className="floating-chat-book-title">
+                                  {candidate.rank ? `${candidate.rank}) ` : ''}
+                                  {candidate.title}
+                                </span>
+                                <span className="floating-chat-book-meta">
+                                  {candidate.author ? `${candidate.author} · ` : ''}
+                                  {candidate.docId}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      {message.role === 'assistant' && orderCandidates.length > 0 ? (
+                        <div className="floating-chat-orders">
+                          <div className="floating-chat-orders-title">주문 상세 바로가기</div>
+                          <div className="floating-chat-orders-list">
+                            {orderCandidates.map((candidate) => (
+                              <button
+                                key={`${message.id}-order-${candidate.orderId}`}
+                                type="button"
+                                className="floating-chat-order-btn"
+                                onClick={() => {
+                                  setIsOpen(false)
+                                  navigate(`/orders/${candidate.orderId}?from=chat`)
+                                }}
+                              >
+                                <span className="floating-chat-order-title">
+                                  {candidate.rank ? `${candidate.rank}) ` : ''}
+                                  {candidate.orderNo || `주문ID ${candidate.orderId}`}
+                                </span>
+                                <span className="floating-chat-order-meta">
+                                  {[candidate.status, candidate.amount, `주문ID ${candidate.orderId}`].filter(Boolean).join(' · ')}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      {message.role === 'assistant' && nextActionLabel(message.nextAction) ? (
+                        <div className="floating-chat-action-hint">
+                          {nextActionLabel(message.nextAction)}
+                          {message.retryAfterMs && message.retryAfterMs > 0 ? ` (${Math.ceil(message.retryAfterMs / 1000)}초 후)` : ''}
+                          {typeof message.fallbackCount === 'number' && message.fallbackCount > 0 ? ` · 실패 누적 ${message.fallbackCount}회` : ''}
+                        </div>
+                      ) : null}
+                      {message.role === 'assistant' && message.escalated && nextActionPrompt(message.nextAction) ? (
+                        <button
+                          type="button"
+                          className="floating-chat-action-btn"
+                          onClick={() => void send(nextActionPrompt(message.nextAction) ?? '')}
+                        >
+                          상담 전환 진행
                         </button>
-                        <button type="button" onClick={() => submitFeedback(message.id, 'down')}>
-                          👎
-                        </button>
-                      </div>
-                    ) : null}
-                  </article>
-                ))}
+                      ) : null}
+                      {message.role === 'assistant' && message.sources && message.sources.length > 0 ? (
+                        <details className="floating-chat-sources">
+                          <summary>근거 출처 {message.sources.length}건</summary>
+                          <ul>
+                            {message.sources.map((source) => (
+                              <li key={source.citation_key}>
+                                <strong>{source.title || source.doc_id}</strong>
+                                <p>{source.snippet}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      ) : null}
+                      {message.role === 'assistant' ? (
+                        <div className="floating-chat-feedback">
+                          <button type="button" onClick={() => submitFeedback(message.id, 'up')}>
+                            👍
+                          </button>
+                          <button type="button" onClick={() => submitFeedback(message.id, 'down')}>
+                            👎
+                          </button>
+                        </div>
+                      ) : null}
+                    </article>
+                  )
+                })}
               </div>
             )}
           </div>

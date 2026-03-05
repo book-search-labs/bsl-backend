@@ -1,0 +1,261 @@
+{
+  "run_id": "run_e527a2d166d8",
+  "trace_id": "3b88aca5a5071eb9d95198905b845f09",
+  "request_id": "3b88aca5a5071eb9d95198905b845f09-64977d83b16c7eab",
+  "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+  "status": "done",
+  "started_at": 1772668365,
+  "updated_at": 1772668365,
+  "request_payload": {
+    "version": "v1",
+    "message": {
+      "role": "user",
+      "content": "내 주문목록 보여줘"
+    },
+    "history": [
+      {
+        "role": "user",
+        "content": "배송 언제와?"
+      },
+      {
+        "role": "assistant",
+        "content": "배송 조회를 위해 주문번호(예: ORD20260222XXXX) 또는 주문 ID를 입력해 주세요."
+      }
+    ],
+    "options": {
+      "stream": true,
+      "top_k": 6
+    },
+    "trace_id": "3b88aca5a5071eb9d95198905b845f09",
+    "request_id": "3b88aca5a5071eb9d95198905b845f09-64977d83b16c7eab",
+    "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+    "client": {
+      "user_id": "1"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "3b88aca5a5071eb9d95198905b845f09",
+    "request_id": "3b88aca5a5071eb9d95198905b845f09-64977d83b16c7eab",
+    "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+    "input": {
+      "version": "v1",
+      "message": {
+        "role": "user",
+        "content": "내 주문목록 보여줘"
+      },
+      "history": [
+        {
+          "role": "user",
+          "content": "배송 언제와?"
+        },
+        {
+          "role": "assistant",
+          "content": "배송 조회를 위해 주문번호(예: ORD20260222XXXX) 또는 주문 ID를 입력해 주세요."
+        }
+      ],
+      "options": {
+        "stream": true,
+        "top_k": 6
+      },
+      "trace_id": "3b88aca5a5071eb9d95198905b845f09",
+      "request_id": "3b88aca5a5071eb9d95198905b845f09-64977d83b16c7eab",
+      "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+      "client": {
+        "user_id": "1"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772668365,
+      "state_hash": "42801af26f922b0b",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "3b88aca5a5071eb9d95198905b845f09",
+        "request_id": "3b88aca5a5071eb9d95198905b845f09-64977d83b16c7eab",
+        "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772668365,
+      "state_hash": "67b33ee7eb4e8205",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "3b88aca5a5071eb9d95198905b845f09",
+        "request_id": "3b88aca5a5071eb9d95198905b845f09-64977d83b16c7eab",
+        "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+        "intent": "ORDER",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772668365,
+      "state_hash": "93d0ca01aa2e578f",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "3b88aca5a5071eb9d95198905b845f09",
+        "request_id": "3b88aca5a5071eb9d95198905b845f09-64977d83b16c7eab",
+        "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+        "intent": "ORDER",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772668365,
+      "state_hash": "93d0ca01aa2e578f",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "3b88aca5a5071eb9d95198905b845f09",
+        "request_id": "3b88aca5a5071eb9d95198905b845f09-64977d83b16c7eab",
+        "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+        "intent": "ORDER",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772668365,
+      "state_hash": "74d7f2aa9f5808e5",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "3b88aca5a5071eb9d95198905b845f09",
+        "request_id": "3b88aca5a5071eb9d95198905b845f09-64977d83b16c7eab",
+        "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+        "intent": "ORDER",
+        "route": "FALLBACK",
+        "reason_code": "RAG_NO_CHUNKS",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "RAG_NO_CHUNKS",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772668365,
+      "state_hash": "74d7f2aa9f5808e5",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "3b88aca5a5071eb9d95198905b845f09",
+        "request_id": "3b88aca5a5071eb9d95198905b845f09-64977d83b16c7eab",
+        "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+        "intent": "ORDER",
+        "route": "FALLBACK",
+        "reason_code": "RAG_NO_CHUNKS",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "RAG_NO_CHUNKS",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772668365,
+      "state_hash": "74d7f2aa9f5808e5",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "3b88aca5a5071eb9d95198905b845f09",
+        "request_id": "3b88aca5a5071eb9d95198905b845f09-64977d83b16c7eab",
+        "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+        "intent": "ORDER",
+        "route": "FALLBACK",
+        "reason_code": "RAG_NO_CHUNKS",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "RAG_NO_CHUNKS",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772668365,
+      "state_hash": "c75bcfa2b66c4899",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "3b88aca5a5071eb9d95198905b845f09",
+        "request_id": "3b88aca5a5071eb9d95198905b845f09-64977d83b16c7eab",
+        "session_id": "b3a61ce9-5354-4c34-842c-f3d5cd419ed9",
+        "intent": "ORDER",
+        "route": "FALLBACK",
+        "reason_code": "RAG_NO_CHUNKS",
+        "pending_action": null,
+        "response": {
+          "status": "insufficient_evidence",
+          "reason_code": "RAG_NO_CHUNKS",
+          "next_action": "REFINE_QUERY"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "3b88aca5a5071eb9d95198905b845f09",
+    "request_id": "3b88aca5a5071eb9d95198905b845f09-64977d83b16c7eab",
+    "status": "insufficient_evidence",
+    "reason_code": "RAG_NO_CHUNKS",
+    "recoverable": true,
+    "next_action": "REFINE_QUERY",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "현재 근거 문서를 찾지 못해 확정 답변을 드리기 어렵습니다. 키워드나 조건을 조금 더 구체적으로 입력해 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "fallback_count": 1,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "3b88aca5a5071eb9d95198905b845f09",
+    "request_id": "3b88aca5a5071eb9d95198905b845f09-64977d83b16c7eab",
+    "answer": {
+      "role": "assistant",
+      "content": "현재 근거 문서를 찾지 못해 확정 답변을 드리기 어렵습니다. 키워드나 조건을 조금 더 구체적으로 입력해 주세요."
+    },
+    "sources": [],
+    "citations": [],
+    "status": "insufficient_evidence",
+    "reason_code": "RAG_NO_CHUNKS",
+    "recoverable": true,
+    "next_action": "REFINE_QUERY",
+    "retry_after_ms": null,
+    "fallback_count": 1,
+    "escalated": false
+  }
+}

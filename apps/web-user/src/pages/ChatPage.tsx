@@ -1,7 +1,11 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button, Card, Col, Form, Row, Spinner } from 'react-bootstrap'
+import { useNavigate } from 'react-router-dom'
 
 import { streamChat, submitChatFeedback, type ChatSource, type ChatStreamMeta } from '../api/chat'
+import { parseChatBookCandidates } from '../components/chat/bookCandidates'
+import { CHAT_COMMAND_CATALOG } from '../components/chat/commandCatalog'
+import { parseChatOrderCandidates } from '../components/chat/orderCandidates'
 
 const DEFAULT_PROMPTS = [
   '배송 정책을 알려줘',
@@ -79,14 +83,17 @@ function nextActionPrompt(action?: string) {
 }
 
 export default function ChatPage() {
+  const navigate = useNavigate()
   const sessionIdRef = useRef(uuid())
+  const bodyRef = useRef<HTMLDivElement | null>(null)
   const [messages, setMessages] = useState<ChatBubble[]>([])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleSend = useCallback(async () => {
-    const trimmed = input.trim()
+  const handleSend = useCallback(async (presetInput?: string) => {
+    const rawInput = typeof presetInput === 'string' ? presetInput : input
+    const trimmed = rawInput.trim()
     if (!trimmed || isStreaming) return
 
     const userMessage: ChatBubble = { id: uuid(), role: 'user', content: trimmed }
@@ -170,7 +177,7 @@ export default function ChatPage() {
           },
         },
       )
-    } catch (err) {
+    } catch {
       setError('챗봇 응답을 불러오지 못했습니다.')
     } finally {
       setIsStreaming(false)
@@ -191,105 +198,188 @@ export default function ChatPage() {
     [],
   )
 
+  useEffect(() => {
+    const body = bodyRef.current
+    if (!body) return
+    body.scrollTop = body.scrollHeight
+  }, [messages])
+
   return (
     <div className="chat-page">
       <Row className="gy-4">
         <Col lg={8}>
           <Card className="chat-card">
-            <Card.Body className="chat-body">
+            <Card.Body ref={bodyRef} className="chat-body">
               {messages.length === 0 ? (
                 <div className="chat-empty">
                   <h2>근거 기반 도서 도우미</h2>
                   <p>근거 문서가 확인된 경우에만 답변을 제공합니다.</p>
                   <div className="chat-prompts">
                     {DEFAULT_PROMPTS.map((prompt) => (
-                      <Button key={prompt} variant="outline-dark" onClick={() => setInput(prompt)}>
+                      <Button key={prompt} variant="outline-dark" onClick={() => void handleSend(prompt)}>
                         {prompt}
                       </Button>
                     ))}
                   </div>
+                  <div className="chat-command-guide">
+                    <div className="chat-command-guide-title">가능한 명령어 예시</div>
+                    <div className="chat-command-guide-grid">
+                      {CHAT_COMMAND_CATALOG.map((category) => (
+                        <div key={category.title} className="chat-command-card">
+                          <div className="chat-command-card-title">{category.title}</div>
+                          <div className="chat-command-card-list">
+                            {category.examples.map((example) => (
+                              <Button
+                                key={`${category.title}-${example}`}
+                                size="sm"
+                                variant="outline-secondary"
+                                onClick={() => void handleSend(example)}
+                              >
+                                {example}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="chat-thread">
-                  {messages.map((message) => (
-                    <div key={message.id} className={`chat-bubble ${message.role}`}>
-                      <div className="chat-bubble-inner">
-                        <div className="chat-role">{message.role === 'user' ? '나' : '챗봇'}</div>
-                        {message.role === 'assistant' ? (
-                          <div className="d-flex flex-wrap gap-2 mb-2">
-                            <span className={`badge ${statusBadgeVariant(message.status)}`}>{statusLabel(message.status)}</span>
-                            {riskBandLabel(message.riskBand) ? (
-                              <span className="badge text-bg-light border">{riskBandLabel(message.riskBand)}</span>
-                            ) : null}
-                          </div>
-                        ) : null}
-                        <div className="chat-content">{message.content || (message.role === 'assistant' ? '...' : '')}</div>
-                        {message.role === 'assistant' && nextActionHint(message.nextAction, message.retryAfterMs) ? (
-                          <div className="chat-note">
-                            {nextActionHint(message.nextAction, message.retryAfterMs)}
-                            {typeof message.fallbackCount === 'number' && message.fallbackCount > 0
-                              ? ` · 실패 누적 ${message.fallbackCount}회`
-                              : ''}
-                          </div>
-                        ) : null}
-                        {message.role === 'assistant' && message.escalated && nextActionPrompt(message.nextAction) ? (
-                          <div className="chat-feedback">
-                            <Button
-                              size="sm"
-                              variant="outline-primary"
-                              onClick={() => setInput(nextActionPrompt(message.nextAction) ?? '')}
-                            >
-                              상담 전환 진행
-                            </Button>
-                          </div>
-                        ) : null}
-                        {message.role === 'assistant' && message.sources && message.sources.length > 0 ? (
-                          <div className="chat-sources">
-                            <div className="chat-sources-title">근거 출처</div>
-                            <div className="chat-sources-grid">
-                              {message.sources.map((source) => (
-                                <div key={source.citation_key} className="chat-source-card">
-                                  <div className="chat-source-title">{source.title || source.doc_id}</div>
-                                  <div className="chat-source-snippet">{source.snippet}</div>
-                                  {source.url ? (
-                                    <a href={source.url} target="_blank" rel="noreferrer">
-                                      보기
-                                    </a>
-                                  ) : null}
-                                  <div className="chat-source-cite">[{source.citation_key}]</div>
-                                </div>
-                              ))}
+                  {messages.map((message) => {
+                    const bookCandidates = message.role === 'assistant' ? parseChatBookCandidates(message.content) : []
+                    const orderCandidates = message.role === 'assistant' ? parseChatOrderCandidates(message.content) : []
+                    return (
+                      <div key={message.id} className={`chat-bubble ${message.role}`}>
+                        <div className="chat-bubble-inner">
+                          <div className="chat-role">{message.role === 'user' ? '나' : '챗봇'}</div>
+                          {message.role === 'assistant' ? (
+                            <div className="d-flex flex-wrap gap-2 mb-2">
+                              <span className={`badge ${statusBadgeVariant(message.status)}`}>{statusLabel(message.status)}</span>
+                              {riskBandLabel(message.riskBand) ? (
+                                <span className="badge text-bg-light border">{riskBandLabel(message.riskBand)}</span>
+                              ) : null}
                             </div>
-                          </div>
-                        ) : null}
-                        {message.role === 'assistant' ? (
-                          <div className="chat-feedback">
-                            <Button
-                              size="sm"
-                              variant="outline-success"
-                              onClick={() => handleFeedback(message.id, 'up')}
-                            >
-                              👍
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline-danger"
-                              onClick={() => handleFeedback(message.id, 'down', { hallucination: true })}
-                            >
-                              👎
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline-secondary"
-                              onClick={() => handleFeedback(message.id, 'down', { insufficient: true })}
-                            >
-                              근거 부족
-                            </Button>
-                          </div>
-                        ) : null}
+                          ) : null}
+                          <div className="chat-content">{message.content || (message.role === 'assistant' ? '...' : '')}</div>
+                          {message.role === 'assistant' && bookCandidates.length > 0 ? (
+                            <div className="chat-book-links">
+                              <div className="chat-book-links-title">도서 상세 바로가기</div>
+                              <div className="chat-book-link-list">
+                                {bookCandidates.map((candidate) => (
+                                  <button
+                                    key={`${message.id}-${candidate.docId}`}
+                                    type="button"
+                                    className="chat-book-link-btn"
+                                    onClick={() => {
+                                      navigate(`/book/${encodeURIComponent(candidate.docId)}?from=chat`)
+                                    }}
+                                  >
+                                    <span className="chat-book-link-title">
+                                      {candidate.rank ? `${candidate.rank}) ` : ''}
+                                      {candidate.title}
+                                    </span>
+                                    <span className="chat-book-link-meta">
+                                      {candidate.author ? `${candidate.author} · ` : ''}
+                                      {candidate.docId}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                          {message.role === 'assistant' && orderCandidates.length > 0 ? (
+                            <div className="chat-order-links">
+                              <div className="chat-order-links-title">주문 상세 바로가기</div>
+                              <div className="chat-order-link-list">
+                                {orderCandidates.map((candidate) => (
+                                  <button
+                                    key={`${message.id}-order-${candidate.orderId}`}
+                                    type="button"
+                                    className="chat-order-link-btn"
+                                    onClick={() => {
+                                      navigate(`/orders/${candidate.orderId}?from=chat`)
+                                    }}
+                                  >
+                                    <span className="chat-order-link-title">
+                                      {candidate.rank ? `${candidate.rank}) ` : ''}
+                                      {candidate.orderNo || `주문ID ${candidate.orderId}`}
+                                    </span>
+                                    <span className="chat-order-link-meta">
+                                      {[candidate.status, candidate.amount, `주문ID ${candidate.orderId}`].filter(Boolean).join(' · ')}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                          {message.role === 'assistant' && nextActionHint(message.nextAction, message.retryAfterMs) ? (
+                            <div className="chat-note">
+                              {nextActionHint(message.nextAction, message.retryAfterMs)}
+                              {typeof message.fallbackCount === 'number' && message.fallbackCount > 0
+                                ? ` · 실패 누적 ${message.fallbackCount}회`
+                                : ''}
+                            </div>
+                          ) : null}
+                          {message.role === 'assistant' && message.escalated && nextActionPrompt(message.nextAction) ? (
+                            <div className="chat-feedback">
+                              <Button
+                                size="sm"
+                                variant="outline-primary"
+                                onClick={() => void handleSend(nextActionPrompt(message.nextAction) ?? '')}
+                              >
+                                상담 전환 진행
+                              </Button>
+                            </div>
+                          ) : null}
+                          {message.role === 'assistant' && message.sources && message.sources.length > 0 ? (
+                            <div className="chat-sources">
+                              <div className="chat-sources-title">근거 출처</div>
+                              <div className="chat-sources-grid">
+                                {message.sources.map((source) => (
+                                  <div key={source.citation_key} className="chat-source-card">
+                                    <div className="chat-source-title">{source.title || source.doc_id}</div>
+                                    <div className="chat-source-snippet">{source.snippet}</div>
+                                    {source.url ? (
+                                      <a href={source.url} target="_blank" rel="noreferrer">
+                                        보기
+                                      </a>
+                                    ) : null}
+                                    <div className="chat-source-cite">[{source.citation_key}]</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                          {message.role === 'assistant' ? (
+                            <div className="chat-feedback">
+                              <Button
+                                size="sm"
+                                variant="outline-success"
+                                onClick={() => handleFeedback(message.id, 'up')}
+                              >
+                                👍
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline-danger"
+                                onClick={() => handleFeedback(message.id, 'down', { hallucination: true })}
+                              >
+                                👎
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline-secondary"
+                                onClick={() => handleFeedback(message.id, 'down', { insufficient: true })}
+                              >
+                                근거 부족
+                              </Button>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </Card.Body>

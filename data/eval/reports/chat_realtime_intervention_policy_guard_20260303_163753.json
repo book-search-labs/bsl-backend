@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-03-03T16:37:53.658950+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/session_quality/intervention_events.jsonl",
+  "summary": {
+    "window_size": 0,
+    "event_total": 0,
+    "intervention_triggered_total": 0,
+    "intervention_trigger_rate": 0.0,
+    "at_risk_total": 0,
+    "degraded_total": 0,
+    "at_risk_intervention_missing_total": 0,
+    "degraded_intervention_missing_total": 0,
+    "escalation_required_total": 0,
+    "escalation_missing_total": 0,
+    "latest_event_time": null,
+    "stale_minutes": 999999.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "escalation_failure_threshold": 3,
+      "min_window": 0,
+      "min_event_total": 0,
+      "min_intervention_trigger_rate": 0.0,
+      "max_at_risk_intervention_missing_total": 1000000,
+      "max_degraded_intervention_missing_total": 1000000,
+      "max_escalation_missing_total": 1000000,
+      "max_stale_minutes": 1000000.0
+    }
+  }
+}

@@ -67,6 +67,24 @@ class Settings:
 
     job_poll_interval_sec: int
 
+    os_sync_enabled: bool
+    os_sync_topic: str
+    os_sync_group_id: str
+    kafka_bootstrap_servers: str
+    os_sync_handler: str
+    os_sync_poll_timeout_sec: float
+    os_sync_consumer_batch_size: int
+    os_sync_retry_max: int
+    os_sync_retry_backoff_sec: float
+    os_sync_dlq_enabled: bool
+    os_sync_dlq_suffix: str
+
+    os_sync_reconcile_enabled: bool
+    os_sync_reconcile_interval_sec: int
+    os_sync_reconcile_batch_size: int
+    os_sync_reconcile_max_enqueue: int
+    os_sync_reconcile_checkpoint_name: str
+
     @staticmethod
     def from_env() -> "Settings":
         mapping = os.environ.get("BOOKS_DOC_MAPPING", str(ROOT_DIR / "infra/opensearch/books_doc_v1.mapping.json"))
@@ -98,6 +116,22 @@ class Settings:
             refresh_interval_bulk=os.environ.get("OS_REFRESH_INTERVAL_BULK", "-1"),
             refresh_interval_post=os.environ.get("OS_REFRESH_INTERVAL_POST", "1s"),
             job_poll_interval_sec=_coerce_int(os.environ.get("JOB_POLL_INTERVAL_SEC"), 2),
+            os_sync_enabled=_coerce_bool(os.environ.get("OS_SYNC_ENABLED"), False),
+            os_sync_topic=os.environ.get("OS_SYNC_TOPIC", "os.sync.material.v1"),
+            os_sync_group_id=os.environ.get("OS_SYNC_GROUP_ID", "index-writer-os-sync-v1"),
+            kafka_bootstrap_servers=os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+            os_sync_handler=os.environ.get("OS_SYNC_HANDLER", "index-writer-os-sync-v1"),
+            os_sync_poll_timeout_sec=_coerce_float(os.environ.get("OS_SYNC_POLL_TIMEOUT_SEC"), 1.0),
+            os_sync_consumer_batch_size=_coerce_int(os.environ.get("OS_SYNC_CONSUMER_BATCH_SIZE"), 100),
+            os_sync_retry_max=_coerce_int(os.environ.get("OS_SYNC_RETRY_MAX"), 3),
+            os_sync_retry_backoff_sec=_coerce_float(os.environ.get("OS_SYNC_RETRY_BACKOFF_SEC"), 0.5),
+            os_sync_dlq_enabled=_coerce_bool(os.environ.get("OS_SYNC_DLQ_ENABLED"), True),
+            os_sync_dlq_suffix=os.environ.get("OS_SYNC_DLQ_SUFFIX", ".dlq"),
+            os_sync_reconcile_enabled=_coerce_bool(os.environ.get("OS_SYNC_RECONCILE_ENABLED"), True),
+            os_sync_reconcile_interval_sec=_coerce_int(os.environ.get("OS_SYNC_RECONCILE_INTERVAL_SEC"), 600),
+            os_sync_reconcile_batch_size=_coerce_int(os.environ.get("OS_SYNC_RECONCILE_BATCH_SIZE"), 500),
+            os_sync_reconcile_max_enqueue=_coerce_int(os.environ.get("OS_SYNC_RECONCILE_MAX_ENQUEUE"), 500),
+            os_sync_reconcile_checkpoint_name=os.environ.get("OS_SYNC_RECONCILE_CHECKPOINT_NAME", "material_os_sync"),
         )
 
     def override(self, params: Optional[Dict[str, Any]]) -> "Settings":
@@ -134,4 +168,28 @@ class Settings:
             refresh_interval_bulk=str(params.get("refresh_interval_bulk", self.refresh_interval_bulk)),
             refresh_interval_post=str(params.get("refresh_interval_post", self.refresh_interval_post)),
             job_poll_interval_sec=int(params.get("job_poll_interval_sec", self.job_poll_interval_sec)),
+            os_sync_enabled=bool(params.get("os_sync_enabled", self.os_sync_enabled)),
+            os_sync_topic=str(params.get("os_sync_topic", self.os_sync_topic)),
+            os_sync_group_id=str(params.get("os_sync_group_id", self.os_sync_group_id)),
+            kafka_bootstrap_servers=str(params.get("kafka_bootstrap_servers", self.kafka_bootstrap_servers)),
+            os_sync_handler=str(params.get("os_sync_handler", self.os_sync_handler)),
+            os_sync_poll_timeout_sec=float(params.get("os_sync_poll_timeout_sec", self.os_sync_poll_timeout_sec)),
+            os_sync_consumer_batch_size=int(params.get("os_sync_consumer_batch_size", self.os_sync_consumer_batch_size)),
+            os_sync_retry_max=int(params.get("os_sync_retry_max", self.os_sync_retry_max)),
+            os_sync_retry_backoff_sec=float(params.get("os_sync_retry_backoff_sec", self.os_sync_retry_backoff_sec)),
+            os_sync_dlq_enabled=bool(params.get("os_sync_dlq_enabled", self.os_sync_dlq_enabled)),
+            os_sync_dlq_suffix=str(params.get("os_sync_dlq_suffix", self.os_sync_dlq_suffix)),
+            os_sync_reconcile_enabled=bool(params.get("os_sync_reconcile_enabled", self.os_sync_reconcile_enabled)),
+            os_sync_reconcile_interval_sec=int(
+                params.get("os_sync_reconcile_interval_sec", self.os_sync_reconcile_interval_sec)
+            ),
+            os_sync_reconcile_batch_size=int(
+                params.get("os_sync_reconcile_batch_size", self.os_sync_reconcile_batch_size)
+            ),
+            os_sync_reconcile_max_enqueue=int(
+                params.get("os_sync_reconcile_max_enqueue", self.os_sync_reconcile_max_enqueue)
+            ),
+            os_sync_reconcile_checkpoint_name=str(
+                params.get("os_sync_reconcile_checkpoint_name", self.os_sync_reconcile_checkpoint_name)
+            ),
         )

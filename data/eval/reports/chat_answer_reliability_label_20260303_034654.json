@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-03-03T03:46:54.624942+00:00",
+  "events_jsonl": "/Users/seungyoonkim/sideProjects/bsl/bsl-backend/var/chat_trust/answer_reliability_audit.jsonl",
+  "summary": {
+    "window_size": 0,
+    "answer_total": 0,
+    "high_total": 0,
+    "medium_total": 0,
+    "low_total": 0,
+    "invalid_level_total": 0,
+    "label_shift_total": 0,
+    "label_shift_ratio": 0.0,
+    "low_definitive_claim_total": 0,
+    "low_missing_guidance_total": 0,
+    "low_missing_reason_total": 0,
+    "low_guardrail_coverage_ratio": 1.0,
+    "latest_event_time": null,
+    "stale_minutes": 0.0
+  },
+  "gate": {
+    "enabled": true,
+    "pass": true,
+    "failures": [],
+    "thresholds": {
+      "min_window": 0,
+      "max_invalid_level_total": 0,
+      "max_label_shift_ratio": 0.1,
+      "max_low_definitive_claim_total": 0,
+      "max_low_missing_guidance_total": 0,
+      "max_low_missing_reason_total": 0,
+      "min_low_guardrail_coverage_ratio": 0.95,
+      "max_stale_minutes": 60.0
+    }
+  }
+}

@@ -1,0 +1,251 @@
+{
+  "run_id": "run_2c0ffd6869c3",
+  "trace_id": "trace_test",
+  "request_id": "req_test",
+  "session_id": "sess-clear-success-1",
+  "status": "done",
+  "started_at": 1772666489,
+  "updated_at": 1772666489,
+  "request_payload": {
+    "session_id": "sess-clear-success-1",
+    "message": {
+      "role": "user",
+      "content": "환불 정책 알려줘"
+    },
+    "client": {
+      "user_id": "1",
+      "locale": "ko-KR"
+    }
+  },
+  "replay_payload": {
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "session_id": "sess-clear-success-1",
+    "input": {
+      "session_id": "sess-clear-success-1",
+      "message": {
+        "role": "user",
+        "content": "환불 정책 알려줘"
+      },
+      "client": {
+        "user_id": "1",
+        "locale": "ko-KR"
+      }
+    },
+    "policy_decision": {},
+    "tool_stub_seed": null
+  },
+  "checkpoints": [
+    {
+      "node": "load_state",
+      "updated_at": 1772666489,
+      "state_hash": "695b4697fcb852c3",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-clear-success-1",
+        "intent": null,
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "understand",
+      "updated_at": 1772666489,
+      "state_hash": "6c9fb528b6a94c24",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-clear-success-1",
+        "intent": "REFUND",
+        "route": null,
+        "reason_code": null,
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "policy_decide",
+      "updated_at": 1772666489,
+      "state_hash": "9184ded0b7394955",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-clear-success-1",
+        "intent": "REFUND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "authz_gate",
+      "updated_at": 1772666489,
+      "state_hash": "9184ded0b7394955",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-clear-success-1",
+        "intent": "REFUND",
+        "route": "EXECUTE",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": null
+      }
+    },
+    {
+      "node": "execute",
+      "updated_at": 1772666489,
+      "state_hash": "6225341cdf5beb7c",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-clear-success-1",
+        "intent": "REFUND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "compose",
+      "updated_at": 1772666489,
+      "state_hash": "6225341cdf5beb7c",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-clear-success-1",
+        "intent": "REFUND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "verify",
+      "updated_at": 1772666489,
+      "state_hash": "6225341cdf5beb7c",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 1,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-clear-success-1",
+        "intent": "REFUND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "updated_at": 1772666489,
+      "state_hash": "a9dd9e96e447b818",
+      "state": {
+        "schema_version": "v1",
+        "state_version": 2,
+        "trace_id": "trace_test",
+        "request_id": "req_test",
+        "session_id": "sess-clear-success-1",
+        "intent": "REFUND",
+        "route": "ANSWER",
+        "reason_code": "OK",
+        "pending_action": null,
+        "response": {
+          "status": "ok",
+          "reason_code": "OK",
+          "next_action": "NONE"
+        }
+      }
+    }
+  ],
+  "response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "answer": {
+      "role": "assistant",
+      "content": "환불은 주문 상태에 따라 가능합니다."
+    },
+    "sources": [
+      {
+        "citation_key": "chunk-1",
+        "doc_id": "doc-1",
+        "chunk_id": "chunk-1",
+        "title": "환불 정책",
+        "url": "https://example.com/refund",
+        "snippet": "환불 정책 안내"
+      }
+    ],
+    "citations": [
+      "chunk-1"
+    ],
+    "fallback_count": 0,
+    "escalated": false
+  },
+  "stage": "persist",
+  "stub_response": {
+    "version": "v1",
+    "trace_id": "trace_test",
+    "request_id": "req_test",
+    "answer": {
+      "role": "assistant",
+      "content": "환불은 주문 상태에 따라 가능합니다."
+    },
+    "sources": [
+      {
+        "citation_key": "chunk-1",
+        "doc_id": "doc-1",
+        "chunk_id": "chunk-1",
+        "title": "환불 정책",
+        "url": "https://example.com/refund",
+        "snippet": "환불 정책 안내"
+      }
+    ],
+    "citations": [
+      "chunk-1"
+    ],
+    "status": "ok",
+    "reason_code": "OK",
+    "recoverable": false,
+    "next_action": "NONE",
+    "retry_after_ms": null,
+    "fallback_count": 0,
+    "escalated": false
+  }
+}

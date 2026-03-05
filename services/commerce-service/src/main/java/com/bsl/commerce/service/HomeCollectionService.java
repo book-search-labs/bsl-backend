@@ -16,9 +16,9 @@ public class HomeCollectionService {
     private static final int MAX_LIMIT_PER_SECTION = 24;
 
     private static final List<SectionMeta> SECTION_ORDER = List.of(
-        new SectionMeta("bestseller", "BESTSELLER", "이번 주 베스트셀러", "지금 가장 많이 찾는 도서를 모았습니다.", "/search?q=베스트셀러"),
+        new SectionMeta("bestseller", "BESTSELLER", "이번 주 베스트셀러", "지금 가장 많이 찾는 도서를 모았습니다.", "/collections/bestseller"),
         new SectionMeta("new", "NEW_RELEASE", "신간 · 예약구매", "곧 출간하는 도서를 예약구매로 먼저 만나보세요.", "/preorders"),
-        new SectionMeta("editor", "EDITOR_PICK", "에디터 추천", "감성적인 에세이와 문학 작품을 큐레이션했습니다.", "/search?q=에세이")
+        new SectionMeta("editor", "EDITOR_PICK", "에디터 추천", "감성적인 에세이와 문학 작품을 큐레이션했습니다.", "/collections/editor")
     );
 
     private final HomeCollectionRepository homeCollectionRepository;

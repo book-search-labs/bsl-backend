@@ -1,0 +1,178 @@
+{
+  "version": "v1",
+  "generated_at": "2026-03-01T02:24:45.044779+00:00",
+  "baseline": {
+    "ndcg_10": 0.0,
+    "mrr_10": 0.0,
+    "recall_100": 0.0,
+    "zero_result_rate": 0.0,
+    "query_count": 100
+  },
+  "candidate": {
+    "ndcg_10": 0.0,
+    "mrr_10": 0.0,
+    "recall_100": 0.0,
+    "zero_result_rate": 0.0,
+    "query_count": 100,
+    "rerank_call_rate": 0.0,
+    "rerank_latency_ms_avg": 1.37,
+    "rerank_latency_ms_p50": 1.0,
+    "rerank_latency_ms_p95": 5.0
+  },
+  "diff": {
+    "ndcg_10": 0.0,
+    "mrr_10": 0.0,
+    "recall_100": 0.0,
+    "zero_result_rate": 0.0,
+    "query_count": 0
+  },
+  "improved_cases": [
+    {
+      "qid": "r001",
+      "query": "harry potter philosopher stone",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r002",
+      "query": "harry poter philospher stone",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r003",
+      "query": "hp 1",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r004",
+      "query": "harry potter chamber of secrets",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r005",
+      "query": "harry potter 2",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r006",
+      "query": "harry potter vol 2",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r007",
+      "query": "clean code robert martin",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r008",
+      "query": "clean c0de robert martin",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r009",
+      "query": "domain driven design",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r010",
+      "query": "ddd eric evans",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r011",
+      "query": "elasticsearch guide",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r012",
+      "query": "elastic search guide",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r013",
+      "query": "effective java",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r014",
+      "query": "refactoring martin fowler",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r015",
+      "query": "design patterns gof",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r016",
+      "query": "head first design patterns",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r017",
+      "query": "python data analysis",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r018",
+      "query": "sql tuning",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r019",
+      "query": "kafka streams",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    },
+    {
+      "qid": "r020",
+      "query": "microservices patterns",
+      "baseline_ndcg": 0.0,
+      "candidate_ndcg": 0.0,
+      "delta": 0.0
+    }
+  ],
+  "regressed_cases": [],
+  "baseline_name": "fused_rrf",
+  "candidate_name": "rerank",
+  "baseline_mode": "fused",
+  "candidate_mode": "rerank",
+  "baseline_rerank_options": {},
+  "candidate_rerank_options": {}
+}

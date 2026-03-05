@@ -28,6 +28,8 @@ outbox:
       search_dwell: ${OUTBOX_RELAY_TOPIC_SEARCH_DWELL:search_dwell_v1}
       ac_impression: ${OUTBOX_RELAY_TOPIC_AC_IMPRESSION:ac_impression_v1}
       ac_select: ${OUTBOX_RELAY_TOPIC_AC_SELECT:ac_select_v1}
+      "material.upsert_requested": ${OUTBOX_RELAY_TOPIC_MATERIAL_UPSERT_REQUESTED:os.sync.material.v1}
+      "material.delete_requested": ${OUTBOX_RELAY_TOPIC_MATERIAL_DELETE_REQUESTED:os.sync.material.v1}
 
 logging:
   level:
