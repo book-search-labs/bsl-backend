@@ -31,6 +31,15 @@ public class OrderRepository {
         return rows.isEmpty() ? null : rows.get(0);
     }
 
+    public Map<String, Object> findOrderByIdForUpdate(long orderId) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+            orderSelectSql()
+                + "FROM orders WHERE order_id = ? FOR UPDATE",
+            orderId
+        );
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
     public Map<String, Object> findOrderByIdempotencyKey(String idempotencyKey) {
         if (idempotencyKey == null) {
             return null;

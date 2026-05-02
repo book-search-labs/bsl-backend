@@ -69,6 +69,14 @@ public class PaymentRepository {
         return rows.isEmpty() ? null : rows.get(0);
     }
 
+    public Map<String, Object> findPaymentForUpdate(long paymentId) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+            paymentSelectSql() + " WHERE payment_id = ? FOR UPDATE",
+            paymentId
+        );
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
     public Map<String, Object> findPaymentByCheckoutSessionId(String checkoutSessionId) {
         if (checkoutSessionId == null || checkoutSessionId.isBlank() || !hasCheckoutSessionIdColumn()) {
             return null;
@@ -76,6 +84,17 @@ public class PaymentRepository {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
             paymentSelectSql() + " WHERE checkout_session_id = ?",
             checkoutSessionId
+        );
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    public Map<String, Object> findPaymentByProviderPaymentId(String providerPaymentId) {
+        if (providerPaymentId == null || providerPaymentId.isBlank()) {
+            return null;
+        }
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+            paymentSelectSql() + " WHERE provider_payment_id = ?",
+            providerPaymentId
         );
         return rows.isEmpty() ? null : rows.get(0);
     }

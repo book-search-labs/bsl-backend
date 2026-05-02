@@ -30,6 +30,15 @@ public class SettlementRepository {
         return rows.isEmpty() ? null : rows.get(0);
     }
 
+    public Map<String, Object> findCycleByIdForUpdate(long cycleId) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+            "SELECT cycle_id, start_date, end_date, status, generated_at, created_at, updated_at "
+                + "FROM settlement_cycle WHERE cycle_id = ? FOR UPDATE",
+            cycleId
+        );
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
     public Map<String, Object> findCycleByPeriod(LocalDate startDate, LocalDate endDate) {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
             "SELECT cycle_id, start_date, end_date, status, generated_at, created_at, updated_at "
@@ -73,7 +82,7 @@ public class SettlementRepository {
             ps.setObject(1, startDate);
             ps.setObject(2, endDate);
             ps.setString(3, status);
-            ps.setTimestamp(4, Timestamp.from(java.time.Instant.now()));
+            ps.setTimestamp(4, "GENERATED".equals(status) ? Timestamp.from(java.time.Instant.now()) : null);
             return ps;
         }, keyHolder);
         Number key = keyHolder.getKey();
@@ -88,15 +97,32 @@ public class SettlementRepository {
         );
     }
 
-    public boolean insertLine(long cycleId, long sellerId, int grossSales, int totalFees, int netAmount, String status) {
+    public void markCycleGenerated(long cycleId) {
+        jdbcTemplate.update(
+            "UPDATE settlement_cycle SET status = 'GENERATED', generated_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP "
+                + "WHERE cycle_id = ?",
+            cycleId
+        );
+    }
+
+    public boolean insertLine(
+        long cycleId,
+        long sellerId,
+        int grossSales,
+        int totalFees,
+        int refundAmount,
+        int netAmount,
+        String status
+    ) {
         try {
             jdbcTemplate.update(
-                "INSERT INTO settlement_line (cycle_id, seller_id, gross_sales, total_fees, net_amount, status) "
-                    + "VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO settlement_line (cycle_id, seller_id, gross_sales, total_fees, refund_amount, net_amount, status) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 cycleId,
                 sellerId,
                 grossSales,
                 totalFees,
+                refundAmount,
                 netAmount,
                 status
             );
@@ -108,7 +134,7 @@ public class SettlementRepository {
 
     public List<Map<String, Object>> listLines(long cycleId) {
         return jdbcTemplate.queryForList(
-            "SELECT settlement_line_id, cycle_id, seller_id, gross_sales, total_fees, net_amount, status, created_at, updated_at "
+            "SELECT settlement_line_id, cycle_id, seller_id, gross_sales, total_fees, refund_amount, net_amount, status, created_at, updated_at "
                 + "FROM settlement_line WHERE cycle_id = ? ORDER BY seller_id",
             cycleId
         );
@@ -116,7 +142,7 @@ public class SettlementRepository {
 
     public List<Map<String, Object>> listLinesForPayout(long cycleId) {
         return jdbcTemplate.queryForList(
-            "SELECT settlement_line_id, cycle_id, seller_id, gross_sales, total_fees, net_amount, status "
+            "SELECT settlement_line_id, cycle_id, seller_id, gross_sales, total_fees, refund_amount, net_amount, status "
                 + "FROM settlement_line WHERE cycle_id = ? AND status <> 'PAID' ORDER BY seller_id",
             cycleId
         );
@@ -156,7 +182,8 @@ public class SettlementRepository {
 
     public List<Map<String, Object>> listPayoutsByCycle(long cycleId) {
         return jdbcTemplate.queryForList(
-            "SELECT p.payout_id, p.settlement_line_id, p.status, p.paid_at, p.failure_reason, p.created_at, p.updated_at "
+            "SELECT p.payout_id, p.settlement_line_id, p.status, p.paid_at, p.failure_reason, p.created_at, p.updated_at, "
+                + "l.cycle_id, l.seller_id, l.net_amount, l.status AS line_status "
                 + "FROM payout p "
                 + "JOIN settlement_line l ON l.settlement_line_id = p.settlement_line_id "
                 + "WHERE l.cycle_id = ? ORDER BY p.payout_id",
@@ -171,6 +198,18 @@ public class SettlementRepository {
                 + "FROM payout p "
                 + "JOIN settlement_line l ON l.settlement_line_id = p.settlement_line_id "
                 + "WHERE p.payout_id = ? LIMIT 1",
+            payoutId
+        );
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    public Map<String, Object> findPayoutByIdForUpdate(long payoutId) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+            "SELECT p.payout_id, p.settlement_line_id, p.status, p.paid_at, p.failure_reason, p.created_at, p.updated_at, "
+                + "l.cycle_id, l.net_amount, l.status AS line_status "
+                + "FROM payout p "
+                + "JOIN settlement_line l ON l.settlement_line_id = p.settlement_line_id "
+                + "WHERE p.payout_id = ? LIMIT 1 FOR UPDATE",
             payoutId
         );
         return rows.isEmpty() ? null : rows.get(0);

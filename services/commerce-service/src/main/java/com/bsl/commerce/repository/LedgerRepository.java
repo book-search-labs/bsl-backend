@@ -3,7 +3,6 @@ package com.bsl.commerce.repository;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import org.springframework.dao.DuplicateKeyException;
@@ -26,12 +25,15 @@ public class LedgerRepository {
         int amount,
         String currency,
         Instant occurredAt,
+        LocalDate availableOn,
+        String referenceType,
         String referenceId
     ) {
         try {
             jdbcTemplate.update(
-                "INSERT INTO ledger_entry (seller_id, order_id, payment_id, entry_type, amount, currency, occurred_at, reference_id) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO ledger_entry "
+                    + "(seller_id, order_id, payment_id, entry_type, amount, currency, occurred_at, available_on, reference_type, reference_id) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 sellerId,
                 orderId,
                 paymentId,
@@ -39,6 +41,8 @@ public class LedgerRepository {
                 amount,
                 currency,
                 Timestamp.from(occurredAt == null ? Instant.now() : occurredAt),
+                availableOn,
+                referenceType,
                 referenceId
             );
             return true;
@@ -48,17 +52,16 @@ public class LedgerRepository {
     }
 
     public List<Map<String, Object>> aggregateSellerLines(LocalDate startDate, LocalDate endDateInclusive) {
-        LocalDateTime from = startDate.atStartOfDay();
-        LocalDateTime toExclusive = endDateInclusive.plusDays(1).atStartOfDay();
         return jdbcTemplate.queryForList(
             "SELECT seller_id, "
                 + "SUM(CASE WHEN entry_type = 'SALE' THEN amount ELSE 0 END) AS gross_sales, "
-                + "SUM(CASE WHEN entry_type IN ('PG_FEE', 'PLATFORM_FEE', 'REFUND') THEN amount ELSE 0 END) AS total_fees "
+                + "SUM(CASE WHEN entry_type IN ('PG_FEE', 'PLATFORM_FEE') THEN amount ELSE 0 END) AS total_fees, "
+                + "SUM(CASE WHEN entry_type = 'REFUND' THEN amount ELSE 0 END) AS refund_amount "
                 + "FROM ledger_entry "
-                + "WHERE occurred_at >= ? AND occurred_at < ? "
+                + "WHERE available_on >= ? AND available_on <= ? "
                 + "GROUP BY seller_id",
-            Timestamp.valueOf(from),
-            Timestamp.valueOf(toExclusive)
+            startDate,
+            endDateInclusive
         );
     }
 }

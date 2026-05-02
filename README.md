@@ -98,6 +98,7 @@ Optional gates (set env vars before running):
 
 ## Docs to read first
 
+- `docs/TECHNICAL_GUIDE.md` — repo-wide technical guide and reading map
 - `Plans.md` — milestone roadmap
 - `docs/ARCHITECTURE.md` — system design and flows
 - `docs/API_SURFACE.md` — endpoint catalog

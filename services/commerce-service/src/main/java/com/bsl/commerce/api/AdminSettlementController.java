@@ -51,6 +51,14 @@ public class AdminSettlementController {
         return response;
     }
 
+    @PostMapping("/cycles/{cycleId}/generate")
+    public Map<String, Object> generateCycle(@PathVariable long cycleId) {
+        Map<String, Object> result = settlementService.generateCycle(cycleId);
+        Map<String, Object> response = base();
+        response.putAll(result);
+        return response;
+    }
+
     @GetMapping("/cycles/{cycleId}")
     public Map<String, Object> getCycle(@PathVariable long cycleId) {
         Map<String, Object> result = settlementService.getCycleDetail(cycleId);
@@ -95,6 +103,14 @@ public class AdminSettlementController {
     @PostMapping("/cycles/{cycleId}/payouts")
     public Map<String, Object> runPayouts(@PathVariable long cycleId) {
         Map<String, Object> result = settlementService.runPayouts(cycleId);
+        Map<String, Object> response = base();
+        response.putAll(result);
+        return response;
+    }
+
+    @PostMapping("/payouts/{payoutId}/pay")
+    public Map<String, Object> payPayout(@PathVariable long payoutId) {
+        Map<String, Object> result = settlementService.payPayout(payoutId);
         Map<String, Object> response = base();
         response.putAll(result);
         return response;

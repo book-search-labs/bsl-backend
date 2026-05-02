@@ -57,6 +57,17 @@ public class PaymentController {
         return response;
     }
 
+    @PostMapping("/payments/{paymentId}/confirm")
+    public Map<String, Object> confirmPayment(@PathVariable long paymentId, @RequestBody PaymentConfirmRequest request) {
+        if (request == null || request.amount == null || request.paymentKey == null || request.paymentKey.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "bad_request", "paymentKey와 amount는 필수입니다.");
+        }
+        Map<String, Object> payment = paymentService.confirmPayment(paymentId, request.paymentKey, request.amount);
+        Map<String, Object> response = base();
+        response.put("payment", payment);
+        return response;
+    }
+
     @PostMapping("/payments/{paymentId}/mock/complete")
     public Map<String, Object> mockComplete(@PathVariable long paymentId, @RequestBody PaymentMockRequest request) {
         if (!environment.acceptsProfiles(Profiles.of("dev"))) {
@@ -121,5 +132,10 @@ public class PaymentController {
 
     public static class PaymentMockRequest {
         public String result;
+    }
+
+    public static class PaymentConfirmRequest {
+        public String paymentKey;
+        public Integer amount;
     }
 }
