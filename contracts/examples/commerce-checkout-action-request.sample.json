@@ -1,0 +1,5 @@
+{
+  "reason": "operator requested recovery after downstream timeout",
+  "operator_id": "ops-001",
+  "approval_id": "approval-20260508-001"
+}

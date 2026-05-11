@@ -10,11 +10,15 @@ import com.bsl.commerce.repository.CartRepository;
 import com.bsl.commerce.repository.OrderRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HexFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class OrderService {
     private static final int DEFAULT_LIST_LIMIT = 20;
+    private static final long PAYMENT_TTL_SECONDS = 15 * 60;
 
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
@@ -171,6 +176,8 @@ public class OrderService {
             shippingSnapshotJson,
             orderNo
         );
+        Instant paymentExpiresAt = Instant.now().plusSeconds(PAYMENT_TTL_SECONDS);
+        orderRepository.updatePaymentExpiresAt(orderId, paymentExpiresAt);
 
         List<OrderRepository.OrderItemInsert> inserts = new ArrayList<>();
         for (OrderItemSnapshot snapshot : snapshots) {
@@ -204,8 +211,34 @@ public class OrderService {
             );
         }
 
-        orderRepository.insertOrderEvent(orderId, "ORDER_CREATED", null, OrderStatus.PAYMENT_PENDING.name(), null, null);
+        recordTransition(
+            orderId,
+            "ORDER_CREATED",
+            null,
+            OrderStatus.PAYMENT_PENDING.name(),
+            null,
+            "USER",
+            String.valueOf(userId),
+            Map.of(
+                "order_id", orderId,
+                "order_no", orderNo,
+                "user_id", userId,
+                "status", OrderStatus.PAYMENT_PENDING.name(),
+                "payment_expires_at", paymentExpiresAt.toString()
+            )
+        );
         orderRepository.insertOrderEvent(orderId, "INVENTORY_RESERVED", null, OrderStatus.PAYMENT_PENDING.name(), null, null);
+        insertOutboxEvent(
+            "OrderReserved",
+            orderId,
+            Map.of(
+                "order_id", orderId,
+                "order_no", orderNo,
+                "user_id", userId,
+                "status", OrderStatus.PAYMENT_PENDING.name(),
+                "payment_expires_at", paymentExpiresAt.toString()
+            )
+        );
 
         if (resolvedCartId != null) {
             cartRepository.clearCart(resolvedCartId);
@@ -252,7 +285,7 @@ public class OrderService {
 
     @Transactional
     public Map<String, Object> cancelOrder(long userId, long orderId, String reason) {
-        Map<String, Object> order = orderRepository.findOrderById(orderId);
+        Map<String, Object> order = orderRepository.findOrderByIdForUpdate(orderId);
         if (order == null) {
             throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "주문 정보를 찾을 수 없습니다.");
         }
@@ -278,33 +311,57 @@ public class OrderService {
         }
 
         orderRepository.updateOrderStatus(orderId, OrderStatus.CANCELED.name());
-        orderRepository.insertOrderEvent(
+        recordTransition(
             orderId,
             "ORDER_CANCELED",
             status.name(),
             OrderStatus.CANCELED.name(),
             reason,
-            null
+            "USER",
+            String.valueOf(userId),
+            Map.of(
+                "order_id", orderId,
+                "user_id", userId,
+                "from_status", status.name(),
+                "to_status", OrderStatus.CANCELED.name(),
+                "reason", reason == null ? "" : reason
+            )
         );
+        insertOutboxEvent("OrderCanceled", orderId, Map.of("order_id", orderId, "user_id", userId, "status", OrderStatus.CANCELED.name()));
         return orderRepository.findOrderById(orderId);
     }
 
     @Transactional
-    public void markPaid(long orderId, String paymentId) {
-        Map<String, Object> order = orderRepository.findOrderById(orderId);
+    public boolean markPaid(long orderId, String paymentId) {
+        Map<String, Object> order = orderRepository.findOrderByIdForUpdate(orderId);
         if (order == null) {
             throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "주문 정보를 찾을 수 없습니다.");
         }
         OrderStatus status = OrderStatus.from(JdbcUtils.asString(order.get("status")));
         if (status == OrderStatus.PAID) {
-            return;
+            return false;
         }
         if (status != OrderStatus.PAYMENT_PENDING) {
             throw new ApiException(HttpStatus.CONFLICT, "invalid_state", "현재 상태에서는 결제를 진행할 수 없습니다.");
         }
         orderRepository.updateOrderStatus(orderId, OrderStatus.PAID.name());
-        orderRepository.insertOrderEvent(orderId, "PAYMENT_SUCCEEDED", status.name(), OrderStatus.PAID.name(), null,
-            paymentId);
+        recordTransition(
+            orderId,
+            "PAYMENT_SUCCEEDED",
+            status.name(),
+            OrderStatus.PAID.name(),
+            null,
+            "SYSTEM",
+            "payment:" + paymentId,
+            Map.of(
+                "order_id", orderId,
+                "payment_id", paymentId,
+                "from_status", status.name(),
+                "to_status", OrderStatus.PAID.name()
+            )
+        );
+        insertOutboxEvent("OrderPaid", orderId, Map.of("order_id", orderId, "payment_id", paymentId, "status", OrderStatus.PAID.name()));
+        return true;
     }
 
     @Transactional
@@ -334,7 +391,7 @@ public class OrderService {
     }
 
     private void transition(long orderId, OrderStatus target, String eventType) {
-        Map<String, Object> order = orderRepository.findOrderById(orderId);
+        Map<String, Object> order = orderRepository.findOrderByIdForUpdate(orderId);
         if (order == null) {
             throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "주문 정보를 찾을 수 없습니다.");
         }
@@ -346,7 +403,73 @@ public class OrderService {
             throw new ApiException(HttpStatus.CONFLICT, "invalid_state", "현재 주문 상태에서는 요청한 처리로 변경할 수 없습니다.");
         }
         orderRepository.updateOrderStatus(orderId, target.name());
-        orderRepository.insertOrderEvent(orderId, eventType, status.name(), target.name(), null, null);
+        recordTransition(
+            orderId,
+            eventType,
+            status.name(),
+            target.name(),
+            null,
+            "SYSTEM",
+            null,
+            Map.of("order_id", orderId, "from_status", status.name(), "to_status", target.name())
+        );
+        insertOutboxEvent("Order" + target.name(), orderId, Map.of("order_id", orderId, "status", target.name()));
+    }
+
+    @Transactional
+    public int expireDueOrders(int limit) {
+        int expired = 0;
+        for (Long orderId : orderRepository.findExpirableOrderIds(limit)) {
+            if (expireOrder(orderId)) {
+                expired++;
+            }
+        }
+        return expired;
+    }
+
+    @Transactional
+    public boolean expireOrder(long orderId) {
+        Map<String, Object> order = orderRepository.findOrderByIdForUpdate(orderId);
+        if (order == null) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "주문 정보를 찾을 수 없습니다.");
+        }
+        OrderStatus status = OrderStatus.from(JdbcUtils.asString(order.get("status")));
+        if (status != OrderStatus.PAYMENT_PENDING) {
+            return false;
+        }
+        Instant paymentExpiresAt = JdbcUtils.asInstant(order.get("payment_expires_at"));
+        if (paymentExpiresAt == null || paymentExpiresAt.isAfter(Instant.now())) {
+            return false;
+        }
+
+        List<Map<String, Object>> items = orderRepository.findOrderItems(orderId);
+        for (Map<String, Object> item : items) {
+            long skuId = JdbcUtils.asLong(item.get("sku_id"));
+            long sellerId = JdbcUtils.asLong(item.get("seller_id"));
+            int qty = JdbcUtils.asInt(item.get("qty"));
+            long orderItemId = JdbcUtils.asLong(item.get("order_item_id"));
+            String releaseKey = "order_" + orderId + "_expire_release_" + orderItemId;
+            inventoryService.release(skuId, sellerId, qty, releaseKey, "ORDER_EXPIRE", String.valueOf(orderId));
+        }
+
+        orderRepository.updateOrderStatus(orderId, OrderStatus.EXPIRED.name());
+        recordTransition(
+            orderId,
+            "ORDER_EXPIRED",
+            status.name(),
+            OrderStatus.EXPIRED.name(),
+            "payment_timeout",
+            "SYSTEM",
+            "order-expire",
+            Map.of(
+                "order_id", orderId,
+                "from_status", status.name(),
+                "to_status", OrderStatus.EXPIRED.name(),
+                "payment_expires_at", paymentExpiresAt.toString()
+            )
+        );
+        insertOutboxEvent("OrderExpired", orderId, Map.of("order_id", orderId, "status", OrderStatus.EXPIRED.name()));
+        return true;
     }
 
     public List<Map<String, Object>> getOrderItems(long orderId) {
@@ -473,6 +596,7 @@ public class OrderService {
         SHIPPED,
         DELIVERED,
         CANCELED,
+        EXPIRED,
         REFUND_PENDING,
         REFUNDED,
         PARTIALLY_REFUNDED;
@@ -491,7 +615,7 @@ public class OrderService {
         public boolean canTransitionTo(OrderStatus target) {
             return switch (this) {
                 case CREATED -> target == PAYMENT_PENDING || target == CANCELED;
-                case PAYMENT_PENDING -> target == PAID || target == CANCELED;
+                case PAYMENT_PENDING -> target == PAID || target == CANCELED || target == EXPIRED;
                 case PAID -> target == READY_TO_SHIP || target == REFUND_PENDING || target == REFUNDED || target == PARTIALLY_REFUNDED;
                 case READY_TO_SHIP -> target == SHIPPED || target == CANCELED || target == REFUND_PENDING;
                 case SHIPPED -> target == DELIVERED || target == PARTIALLY_REFUNDED || target == REFUNDED || target == REFUND_PENDING;
@@ -500,6 +624,40 @@ public class OrderService {
                 case PARTIALLY_REFUNDED -> target == REFUNDED || target == PARTIALLY_REFUNDED || target == REFUND_PENDING;
                 default -> false;
             };
+        }
+    }
+
+    private void recordTransition(
+        long orderId,
+        String eventType,
+        String fromStatus,
+        String toStatus,
+        String reason,
+        String actorType,
+        String actorId,
+        Map<String, Object> payload
+    ) {
+        String payloadJson = JsonUtils.toJson(objectMapper, payload);
+        orderRepository.insertOrderEvent(orderId, eventType, fromStatus, toStatus, reason, payloadJson);
+        orderRepository.insertOrderStatusHistory(orderId, fromStatus, toStatus, reason, actorType, actorId);
+    }
+
+    private void insertOutboxEvent(String eventType, long orderId, Map<String, Object> payload) {
+        orderRepository.insertOutboxEvent(
+            eventType,
+            "ORDER",
+            String.valueOf(orderId),
+            sha256Hex("ORDER:" + orderId + ":" + eventType),
+            JsonUtils.toJson(objectMapper, payload)
+        );
+    }
+
+    private String sha256Hex(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException(ex);
         }
     }
 }

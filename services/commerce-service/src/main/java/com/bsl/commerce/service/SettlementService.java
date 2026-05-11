@@ -47,8 +47,9 @@ public class SettlementService {
             long sellerId = JdbcUtils.asLong(row.get("seller_id"));
             int gross = JdbcUtils.asInt(row.get("gross_sales")) == null ? 0 : JdbcUtils.asInt(row.get("gross_sales"));
             int fees = JdbcUtils.asInt(row.get("total_fees")) == null ? 0 : JdbcUtils.asInt(row.get("total_fees"));
-            int net = gross + fees;
-            settlementRepository.insertLine(cycleId, sellerId, gross, fees, net, "UNPAID");
+            int refunds = JdbcUtils.asInt(row.get("refund_amount")) == null ? 0 : JdbcUtils.asInt(row.get("refund_amount"));
+            int net = gross + fees + refunds;
+            settlementRepository.insertLine(cycleId, sellerId, gross, fees, refunds, net, "UNPAID");
         }
         Metrics.counter("commerce.settlement.cycles.total", "outcome", "generated").increment();
         Metrics.counter("commerce.settlement.lines.total", "outcome", "generated").increment(aggregates.size());
@@ -85,6 +86,13 @@ public class SettlementService {
         return result;
     }
 
+    @Transactional
+    public Map<String, Object> generateCycle(long cycleId) {
+        requireCycle(cycleId);
+        settlementRepository.markCycleGenerated(cycleId);
+        return getCycleDetail(cycleId);
+    }
+
     @Transactional(readOnly = true)
     public List<Map<String, Object>> listLines(long cycleId) {
         requireCycle(cycleId);
@@ -116,7 +124,7 @@ public class SettlementService {
 
     @Transactional
     public Map<String, Object> runPayouts(long cycleId) {
-        Map<String, Object> cycle = requireCycle(cycleId);
+        Map<String, Object> cycle = requireCycleForUpdate(cycleId);
         String status = JdbcUtils.asString(cycle.get("status"));
         if ("PAID".equals(status)) {
             Map<String, Object> result = new HashMap<>();
@@ -175,7 +183,7 @@ public class SettlementService {
 
     @Transactional
     public Map<String, Object> retryPayout(long payoutId) {
-        Map<String, Object> payout = settlementRepository.findPayoutById(payoutId);
+        Map<String, Object> payout = settlementRepository.findPayoutByIdForUpdate(payoutId);
         if (payout == null) {
             throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "정산 지급 정보를 찾을 수 없습니다.");
         }
@@ -220,8 +228,21 @@ public class SettlementService {
         return result;
     }
 
+    @Transactional
+    public Map<String, Object> payPayout(long payoutId) {
+        return retryPayout(payoutId);
+    }
+
     private Map<String, Object> requireCycle(long cycleId) {
         Map<String, Object> cycle = settlementRepository.findCycleById(cycleId);
+        if (cycle == null) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "정산 사이클을 찾을 수 없습니다.");
+        }
+        return cycle;
+    }
+
+    private Map<String, Object> requireCycleForUpdate(long cycleId) {
+        Map<String, Object> cycle = settlementRepository.findCycleByIdForUpdate(cycleId);
         if (cycle == null) {
             throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "정산 사이클을 찾을 수 없습니다.");
         }

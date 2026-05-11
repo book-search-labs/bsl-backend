@@ -61,7 +61,9 @@ Stop infra (removes volumes by default):
 ```
 
 Notes:
-- `./scripts/local_up.sh` uses `compose.yaml` (MySQL + OpenSearch + Dashboards) and seeds demo indices (`SEED_DEMO_DATA=0` to skip).
+- `./scripts/local_up.sh` uses `compose.yaml` (MySQL + OpenSearch + Dashboards), initializes Commerce MSA databases (`ENABLE_COMMERCE_MSA_DB=0` to skip), and seeds demo indices (`SEED_DEMO_DATA=0` to skip).
+- `pg-simulator` is off by default to avoid the `order-service:8092` conflict. Run it with `ENABLE_PG_SIMULATOR=1 ./scripts/local_up.sh`; it binds to `18092`.
+- Commerce MSA smoke: `./scripts/commerce_msa_smoke.sh`; add `RUN_CHECKOUT_SMOKE=1` for normal checkout and `RUN_FAILURE_SMOKE=1` for payment failure/recovery scenarios.
 - `make sample-bootstrap` runs the clone-friendly flow: `compose up` → Flyway `V2` → sample ingest → Flyway `V3+`.
 - `make sample-reset` removes containers + data volumes first, then runs the same `V2 -> sample ingest -> V3+` bootstrap.
 - `scripts/ingest/run_ingest.sh` now syncs `nlk_raw_nodes` to `raw_node` by default (`RAW_NODE_SYNC=1`), so canonical migrations using `raw_node` can consume sample data.

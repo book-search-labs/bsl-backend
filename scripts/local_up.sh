@@ -8,7 +8,8 @@ COMPOSE_PROJECT="${COMPOSE_PROJECT:-bsl-backend}"
 OS_URL="${OS_URL:-http://localhost:9200}"
 MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-localroot}"
 SEED_DEMO_DATA="${SEED_DEMO_DATA:-1}"
-ENABLE_PG_SIMULATOR="${ENABLE_PG_SIMULATOR:-1}"
+ENABLE_PG_SIMULATOR="${ENABLE_PG_SIMULATOR:-0}"
+ENABLE_COMMERCE_MSA_DB="${ENABLE_COMMERCE_MSA_DB:-1}"
 
 print_logs() {
   echo "OpenSearch logs (last 200 lines):"
@@ -51,6 +52,13 @@ for i in $(seq 1 60); do
   fi
   sleep 1
 done
+
+if [ "$ENABLE_COMMERCE_MSA_DB" = "1" ]; then
+  echo "Initializing Commerce MSA databases..."
+  "$SCRIPT_DIR/commerce_msa_db_init.sh"
+else
+  echo "Skipping Commerce MSA database init (ENABLE_COMMERCE_MSA_DB=$ENABLE_COMMERCE_MSA_DB)."
+fi
 
 echo "Bootstrapping indices + aliases..."
 "$SCRIPT_DIR/os_bootstrap_indices_v1_1.sh"

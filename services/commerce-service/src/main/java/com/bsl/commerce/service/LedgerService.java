@@ -4,6 +4,7 @@ import com.bsl.commerce.common.JdbcUtils;
 import com.bsl.commerce.config.PaymentProperties;
 import com.bsl.commerce.repository.LedgerRepository;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
@@ -21,11 +22,24 @@ public class LedgerService {
 
     @Transactional
     public void recordPaymentCaptured(long paymentId, long orderId, List<Map<String, Object>> orderItems, String currency) {
+        recordPaymentCaptured(paymentId, orderId, orderItems, currency, "PAYMENT_CAPTURED");
+    }
+
+    @Transactional
+    public void recordPaymentCaptured(
+        long paymentId,
+        long orderId,
+        List<Map<String, Object>> orderItems,
+        String currency,
+        String referenceType
+    ) {
         if (orderItems == null || orderItems.isEmpty()) {
             return;
         }
         String resolvedCurrency = currency == null ? "KRW" : currency;
         Instant occurredAt = Instant.now();
+        LocalDate availableOn = LocalDate.now().plusDays(paymentProperties.getSettlementAvailableDelayDays());
+        String resolvedReferenceType = referenceType == null || referenceType.isBlank() ? "PAYMENT_CAPTURED" : referenceType;
         for (Map<String, Object> item : orderItems) {
             long sellerId = JdbcUtils.asLong(item.get("seller_id"));
             long orderItemId = JdbcUtils.asLong(item.get("order_item_id"));
@@ -43,6 +57,8 @@ public class LedgerService {
                 itemAmount,
                 resolvedCurrency,
                 occurredAt,
+                availableOn,
+                resolvedReferenceType,
                 "payment:" + paymentId + ":item:" + orderItemId + ":sale"
             );
             ledgerRepository.insertEntry(
@@ -53,6 +69,8 @@ public class LedgerService {
                 pgFee,
                 resolvedCurrency,
                 occurredAt,
+                availableOn,
+                resolvedReferenceType,
                 "payment:" + paymentId + ":item:" + orderItemId + ":pg_fee"
             );
             ledgerRepository.insertEntry(
@@ -63,6 +81,8 @@ public class LedgerService {
                 platformFee,
                 resolvedCurrency,
                 occurredAt,
+                availableOn,
+                resolvedReferenceType,
                 "payment:" + paymentId + ":item:" + orderItemId + ":platform_fee"
             );
         }
@@ -82,6 +102,7 @@ public class LedgerService {
         }
         String resolvedCurrency = currency == null ? "KRW" : currency;
         Instant occurredAt = Instant.now();
+        LocalDate availableOn = LocalDate.now();
         for (Map<String, Object> item : refundItems) {
             long orderItemId = JdbcUtils.asLong(item.get("order_item_id"));
             long sellerId = sellerByOrderItem.getOrDefault(orderItemId, 1L);
@@ -94,6 +115,8 @@ public class LedgerService {
                 -Math.abs(amount),
                 resolvedCurrency,
                 occurredAt,
+                availableOn,
+                "REFUND_COMPLETE",
                 "refund:" + refundId + ":item:" + orderItemId + ":refund"
             );
         }

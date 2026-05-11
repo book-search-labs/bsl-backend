@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "commerce-checkout-action-request.schema.json",
+  "title": "CommerceCheckoutActionRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["reason", "operator_id"],
+  "properties": {
+    "reason": { "type": "string", "minLength": 1 },
+    "operator_id": { "type": "string", "minLength": 1 },
+    "approval_id": { "type": "string", "minLength": 1 }
+  }
+}

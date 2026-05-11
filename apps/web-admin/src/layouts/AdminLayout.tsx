@@ -80,6 +80,7 @@ const sidebarItems: SidebarNode[] = [
         label: "Commerce",
         icon: "bi-bag",
         children: [
+          { type: "leaf", key: "ops-commerce-checkouts", label: "Checkout Sagas", to: "/ops/commerce/checkouts" },
           { type: "leaf", key: "ops-commerce-products", label: "Products", to: "/ops/commerce/products" },
           { type: "leaf", key: "ops-commerce-payments", label: "Payments & Refunds", to: "/ops/commerce/payments" },
           { type: "leaf", key: "ops-commerce-settlements", label: "Settlements", to: "/ops/commerce/settlements" },

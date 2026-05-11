@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "commerce-refund-create-request.schema.json",
+  "title": "CommerceRefundCreateRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["order_id", "checkout_id", "reason", "amount", "currency"],
+  "properties": {
+    "refund_id": { "type": "string", "minLength": 1 },
+    "order_id": { "type": "string", "minLength": 1 },
+    "checkout_id": { "type": "integer", "minimum": 1 },
+    "user_id": { "type": "string" },
+    "payment_id": { "type": "string" },
+    "inventory_reservation_id": { "type": "string" },
+    "reason": { "type": "string", "minLength": 1 },
+    "amount": { "type": "number", "minimum": 0 },
+    "currency": { "type": "string", "minLength": 1 },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["book_id", "quantity"],
+        "properties": {
+          "book_id": { "type": "string", "minLength": 1 },
+          "quantity": { "type": "integer", "minimum": 1 },
+          "amount": { "type": "number", "minimum": 0 }
+        }
+      }
+    }
+  }
+}

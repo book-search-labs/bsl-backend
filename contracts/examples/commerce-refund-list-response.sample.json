@@ -1,0 +1,21 @@
+{
+  "version": "v1",
+  "service": "refund-service",
+  "trace_id": "trace-20260508-005",
+  "request_id": "request-20260508-005",
+  "refunds": [
+    {
+      "refund_id": "refund-20260508-001",
+      "order_id": "order-1001",
+      "checkout_id": 1001,
+      "user_id": "user-1001",
+      "payment_id": "payment-1001",
+      "inventory_reservation_id": "reservation-1001",
+      "status": "COMPLETED",
+      "reason": "customer_cancelled_before_shipping",
+      "amount": 18000,
+      "currency": "KRW",
+      "error_message": null
+    }
+  ]
+}

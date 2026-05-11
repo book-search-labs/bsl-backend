@@ -20,10 +20,16 @@ It is intentionally concise, implementation-agnostic, and **must not contradict 
 
 - BFF (Search API): `http://localhost:8088`
 - Query Service (QS): `http://localhost:8001`
-- Search Service (SS): `http://localhost:8002`
-- Autocomplete Service (ACS): `http://localhost:8003`
+- Search Service (SS): `http://localhost:18087`
+- Autocomplete Service (ACS): `http://localhost:8081`
 - Ranking Service (RS): `http://localhost:8082`
 - Model Inference Service (MIS): `http://localhost:8005`
+- Checkout Orchestrator: `http://localhost:8091`
+- Order Service: `http://localhost:8092`
+- Payment Service: `http://localhost:8093`
+- Inventory Service: `http://localhost:8094`
+- Shipment Service: `http://localhost:8097`
+- Refund Service: `http://localhost:8098`
 
 > Ports are defaults for local development. Production deployment may differ.
 
@@ -903,7 +909,127 @@ If supported, the server should treat it as:
 
 ---
 
-# 9) Commerce API (via BFF → Commerce Service)
+# 9) Commerce API (via BFF)
+
+Commerce is currently split by ownership:
+- Core MSA checkout path: BFF -> checkout-orchestrator -> order/payment/inventory/shipment over HTTP.
+- Follow-up events: `outbox_event` for settlement, notification, analytics, dashboard, replay, audit.
+- Legacy kept in `commerce-service`: cart, catalog commerce reads, home merchandising, my page, support, settlement/admin surfaces.
+
+Contract note: Commerce MSA request/response payloads are tracked in `contracts/commerce-*.schema.json` with examples under `contracts/examples/commerce-*.sample.json`.
+
+## Core Checkout MSA (Public BFF)
+- `POST /v1/checkout`
+- `GET /v1/checkout/{checkoutId}`
+- `POST /v1/checkout/{checkoutId}/steps/{stepName}/retry`
+- `POST /v1/checkout/{checkoutId}/steps/{stepName}/reconcile`
+- `POST /v1/checkout/{checkoutId}/cancel`
+
+### Checkout Start (`POST /v1/checkout`)
+- Proxies to checkout-orchestrator `POST /internal/checkouts`.
+- Request contract: `contracts/commerce-checkout-start-request.schema.json`
+- Request example: `contracts/examples/commerce-checkout-start-request.sample.json`
+- Response contract: `contracts/commerce-checkout-response.schema.json`
+- Response example: `contracts/examples/commerce-checkout-response.sample.json`
+- Required request fields:
+  - `checkout_key`
+  - `user_id`
+  - `items`
+  - `payment`
+  - `shipping_address`
+- Duplicate `checkout_key` returns the existing checkout saga.
+- Response includes current saga state, steps, context payload, and outbox event summary.
+
+### Checkout Status (`GET /v1/checkout/{checkoutId}`)
+- Proxies to checkout-orchestrator `GET /internal/checkouts/{checkoutId}`.
+- Response contract: `contracts/commerce-checkout-response.schema.json`
+- Response includes `status`, `current_step`, `steps[]`, retry/error fields, and context payload.
+
+### Manual Step Retry
+- `POST /v1/checkout/{checkoutId}/steps/{stepName}/retry`
+- Request contract: `contracts/commerce-checkout-action-request.schema.json`
+- Response contract: `contracts/commerce-checkout-action-response.schema.json`
+- Request:
+```json
+{
+  "reason": "operator retry after downstream recovery",
+  "operator_id": "ops-1"
+}
+```
+- Only `FAILED_RETRYING` or `MANUAL_REVIEW_REQUIRED` steps can be reset to `READY`.
+- The original step `Idempotency-Key` is reused.
+
+### Unknown Step Reconciliation
+- `POST /v1/checkout/{checkoutId}/steps/{stepName}/reconcile`
+- Request contract: `contracts/commerce-checkout-action-request.schema.json`
+- Response contract: `contracts/commerce-checkout-action-response.schema.json`
+- Request:
+```json
+{
+  "reason": "operator asked provider/idempotency status check",
+  "operator_id": "ops-1"
+}
+```
+- Only `UNKNOWN` steps can be scheduled for immediate reconciliation.
+- The step remains `UNKNOWN`; `next_retry_at` is cleared so the worker reconciles using the original `Idempotency-Key`.
+
+### Checkout Cancel
+- `POST /v1/checkout/{checkoutId}/cancel`
+- Request contract: `contracts/commerce-checkout-action-request.schema.json`
+- Response contract: `contracts/commerce-checkout-action-response.schema.json`
+- Request:
+```json
+{
+  "reason": "user requested cancellation",
+  "operator_id": "ops-1"
+}
+```
+- Successful steps are compensated in reverse order:
+  - `REQUEST_SHIPMENT` -> shipment cancel
+  - `AUTHORIZE_PAYMENT` -> payment cancel
+  - `RESERVE_STOCK` -> inventory release
+- Compensation uses `checkout:{checkoutId}:{stepName}:compensate`.
+
+## Core Checkout MSA (Internal)
+- checkout-orchestrator-service `8091`
+  - `POST /internal/checkouts`
+  - `GET /internal/checkouts?status=&limit=`
+  - `GET /internal/checkouts/{checkoutId}`
+  - `POST /internal/checkouts/{checkoutId}/steps/{stepName}/retry`
+  - `POST /internal/checkouts/{checkoutId}/steps/{stepName}/reconcile`
+  - `POST /internal/checkouts/{checkoutId}/cancel`
+- order-service `8092`
+  - `POST /internal/orders`
+  - `GET /internal/orders/{orderId}`
+- payment-service `8093`
+  - `POST /internal/payments/authorize`
+  - `POST /internal/payments/cancel`
+  - `GET /internal/payments/by-idempotency-key/{idempotencyKey}`
+  - `POST /internal/admin/failure-mode`
+- inventory-service `8094`
+  - `POST /internal/inventory/reserve`
+  - `POST /internal/inventory/release`
+  - `GET /internal/inventory/reservations/by-idempotency-key/{idempotencyKey}`
+  - `POST /internal/admin/failure-mode`
+- shipment-service `8097`
+  - `POST /internal/shipments`
+  - `POST /internal/shipments/cancel`
+  - `GET /internal/shipments/by-idempotency-key/{idempotencyKey}`
+  - `POST /internal/admin/failure-mode`
+
+### Internal Write Headers
+- `Idempotency-Key` is required on order/payment/inventory/shipment write APIs.
+- `x-trace-id` and `x-request-id` should be propagated end to end.
+
+### Failure Mode API
+`POST /internal/admin/failure-mode`
+```json
+{ "mode": "SUCCESS|FAIL_500|TIMEOUT|SUCCESS_BUT_TIMEOUT|RANDOM" }
+```
+
+Timeout or `SUCCESS_BUT_TIMEOUT` is treated as an `UNKNOWN` outcome by the orchestrator until idempotency lookup/reconciliation resolves it.
+
+# 9.1) Legacy Commerce API (via BFF → Commerce Service)
 
 ## User (v1)
 - `GET /api/v1/skus?materialId=...`
@@ -1056,13 +1182,24 @@ If supported, the server should treat it as:
   - Response fields
     - `items[]`: base order item fields + `material_id`, `title`, `subtitle`, `author`, `publisher`, `issued_year`, `seller_name`, `format`, `edition`, `pack_size`
 - `POST /api/v1/refunds`
-  - Refund amount is policy-driven by order status and reason code.
-  - Response fields (`refund`):
-    - `item_amount`, `shipping_refund_amount`, `return_fee_amount`, `amount`, `policy_code`
-  - Current policy summary:
-    - `PAID` / `READY_TO_SHIP`: full refund request refunds shipping fee (partial refunds: shipping fee not refunded).
-    - `SHIPPED` / `DELIVERED`: seller-fault reasons (`DAMAGED`, `DEFECTIVE`, `WRONG_ITEM`, `LATE_DELIVERY`) waive return fee; customer-remorse reasons apply return fee.
-    - Return fee defaults to base/fast shipping fee by shipping mode.
+  - Target: BFF -> `refund-service`
+  - Header: `Idempotency-Key` required.
+  - Request contract: `contracts/commerce-refund-create-request.schema.json`
+  - Request example: `contracts/examples/commerce-refund-create-request.sample.json`
+  - Response contract: `contracts/commerce-refund-response.schema.json`
+  - Response example: `contracts/examples/commerce-refund-response.sample.json`
+  - Request fields: `order_id`, `checkout_id`, `payment_id`, `inventory_reservation_id` optional, `reason`, `amount`, `currency`, `items[]`.
+  - Response fields: `refund_id`, `order_id`, `checkout_id`, `status`, `amount`, `currency`.
+  - Refund policy calculation is intentionally minimal in the MSA MVP; richer policy snapshots remain a follow-up.
+- `GET /api/v1/refunds/{refundId}`
+  - Target: BFF -> `refund-service`
+  - Response contract: `contracts/commerce-refund-response.schema.json`
+  - Response fields: base refund state plus `items[]`.
+- `GET /api/v1/refunds/by-order/{orderId}`
+  - Target: BFF -> `refund-service`
+  - Response contract: `contracts/commerce-refund-list-response.schema.json`
+  - Response example: `contracts/examples/commerce-refund-list-response.sample.json`
+  - Response fields: `refunds[]`.
 
 ### Support Tickets (User)
 - `POST /api/v1/support/tickets`
@@ -1138,11 +1275,22 @@ If supported, the server should treat it as:
 - `GET /admin/payments/{paymentId}/webhook-events`
 - `POST /admin/payments/{paymentId}/cancel`
 - `POST /admin/payments/webhook-events/{eventId}/retry`
+- `GET /admin/checkouts?status=&limit=`
+- `GET /admin/checkouts/{checkoutId}`
+- `POST /admin/checkouts/{checkoutId}/steps/{stepName}/retry`
+- `POST /admin/checkouts/{checkoutId}/steps/{stepName}/reconcile`
+- `POST /admin/checkouts/{checkoutId}/cancel`
+  - Target: BFF -> checkout-orchestrator.
+  - Admin action body requires `reason` and `operator_id`.
+  - `reconcile` is for `UNKNOWN` step idempotency/provider status recovery, not Kafka replay.
 - `GET /admin/refunds`
 - `GET /admin/refunds/{refundId}`
 - `POST /admin/refunds`
 - `POST /admin/refunds/{refundId}/approve`
 - `POST /admin/refunds/{refundId}/process`
+  - Target: BFF -> `refund-service`
+  - Write APIs require `Idempotency-Key`.
+  - `process` calls `payment-service` cancel and optional `inventory-service` release with service-specific idempotency keys.
 - `GET /admin/settlements/cycles?limit=&status=&from=YYYY-MM-DD&to=YYYY-MM-DD`
 - `POST /admin/settlements/cycles`
 - `GET /admin/settlements/cycles/{cycleId}`

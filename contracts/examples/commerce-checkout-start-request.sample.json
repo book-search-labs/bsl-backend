@@ -1,0 +1,32 @@
+{
+  "checkout_key": "checkout-demo-20260508-001",
+  "user_id": "user-1001",
+  "items": [
+    {
+      "book_id": "book-001",
+      "title": "Distributed Systems for Practitioners",
+      "quantity": 1,
+      "unit_price": 18000
+    },
+    {
+      "book_id": "book-002",
+      "title": "Spring Boot MSA Patterns",
+      "quantity": 2,
+      "unit_price": 12000
+    }
+  ],
+  "payment": {
+    "amount": 42000,
+    "currency": "KRW",
+    "method": "MOCK_CARD"
+  },
+  "shipping_address": {
+    "recipient": "Kim Seungyoon",
+    "postal_code": "06236",
+    "line1": "Gangnam-daero 123",
+    "line2": "10F",
+    "phone": "010-0000-0000"
+  },
+  "currency": "KRW",
+  "total_amount": 42000
+}

@@ -10,6 +10,8 @@ public class DownstreamProperties {
     private ServiceProperties indexWriterService = new ServiceProperties();
     private ServiceProperties misService = new ServiceProperties();
     private ServiceProperties commerceService = new ServiceProperties();
+    private ServiceProperties checkoutOrchestratorService = new ServiceProperties();
+    private ServiceProperties refundService = new ServiceProperties();
 
     public ServiceProperties getQueryService() {
         return queryService;
@@ -57,6 +59,22 @@ public class DownstreamProperties {
 
     public void setCommerceService(ServiceProperties commerceService) {
         this.commerceService = commerceService;
+    }
+
+    public ServiceProperties getCheckoutOrchestratorService() {
+        return checkoutOrchestratorService;
+    }
+
+    public void setCheckoutOrchestratorService(ServiceProperties checkoutOrchestratorService) {
+        this.checkoutOrchestratorService = checkoutOrchestratorService;
+    }
+
+    public ServiceProperties getRefundService() {
+        return refundService;
+    }
+
+    public void setRefundService(ServiceProperties refundService) {
+        this.refundService = refundService;
     }
 
     public static class ServiceProperties {

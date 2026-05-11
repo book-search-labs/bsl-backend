@@ -40,7 +40,13 @@ flowchart LR
     SR["Search Service<br/>retrieve + hybrid fusion<br/>rerank orchestration"]
     AC["Autocomplete Service<br/>Redis hot + OS miss"]
     IDXW["Index Writer Service<br/>canonical -> search docs<br/>reindex + alias swap"]
-    COM["Commerce API<br/>cart/order/payment/shipping/refund"]
+    COMLEG["Commerce Legacy API<br/>cart/catalog/home/my/support"]
+    CO["Checkout Orchestrator<br/>HTTP saga state machine"]
+    ORD["Order Service"]
+    PAY["Payment Service"]
+    INV["Inventory Service"]
+    SHIP["Shipment Service"]
+    REF["Refund Service"]
     RS["Ranking Service<br/>feature assembly + scoring orchestrator"]
     MIS["Model Inference Service<br/>cross-encoder / LTR scorer"]
     LLMGW["LLM Gateway<br/>keys/quotas/retries/audit"]
@@ -76,12 +82,20 @@ flowchart LR
   QS --> SR
   QS --> LLMGW
 
-  BFF -->|/cart, /order, /payment...| COM --> DB
+  BFF -->|/cart, catalog, my...| COMLEG --> DB
+  BFF -->|/v1/checkout| CO --> DB
+  CO -->|HTTP + Idempotency-Key| ORD --> DB
+  CO -->|HTTP + Idempotency-Key| INV --> DB
+  CO -->|HTTP + Idempotency-Key| PAY --> DB
+  CO -->|HTTP + Idempotency-Key| SHIP --> DB
+  BFF -->|refund APIs| REF --> DB
   IDXW --> DB
   IDXW --> OS
 
   BFF --> OUTBOX
-  COM --> OUTBOX
+  COMLEG --> OUTBOX
+  CO --> OUTBOX
+  REF -. planned .-> OUTBOX
   AC -. planned .-> OUTBOX
   SR -. planned .-> OUTBOX
   OUTBOX --> RELAY --> K
@@ -156,10 +170,17 @@ Current implementation note:
   - model version routing (active/canary) driven by model_registry
 - hosts: cross-encoder reranker, LTR scorer (e.g., LambdaMART→ONNX)
 
-### 4.8 Commerce API (COM)
-- cart/order/payment/shipping/refund
-- all writes are atomic in **one DB transaction**
-- cross-service side effects (webhooks, stock sync, email, etc.) via **outbox + events**
+### 4.8 Commerce
+Commerce is split only for the core write workflow that is useful for MSA learning:
+- `checkout-orchestrator-service`: owns checkout saga state, step status, retry, compensation trigger.
+- `order-service`: owns order creation/read model.
+- `payment-service`: owns mock payment authorization/cancel side effects.
+- `inventory-service`: owns stock and reservation invariants.
+- `shipment-service`: owns mock shipment request/cancel side effects.
+- `refund-service`: owns refund request/approval/process state and orchestrates payment cancel plus optional inventory release.
+- legacy `commerce-service`: keeps cart, catalog commerce reads, home panels/benefits/preorders, my page, support, settlement/admin surfaces until separately migrated.
+
+Core checkout writes use **HTTP orchestration**, not Kafka command orchestration. Each service protects its own DB invariants with local transactions and idempotency records.
 
 ### 4.9 LLM Gateway (LLMGW)
 - centralized place to call external LLM providers
@@ -258,24 +279,29 @@ These are **query-only** flows:
 - guarantees: **bounded latency** and **consistent tracing**
 
 ### 6.2 Writes (Commerce/Admin ops)
-This is where “multi-service calls” can cause pain — so we avoid 2PC.
+We do not use 2PC or a cross-service `@Transactional` boundary.
 
-**Rule:** a user write request must be committed in **one service’s DB transaction**.  
-Cross-service effects are handled asynchronously.
+**Rule:** a write is atomic only inside the owning service DB. Cross-service consistency is made from a saga state machine, idempotency, retry, compensation, and manual recovery.
 
-#### Pattern: Outbox + Relay (recommended baseline)
-1. Service writes business rows **and** `outbox_event` **in the same DB transaction**
-2. Relay publishes to Kafka with `dedup_key` idempotency
-3. Consumers update their own stores (feature store, OS indexes, email, etc.)
+#### Core checkout pattern: HTTP orchestration
+1. BFF receives `POST /v1/checkout`.
+2. BFF calls checkout-orchestrator `POST /internal/checkouts`.
+3. Checkout-orchestrator stores `checkout_saga`, `checkout_saga_step`, and follow-up `outbox_event`.
+4. A DB polling worker claims a READY/FAILED/UNKNOWN step with a conditional update.
+5. The worker calls order/inventory/payment/shipment over HTTP with the persisted `Idempotency-Key`.
+6. The worker stores step response, context, retry/UNKNOWN/manual-review status in short local transactions.
 
-#### When you need workflows (Saga)
-For flows like “Order → Payment → Stock reserve → Shipment”:
-- keep **Order state machine** in Commerce DB
-- each step emits events (`order_created`, `payment_approved`, …)
-- each consumer performs local transaction and emits next event
-- compensations: cancel order / release stock, etc.
+HTTP calls are never executed inside a DB transaction. The flow returns the currently available saga state to the user; it does not wait for Kafka consumers.
 
-This avoids “one request calling N services in one transaction.”
+#### Follow-up events: Outbox/Kafka
+`outbox_event` is still used, but only for follow-up consumers:
+- settlement
+- notification
+- analytics
+- dashboard projections
+- replay/audit/recovery inspection
+
+It is not the command queue for checkout step execution.
 
 ---
 
@@ -309,15 +335,18 @@ Metrics:
 
 ---
 
-## 9) Commerce architecture note (monolith vs modular)
+## 9) Commerce MSA note
 
-Current roadmap treats **Commerce as one “Commerce API” service** (a modular monolith internally):
-- easier to maintain strong transactional integrity (orders/payment/shipment/ledger)
-- avoids cross-service distributed transactions early
+Current Commerce split is intentionally narrow:
+- MSA: checkout/order/payment/inventory/shipment/refund experiment path
+- Legacy kept: cart, catalog commerce reads, settlement/admin, customer/my page, support, home merchandising
 
-Later split (only if needed):
-- keep **Order** as orchestration root
-- split Payment/Shipment as separate services with **saga + outbox**
+Recovery model:
+- Forward recovery: retry failed or UNKNOWN steps with the same idempotency key until success or manual review.
+- Backward recovery: explicit cancel/compensation uses reverse step order and separate `:compensate` idempotency keys.
+- Pivot policy: if a step becomes irreversible, it is treated as a pivot; after pivot success, automatic rollback is avoided and forward/manual recovery is preferred.
+
+Detailed runbook: `docs/COMMERCE_MSA_SAGA.md`.
 
 ---
 
@@ -332,9 +361,22 @@ Later split (only if needed):
 ## 11) Local development ports (fixed)
 - web-admin: **5173**
 - web-user: **5174**
+- bff-service: **8088**
+- checkout-orchestrator-service: **8091**
+- order-service: **8092**
+- payment-service: **8093**
+- inventory-service: **8094**
+- outbox-relay-service: **8095**
+- olap-loader-service: **8096**
+- shipment-service: **8097**
+- refund-service: **8098**
 - search-service: **18087**
 - autocomplete-service: **8081**
+- ranking-service: **8082**
 - query-service: **8001**
+- model-inference-service: **8005**
+- llm-gateway: **8010**
+- index-writer-service: **8090**
 
 ---
 
@@ -345,7 +387,11 @@ Later split (only if needed):
 - `GET /autocomplete` (alias: `/v1/autocomplete`)
 - `GET /books/{id}` (alias: `/v1/books/{id}`)
 - `POST /chat` (alias: `/v1/chat`)
-- `POST /v1/cart/*`, `POST /v1/order/*`, `POST /v1/payment/*` ...
+- `POST /v1/checkout`
+- `GET /v1/checkout/{checkoutId}`
+- `POST /v1/checkout/{checkoutId}/steps/{stepName}/retry`
+- `POST /v1/checkout/{checkoutId}/cancel`
+- legacy kept: `POST /v1/cart/*`, `POST /v1/order/*`, `POST /v1/payment/*` ...
 
 ### Internal (service-to-service)
 - QS: `/query/prepare`, `/query/enhance`, `/chat`, `/internal/rag/explain`
@@ -353,3 +399,8 @@ Later split (only if needed):
 - AC: `/autocomplete` (alias: `/internal/autocomplete`)
 - RS: `/rerank` (alias: `/internal/rank`)
 - MIS: `/v1/score`, `/v1/models`
+- Checkout Orchestrator: `/internal/checkouts`, `/internal/checkouts/{id}`, `/internal/checkouts/{id}/steps/{stepName}/retry`, `/internal/checkouts/{id}/cancel`
+- Order: `/internal/orders`, `/internal/orders/{orderId}`
+- Payment: `/internal/payments/authorize`, `/internal/payments/cancel`, `/internal/payments/by-idempotency-key/{idempotencyKey}`, `/internal/admin/failure-mode`
+- Inventory: `/internal/inventory/reserve`, `/internal/inventory/release`, `/internal/inventory/reservations/by-idempotency-key/{idempotencyKey}`, `/internal/admin/failure-mode`
+- Shipment: `/internal/shipments`, `/internal/shipments/cancel`, `/internal/shipments/by-idempotency-key/{idempotencyKey}`, `/internal/admin/failure-mode`

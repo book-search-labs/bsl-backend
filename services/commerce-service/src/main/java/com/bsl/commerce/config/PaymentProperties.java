@@ -8,12 +8,13 @@ public class PaymentProperties {
     private PaymentProvider defaultProvider = PaymentProvider.MOCK;
     private String defaultReturnUrl = "http://localhost:5174/payment/result";
     private String defaultWebhookUrl = "http://localhost:8091/api/v1/payments/webhook/{provider}";
-    private String mockCheckoutBaseUrl = "http://localhost:8092/checkout";
+    private String mockCheckoutBaseUrl = "http://localhost:18092/checkout";
     private long sessionTtlSeconds = 1800L;
     private String mockWebhookSecret = "dev_mock_webhook_secret";
     private String localSimWebhookSecret = "dev_local_sim_webhook_secret";
     private double pgFeeRatePercent = 3.0d;
     private double platformFeeRatePercent = 10.0d;
+    private int settlementAvailableDelayDays = 0;
     private boolean webhookRetryEnabled = true;
     private long webhookRetryDelayMs = 30_000L;
     private long webhookRetryInitialDelayMs = 20_000L;
@@ -91,6 +92,14 @@ public class PaymentProperties {
 
     public void setPlatformFeeRatePercent(double platformFeeRatePercent) {
         this.platformFeeRatePercent = platformFeeRatePercent;
+    }
+
+    public int getSettlementAvailableDelayDays() {
+        return settlementAvailableDelayDays;
+    }
+
+    public void setSettlementAvailableDelayDays(int settlementAvailableDelayDays) {
+        this.settlementAvailableDelayDays = settlementAvailableDelayDays;
     }
 
     public boolean isWebhookRetryEnabled() {

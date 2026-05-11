@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "commerce-refund-list-response.schema.json",
+  "title": "CommerceRefundListResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "service", "trace_id", "request_id", "refunds"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "service": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "refunds": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/refundSummary" }
+    }
+  },
+  "$defs": {
+    "refundSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["refund_id", "order_id", "checkout_id", "status", "amount", "currency"],
+      "properties": {
+        "refund_id": { "type": "string", "minLength": 1 },
+        "order_id": { "type": "string", "minLength": 1 },
+        "checkout_id": { "type": "integer", "minimum": 1 },
+        "user_id": { "type": ["string", "null"] },
+        "payment_id": { "type": ["string", "null"] },
+        "inventory_reservation_id": { "type": ["string", "null"] },
+        "status": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string" },
+        "amount": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "minLength": 1 },
+        "error_message": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

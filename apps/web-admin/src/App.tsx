@@ -19,6 +19,7 @@ import ShippingOpsPage from "./pages/ShippingOpsPage";
 import AuthorityOpsPage from "./pages/AuthorityOpsPage";
 import KdcViewerPage from "./pages/KdcViewerPage";
 import SettlementOpsPage from "./pages/SettlementOpsPage";
+import CheckoutSagaOpsPage from "./pages/CheckoutSagaOpsPage";
 
 export default function App() {
   return (
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="authority" element={<AuthorityOpsPage />} />
           <Route path="categories/kdc" element={<KdcViewerPage />} />
           <Route path="commerce">
+            <Route path="checkouts" element={<CheckoutSagaOpsPage />} />
             <Route path="products" element={<ProductOpsPage />} />
             <Route path="payments" element={<PaymentRefundOpsPage />} />
             <Route path="settlements" element={<SettlementOpsPage />} />

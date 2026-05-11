@@ -295,11 +295,24 @@ python3 scripts/commerce/backfill_current_offers.py --all-materials --workers 12
 ./scripts/local_down.sh
 ```
 
-`local_up.sh`는 기본으로 `pg-simulator(:8092)`도 함께 올립니다.
-필요 없으면 비활성화:
+`local_up.sh`는 기본으로 Commerce MSA DB를 초기화합니다. 스키마 초기화를 끄려면:
 ```bash
-ENABLE_PG_SIMULATOR=0 ./scripts/local_up.sh
+ENABLE_COMMERCE_MSA_DB=0 ./scripts/local_up.sh
 ```
+
+`pg-simulator`는 `order-service(:8092)`와 충돌하지 않도록 기본 비활성화되어 있고, 켜면 `:18092`를 사용합니다.
+```bash
+ENABLE_PG_SIMULATOR=1 ./scripts/local_up.sh
+```
+
+Commerce MSA 서비스 기동 후 smoke:
+```bash
+./scripts/commerce_msa_smoke.sh
+RUN_CHECKOUT_SMOKE=1 ./scripts/commerce_msa_smoke.sh
+RUN_FAILURE_SMOKE=1 ./scripts/commerce_msa_smoke.sh
+```
+
+`RUN_FAILURE_SMOKE=1`은 정상 checkout, 중복 `checkout_key`, payment `FAIL_500` 수동 retry, payment `SUCCESS_BUT_TIMEOUT` idempotency 복구를 검증합니다.
 
 결제 웹훅 실패 자동 재시도 스케줄러는 commerce-service에서 기본 활성화됩니다.
 운영/로컬 튜닝:

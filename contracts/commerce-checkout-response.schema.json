@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "commerce-checkout-response.schema.json",
+  "title": "CommerceCheckoutResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "service",
+    "trace_id",
+    "request_id",
+    "checkout_id",
+    "checkout_key",
+    "user_id",
+    "status",
+    "steps",
+    "outbox_events",
+    "mode"
+  ],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "service": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "checkout_id": { "type": "integer", "minimum": 1 },
+    "checkout_key": { "type": "string", "minLength": 1 },
+    "user_id": { "type": "string", "minLength": 1 },
+    "status": { "$ref": "#/$defs/sagaStatus" },
+    "current_step": { "type": ["string", "null"] },
+    "request_payload": { "type": ["object", "null"], "additionalProperties": true },
+    "context_payload": { "type": ["object", "null"], "additionalProperties": true },
+    "error_code": { "type": ["string", "null"] },
+    "error_message": { "type": ["string", "null"] },
+    "saga_version": { "type": "integer", "minimum": 0 },
+    "created_at": { "type": ["string", "null"] },
+    "updated_at": { "type": ["string", "null"] },
+    "steps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/checkoutStep" }
+    },
+    "outbox_events": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/outboxEvent" }
+    },
+    "mode": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "sagaStatus": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "PROCESSING",
+        "SUCCEEDED",
+        "PARTIAL_FAILED",
+        "FAILED_RETRYING",
+        "MANUAL_REVIEW_REQUIRED",
+        "CANCELLING",
+        "CANCELLED",
+        "CANCEL_FAILED"
+      ]
+    },
+    "stepStatus": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "READY",
+        "PROCESSING",
+        "SUCCEEDED",
+        "FAILED_RETRYING",
+        "FAILED_PERMANENT",
+        "MANUAL_REVIEW_REQUIRED",
+        "COMPENSATING",
+        "COMPENSATED",
+        "SKIPPED",
+        "UNKNOWN"
+      ]
+    },
+    "checkoutStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["step_name", "status", "step_category", "recovery_policy", "retry_count", "max_retry_count"],
+      "properties": {
+        "step_name": { "type": "string", "minLength": 1 },
+        "status": { "$ref": "#/$defs/stepStatus" },
+        "step_category": { "type": "string", "enum": ["COMPENSATABLE", "PIVOT", "RETRIABLE"] },
+        "recovery_policy": { "type": "string", "enum": ["BACKWARD", "FORWARD", "MANUAL"] },
+        "idempotency_key": { "type": "string" },
+        "request_payload": { "type": ["object", "null"], "additionalProperties": true },
+        "response_payload": { "type": ["object", "null"], "additionalProperties": true },
+        "retry_count": { "type": "integer", "minimum": 0 },
+        "max_retry_count": { "type": "integer", "minimum": 0 },
+        "next_retry_at": { "type": ["string", "null"] },
+        "error_code": { "type": ["string", "null"] },
+        "error_message": { "type": ["string", "null"] },
+        "external_reference_type": { "type": ["string", "null"] },
+        "external_reference_id": { "type": ["string", "null"] },
+        "started_at": { "type": ["string", "null"] },
+        "completed_at": { "type": ["string", "null"] },
+        "created_at": { "type": ["string", "null"] },
+        "updated_at": { "type": ["string", "null"] }
+      }
+    },
+    "outboxEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_type", "event_key", "status"],
+      "properties": {
+        "event_type": { "type": "string", "minLength": 1 },
+        "event_key": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["READY", "PROCESSING", "SUCCEEDED", "FAILED_RETRYING", "DLQ"] },
+        "payload": { "type": ["object", "null"], "additionalProperties": true },
+        "retry_count": { "type": "integer", "minimum": 0 },
+        "created_at": { "type": ["string", "null"] },
+        "updated_at": { "type": ["string", "null"] },
+        "published_at": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

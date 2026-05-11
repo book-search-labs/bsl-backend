@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "commerce-checkout-action-response.schema.json",
+  "title": "CommerceCheckoutActionResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "service", "trace_id", "request_id", "checkout_id", "reason", "operator_id", "mode"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "service": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "checkout_id": { "type": "integer", "minimum": 1 },
+    "step_name": { "type": "string" },
+    "before_status": { "type": "string" },
+    "after_status": { "type": "string" },
+    "idempotency_key": { "type": "string" },
+    "status": { "type": "string" },
+    "action": { "type": "string" },
+    "reason": { "type": "string", "minLength": 1 },
+    "operator_id": { "type": "string", "minLength": 1 },
+    "mode": { "type": "string", "minLength": 1 }
+  }
+}

@@ -134,3 +134,25 @@
 - B-0722 compose + claim verifier node
 - B-0723 eval harness migration (legacy vs graph parity)
 - B-0724 performance budget cutover + legacy decommission
+
+## Core Commerce MSA 실험 전환 (Phase 19)
+Communication model:
+- Core checkout flow는 HTTP orchestration으로 즉시 가능한 결과를 반환한다.
+- Kafka/outbox는 정산, 알림, analytics, dashboard, replay 같은 후속 처리에 사용한다.
+- Global transaction은 사용하지 않고 saga state machine + 각 서비스 local transaction + idempotency + recovery로 side effect를 통제한다.
+
+### P0 (checkout/order/payment/inventory/shipment/refund)
+- B-0800 core commerce MSA API inventory + service boundary map
+- B-0801 commerce MSA service skeleton + BFF checkout proxy
+- B-0802 checkout orchestrator saga schema + start API
+- B-0803 commerce domain services idempotent internal APIs
+- B-0804 checkout saga worker + step execution
+- B-0805 failure mode + retry + compensation
+- B-0809 refund service migration
+
+### P1 (검증/운영 기반)
+- B-0806 commerce MSA scenario tests + documentation
+- I-0801 commerce MSA local dev database + observability
+
+### P2 (운영 UI)
+- A-0801 admin checkout saga ops console

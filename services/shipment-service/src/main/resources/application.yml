@@ -1,0 +1,28 @@
+server:
+  port: ${SHIPMENT_SERVICE_PORT:8097}
+
+spring:
+  application:
+    name: shipment-service
+  datasource:
+    url: ${SHIPMENT_DB_URL:jdbc:mysql://localhost:3306/shipment_db}
+    username: ${SHIPMENT_DB_USER:bsl}
+    password: ${SHIPMENT_DB_PASSWORD:bsl}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}

@@ -46,17 +46,15 @@ class SettlementServiceTest {
         Map<String, Object> result = service.createCycle(start, end);
 
         assertThat(result).containsKey("cycle");
-        verify(settlementRepository).insertLine(101L, 7L, 100000, -12000, 88000, "UNPAID");
+        verify(settlementRepository).insertLine(101L, 7L, 100000, -12000, 0, 88000, "UNPAID");
     }
 
     @Test
     void runPayoutsMarksCyclePaidWhenAllLinesPaid() {
         SettlementService service = new SettlementService(settlementRepository, ledgerRepository);
 
-        when(settlementRepository.findCycleById(202L)).thenReturn(
-            Map.of("cycle_id", 202L, "status", "GENERATED"),
-            Map.of("cycle_id", 202L, "status", "PAID")
-        );
+        when(settlementRepository.findCycleByIdForUpdate(202L)).thenReturn(Map.of("cycle_id", 202L, "status", "GENERATED"));
+        when(settlementRepository.findCycleById(202L)).thenReturn(Map.of("cycle_id", 202L, "status", "PAID"));
         when(settlementRepository.listLinesForPayout(202L)).thenReturn(
             List.of(Map.of("settlement_line_id", 301L, "net_amount", 50000))
         );
@@ -103,19 +101,12 @@ class SettlementServiceTest {
     void retryPayoutMarksPaidWhenNetPositive() {
         SettlementService service = new SettlementService(settlementRepository, ledgerRepository);
 
-        when(settlementRepository.findPayoutById(401L)).thenReturn(
+        when(settlementRepository.findPayoutByIdForUpdate(401L)).thenReturn(
             Map.of(
                 "payout_id", 401L,
                 "cycle_id", 202L,
                 "settlement_line_id", 301L,
                 "status", "FAILED",
-                "net_amount", 50000
-            ),
-            Map.of(
-                "payout_id", 401L,
-                "cycle_id", 202L,
-                "settlement_line_id", 301L,
-                "status", "PAID",
                 "net_amount", 50000
             )
         );
@@ -137,7 +128,7 @@ class SettlementServiceTest {
     @Test
     void retryPayoutThrowsWhenNotFound() {
         SettlementService service = new SettlementService(settlementRepository, ledgerRepository);
-        when(settlementRepository.findPayoutById(999L)).thenReturn(null);
+        when(settlementRepository.findPayoutByIdForUpdate(999L)).thenReturn(null);
 
         assertThatThrownBy(() -> service.retryPayout(999L))
             .hasMessageContaining("정산 지급 정보를 찾을 수 없습니다.");

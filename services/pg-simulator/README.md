@@ -8,7 +8,7 @@
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8092 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 18092 --reload
 ```
 
 ## Endpoints
@@ -22,3 +22,4 @@ uvicorn app.main:app --host 0.0.0.0 --port 8092 --reload
 - `PG_SIM_WEBHOOK_SECRET` (default: `dev_local_sim_webhook_secret`)
 - `PG_SIM_PROVIDER` (default: `LOCAL_SIM`)
 - `PG_SIM_WEBHOOK_TIMEOUT_SEC` (default: `3.0`)
+- `PG_SIM_PORT` (default: `18092`)

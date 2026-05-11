@@ -289,7 +289,7 @@ public class PaymentService {
         );
         String checkoutBaseUrl = firstNonBlank(
             trimToNull(paymentProperties.getMockCheckoutBaseUrl()),
-            "http://localhost:8092/checkout"
+            "http://localhost:18092/checkout"
         );
 
         PaymentGateway.CheckoutSession session = gateway.createCheckoutSession(
@@ -407,8 +407,45 @@ public class PaymentService {
     }
 
     @Transactional
+    public Map<String, Object> confirmPayment(long paymentId, String paymentKey, Integer amount) {
+        Map<String, Object> payment = paymentRepository.findPaymentForUpdate(paymentId);
+        if (payment == null) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "결제 정보를 찾을 수 없습니다.");
+        }
+        String statusRaw = JdbcUtils.asString(payment.get("status"));
+        PaymentStatus currentStatus = PaymentStatus.from(statusRaw);
+        if (currentStatus == PaymentStatus.CAPTURED) {
+            return payment;
+        }
+        if (!currentStatus.canTransitionTo(PaymentStatus.CAPTURED)) {
+            throw new ApiException(HttpStatus.CONFLICT, "invalid_state", "현재 상태에서는 결제 승인을 완료할 수 없습니다.");
+        }
+        int expectedAmount = JdbcUtils.asInt(payment.get("amount")) == null ? 0 : JdbcUtils.asInt(payment.get("amount"));
+        if (amount == null || amount != expectedAmount) {
+            throw new ApiException(HttpStatus.CONFLICT, "amount_mismatch", "결제 금액이 일치하지 않습니다.");
+        }
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("payment_id", paymentId);
+        payload.put("payment_key", paymentKey);
+        payload.put("amount", amount);
+        payload.put("provider", JdbcUtils.asString(payment.get("provider")));
+        payload.put("occurred_at", Instant.now().toString());
+        payload.put("source", "confirm_api");
+
+        applyPostCaptureEffects(
+            paymentId,
+            JdbcUtils.asLong(payment.get("order_id")),
+            JdbcUtils.asString(payment.get("currency"))
+        );
+        paymentRepository.updatePaymentStatus(paymentId, PaymentStatus.CAPTURED.name(), paymentKey, null);
+        paymentRepository.insertPaymentEvent(paymentId, eventTypeForStatus(PaymentStatus.CAPTURED), null, JsonUtils.toJson(objectMapper, payload));
+        return paymentRepository.findPayment(paymentId);
+    }
+
+    @Transactional
     public Map<String, Object> cancelPayment(long paymentId, String reason) {
-        Map<String, Object> payment = paymentRepository.findPayment(paymentId);
+        Map<String, Object> payment = paymentRepository.findPaymentForUpdate(paymentId);
         if (payment == null) {
             throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "결제 정보를 찾을 수 없습니다.");
         }
@@ -554,7 +591,7 @@ public class PaymentService {
             return webhookResult("ignored", eventId, null, "missing_payment_id");
         }
 
-        Map<String, Object> payment = paymentRepository.findPayment(paymentId);
+        Map<String, Object> payment = paymentRepository.findPaymentForUpdate(paymentId);
         if (payment == null) {
             paymentRepository.updateWebhookEventStatus(eventId, true, "IGNORED", "payment_not_found");
             incrementWebhookMetric(provider, "ignored_payment_not_found");
@@ -597,14 +634,6 @@ public class PaymentService {
         if (currentStatus != targetStatus) {
             String providerPaymentId = resolveProviderPaymentId(payload, payment, targetStatus);
             String failureReason = targetStatus == PaymentStatus.FAILED ? resolveFailureReason(payload) : null;
-            paymentRepository.updatePaymentStatus(paymentId, targetStatus.name(), providerPaymentId, failureReason);
-            paymentRepository.insertPaymentEvent(
-                paymentId,
-                eventTypeForStatus(targetStatus),
-                eventId,
-                payloadJson
-            );
-
             if (targetStatus == PaymentStatus.CAPTURED) {
                 applyPostCaptureEffects(
                     paymentId,
@@ -612,6 +641,13 @@ public class PaymentService {
                     JdbcUtils.asString(payment.get("currency"))
                 );
             }
+            paymentRepository.updatePaymentStatus(paymentId, targetStatus.name(), providerPaymentId, failureReason);
+            paymentRepository.insertPaymentEvent(
+                paymentId,
+                eventTypeForStatus(targetStatus),
+                eventId,
+                payloadJson
+            );
         }
 
         paymentRepository.updateWebhookEventStatus(eventId, true, "PROCESSED", null);
@@ -628,7 +664,10 @@ public class PaymentService {
     }
 
     private void applyPostCaptureEffects(long paymentId, long orderId, String currency) {
-        orderService.markPaid(orderId, String.valueOf(paymentId));
+        boolean newlyPaid = orderService.markPaid(orderId, String.valueOf(paymentId));
+        if (!newlyPaid) {
+            throw new ApiException(HttpStatus.CONFLICT, "order_already_paid", "이미 결제 완료된 주문입니다.");
+        }
 
         List<Map<String, Object>> items = orderRepository.findOrderItems(orderId);
         for (Map<String, Object> item : items) {

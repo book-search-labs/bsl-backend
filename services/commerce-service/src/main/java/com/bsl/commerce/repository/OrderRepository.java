@@ -3,6 +3,7 @@ package com.bsl.commerce.repository;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -14,9 +15,11 @@ import org.springframework.stereotype.Repository;
 public class OrderRepository {
     private static final String TABLE_ORDERS = "orders";
     private static final String COLUMN_SHIPPING_MODE = "shipping_mode";
+    private static final String COLUMN_PAYMENT_EXPIRES_AT = "payment_expires_at";
 
     private final JdbcTemplate jdbcTemplate;
     private volatile Boolean hasShippingModeColumn;
+    private volatile Boolean hasPaymentExpiresAtColumn;
 
     public OrderRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
@@ -58,6 +61,20 @@ public class OrderRepository {
                 + "FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
             userId,
             limit
+        );
+    }
+
+    public List<Long> findExpirableOrderIds(int limit) {
+        if (!hasPaymentExpiresAtColumn()) {
+            return List.of();
+        }
+        int safeLimit = Math.max(1, Math.min(limit, 500));
+        return jdbcTemplate.queryForList(
+            "SELECT order_id FROM orders "
+                + "WHERE status = 'PAYMENT_PENDING' AND payment_expires_at IS NOT NULL AND payment_expires_at <= CURRENT_TIMESTAMP "
+                + "ORDER BY payment_expires_at ASC, order_id ASC LIMIT ?",
+            Long.class,
+            safeLimit
         );
     }
 
@@ -180,6 +197,45 @@ public class OrderRepository {
         );
     }
 
+    public void insertOrderStatusHistory(
+        long orderId,
+        String fromStatus,
+        String toStatus,
+        String reason,
+        String actorType,
+        String actorId
+    ) {
+        jdbcTemplate.update(
+            "INSERT INTO order_status_history (order_id, from_status, to_status, reason, actor_type, actor_id) "
+                + "VALUES (?, ?, ?, ?, ?, ?)",
+            orderId,
+            fromStatus,
+            toStatus,
+            reason,
+            actorType,
+            actorId
+        );
+    }
+
+    public void insertOutboxEvent(
+        String eventType,
+        String aggregateType,
+        String aggregateId,
+        String dedupKey,
+        String payloadJson
+    ) {
+        jdbcTemplate.update(
+            "INSERT IGNORE INTO outbox_event "
+                + "(event_type, aggregate_type, aggregate_id, dedup_key, payload_json, status, occurred_at) "
+                + "VALUES (?, ?, ?, ?, ?, 'NEW', CURRENT_TIMESTAMP)",
+            eventType,
+            aggregateType,
+            aggregateId,
+            dedupKey,
+            payloadJson
+        );
+    }
+
     public List<Map<String, Object>> findOrderEvents(long orderId) {
         return jdbcTemplate.queryForList(
             "SELECT order_event_id, order_id, event_type, from_status, to_status, reason_code, payload_json, created_at "
@@ -190,8 +246,19 @@ public class OrderRepository {
 
     public void updateOrderStatus(long orderId, String status) {
         jdbcTemplate.update(
-            "UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_id = ?",
+            "UPDATE orders SET status = ?, version = version + 1, updated_at = CURRENT_TIMESTAMP WHERE order_id = ?",
             status,
+            orderId
+        );
+    }
+
+    public void updatePaymentExpiresAt(long orderId, Instant paymentExpiresAt) {
+        if (!hasPaymentExpiresAtColumn()) {
+            return;
+        }
+        jdbcTemplate.update(
+            "UPDATE orders SET payment_expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE order_id = ?",
+            paymentExpiresAt == null ? null : Timestamp.from(paymentExpiresAt),
             orderId
         );
     }
@@ -223,9 +290,12 @@ public class OrderRepository {
 
     private String orderSelectSql() {
         String shippingModeExpr = hasShippingModeColumn() ? "shipping_mode" : "'STANDARD'";
+        String paymentExpiresAtExpr = hasPaymentExpiresAtColumn() ? "payment_expires_at" : "NULL";
         return "SELECT order_id, order_no, user_id, cart_id, status, total_amount, currency, shipping_fee, "
             + shippingModeExpr + " AS shipping_mode, "
-            + "discount_amount, payment_method, idempotency_key, shipping_snapshot_json, created_at, updated_at ";
+            + "discount_amount, payment_method, idempotency_key, "
+            + paymentExpiresAtExpr + " AS payment_expires_at, "
+            + "shipping_snapshot_json, created_at, updated_at ";
     }
 
     private boolean hasShippingModeColumn() {
@@ -239,6 +309,20 @@ public class OrderRepository {
             }
             hasShippingModeColumn = hasColumn(TABLE_ORDERS, COLUMN_SHIPPING_MODE);
             return hasShippingModeColumn;
+        }
+    }
+
+    private boolean hasPaymentExpiresAtColumn() {
+        Boolean cached = hasPaymentExpiresAtColumn;
+        if (cached != null) {
+            return cached;
+        }
+        synchronized (this) {
+            if (hasPaymentExpiresAtColumn != null) {
+                return hasPaymentExpiresAtColumn;
+            }
+            hasPaymentExpiresAtColumn = hasColumn(TABLE_ORDERS, COLUMN_PAYMENT_EXPIRES_AT);
+            return hasPaymentExpiresAtColumn;
         }
     }
 

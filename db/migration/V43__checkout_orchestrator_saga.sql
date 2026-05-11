@@ -1,0 +1,63 @@
+CREATE TABLE IF NOT EXISTS checkout_saga (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    checkout_key VARCHAR(100) NOT NULL,
+    user_id VARCHAR(100) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    current_step VARCHAR(100),
+    request_payload JSON NOT NULL,
+    context_payload JSON,
+    error_code VARCHAR(100),
+    error_message TEXT,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    CONSTRAINT uk_checkout_saga_checkout_key UNIQUE (checkout_key),
+    INDEX idx_checkout_saga_status_updated_at (status, updated_at)
+);
+
+CREATE TABLE IF NOT EXISTS checkout_saga_step (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    checkout_saga_id BIGINT NOT NULL,
+    step_name VARCHAR(100) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    step_category VARCHAR(50) NOT NULL,
+    recovery_policy VARCHAR(50) NOT NULL,
+    idempotency_key VARCHAR(200) NOT NULL,
+    request_payload JSON,
+    response_payload JSON,
+    retry_count INT NOT NULL DEFAULT 0,
+    max_retry_count INT NOT NULL DEFAULT 5,
+    next_retry_at DATETIME(6),
+    error_code VARCHAR(100),
+    error_message TEXT,
+    external_reference_type VARCHAR(100),
+    external_reference_id VARCHAR(200),
+    started_at DATETIME(6),
+    completed_at DATETIME(6),
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    CONSTRAINT uk_checkout_saga_step_saga_step UNIQUE (checkout_saga_id, step_name),
+    CONSTRAINT uk_checkout_saga_step_idempotency_key UNIQUE (idempotency_key),
+    CONSTRAINT fk_checkout_saga_step_saga FOREIGN KEY (checkout_saga_id) REFERENCES checkout_saga (id),
+    INDEX idx_checkout_saga_step_status_next_retry_at (status, next_retry_at)
+);
+
+CREATE TABLE IF NOT EXISTS outbox_event (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    aggregate_type VARCHAR(100) NOT NULL,
+    aggregate_id BIGINT NOT NULL,
+    event_type VARCHAR(100) NOT NULL,
+    event_key VARCHAR(200) NOT NULL,
+    payload JSON NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    retry_count INT NOT NULL DEFAULT 0,
+    next_retry_at DATETIME(6),
+    locked_by VARCHAR(100),
+    locked_until DATETIME(6),
+    error_message TEXT,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    published_at DATETIME(6),
+    INDEX idx_outbox_event_status_next_retry_id (status, next_retry_at, id),
+    INDEX idx_outbox_event_aggregate (aggregate_type, aggregate_id)
+);

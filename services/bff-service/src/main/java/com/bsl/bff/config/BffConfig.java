@@ -11,6 +11,7 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 @EnableConfigurationProperties({DownstreamProperties.class, OutboxProperties.class, ModelOpsProperties.class,
     OpsMetricsProperties.class,
+    com.bsl.bff.checkout.CheckoutProperties.class,
     com.bsl.bff.security.AuthProperties.class,
     com.bsl.bff.security.RbacProperties.class,
     com.bsl.bff.ratelimit.RateLimitProperties.class,
@@ -69,6 +70,24 @@ public class BffConfig {
     @Bean
     public RestTemplate commerceServiceRestTemplate(RestTemplateBuilder builder, DownstreamProperties properties) {
         DownstreamProperties.ServiceProperties config = properties.getCommerceService();
+        return builder
+            .setConnectTimeout(Duration.ofMillis(config.getTimeoutMs()))
+            .setReadTimeout(Duration.ofMillis(config.getTimeoutMs()))
+            .build();
+    }
+
+    @Bean
+    public RestTemplate checkoutOrchestratorRestTemplate(RestTemplateBuilder builder, DownstreamProperties properties) {
+        DownstreamProperties.ServiceProperties config = properties.getCheckoutOrchestratorService();
+        return builder
+            .setConnectTimeout(Duration.ofMillis(config.getTimeoutMs()))
+            .setReadTimeout(Duration.ofMillis(config.getTimeoutMs()))
+            .build();
+    }
+
+    @Bean
+    public RestTemplate refundServiceRestTemplate(RestTemplateBuilder builder, DownstreamProperties properties) {
+        DownstreamProperties.ServiceProperties config = properties.getRefundService();
         return builder
             .setConnectTimeout(Duration.ofMillis(config.getTimeoutMs()))
             .setReadTimeout(Duration.ofMillis(config.getTimeoutMs()))

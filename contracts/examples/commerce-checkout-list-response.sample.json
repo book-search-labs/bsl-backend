@@ -1,0 +1,62 @@
+{
+  "version": "v1",
+  "service": "checkout-orchestrator-service",
+  "trace_id": "trace-20260508-002",
+  "request_id": "request-20260508-002",
+  "items": [
+    {
+      "checkout_id": 1001,
+      "checkout_key": "checkout-demo-20260508-001",
+      "user_id": "user-1001",
+      "status": "FAILED_RETRYING",
+      "current_step": "AUTHORIZE_PAYMENT",
+      "error_code": "downstream_http_500",
+      "error_message": "payment-service failed",
+      "saga_version": 4,
+      "created_at": "2026-05-08T00:00:00Z",
+      "updated_at": "2026-05-08T00:00:08Z",
+      "steps": [
+        {
+          "step_name": "CREATE_ORDER",
+          "status": "SUCCEEDED",
+          "step_category": "COMPENSATABLE",
+          "recovery_policy": "BACKWARD",
+          "retry_count": 0,
+          "max_retry_count": 5,
+          "next_retry_at": null,
+          "error_code": null,
+          "error_message": null
+        },
+        {
+          "step_name": "AUTHORIZE_PAYMENT",
+          "status": "FAILED_RETRYING",
+          "step_category": "COMPENSATABLE",
+          "recovery_policy": "BACKWARD",
+          "retry_count": 1,
+          "max_retry_count": 5,
+          "next_retry_at": "2026-05-08T00:01:08Z",
+          "error_code": "downstream_http_500",
+          "error_message": "payment-service failed"
+        }
+      ],
+      "failed_steps": [
+        {
+          "step_name": "AUTHORIZE_PAYMENT",
+          "status": "FAILED_RETRYING",
+          "step_category": "COMPENSATABLE",
+          "recovery_policy": "BACKWARD",
+          "retry_count": 1,
+          "max_retry_count": 5,
+          "next_retry_at": "2026-05-08T00:01:08Z",
+          "error_code": "downstream_http_500",
+          "error_message": "payment-service failed"
+        }
+      ],
+      "outbox_event_count": 1
+    }
+  ],
+  "count": 1,
+  "status_filter": "FAILED_RETRYING",
+  "limit": 50,
+  "mode": "db"
+}

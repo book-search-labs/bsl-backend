@@ -1,0 +1,48 @@
+server:
+  port: ${CHECKOUT_ORCHESTRATOR_PORT:8091}
+
+spring:
+  application:
+    name: checkout-orchestrator-service
+  datasource:
+    url: ${CHECKOUT_ORCHESTRATOR_DB_URL:jdbc:mysql://localhost:3306/checkout_orchestrator_db}
+    username: ${CHECKOUT_ORCHESTRATOR_DB_USER:bsl}
+    password: ${CHECKOUT_ORCHESTRATOR_DB_PASSWORD:bsl}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+checkout:
+  worker:
+    enabled: ${CHECKOUT_WORKER_ENABLED:true}
+    poll-delay-ms: ${CHECKOUT_WORKER_POLL_DELAY_MS:1000}
+    batch-size: ${CHECKOUT_WORKER_BATCH_SIZE:10}
+    retry-delay-ms: ${CHECKOUT_WORKER_RETRY_DELAY_MS:2000}
+  downstream:
+    order-service:
+      base-url: ${ORDER_SERVICE_BASE_URL:http://localhost:8092}
+      timeout-ms: ${ORDER_SERVICE_TIMEOUT_MS:700}
+    payment-service:
+      base-url: ${PAYMENT_SERVICE_BASE_URL:http://localhost:8093}
+      timeout-ms: ${PAYMENT_SERVICE_TIMEOUT_MS:700}
+    inventory-service:
+      base-url: ${INVENTORY_SERVICE_BASE_URL:http://localhost:8094}
+      timeout-ms: ${INVENTORY_SERVICE_TIMEOUT_MS:700}
+    shipment-service:
+      base-url: ${SHIPMENT_SERVICE_BASE_URL:http://localhost:8097}
+      timeout-ms: ${SHIPMENT_SERVICE_TIMEOUT_MS:700}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}

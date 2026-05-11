@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -15,6 +18,8 @@ import com.bsl.commerce.repository.AddressRepository;
 import com.bsl.commerce.repository.CartRepository;
 import com.bsl.commerce.repository.OrderRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -123,6 +128,55 @@ class OrderServiceTest {
     }
 
     @Test
+    void createOrderRecordsExpiryHistoryAndOutbox() {
+        OrderService service = newService();
+
+        when(orderRepository.findOrderByIdempotencyKey("idem-3")).thenReturn(null);
+        when(catalogService.requireCurrentOfferBySkuId(1L)).thenReturn(
+            Map.of(
+                "offer_id", 10L,
+                "effective_price", 33000,
+                "currency", "KRW",
+                "seller_id", 2L
+            )
+        );
+        when(orderRepository.insertOrder(
+            eq(1L),
+            isNull(),
+            eq("PAYMENT_PENDING"),
+            eq(36000),
+            eq("KRW"),
+            eq(3000),
+            eq("STANDARD"),
+            eq(0),
+            eq("CARD"),
+            eq("idem-3"),
+            isNull(),
+            anyString()
+        )).thenReturn(101L);
+        Map<String, Object> persisted = Map.of("order_id", 101L, "status", "PAYMENT_PENDING");
+        when(orderRepository.findOrderById(101L)).thenReturn(persisted);
+
+        Map<String, Object> result = service.createOrder(
+            1L,
+            null,
+            List.of(new OrderService.OrderItemRequest(1L, 2L, 1, 10L, 33000)),
+            null,
+            null,
+            "STANDARD",
+            "CARD",
+            "idem-3"
+        );
+
+        assertThat(result).isEqualTo(persisted);
+        verify(orderRepository).updatePaymentExpiresAt(eq(101L), any(Instant.class));
+        verify(inventoryService).reserve(1L, 2L, 1, "order_101_reserve_1", "ORDER", "101");
+        verify(orderRepository).insertOrderEvent(eq(101L), eq("ORDER_CREATED"), isNull(), eq("PAYMENT_PENDING"), isNull(), anyString());
+        verify(orderRepository).insertOrderStatusHistory(eq(101L), isNull(), eq("PAYMENT_PENDING"), isNull(), eq("USER"), eq("1"));
+        verify(orderRepository).insertOutboxEvent(eq("OrderReserved"), eq("ORDER"), eq("101"), anyString(), anyString());
+    }
+
+    @Test
     void getOrderItemsEnrichesDisplayMetadata() {
         OrderService service = newService();
 
@@ -202,11 +256,59 @@ class OrderServiceTest {
         order.put("order_id", 88L);
         order.put("status", "READY_TO_SHIP");
 
-        when(orderRepository.findOrderById(88L)).thenReturn(order);
+        when(orderRepository.findOrderByIdForUpdate(88L)).thenReturn(order);
 
         service.markRefundPending(88L);
 
         verify(orderRepository).updateOrderStatus(88L, "REFUND_PENDING");
-        verify(orderRepository).insertOrderEvent(88L, "REFUND_REQUESTED", "READY_TO_SHIP", "REFUND_PENDING", null, null);
+        verify(orderRepository).insertOrderEvent(eq(88L), eq("REFUND_REQUESTED"), eq("READY_TO_SHIP"), eq("REFUND_PENDING"), isNull(), anyString());
+        verify(orderRepository).insertOrderStatusHistory(eq(88L), eq("READY_TO_SHIP"), eq("REFUND_PENDING"), isNull(), eq("SYSTEM"), isNull());
+        verify(orderRepository).insertOutboxEvent(eq("OrderREFUND_PENDING"), eq("ORDER"), eq("88"), anyString(), anyString());
+    }
+
+    @Test
+    void expireOrderReleasesInventoryAndRecordsTransition() {
+        OrderService service = newService();
+
+        Map<String, Object> order = new HashMap<>();
+        order.put("order_id", 77L);
+        order.put("status", "PAYMENT_PENDING");
+        order.put("payment_expires_at", Timestamp.from(Instant.now().minusSeconds(60)));
+
+        Map<String, Object> item = new HashMap<>();
+        item.put("order_item_id", 501L);
+        item.put("sku_id", 42L);
+        item.put("seller_id", 3L);
+        item.put("qty", 2);
+
+        when(orderRepository.findOrderByIdForUpdate(77L)).thenReturn(order);
+        when(orderRepository.findOrderItems(77L)).thenReturn(List.of(item));
+
+        boolean expired = service.expireOrder(77L);
+
+        assertThat(expired).isTrue();
+        verify(inventoryService).release(42L, 3L, 2, "order_77_expire_release_501", "ORDER_EXPIRE", "77");
+        verify(orderRepository).updateOrderStatus(77L, "EXPIRED");
+        verify(orderRepository).insertOrderEvent(eq(77L), eq("ORDER_EXPIRED"), eq("PAYMENT_PENDING"), eq("EXPIRED"), eq("payment_timeout"), anyString());
+        verify(orderRepository).insertOrderStatusHistory(eq(77L), eq("PAYMENT_PENDING"), eq("EXPIRED"), eq("payment_timeout"), eq("SYSTEM"), eq("order-expire"));
+        verify(orderRepository).insertOutboxEvent(eq("OrderExpired"), eq("ORDER"), eq("77"), anyString(), anyString());
+    }
+
+    @Test
+    void expireOrderSkipsWhenNotExpired() {
+        OrderService service = newService();
+
+        Map<String, Object> order = new HashMap<>();
+        order.put("order_id", 78L);
+        order.put("status", "PAYMENT_PENDING");
+        order.put("payment_expires_at", Timestamp.from(Instant.now().plusSeconds(60)));
+
+        when(orderRepository.findOrderByIdForUpdate(78L)).thenReturn(order);
+
+        boolean expired = service.expireOrder(78L);
+
+        assertThat(expired).isFalse();
+        verify(orderRepository, never()).updateOrderStatus(anyLong(), anyString());
+        verify(inventoryService, never()).release(anyLong(), anyLong(), anyInt(), anyString(), anyString(), anyString());
     }
 }

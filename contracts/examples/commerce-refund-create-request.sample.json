@@ -1,0 +1,18 @@
+{
+  "refund_id": "refund-20260508-001",
+  "order_id": "order-1001",
+  "checkout_id": 1001,
+  "user_id": "user-1001",
+  "payment_id": "payment-1001",
+  "inventory_reservation_id": "reservation-1001",
+  "reason": "customer_cancelled_before_shipping",
+  "amount": 18000,
+  "currency": "KRW",
+  "items": [
+    {
+      "book_id": "book-001",
+      "quantity": 1,
+      "amount": 18000
+    }
+  ]
+}

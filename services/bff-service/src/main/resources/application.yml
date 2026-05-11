@@ -43,6 +43,14 @@ bff:
     commerce-service:
       base-url: ${COMMERCE_BASE_URL:http://localhost:8091}
       timeout-ms: ${COMMERCE_TIMEOUT_MS:500}
+    checkout-orchestrator-service:
+      base-url: ${CHECKOUT_ORCHESTRATOR_BASE_URL:http://localhost:8091}
+      timeout-ms: ${CHECKOUT_ORCHESTRATOR_TIMEOUT_MS:700}
+    refund-service:
+      base-url: ${REFUND_BASE_URL:http://localhost:8098}
+      timeout-ms: ${REFUND_TIMEOUT_MS:700}
+  checkout:
+    backend: ${BFF_CHECKOUT_BACKEND:orchestrator}
   outbox:
     enabled: ${BFF_OUTBOX_ENABLED:false}
   rbac:

@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "service": "checkout-orchestrator-service",
+  "trace_id": "trace-20260508-003",
+  "request_id": "request-20260508-003",
+  "checkout_id": 1001,
+  "step_name": "AUTHORIZE_PAYMENT",
+  "before_status": "FAILED_RETRYING",
+  "after_status": "READY",
+  "idempotency_key": "checkout:1001:AUTHORIZE_PAYMENT",
+  "reason": "manual retry after payment 500",
+  "operator_id": "ops-001",
+  "mode": "db"
+}

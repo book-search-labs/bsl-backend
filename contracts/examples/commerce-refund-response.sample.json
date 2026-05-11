@@ -1,0 +1,34 @@
+{
+  "version": "v1",
+  "service": "refund-service",
+  "trace_id": "trace-20260508-004",
+  "request_id": "request-20260508-004",
+  "refund_id": "refund-20260508-001",
+  "order_id": "order-1001",
+  "checkout_id": 1001,
+  "user_id": "user-1001",
+  "payment_id": "payment-1001",
+  "inventory_reservation_id": "reservation-1001",
+  "status": "COMPLETED",
+  "reason": "customer_cancelled_before_shipping",
+  "amount": 18000,
+  "currency": "KRW",
+  "error_code": null,
+  "error_message": null,
+  "items": [
+    {
+      "book_id": "book-001",
+      "quantity": 1,
+      "amount": 18000
+    }
+  ],
+  "payment_cancellation": {
+    "payment_id": "payment-1001",
+    "cancellation_id": "payment-cancel-1001",
+    "status": "SUCCEEDED"
+  },
+  "inventory_release": {
+    "reservation_id": "reservation-1001",
+    "status": "CANCELLED"
+  }
+}
